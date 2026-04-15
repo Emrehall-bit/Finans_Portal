@@ -1,0 +1,50 @@
+2026-04-15 12:13:27 INFO  [background-preinit] Version - HV000001: Hibernate Validator 8.0.3.Final
+2026-04-15 12:13:27 INFO  [main] BackendApplicationTests - Starting BackendApplicationTests using Java 21.0.10 with PID 36344 (started by ehall in C:\Users\ehall\Desktop\Finans-Portal\backend)
+2026-04-15 12:13:27 INFO  [main] BackendApplicationTests - No active profile set, falling back to 1 default profile: "default"
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 153 ms. Found 6 JPA repository interfaces.
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.alert.repository.AlertRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.news.repository.NewsRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.portfolio.repository.PortfolioRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.portfolio.repository.PortfolioTransactionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.user.repository.UserRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.watchlist.repository.WatchlistRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-15 12:13:28 INFO  [main] RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 18 ms. Found 0 Redis repository interfaces.
+2026-04-15 12:13:29 INFO  [main] LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-04-15 12:13:29 INFO  [main] Version - HHH000412: Hibernate ORM core version 6.6.45.Final
+2026-04-15 12:13:29 INFO  [main] RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2026-04-15 12:13:29 INFO  [main] SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-15 12:13:29 INFO  [main] HikariDataSource - HikariPool-1 - Starting...
+2026-04-15 12:13:30 INFO  [main] HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@4e20a985
+2026-04-15 12:13:30 INFO  [main] HikariDataSource - HikariPool-1 - Start completed.
+2026-04-15 12:13:30 WARN  [main] deprecation - HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-04-15 12:13:30 INFO  [main] pooling - HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 16.13
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-04-15 12:13:31 INFO  [main] JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-04-15 12:13:31 INFO  [main] LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-15 12:13:32 INFO  [main] MarketDataScheduler - MarketDataScheduler started. Loading TCMB data on startup...
+2026-04-15 12:13:32 INFO  [main] MarketDataScheduler - Refreshing TCMB market data...
+2026-04-15 12:13:32 INFO  [main] TcmbMarketDataProvider - Fetching TCMB market data from EVDS...
+2026-04-15 12:13:32 INFO  [main] EvdsClient - Sending EVDS request
+2026-04-15 12:13:32 DEBUG [main] EvdsClient - EVDS request URL: https://evds3.tcmb.gov.tr/igmevdsms-dis/series=TP.DK.USD.A-TP.DK.EUR.A&startDate=08-04-2026&endDate=15-04-2026&type=json
+2026-04-15 12:13:32 INFO  [main] EvdsClient - EVDS response received with status: 200 OK
+2026-04-15 12:13:32 DEBUG [main] EvdsClient - EVDS raw response body: {"totalCount":8,"items":[{"Tarih":"08-04-2026","TP_DK_USD_A":"44.52550000","TP_DK_EUR_A":"51.45630000","UNIXTIME":{"$numberLong":"1775595600"}},{"Tarih":"09-04-2026","TP_DK_USD_A":"44.45270000","TP_DK_EUR_A":"51.96780000","UNIXTIME":{"$numberLong":"1775682000"}},{"Tarih":"10-04-2026","TP_DK_USD_A":"44.51020000","TP_DK_EUR_A":"51.95380000","UNIXTIME":{"$numberLong":"1775768400"}},{"Tarih":"11-04-2026","TP_DK_USD_A":null,"TP_DK_EUR_A":null,"UNIXTIME":{"$numberLong":"1775854800"}},{"Tarih":"12-04-2026","TP_DK_USD_A":null,"TP_DK_EUR_A":null,"UNIXTIME":{"$numberLong":"1775941200"}},{"Tarih":"13-04-2026","TP_DK_USD_A":"44.51570000","TP_DK_EUR_A":"52.07440000","UNIXTIME":{"$numberLong":"1776027600"}},{"Tarih":"14-04-2026","TP_DK_USD_A":"44.63550000","TP_DK_EUR_A":"52.17290000","UNIXTIME":{"$numberLong":"1776114000"}},{"Tarih":"15-04-2026","TP_DK_USD_A":"44.64740000","TP_DK_EUR_A":"52.62810000","UNIXTIME":{"$numberLong":"1776200400"}}]}
+2026-04-15 12:13:32 INFO  [main] TcmbMarketDataProvider - EVDS response received successfully.
+2026-04-15 12:13:32 INFO  [main] TcmbMarketDataProvider - EVDS response parsed. Item count: 8
+2026-04-15 12:13:32 INFO  [main] TcmbMarketDataProvider - Mapped TCMB data count: 2
+2026-04-15 12:13:32 INFO  [main] MarketDataScheduler - Fetched TCMB data count: 2
+2026-04-15 12:13:33 INFO  [main] MarketDataScheduler - TCMB cache updated successfully.
+2026-04-15 12:13:33 WARN  [main] JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-04-15 12:13:33 INFO  [main] BackendApplicationTests - Started BackendApplicationTests in 6.299 seconds (process running for 7.762)
+2026-04-15 12:13:34 INFO  [SpringApplicationShutdownHook] LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-04-15 12:13:34 INFO  [SpringApplicationShutdownHook] HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-04-15 12:13:34 INFO  [SpringApplicationShutdownHook] HikariDataSource - HikariPool-1 - Shutdown completed.
