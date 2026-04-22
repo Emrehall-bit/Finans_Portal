@@ -16,5 +16,4 @@ public class PortfolioDetailResponse {
     private LocalDateTime createdAt;
     private PortfolioSummaryResponse summary;
     private List<PortfolioHoldingDto> holdings;
-    private List<PortfolioTransactionResponseDto> transactions;
 }

@@ -32,14 +32,20 @@ export async function getPortfolioDetails(portfolioId) {
   return normalizeApiResponse(response).data ?? null;
 }
 
-export async function createPortfolioTransaction(portfolioId, payload) {
-  const response = await axiosClient.post(`${API_CONFIG.ENDPOINTS.portfolioTransactions}/${portfolioId}`, payload);
+// Holding management now maps directly to the backend's portfolio holding endpoints.
+export async function createPortfolioHolding(portfolioId, payload) {
+  const response = await axiosClient.post(`${API_CONFIG.ENDPOINTS.portfolioHoldings}/${portfolioId}`, payload);
   return normalizeApiResponse(response).data ?? null;
 }
 
-export async function getPortfolioTransactions(portfolioId) {
-  const response = await axiosClient.get(`${API_CONFIG.ENDPOINTS.portfolioTransactions}/portfolio/${portfolioId}`);
-  return normalizeApiResponse(response).data ?? [];
+export async function updatePortfolioHolding(portfolioId, holdingId, payload) {
+  const response = await axiosClient.put(`${API_CONFIG.ENDPOINTS.portfolioHoldings}/${portfolioId}/${holdingId}`, payload);
+  return normalizeApiResponse(response).data ?? null;
+}
+
+export async function deletePortfolioHolding(portfolioId, holdingId) {
+  const response = await axiosClient.delete(`${API_CONFIG.ENDPOINTS.portfolioHoldings}/${portfolioId}/${holdingId}`);
+  return normalizeApiResponse(response).data ?? null;
 }
 
 export async function getPortfolioHoldings(portfolioId) {

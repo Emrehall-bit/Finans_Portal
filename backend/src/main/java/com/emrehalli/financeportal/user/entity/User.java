@@ -20,7 +20,7 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "keycloak_id")
+    @Column(name = "keycloak_id", unique = true)
     private String keycloakId;
 
     @Column(name = "full_name", nullable = false)
@@ -28,6 +28,11 @@ public class User {
 
     @Column(nullable = false, unique = true)
     private String email;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private UserRole role = UserRole.USER;
 
     @Column(name = "preferred_language")
     private String preferredLanguage;

@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.user.dto;
 
+import com.emrehalli.financeportal.user.entity.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,6 +18,7 @@ public class UserResponseDto {
     private String keycloakId;
     private String fullName;
     private String email;
+    private UserRole role;
     private String preferredLanguage;
     private String themePreference;
     private LocalDateTime createdAt;

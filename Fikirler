@@ -1,0 +1,63 @@
+################# 📊 Reel Getiri (Real Return) Hesaplama
+
+### 🎯 Amaç
+
+Kullanıcının yatırım performansını sadece nominal (görünen) getiri ile değil, enflasyondan arındırılmış **reel getiri** üzerinden değerlendirmesini sağlamak.
+
+---
+
+### 📌 Tanım
+
+Reel getiri, yatırımın enflasyon etkisi çıkarıldıktan sonraki gerçek kazancını ifade eder.
+
+---
+
+### 🧮 Formül
+
+r_{reel} = \frac{1 + r_{nominal}}{1 + r_{inflation}} - 1
+
+---
+
+### 🔍 Açıklama
+
+* **r_nominal** → Yatırımın yüzdesel getirisi
+* **r_inflation** → Aynı dönemdeki enflasyon oranı (TÜFE)
+* **r_reel** → Enflasyondan arındırılmış gerçek getiri
+
+---
+
+### 💡 Örnek
+
+* Nominal getiri: %30
+* Enflasyon: %25
+
+Reel getiri ≈ %4
+
+👉 Yani yatırım aslında düşündüğün kadar kazandırmamıştır.
+
+---
+
+### 🔗 Veri Kaynağı
+
+* Enflasyon verisi: TCMB EVDS API (TÜFE serileri)
+* Piyasa verisi: Market Data Modülü
+
+---
+
+### 🧩 Kullanım Alanları
+
+* Portföy performans analizi
+* Dashboard özet metrikleri
+* Yatırım karşılaştırma ekranı
+* “Gerçek kazanç/kayıp” gösterimi
+
+---
+
+### 🚀 Geliştirme Fikri (Opsiyonel)
+
+* Reel getiriye göre sıralama
+* Negatif reel getiri için uyarı sistemi
+* “Enflasyonu yenemeyen yatırım” badge’i
+
+
+#####################

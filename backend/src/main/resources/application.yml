@@ -1,0 +1,169 @@
+spring:
+  profiles:
+    default: local
+
+  flyway:
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+logging:
+  level:
+    com.emrehalli.financeportal.market.provider: INFO
+    com.emrehalli.financeportal.market.provider.tcmb.client: DEBUG
+    com.emrehalli.financeportal.news.provider.finnhub.client: DEBUG
+    com.emrehalli.financeportal.news.provider.bloomberght: DEBUG
+
+market:
+  providers:
+    evds:
+      enabled: true
+      api:
+        base-url: https://evds3.tcmb.gov.tr/igmevdsms-dis
+        key: ${EVDS_API_KEY:}
+      scheduling:
+        refresh-cron: "0 */15 * * * *"
+      http:
+        connect-timeout-ms: 3000
+        read-timeout-ms: 5000
+        retry-count: 2
+      series:
+        - field-name: TP_DK_USD_A
+          series-code: TP.DK.USD.A
+          symbol: USDTRY
+          name: USD / TRY
+          instrument-type: FX
+          currency: TRY
+        - field-name: TP_DK_EUR_A
+          series-code: TP.DK.EUR.A
+          symbol: EURTRY
+          name: EUR / TRY
+          instrument-type: FX
+          currency: TRY
+        - field-name: TP_DK_GBP_A
+          series-code: TP.DK.GBP.A
+          symbol: GBPTRY
+          name: GBP / TRY
+          instrument-type: FX
+          currency: TRY
+        - field-name: TP_DK_JPY_A
+          series-code: TP.DK.JPY.A
+          symbol: JPYTRY
+          name: JPY / TRY
+          instrument-type: FX
+          currency: TRY
+        - field-name: TP_DK_CHF_A
+          series-code: TP.DK.CHF.A
+          symbol: CHFTRY
+          name: CHF / TRY
+          instrument-type: FX
+          currency: TRY
+        - field-name: TP_MK_LON_YTL
+          series-code: TP.MK.LON.YTL
+          symbol: XAU_OUNCE_TRY
+          name: Gold Ounce / TRY
+          instrument-type: COMMODITY
+          currency: TRY
+
+    tefas:
+      enabled: true
+      api:
+        base-url: https://www.tefas.gov.tr
+        key: ${TEFAS_API_KEY:}
+      scheduling:
+        refresh-cron: "0 0 20 * * *"
+      http:
+        connect-timeout-ms: 3000
+        read-timeout-ms: 5000
+        retry-count: 2
+      funds:
+        - AFT
+        - TI2
+        - YAY
+
+    yahoo:
+      enabled: true
+      api:
+        base-url: https://query1.finance.yahoo.com
+        key: ${YAHOO_FINANCE_API_KEY:}
+      scheduling:
+        refresh-cron: "0 */15 * * * *"
+      http:
+        connect-timeout-ms: 3000
+        read-timeout-ms: 5000
+        retry-count: 2
+      symbols:
+        - THYAO.IS
+        - ASELS.IS
+        - SISE.IS
+
+    binance:
+      enabled: true
+      api:
+        base-url: https://api.binance.com
+        key: ${BINANCE_API_KEY:}
+      scheduling:
+        refresh-cron: "0 */1 * * * *"
+      http:
+        connect-timeout-ms: 3000
+        read-timeout-ms: 5000
+        retry-count: 2
+      symbols:
+        - BTCUSDT
+        - ETHUSDT
+        - BNBUSDT
+
+    bist:
+      enabled: true
+      api:
+        base-url: https://www.borsaistanbul.com
+        key: ${BIST_API_KEY:}
+      scheduling:
+        refresh-cron: "0 */10 * * * *"
+      http:
+        connect-timeout-ms: 3000
+        read-timeout-ms: 5000
+        retry-count: 2
+      contracts:
+        - symbol: F_XU030
+          name: BIST 30 Futures
+          path: /piyasalar/viop/vadeli-islem-sozlesmeleri/endeks-vadeli-islem-sozlesmeleri
+          currency: TRY
+        - symbol: F_USDTRY
+          name: USDTRY Futures
+          path: /piyasalar/viop/vadeli-islem-sozlesmeleri/fiziki-teslimatli-doviz-vadeli-islem-sozlesmeleri
+          currency: TRY
+        - symbol: F_XAUTRY
+          name: Gold Futures
+          path: /piyasalar/viop/vadeli-islem-sozlesmeleri/kiymetli-maden-vadeli-islem-sozlesmeleri
+          currency: TRY
+
+    kap:
+      enabled: true
+      api:
+        base-url: https://www.kap.org.tr
+        key: ${KAP_API_KEY:}
+      scheduling:
+        refresh-cron: "0 */30 * * * *"
+      http:
+        connect-timeout-ms: 3000
+        read-timeout-ms: 5000
+        retry-count: 2
+      search-terms:
+        - HALKA ARZ
+        - SERMAYE ARTIRIMI
+        - OZEL DURUM
+      max-items: 25
+
+finnhub:
+  api:
+    url: https://finnhub.io/api/v1
+    key: ${FINNHUB_API_KEY:}
+  sync:
+    default-days-back: 3
+
+bloomberght:
+  api:
+    url: https://www.bloomberght.com/

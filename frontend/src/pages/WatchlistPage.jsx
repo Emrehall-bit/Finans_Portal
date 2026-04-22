@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { API_CONFIG } from "../api/config";
 import { extractErrorMessage } from "../api/responseUtils";
 import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../api/watchlistApi";
+import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -10,7 +10,7 @@ import WatchlistTable from "../components/watchlist/WatchlistTable";
 import useToast from "../hooks/useToast";
 
 export default function WatchlistPage() {
-  const userId = API_CONFIG.DEMO_USER_ID;
+  const { userId } = useAuth();
   const [rows, setRows] = useState([]);
   const [instrumentCode, setInstrumentCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,8 +30,10 @@ export default function WatchlistPage() {
   }
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (userId) {
+      loadData();
+    }
+  }, [userId]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -57,7 +59,7 @@ export default function WatchlistPage() {
 
   return (
     <div>
-      <PageHeader title="Watchlist" description={`Demo user id: ${userId}`} />
+      <PageHeader title="Watchlist" description={`User id: ${userId}`} />
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
       <form className="card form-inline" onSubmit={handleSubmit}>
         <input

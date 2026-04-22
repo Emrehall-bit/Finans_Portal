@@ -12,4 +12,6 @@ public interface WatchlistRepository extends JpaRepository<Watchlist, Long> {
     List<Watchlist> findByUserId(Long userId);
 
     boolean existsByUserIdAndInstrumentCodeIgnoreCase(Long userId, String instrumentCode);
+
+    boolean existsByIdAndUserKeycloakId(Long id, String keycloakId);
 }

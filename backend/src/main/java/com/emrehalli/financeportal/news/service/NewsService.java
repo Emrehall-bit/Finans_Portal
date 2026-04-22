@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -138,6 +139,8 @@ public class NewsService {
 
         int savedCount = 0;
         List<News> toSave = new ArrayList<>();
+        Set<String> existingExternalIds = findExistingExternalIds(items);
+        Set<String> seenExternalIds = new HashSet<>();
 
         for (NewsItemDto item : items) {
             if (!isValidForPersistence(item)) {
@@ -145,12 +148,18 @@ public class NewsService {
                 continue;
             }
 
-            if (newsRepository.existsByExternalId(item.getExternalId())) {
+            String externalId = item.getExternalId().trim();
+            if (!seenExternalIds.add(externalId)) {
+                logger.debug("Skipping duplicate news item within the same batch. externalId: {}", externalId);
+                continue;
+            }
+
+            if (existingExternalIds.contains(externalId)) {
                 continue;
             }
 
             toSave.add(News.builder()
-                    .externalId(item.getExternalId())
+                    .externalId(externalId)
                     .title(item.getTitle().trim())
                     .summary(item.getSummary())
                     .source(item.getSource())
@@ -171,6 +180,23 @@ public class NewsService {
         logger.info("News sync completed. provider: {}, fetched: {}, saved: {}",
                 providerName, items.size(), savedCount);
         return savedCount;
+    }
+
+    private Set<String> findExistingExternalIds(List<NewsItemDto> items) {
+        Set<String> externalIds = items.stream()
+                .filter(this::isValidForPersistence)
+                .map(NewsItemDto::getExternalId)
+                .filter(this::hasText)
+                .map(String::trim)
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (externalIds.isEmpty()) {
+            return Set.of();
+        }
+
+        return newsRepository.findByExternalIdIn(externalIds).stream()
+                .map(News::getExternalId)
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     private boolean isValidForPersistence(NewsItemDto item) {

@@ -6,11 +6,10 @@ import com.emrehalli.financeportal.portfolio.dto.PortfolioDetailResponse;
 import com.emrehalli.financeportal.portfolio.dto.PortfolioHoldingDto;
 import com.emrehalli.financeportal.portfolio.dto.PortfolioResponseDto;
 import com.emrehalli.financeportal.portfolio.dto.PortfolioSummaryResponse;
-import com.emrehalli.financeportal.portfolio.dto.PortfolioTransactionResponseDto;
 import com.emrehalli.financeportal.portfolio.dto.UpdatePortfolioRequest;
 import com.emrehalli.financeportal.portfolio.entity.Portfolio;
+import com.emrehalli.financeportal.portfolio.service.PortfolioHoldingService;
 import com.emrehalli.financeportal.portfolio.service.PortfolioService;
-import com.emrehalli.financeportal.portfolio.service.PortfolioTransactionService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,12 +20,12 @@ import java.util.List;
 public class PortfolioController {
 
     private final PortfolioService portfolioService;
-    private final PortfolioTransactionService portfolioTransactionService;
+    private final PortfolioHoldingService portfolioHoldingService;
 
     public PortfolioController(PortfolioService portfolioService,
-                               PortfolioTransactionService portfolioTransactionService) {
+                               PortfolioHoldingService portfolioHoldingService) {
         this.portfolioService = portfolioService;
-        this.portfolioTransactionService = portfolioTransactionService;
+        this.portfolioHoldingService = portfolioHoldingService;
     }
 
     @PostMapping("/{userId}")
@@ -39,17 +38,6 @@ public class PortfolioController {
                 .success(true)
                 .data(portfolio)
                 .message("Portfolio created successfully")
-                .build();
-    }
-
-    @GetMapping
-    public ApiResponse<List<PortfolioResponseDto>> getAllPortfolios() {
-        List<PortfolioResponseDto> portfolios = portfolioService.getAllPortfolios();
-
-        return ApiResponse.<List<PortfolioResponseDto>>builder()
-                .success(true)
-                .data(portfolios)
-                .message("All portfolios fetched successfully")
                 .build();
     }
 
@@ -94,7 +82,7 @@ public class PortfolioController {
 
     @GetMapping("/{portfolioId}/summary")
     public ApiResponse<PortfolioSummaryResponse> getPortfolioSummary(@PathVariable Long portfolioId) {
-        PortfolioSummaryResponse summary = portfolioTransactionService.getPortfolioSummary(portfolioId);
+        PortfolioSummaryResponse summary = portfolioHoldingService.getPortfolioSummary(portfolioId);
 
         return ApiResponse.<PortfolioSummaryResponse>builder()
                 .success(true)
@@ -106,9 +94,8 @@ public class PortfolioController {
     @GetMapping("/{portfolioId}/details")
     public ApiResponse<PortfolioDetailResponse> getPortfolioDetails(@PathVariable Long portfolioId) {
         Portfolio portfolio = portfolioService.getPortfolioEntityById(portfolioId);
-        PortfolioSummaryResponse summary = portfolioTransactionService.getPortfolioSummary(portfolioId);
-        List<PortfolioHoldingDto> holdings = portfolioTransactionService.getHoldingsByPortfolioId(portfolioId);
-        List<PortfolioTransactionResponseDto> transactions = portfolioTransactionService.getTransactionsByPortfolioId(portfolioId);
+        PortfolioSummaryResponse summary = portfolioHoldingService.getPortfolioSummary(portfolioId);
+        List<PortfolioHoldingDto> holdings = portfolioHoldingService.getHoldingsByPortfolioId(portfolioId);
 
         PortfolioDetailResponse response = PortfolioDetailResponse.builder()
                 .portfolioId(portfolio.getId())
@@ -117,7 +104,6 @@ public class PortfolioController {
                 .createdAt(portfolio.getCreatedAt())
                 .summary(summary)
                 .holdings(holdings)
-                .transactions(transactions)
                 .build();
 
         return ApiResponse.<PortfolioDetailResponse>builder()

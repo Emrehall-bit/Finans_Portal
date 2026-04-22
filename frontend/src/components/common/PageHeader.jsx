@@ -1,9 +1,10 @@
-export default function PageHeader({ title, description, actions }) {
+export default function PageHeader({ title, description, actions, eyebrow = "Overview" }) {
   return (
-    <div className="page-header">
+    <div className="page-header panel-surface">
       <div>
+        <p className="eyebrow">{eyebrow}</p>
         <h1>{title}</h1>
-        {description ? <p>{description}</p> : null}
+        {description ? <p className="page-description">{description}</p> : null}
       </div>
       {actions ? <div className="page-header-actions">{actions}</div> : null}
     </div>

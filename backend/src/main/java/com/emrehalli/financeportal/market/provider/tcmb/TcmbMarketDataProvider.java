@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.market.provider.tcmb;
 
 import com.emrehalli.financeportal.market.dto.common.MarketDataDto;
+import com.emrehalli.financeportal.market.enums.InstrumentType;
 import com.emrehalli.financeportal.market.provider.common.MarketDataProvider;
 import com.emrehalli.financeportal.market.provider.tcmb.client.EvdsClient;
 import com.emrehalli.financeportal.market.provider.tcmb.dto.EvdsResponse;
@@ -11,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
 
 @Component
 public class TcmbMarketDataProvider implements MarketDataProvider {
@@ -33,33 +35,36 @@ public class TcmbMarketDataProvider implements MarketDataProvider {
     }
 
     @Override
-    public List<MarketDataDto> fetchMarketData() {
+    public Set<InstrumentType> getSupportedInstrumentTypes() {
+        return Set.of(InstrumentType.FX, InstrumentType.COMMODITY);
+    }
+
+    @Override
+    public List<MarketDataDto> fetchSnapshotData() {
         try {
             logger.info("Fetching TCMB market data from EVDS...");
 
             String json = client.fetchCurrencyData();
-
-            // Güvenlik kontrolü (Null veya boş dönme ihtimaline karşı uygulamanın çökmesini engeller)
             if (json == null || json.isBlank()) {
                 logger.warn("EVDS response body is null or blank");
                 return List.of();
             }
 
-            logger.info("EVDS response received successfully.");
-
             EvdsResponse response = objectMapper.readValue(json, EvdsResponse.class);
-
             logger.info("EVDS response parsed. Item count: {}",
                     response.getItems() != null ? response.getItems().size() : 0);
 
             List<MarketDataDto> mappedData = mapper.map(response);
-
             logger.info("Mapped TCMB data count: {}", mappedData.size());
-
             return mappedData;
         } catch (Exception e) {
             logger.error("Error while fetching/parsing EVDS data", e);
-            throw new RuntimeException("EVDS data parsing failed: " + e.getMessage(), e);
+            return List.of();
         }
+    }
+
+    @Override
+    public boolean isActive() {
+        return client.isEnabled();
     }
 }

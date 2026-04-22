@@ -3,13 +3,15 @@ package com.emrehalli.financeportal.news.repository;
 import com.emrehalli.financeportal.news.entity.News;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 public interface NewsRepository extends JpaRepository<News, Long> {
 
     List<News> findAllByOrderByPublishedAtDesc();
 
-    boolean existsByExternalId(String externalId);
+    Set<News> findByExternalIdIn(Collection<String> externalIds);
 
     List<News> findAllByCategoryIgnoreCaseOrderByPublishedAtDesc(String category);
 

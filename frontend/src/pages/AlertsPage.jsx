@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { API_CONFIG } from "../api/config";
 import { cancelAlert, createAlert, getUserAlerts } from "../api/alertApi";
 import { extractErrorMessage } from "../api/responseUtils";
+import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -10,7 +10,7 @@ import AlertsTable from "../components/alerts/AlertsTable";
 import useToast from "../hooks/useToast";
 
 export default function AlertsPage() {
-  const userId = API_CONFIG.DEMO_USER_ID;
+  const { userId } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -34,8 +34,10 @@ export default function AlertsPage() {
   }
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (userId) {
+      loadData();
+    }
+  }, [userId]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -65,7 +67,7 @@ export default function AlertsPage() {
 
   return (
     <div>
-      <PageHeader title="Alerts" description={`Demo user id: ${userId}`} />
+      <PageHeader title="Alerts" description={`User id: ${userId}`} />
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
       <form className="card form-inline" onSubmit={handleSubmit}>
         <input

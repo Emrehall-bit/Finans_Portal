@@ -12,6 +12,13 @@ export function formatNumber(value, maxFractionDigits = 4) {
   return numeric.toLocaleString(undefined, { maximumFractionDigits: maxFractionDigits });
 }
 
+export function formatPercent(value, maxFractionDigits = 2) {
+  if (value === null || value === undefined || value === "") return "-";
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return String(value);
+  return `${numeric.toLocaleString(undefined, { maximumFractionDigits: maxFractionDigits })}%`;
+}
+
 export function formatCurrency(value, currency = "TRY") {
   if (value === null || value === undefined || value === "") return "-";
   const numeric = Number(value);

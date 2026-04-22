@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortfolio, getUserPortfolios } from "../api/portfolioApi";
-import { API_CONFIG } from "../api/config";
 import { extractErrorMessage } from "../api/responseUtils";
+import { useAuth } from "../auth/AuthContext";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
@@ -9,7 +9,7 @@ import PortfolioList from "../components/portfolio/PortfolioList";
 import useToast from "../hooks/useToast";
 
 export default function PortfolioPage() {
-  const userId = API_CONFIG.DEMO_USER_ID;
+  const { userId } = useAuth();
   const [portfolios, setPortfolios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -30,8 +30,10 @@ export default function PortfolioPage() {
   }
 
   useEffect(() => {
-    loadPortfolios();
-  }, []);
+    if (userId) {
+      loadPortfolios();
+    }
+  }, [userId]);
 
   async function handleCreatePortfolio(e) {
     e.preventDefault();
@@ -47,7 +49,7 @@ export default function PortfolioPage() {
 
   return (
     <div>
-      <PageHeader title="Portfolio" description={`Portfolio list for demo user id: ${userId}`} />
+      <PageHeader title="Portfolio" description={`Portfolio list for user id: ${userId}`} />
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
       {loading ? <LoadingSpinner label="Loading portfolios..." /> : null}
       {error ? <ErrorMessage message={error} /> : null}

@@ -18,7 +18,7 @@ export default function PortfolioList({ portfolios = [] }) {
             className="list-item"
             onClick={() => navigate(`/portfolio/${portfolio.portfolioId}`)}
           >
-            {/* İsim rengi tekrar lacivert (navy) yapıldı */}
+
             <strong style={{ color: "navy" }}>{portfolio.portfolioName}</strong>
             <span className="muted">{portfolio.visibilityStatus || "N/A"}</span>
             <span className="muted">{formatDateTime(portfolio.createdAt)}</span>

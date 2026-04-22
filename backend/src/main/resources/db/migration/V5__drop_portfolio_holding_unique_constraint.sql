@@ -1,0 +1,2 @@
+ALTER TABLE portfolio_holdings
+DROP CONSTRAINT IF EXISTS uk_portfolio_holdings_portfolio_instrument;

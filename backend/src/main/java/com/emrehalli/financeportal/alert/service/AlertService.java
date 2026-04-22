@@ -8,8 +8,8 @@ import com.emrehalli.financeportal.alert.repository.AlertRepository;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
-import com.emrehalli.financeportal.market.cache.MarketDataCacheService;
 import com.emrehalli.financeportal.market.dto.common.MarketDataDto;
+import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -24,14 +24,14 @@ public class AlertService {
 
     private final AlertRepository alertRepository;
     private final UserRepository userRepository;
-    private final MarketDataCacheService marketDataCacheService;
+    private final MarketQueryService marketQueryService;
 
     public AlertService(AlertRepository alertRepository,
                         UserRepository userRepository,
-                        MarketDataCacheService marketDataCacheService) {
+                        MarketQueryService marketQueryService) {
         this.alertRepository = alertRepository;
         this.userRepository = userRepository;
-        this.marketDataCacheService = marketDataCacheService;
+        this.marketQueryService = marketQueryService;
     }
 
     @Transactional
@@ -50,9 +50,9 @@ public class AlertService {
             throw new DuplicateResourceException("An active alert already exists for this symbol and condition");
         }
 
-        MarketDataDto marketData = marketDataCacheService.findBySymbol(normalizedCode);
+        MarketDataDto marketData = marketQueryService.findCurrentBySymbol(normalizedCode).orElse(null);
         if (marketData == null) {
-            throw new BadRequestException("Invalid instrumentCode. Symbol not found in market cache: " + normalizedCode);
+            throw new BadRequestException("Invalid instrumentCode. Symbol not found in market data: " + normalizedCode);
         }
 
         Alert alert = Alert.builder()
@@ -102,8 +102,8 @@ public class AlertService {
         List<Alert> activeAlerts = alertRepository.findByStatus(AlertStatus.ACTIVE);
 
         for (Alert alert : activeAlerts) {
-            MarketDataDto marketData = marketDataCacheService.findBySymbol(alert.getInstrumentCode());
-            BigDecimal currentPrice = parsePrice(marketData);
+            MarketDataDto marketData = marketQueryService.findCurrentBySymbol(alert.getInstrumentCode()).orElse(null);
+            BigDecimal currentPrice = marketData != null ? marketData.getPrice() : null;
 
             if (currentPrice == null) {
                 continue;
@@ -131,21 +131,9 @@ public class AlertService {
         return symbol.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
     }
 
-    private BigDecimal parsePrice(MarketDataDto marketData) {
-        if (marketData == null || marketData.getPrice() == null || marketData.getPrice().isBlank()) {
-            return null;
-        }
-
-        try {
-            return new BigDecimal(marketData.getPrice());
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
     private AlertResponseDto toResponse(Alert alert) {
-        MarketDataDto marketData = marketDataCacheService.findBySymbol(alert.getInstrumentCode());
-        BigDecimal currentPrice = parsePrice(marketData);
+        MarketDataDto marketData = marketQueryService.findCurrentBySymbol(alert.getInstrumentCode()).orElse(null);
+        BigDecimal currentPrice = marketData != null ? marketData.getPrice() : null;
 
         return AlertResponseDto.builder()
                 .id(alert.getId())
@@ -158,7 +146,7 @@ public class AlertService {
                 .createdAt(alert.getCreatedAt())
                 .currentPrice(currentPrice)
                 .source(marketData != null ? marketData.getSource() : null)
-                .lastUpdated(marketData != null ? marketData.getLastUpdated() : null)
+                .lastUpdated(marketData != null && marketData.getPriceTime() != null ? marketData.getPriceTime().toString() : null)
                 .build();
     }
 }

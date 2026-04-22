@@ -8,4 +8,6 @@ import java.util.List;
 public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
 
     List<Portfolio> findByUserId(Long userId);
+
+    boolean existsByIdAndUserKeycloakId(Long id, String keycloakId);
 }

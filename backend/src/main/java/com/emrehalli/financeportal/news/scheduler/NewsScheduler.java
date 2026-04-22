@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.news.scheduler;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.service.NewsService;
+import jakarta.annotation.PostConstruct;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +18,13 @@ public class NewsScheduler {
 
     public NewsScheduler(NewsService newsService) {
         this.newsService = newsService;
+    }
+
+    @PostConstruct
+    public void loadOnStartup() {
+        logger.info("NewsScheduler started. Loading latest news on startup...");
+        syncFinnhubNews();
+        syncBloombergHtNews();
     }
 
     @Scheduled(cron = "0 */30 * * * *")

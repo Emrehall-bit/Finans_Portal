@@ -47,13 +47,6 @@ public class PortfolioService {
                 .toList();
     }
 
-    public List<PortfolioResponseDto> getAllPortfolios() {
-        return portfolioRepository.findAll()
-                .stream()
-                .map(this::toResponseDto)
-                .toList();
-    }
-
     public PortfolioResponseDto updatePortfolio(Long portfolioId, UpdatePortfolioRequest request) {
         Portfolio portfolio = getPortfolioEntityById(portfolioId);
         portfolio.setPortfolioName(request.getPortfolioName());

@@ -3,8 +3,8 @@ package com.emrehalli.financeportal.watchlist.service;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
-import com.emrehalli.financeportal.market.cache.MarketDataCacheService;
 import com.emrehalli.financeportal.market.dto.common.MarketDataDto;
+import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.repository.UserRepository;
 import com.emrehalli.financeportal.watchlist.dto.WatchlistResponseDto;
@@ -21,14 +21,14 @@ public class WatchlistService {
 
     private final WatchlistRepository watchlistRepository;
     private final UserRepository userRepository;
-    private final MarketDataCacheService marketDataCacheService;
+    private final MarketQueryService marketQueryService;
 
     public WatchlistService(WatchlistRepository watchlistRepository,
                             UserRepository userRepository,
-                            MarketDataCacheService marketDataCacheService) {
+                            MarketQueryService marketQueryService) {
         this.watchlistRepository = watchlistRepository;
         this.userRepository = userRepository;
-        this.marketDataCacheService = marketDataCacheService;
+        this.marketQueryService = marketQueryService;
     }
 
     public WatchlistResponseDto addFavorite(Long userId, String instrumentCode) {
@@ -69,8 +69,8 @@ public class WatchlistService {
     }
 
     private WatchlistResponseDto toResponse(Watchlist watchlist) {
-        MarketDataDto marketData = marketDataCacheService.findBySymbol(watchlist.getInstrumentCode());
-        BigDecimal currentPrice = parsePrice(marketData);
+        MarketDataDto marketData = marketQueryService.findCurrentBySymbol(watchlist.getInstrumentCode()).orElse(null);
+        BigDecimal currentPrice = marketData != null ? marketData.getPrice() : null;
 
         return WatchlistResponseDto.builder()
                 .id(watchlist.getId())
@@ -79,7 +79,7 @@ public class WatchlistService {
                 .createdAt(watchlist.getCreatedAt())
                 .currentPrice(currentPrice)
                 .source(marketData != null ? marketData.getSource() : null)
-                .lastUpdated(marketData != null ? marketData.getLastUpdated() : null)
+                .lastUpdated(marketData != null && marketData.getPriceTime() != null ? marketData.getPriceTime().toString() : null)
                 .build();
     }
 
@@ -88,17 +88,5 @@ public class WatchlistService {
             throw new BadRequestException("instrumentCode cannot be blank");
         }
         return symbol.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
-    }
-
-    private BigDecimal parsePrice(MarketDataDto marketData) {
-        if (marketData == null || marketData.getPrice() == null || marketData.getPrice().isBlank()) {
-            return null;
-        }
-
-        try {
-            return new BigDecimal(marketData.getPrice());
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 }

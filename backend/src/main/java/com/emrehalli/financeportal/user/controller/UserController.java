@@ -1,7 +1,11 @@
 package com.emrehalli.financeportal.user.controller;
 
-import com.emrehalli.financeportal.user.entity.User;
+import com.emrehalli.financeportal.common.response.ApiResponse;
+import com.emrehalli.financeportal.user.dto.CreateUserRequest;
+import com.emrehalli.financeportal.user.dto.UserProfileResponseDto;
+import com.emrehalli.financeportal.user.dto.UserResponseDto;
 import com.emrehalli.financeportal.user.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,12 +21,44 @@ public class UserController {
     }
 
     @PostMapping
-    public User createUser(@RequestBody User user) {
-        return userService.createUser(user);
+    public ApiResponse<UserResponseDto> createUser(@Valid @RequestBody CreateUserRequest request) {
+        UserResponseDto user = userService.createUser(request);
+
+        return ApiResponse.<UserResponseDto>builder()
+                .success(true)
+                .data(user)
+                .message("User created successfully for admin/test usage")
+                .build();
     }
 
-    @GetMapping
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
+    @GetMapping("/admin")
+    public ApiResponse<List<UserResponseDto>> getAllUsers() {
+        return ApiResponse.<List<UserResponseDto>>builder()
+                .success(true)
+                .data(userService.getAllUsers())
+                .message("Users fetched successfully")
+                .build();
+    }
+
+    @GetMapping("/admin/{userId}")
+    public ApiResponse<UserResponseDto> getUserById(@PathVariable Long userId) {
+        UserResponseDto user = userService.getUserById(userId);
+
+        return ApiResponse.<UserResponseDto>builder()
+                .success(true)
+                .data(user)
+                .message("User fetched successfully")
+                .build();
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<UserProfileResponseDto> getCurrentUserProfile() {
+        UserProfileResponseDto profile = userService.getCurrentUserProfile();
+
+        return ApiResponse.<UserProfileResponseDto>builder()
+                .success(true)
+                .data(profile)
+                .message("Current user profile fetched successfully")
+                .build();
     }
 }
