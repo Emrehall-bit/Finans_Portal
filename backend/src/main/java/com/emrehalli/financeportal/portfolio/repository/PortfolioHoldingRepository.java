@@ -12,3 +12,6 @@ public interface PortfolioHoldingRepository extends JpaRepository<PortfolioHoldi
 
     Optional<PortfolioHolding> findByIdAndPortfolioId(Long id, Long portfolioId);
 }
+
+
+

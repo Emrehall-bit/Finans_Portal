@@ -25,9 +25,14 @@ public class CurrentUserResolver {
             throw new BadRequestException("JWT principal could not be resolved");
         }
 
+        String email = jwt.getClaimAsString("email");
+        if (isBlank(email)) {
+            throw new BadRequestException("JWT token does not contain a valid email claim");
+        }
+
         return new CurrentUser(
                 jwt.getSubject(),
-                firstNonBlank(jwt.getClaimAsString("email"), authentication.getName()),
+                email,
                 firstNonBlank(jwt.getClaimAsString("name"), jwt.getClaimAsString("preferred_username")),
                 keycloakJwtRoleConverter.extractRole(jwt),
                 true,
@@ -43,3 +48,5 @@ public class CurrentUserResolver {
         return value == null || value.isBlank();
     }
 }
+
+

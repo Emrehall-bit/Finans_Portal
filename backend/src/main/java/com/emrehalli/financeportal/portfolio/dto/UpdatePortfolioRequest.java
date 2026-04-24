@@ -18,3 +18,6 @@ public class UpdatePortfolioRequest {
     @NotNull(message = "Visibility status is required")
     private PortfolioVisibility visibilityStatus;
 }
+
+
+

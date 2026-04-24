@@ -8,8 +8,6 @@ import com.emrehalli.financeportal.alert.repository.AlertRepository;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
-import com.emrehalli.financeportal.market.dto.common.MarketDataDto;
-import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -24,14 +22,11 @@ public class AlertService {
 
     private final AlertRepository alertRepository;
     private final UserRepository userRepository;
-    private final MarketQueryService marketQueryService;
 
     public AlertService(AlertRepository alertRepository,
-                        UserRepository userRepository,
-                        MarketQueryService marketQueryService) {
+                        UserRepository userRepository) {
         this.alertRepository = alertRepository;
         this.userRepository = userRepository;
-        this.marketQueryService = marketQueryService;
     }
 
     @Transactional
@@ -48,11 +43,6 @@ public class AlertService {
                 request.getTargetPrice(),
                 AlertStatus.ACTIVE)) {
             throw new DuplicateResourceException("An active alert already exists for this symbol and condition");
-        }
-
-        MarketDataDto marketData = marketQueryService.findCurrentBySymbol(normalizedCode).orElse(null);
-        if (marketData == null) {
-            throw new BadRequestException("Invalid instrumentCode. Symbol not found in market data: " + normalizedCode);
         }
 
         Alert alert = Alert.builder()
@@ -99,29 +89,7 @@ public class AlertService {
 
     @Transactional
     public void evaluateActiveAlerts() {
-        List<Alert> activeAlerts = alertRepository.findByStatus(AlertStatus.ACTIVE);
-
-        for (Alert alert : activeAlerts) {
-            MarketDataDto marketData = marketQueryService.findCurrentBySymbol(alert.getInstrumentCode()).orElse(null);
-            BigDecimal currentPrice = marketData != null ? marketData.getPrice() : null;
-
-            if (currentPrice == null) {
-                continue;
-            }
-
-            if (isConditionMatched(alert, currentPrice)) {
-                alert.setStatus(AlertStatus.TRIGGERED);
-                alert.setTriggeredAt(LocalDateTime.now());
-                alertRepository.save(alert);
-            }
-        }
-    }
-
-    private boolean isConditionMatched(Alert alert, BigDecimal currentPrice) {
-        return switch (alert.getConditionType()) {
-            case ABOVE -> currentPrice.compareTo(alert.getTargetPrice()) > 0;
-            case BELOW -> currentPrice.compareTo(alert.getTargetPrice()) < 0;
-        };
+        // Automatic trigger evaluation requires a live price feed; no-op without market quotes.
     }
 
     private String normalizeSymbol(String symbol) {
@@ -132,9 +100,6 @@ public class AlertService {
     }
 
     private AlertResponseDto toResponse(Alert alert) {
-        MarketDataDto marketData = marketQueryService.findCurrentBySymbol(alert.getInstrumentCode()).orElse(null);
-        BigDecimal currentPrice = marketData != null ? marketData.getPrice() : null;
-
         return AlertResponseDto.builder()
                 .id(alert.getId())
                 .userId(alert.getUser().getId())
@@ -144,9 +109,12 @@ public class AlertService {
                 .status(alert.getStatus())
                 .triggeredAt(alert.getTriggeredAt())
                 .createdAt(alert.getCreatedAt())
-                .currentPrice(currentPrice)
-                .source(marketData != null ? marketData.getSource() : null)
-                .lastUpdated(marketData != null && marketData.getPriceTime() != null ? marketData.getPriceTime().toString() : null)
+                .currentPrice(null)
+                .source(null)
+                .lastUpdated(null)
                 .build();
     }
 }
+
+
+

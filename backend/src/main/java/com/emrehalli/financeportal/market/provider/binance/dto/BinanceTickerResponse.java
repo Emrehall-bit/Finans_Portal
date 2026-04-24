@@ -1,21 +1,12 @@
 package com.emrehalli.financeportal.market.provider.binance.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class BinanceTickerResponse {
-
-    private LocalDateTime fetchedAt;
-    private List<BinanceTickerItem> items;
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record BinanceTickerResponse(
+        String symbol,
+        String lastPrice,
+        String priceChangePercent,
+        Long closeTime
+) {
 }

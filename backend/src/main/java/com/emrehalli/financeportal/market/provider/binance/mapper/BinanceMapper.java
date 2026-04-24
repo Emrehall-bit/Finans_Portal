@@ -1,129 +1,129 @@
 package com.emrehalli.financeportal.market.provider.binance.mapper;
 
-import com.emrehalli.financeportal.market.dto.common.MarketDataDto;
-import com.emrehalli.financeportal.market.enums.InstrumentType;
-import com.emrehalli.financeportal.market.enums.MarketDataFreshness;
-import com.emrehalli.financeportal.market.provider.binance.dto.BinanceTickerItem;
+import com.emrehalli.financeportal.market.domain.MarketQuote;
+import com.emrehalli.financeportal.market.domain.enums.DataSource;
+import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.provider.binance.dto.BinanceKlineResponse;
 import com.emrehalli.financeportal.market.provider.binance.dto.BinanceTickerResponse;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class BinanceMapper {
 
-    private static final Logger logger = LogManager.getLogger(BinanceMapper.class);
-
-    public List<MarketDataDto> mapSnapshot(BinanceTickerResponse response) {
-        if (response == null || response.getItems() == null || response.getItems().isEmpty()) {
-            logger.info("Binance mapper returned an empty list because snapshot response is empty.");
+    public List<MarketQuote> toMarketQuotes(List<BinanceTickerResponse> responses) {
+        if (responses == null || responses.isEmpty()) {
             return List.of();
         }
 
-        List<MarketDataDto> mapped = response.getItems().stream()
-                .map(item -> mapItem(item, response.getFetchedAt()))
-                .filter(item -> item != null && item.getPrice() != null)
+        Instant fetchedAt = Instant.now();
+
+        return responses.stream()
+                .flatMap(response -> toMarketQuote(response, fetchedAt).stream())
                 .toList();
-
-        logger.info("Binance mapper produced {} market records", mapped.size());
-        return mapped;
     }
 
-    public List<MarketDataDto> mapHistorical(BinanceTickerResponse response, String symbol) {
-        if (response == null || response.getItems() == null || response.getItems().isEmpty()) {
-            logger.info("Binance mapper returned an empty historical list for {} because response is empty or placeholder.", symbol);
+    public List<MarketHistoryRecord> toHistoryRecords(String symbol, List<BinanceKlineResponse> responses) {
+        if (isBlank(symbol) || responses == null || responses.isEmpty()) {
             return List.of();
         }
 
-        logger.info("Binance historical mapper is not implemented yet for symbol {}. Returning empty list.", symbol);
-        return List.of();
+        String canonicalSymbol = symbol.trim();
+        String currency = resolveCurrency(canonicalSymbol);
+        String displayName = resolveDisplayName(canonicalSymbol, currency);
+
+        return responses.stream()
+                .flatMap(response -> toHistoryRecord(canonicalSymbol, displayName, currency, response).stream())
+                .toList();
     }
 
-    private MarketDataDto mapItem(BinanceTickerItem item, LocalDateTime fetchedAt) {
-        if (item == null) {
-            return null;
+    private Optional<MarketQuote> toMarketQuote(BinanceTickerResponse response, Instant fetchedAt) {
+        if (response == null || isBlank(response.symbol())) {
+            return Optional.empty();
         }
 
-        String symbol = asString(item.getSymbol());
-        BigDecimal price = asDecimal(item.getLastPrice());
-
-        if (symbol == null || price == null) {
-            logger.debug("Binance mapper skipped item because symbol or lastPrice is missing: {}", item);
-            return null;
+        Optional<BigDecimal> price = parseDecimal(response.lastPrice());
+        if (price.isEmpty()) {
+            return Optional.empty();
         }
 
-        String currency = resolveQuoteCurrency(symbol);
-        LocalDateTime priceTime = asEpochMillis(item.getCloseTime());
-
-        return MarketDataDto.builder()
-                .symbol(symbol)
-                .name(buildDisplayName(symbol, currency))
-                .instrumentType(InstrumentType.CRYPTO)
-                .price(price)
-                .changeAmount(asDecimal(item.getPriceChange()))
-                .changePercent(asDecimal(item.getPriceChangePercent()))
-                .currency(currency)
-                .priceTime(priceTime)
-                .fetchedAt(fetchedAt)
-                .source("BINANCE")
-                .freshness(MarketDataFreshness.from(priceTime, fetchedAt))
-                .build();
+        return Optional.of(new MarketQuote(
+                response.symbol().trim(),
+                response.symbol().trim(),
+                InstrumentType.CRYPTO,
+                price.get(),
+                parseDecimal(response.priceChangePercent()).orElse(null),
+                "USDT",
+                DataSource.BINANCE,
+                toInstant(response.closeTime()),
+                fetchedAt
+        ));
     }
 
-    private String buildDisplayName(String symbol, String currency) {
-        if (currency != null && symbol.endsWith(currency)) {
+    private Optional<MarketHistoryRecord> toHistoryRecord(String symbol,
+                                                          String displayName,
+                                                          String currency,
+                                                          BinanceKlineResponse response) {
+        if (response == null || response.openTime() == null) {
+            return Optional.empty();
+        }
+
+        Optional<BigDecimal> closePrice = parseDecimal(response.close());
+        if (closePrice.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new MarketHistoryRecord(
+                symbol,
+                displayName,
+                InstrumentType.CRYPTO,
+                DataSource.BINANCE,
+                LocalDate.ofInstant(Instant.ofEpochMilli(response.openTime()), ZoneOffset.UTC),
+                closePrice.get(),
+                currency
+        ));
+    }
+
+    private Instant toInstant(Long closeTime) {
+        return closeTime == null ? null : Instant.ofEpochMilli(closeTime);
+    }
+
+    private String resolveCurrency(String symbol) {
+        if (symbol.endsWith("USDT")) {
+            return "USDT";
+        }
+
+        return symbol;
+    }
+
+    private String resolveDisplayName(String symbol, String currency) {
+        if ("USDT".equals(currency) && symbol.length() > currency.length()) {
             return symbol.substring(0, symbol.length() - currency.length()) + " / " + currency;
         }
 
         return symbol;
     }
 
-    private String resolveQuoteCurrency(String symbol) {
-        if (symbol == null) {
-            return null;
-        }
-
-        List<String> knownQuotes = List.of("USDT", "BUSD", "FDUSD", "TRY", "BTC", "ETH");
-
-        return knownQuotes.stream()
-                .filter(symbol::endsWith)
-                .findFirst()
-                .orElse(null);
-    }
-
-    private String asString(String value) {
-        return value == null ? null : value.trim();
-    }
-
-    private BigDecimal asDecimal(String value) {
-        if (value == null) {
-            return null;
+    private Optional<BigDecimal> parseDecimal(String value) {
+        if (isBlank(value)) {
+            return Optional.empty();
         }
 
         try {
-            return new BigDecimal(value);
-        } catch (NumberFormatException e) {
-            logger.debug("Binance mapper could not parse decimal value {}", value);
-            return null;
+            return Optional.of(new BigDecimal(value.trim()));
+        } catch (NumberFormatException ex) {
+            return Optional.empty();
         }
     }
 
-    private LocalDateTime asEpochMillis(Long value) {
-        if (value == null) {
-            return null;
-        }
-
-        try {
-            return LocalDateTime.ofInstant(Instant.ofEpochMilli(value), ZoneId.systemDefault());
-        } catch (Exception e) {
-            logger.debug("Binance mapper could not parse epoch millis {}", value);
-            return null;
-        }
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

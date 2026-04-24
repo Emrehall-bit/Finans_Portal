@@ -15,3 +15,6 @@ public class BloombergHtParsedNewsDto {
     private String category;
     private LocalDateTime publishedAt;
 }
+
+
+

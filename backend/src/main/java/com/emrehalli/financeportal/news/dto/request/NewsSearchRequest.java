@@ -17,3 +17,6 @@ public class NewsSearchRequest {
     private LocalDate fromDate;
     private LocalDate toDate;
 }
+
+
+

@@ -13,6 +13,11 @@ import com.emrehalli.financeportal.news.provider.common.NewsProvider;
 import com.emrehalli.financeportal.news.repository.NewsRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +27,7 @@ import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -41,28 +47,25 @@ public class NewsService {
     }
 
     @Transactional(readOnly = true)
-    public List<NewsResponseDto> getNews(NewsSearchRequest request) {
+    public Page<NewsResponseDto> getNews(
+            NewsSearchRequest request,
+            int page,
+            int size,
+            String sortBy,
+            String sortDirection
+    ) {
         validateDateRange(request);
+        validatePaging(page, size);
         QueryContext context = resolveQueryContext(request);
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(resolveSortDirection(sortDirection), resolveSortBy(sortBy))
+        );
+        Specification<News> specification = buildSpecification(request, context);
 
-        List<News> baseList;
-        if (hasText(request.getSymbol())) {
-            String symbol = normalizeSymbol(request.getSymbol());
-            baseList = queryBySymbol(context, symbol);
-        } else if (hasText(request.getCategory())) {
-            String category = request.getCategory().trim();
-            baseList = queryByCategory(context, category);
-        } else if (hasText(request.getKeyword())) {
-            String keyword = request.getKeyword().trim();
-            baseList = queryByKeyword(context, keyword);
-        } else {
-            baseList = queryBase(context);
-        }
-
-        return baseList.stream()
-                .filter(news -> matchesDateRange(news, request))
-                .map(this::toResponse)
-                .toList();
+        return newsRepository.findAll(specification, pageable)
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -102,18 +105,33 @@ public class NewsService {
     public NewsSyncResponseDto syncByScope(NewsScope scope, String symbol) {
         Set<NewsProviderType> providers = scope.providers();
         int fetched = 0;
+        int valid = 0;
+        int invalid = 0;
+        int duplicate = 0;
+        int existing = 0;
         int saved = 0;
 
         for (NewsProviderType providerType : providers) {
             NewsSyncResponseDto result = syncSingleProvider(providerType, symbol);
             fetched += result.getFetchedCount();
+            valid += result.getValidCount();
+            invalid += result.getInvalidCount();
+            duplicate += result.getDuplicateCount();
+            existing += result.getExistingCount();
             saved += result.getSavedCount();
         }
+
+        double parseSuccessRatio = fetched == 0 ? 0.0 : (double) valid / fetched;
 
         return NewsSyncResponseDto.builder()
                 .provider(scope.name())
                 .fetchedCount(fetched)
+                .validCount(valid)
+                .invalidCount(invalid)
+                .duplicateCount(duplicate)
+                .existingCount(existing)
                 .savedCount(saved)
+                .parseSuccessRatio(parseSuccessRatio)
                 .build();
     }
 
@@ -123,21 +141,43 @@ public class NewsService {
                 ? provider.fetchCompanyNews(symbol)
                 : provider.fetchLatestNews();
 
-        int savedCount = saveNewsItems(items, providerType.name());
+        PersistenceStats stats = saveNewsItems(items, providerType.name());
+        double parseSuccessRatio = items.isEmpty() ? 0.0 : (double) stats.validCount() / items.size();
+
+        logger.info(
+                "News sync stats. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, parseSuccessRatio: {}",
+                providerType.name(),
+                items.size(),
+                stats.validCount(),
+                stats.invalidCount(),
+                stats.duplicateCount(),
+                stats.existingCount(),
+                stats.savedCount(),
+                String.format("%.2f", parseSuccessRatio)
+        );
+
         return NewsSyncResponseDto.builder()
                 .provider(providerType.name())
                 .fetchedCount(items.size())
-                .savedCount(savedCount)
+                .validCount(stats.validCount())
+                .invalidCount(stats.invalidCount())
+                .duplicateCount(stats.duplicateCount())
+                .existingCount(stats.existingCount())
+                .savedCount(stats.savedCount())
+                .parseSuccessRatio(parseSuccessRatio)
                 .build();
     }
 
-    private int saveNewsItems(List<NewsItemDto> items, String providerName) {
+    private PersistenceStats saveNewsItems(List<NewsItemDto> items, String providerName) {
         if (items == null || items.isEmpty()) {
             logger.info("No news items fetched from provider: {}", providerName);
-            return 0;
+            return PersistenceStats.empty();
         }
 
         int savedCount = 0;
+        int invalidCount = 0;
+        int duplicateCount = 0;
+        int existingCount = 0;
         List<News> toSave = new ArrayList<>();
         Set<String> existingExternalIds = findExistingExternalIds(items);
         Set<String> seenExternalIds = new HashSet<>();
@@ -145,16 +185,19 @@ public class NewsService {
         for (NewsItemDto item : items) {
             if (!isValidForPersistence(item)) {
                 logger.debug("Skipping invalid news item. externalId: {}", item != null ? item.getExternalId() : null);
+                invalidCount++;
                 continue;
             }
 
             String externalId = item.getExternalId().trim();
             if (!seenExternalIds.add(externalId)) {
                 logger.debug("Skipping duplicate news item within the same batch. externalId: {}", externalId);
+                duplicateCount++;
                 continue;
             }
 
             if (existingExternalIds.contains(externalId)) {
+                existingCount++;
                 continue;
             }
 
@@ -177,9 +220,18 @@ public class NewsService {
             savedCount = newsRepository.saveAll(toSave).size();
         }
 
-        logger.info("News sync completed. provider: {}, fetched: {}, saved: {}",
-                providerName, items.size(), savedCount);
-        return savedCount;
+        int validCount = items.size() - invalidCount;
+        logger.info(
+                "News persistence completed. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}",
+                providerName,
+                items.size(),
+                validCount,
+                invalidCount,
+                duplicateCount,
+                existingCount,
+                savedCount
+        );
+        return new PersistenceStats(validCount, invalidCount, duplicateCount, existingCount, savedCount);
     }
 
     private Set<String> findExistingExternalIds(List<NewsItemDto> items) {
@@ -221,26 +273,19 @@ public class NewsService {
         return item.getPublishedAt() != null;
     }
 
-    private boolean matchesDateRange(News news, NewsSearchRequest request) {
-        if (request.getFromDate() != null) {
-            LocalDateTime from = request.getFromDate().atStartOfDay();
-            if (news.getPublishedAt().isBefore(from)) {
-                return false;
-            }
-        }
-        if (request.getToDate() != null) {
-            LocalDateTime to = request.getToDate().plusDays(1).atStartOfDay();
-            if (!news.getPublishedAt().isBefore(to)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     private void validateDateRange(NewsSearchRequest request) {
         if (request.getFromDate() != null && request.getToDate() != null
                 && request.getFromDate().isAfter(request.getToDate())) {
             throw new BadRequestException("fromDate cannot be after toDate");
+        }
+    }
+
+    private void validatePaging(int page, int size) {
+        if (page < 0) {
+            throw new BadRequestException("page must be greater than or equal to 0");
+        }
+        if (size < 1 || size > 100) {
+            throw new BadRequestException("size must be between 1 and 100");
         }
     }
 
@@ -266,51 +311,99 @@ public class NewsService {
         return new QueryContext(scope, provider);
     }
 
-    private List<News> queryBase(QueryContext context) {
-        if (context.provider != null) {
-            return newsRepository.findAllByProviderOrderByPublishedAtDesc(context.provider.name());
-        }
-        if (context.scope == NewsScope.ALL) {
-            return newsRepository.findAllByOrderByPublishedAtDesc();
-        }
-        return newsRepository.findAllByRegionScopeOrderByPublishedAtDesc(mapScopeToRegion(context.scope));
+    private String resolveSortBy(String sortBy) {
+        String resolvedSortBy = hasText(sortBy) ? sortBy.trim() : "publishedAt";
+        return switch (resolvedSortBy) {
+            case "publishedAt", "title", "source", "category", "provider", "regionScope" -> resolvedSortBy;
+            default -> throw new BadRequestException(
+                    "Invalid sortBy. Allowed values: publishedAt, title, source, category, provider, regionScope"
+            );
+        };
     }
 
-    private List<News> queryByCategory(QueryContext context, String category) {
-        if (context.provider != null) {
-            return newsRepository.findAllByProviderAndCategoryIgnoreCaseOrderByPublishedAtDesc(context.provider.name(), category);
+    private Sort.Direction resolveSortDirection(String sortDirection) {
+        if (!hasText(sortDirection)) {
+            return Sort.Direction.DESC;
         }
-        if (context.scope == NewsScope.ALL) {
-            return newsRepository.findAllByCategoryIgnoreCaseOrderByPublishedAtDesc(category);
+        try {
+            return Sort.Direction.fromString(sortDirection.trim());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid sortDirection. Allowed values: asc, desc");
         }
-        return newsRepository.findAllByRegionScopeAndCategoryIgnoreCaseOrderByPublishedAtDesc(mapScopeToRegion(context.scope), category);
     }
 
-    private List<News> queryBySymbol(QueryContext context, String symbol) {
-        if (context.provider != null) {
-            return newsRepository.findAllByProviderAndRelatedSymbolIgnoreCaseOrderByPublishedAtDesc(context.provider.name(), symbol);
-        }
-        if (context.scope == NewsScope.ALL) {
-            return newsRepository.findAllByRelatedSymbolIgnoreCaseOrderByPublishedAtDesc(symbol);
-        }
-        return newsRepository.findAllByRegionScopeAndRelatedSymbolIgnoreCaseOrderByPublishedAtDesc(mapScopeToRegion(context.scope), symbol);
+    private Specification<News> buildSpecification(NewsSearchRequest request, QueryContext context) {
+        return Specification.allOf(
+                byProvider(context),
+                byScope(context),
+                byCategory(request),
+                bySymbol(request),
+                byKeyword(request),
+                byDateRange(request)
+        );
     }
 
-    private List<News> queryByKeyword(QueryContext context, String keyword) {
-        if (context.provider != null) {
-            return newsRepository
-                    .findAllByProviderAndTitleContainingIgnoreCaseOrProviderAndSummaryContainingIgnoreCaseOrderByPublishedAtDesc(
-                            context.provider.name(), keyword, context.provider.name(), keyword
-                    );
+    private Specification<News> byProvider(QueryContext context) {
+        if (context.provider == null) {
+            return null;
         }
+        return (root, query, cb) -> cb.equal(root.get("provider"), context.provider.name());
+    }
+
+    private Specification<News> byScope(QueryContext context) {
         if (context.scope == NewsScope.ALL) {
-            return newsRepository.findAllByTitleContainingIgnoreCaseOrSummaryContainingIgnoreCaseOrderByPublishedAtDesc(keyword, keyword);
+            return null;
         }
-        String region = mapScopeToRegion(context.scope);
-        return newsRepository
-                .findAllByRegionScopeAndTitleContainingIgnoreCaseOrRegionScopeAndSummaryContainingIgnoreCaseOrderByPublishedAtDesc(
-                        region, keyword, region, keyword
-                );
+        return (root, query, cb) -> cb.equal(root.get("regionScope"), mapScopeToRegion(context.scope));
+    }
+
+    private Specification<News> byCategory(NewsSearchRequest request) {
+        if (!hasText(request.getCategory())) {
+            return null;
+        }
+        String category = request.getCategory().trim().toLowerCase(Locale.ROOT);
+        return (root, query, cb) -> cb.equal(cb.lower(root.get("category")), category);
+    }
+
+    private Specification<News> bySymbol(NewsSearchRequest request) {
+        if (!hasText(request.getSymbol())) {
+            return null;
+        }
+        String symbol = normalizeSymbol(request.getSymbol());
+        return (root, query, cb) -> cb.equal(cb.upper(root.get("relatedSymbol")), symbol);
+    }
+
+    private Specification<News> byKeyword(NewsSearchRequest request) {
+        if (!hasText(request.getKeyword())) {
+            return null;
+        }
+        String keyword = "%" + request.getKeyword().trim().toLowerCase(Locale.ROOT) + "%";
+        return (root, query, cb) -> cb.or(
+                cb.like(cb.lower(root.get("title")), keyword),
+                cb.like(cb.lower(cb.coalesce(root.get("summary"), "")), keyword)
+        );
+    }
+
+    private Specification<News> byDateRange(NewsSearchRequest request) {
+        if (request.getFromDate() == null && request.getToDate() == null) {
+            return null;
+        }
+        return (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            if (request.getFromDate() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(
+                        root.get("publishedAt"),
+                        request.getFromDate().atStartOfDay()
+                ));
+            }
+            if (request.getToDate() != null) {
+                predicates.add(cb.lessThan(
+                        root.get("publishedAt"),
+                        request.getToDate().plusDays(1).atStartOfDay()
+                ));
+            }
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
     }
 
     private String mapScopeToRegion(NewsScope scope) {
@@ -348,4 +441,13 @@ public class NewsService {
 
     private record QueryContext(NewsScope scope, NewsProviderType provider) {
     }
+
+    private record PersistenceStats(int validCount, int invalidCount, int duplicateCount, int existingCount, int savedCount) {
+        private static PersistenceStats empty() {
+            return new PersistenceStats(0, 0, 0, 0, 0);
+        }
+    }
 }
+
+
+

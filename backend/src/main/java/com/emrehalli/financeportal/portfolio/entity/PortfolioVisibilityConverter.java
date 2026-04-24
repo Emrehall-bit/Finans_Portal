@@ -16,3 +16,6 @@ public class PortfolioVisibilityConverter implements AttributeConverter<Portfoli
         return PortfolioVisibility.fromDbValue(dbData);
     }
 }
+
+
+

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Pie, PieChart, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { getMarketData } from "../api/marketApi";
 import {
   createPortfolioHolding,
   deletePortfolioHolding,
@@ -28,7 +27,6 @@ export default function PortfolioDetailPage() {
   const [portfolioInfo, setPortfolioInfo] = useState(null);
   const [summary, setSummary] = useState(null);
   const [holdings, setHoldings] = useState([]);
-  const [marketInstruments, setMarketInstruments] = useState([]);
   const [settingsForm, setSettingsForm] = useState({ portfolioName: "", visibilityStatus: "PRIVATE" });
   const [holdingForm, setHoldingForm] = useState({
     instrumentSearch: "",
@@ -86,18 +84,8 @@ export default function PortfolioDetailPage() {
     }
   }
 
-  async function loadMarketInstruments() {
-    try {
-      const data = await getMarketData();
-      setMarketInstruments(data || []);
-    } catch (err) {
-      setError(extractErrorMessage(err, "Market instruments could not be loaded."));
-    }
-  }
-
   useEffect(() => {
     loadPortfolioData();
-    loadMarketInstruments();
   }, [portfolioId]);
 
   const allocationData = useMemo(() => {
@@ -111,25 +99,19 @@ export default function PortfolioDetailPage() {
     }));
   }, [holdings]);
 
-  const filteredInstruments = useMemo(() => {
-    const query = holdingForm.instrumentSearch.trim().toLowerCase();
-    if (!query) {
-      return marketInstruments.slice(0, 8);
-    }
+  const filteredInstruments = useMemo(() => [], []);
 
-    return marketInstruments
-      .filter((instrument) =>
-        [instrument.symbol, instrument.name, instrument.instrumentType, instrument.source]
-          .filter(Boolean)
-          .some((value) => value.toLowerCase().includes(query)),
-      )
-      .slice(0, 8);
-  }, [holdingForm.instrumentSearch, marketInstruments]);
-
-  const selectedInstrument = useMemo(
-    () => marketInstruments.find((instrument) => instrument.symbol === holdingForm.instrumentCode) ?? null,
-    [holdingForm.instrumentCode, marketInstruments],
-  );
+  const selectedInstrument = useMemo(() => {
+    const code = (holdingForm.instrumentCode || "").trim();
+    if (!code) return null;
+    return {
+      symbol: code,
+      name: "Manual symbol entry",
+      instrumentType: "MANUAL",
+      source: "-",
+      currency: "-",
+    };
+  }, [holdingForm.instrumentCode]);
 
   const valuationReadyCount = holdings.filter((holding) => holding.valuationAvailable).length;
 
@@ -436,20 +418,22 @@ export default function PortfolioDetailPage() {
                         onBlur={() => setTimeout(() => setIsInstrumentMenuOpen(false), 120)}
                         onKeyDown={handleInstrumentSearchKeyDown}
                         onChange={(e) => {
+                          const raw = e.target.value;
+                          const normalized = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
                           setIsInstrumentMenuOpen(true);
                           setHighlightedInstrumentIndex(0);
                           setHoldingForm((prev) => ({
                             ...prev,
-                            instrumentSearch: e.target.value,
-                            instrumentCode: e.target.value === prev.instrumentCode ? prev.instrumentCode : "",
+                            instrumentSearch: raw,
+                            instrumentCode: normalized,
                           }));
                         }}
-                        placeholder="Search by symbol, name, type or source"
+                        placeholder="Ornek: AAPL, THYAO (sembolu yazin)"
                       />
                       {isInstrumentMenuOpen ? (
                         <div className="instrument-picker compact">
                           {filteredInstruments.length === 0 ? (
-                            <div className="instrument-picker-empty">No instrument matched your search.</div>
+                            <div className="instrument-picker-empty">Sembolu yazip miktar ve als fiyatini girin.</div>
                           ) : (
                             filteredInstruments.map((instrument, idx) => {
                               const isActive = instrument.symbol === holdingForm.instrumentCode;
@@ -482,7 +466,7 @@ export default function PortfolioDetailPage() {
                   <div className="selected-instrument-card compact">
                     <p className="eyebrow">Selected Instrument</p>
                     <strong>{selectedInstrument ? selectedInstrument.symbol : "No instrument selected"}</strong>
-                    <p>{selectedInstrument ? selectedInstrument.name || "Unnamed instrument" : "Choose a result from the search list to continue."}</p>
+                    <p>{selectedInstrument ? selectedInstrument.name : "Arama alanina sembol yazarak devam edin."}</p>
                     <div className="selected-instrument-meta">
                       <span>{selectedInstrument?.instrumentType || "-"}</span>
                       <span>{selectedInstrument?.source || "-"}</span>

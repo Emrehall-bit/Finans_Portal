@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.user.mapper;
 
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
+import com.emrehalli.financeportal.user.dto.UpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.UserResponseDto;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.entity.UserRole;
@@ -33,7 +34,25 @@ public class UserMapper {
                 .build();
     }
 
+    public void applyProfileUpdate(User user, UpdateUserRequest request) {
+        user.setFullName(request.getFullName());
+        user.setPreferredLanguage(normalizeNullable(request.getPreferredLanguage()));
+        user.setThemePreference(normalizeNullable(request.getThemePreference()));
+    }
+
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
     }
+
+    private String normalizeNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
 }
+
+
+

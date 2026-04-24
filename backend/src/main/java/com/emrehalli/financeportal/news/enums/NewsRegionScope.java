@@ -4,3 +4,6 @@ public enum NewsRegionScope {
     GLOBAL,
     LOCAL
 }
+
+
+

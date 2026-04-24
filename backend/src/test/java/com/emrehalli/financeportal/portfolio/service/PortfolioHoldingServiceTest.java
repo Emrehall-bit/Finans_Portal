@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,7 +65,7 @@ class PortfolioHoldingServiceTest {
     @Test
     void createHolding_whenSameInstrumentAlreadyExists_savesAnotherHoldingRow() {
         CreatePortfolioHoldingRequest request = new CreatePortfolioHoldingRequest();
-        request.setInstrumentCode("thyao");
+        request.setInstrumentCode("asset-a");
         request.setQuantity(new BigDecimal("10"));
         request.setBuyPrice(new BigDecimal("100"));
 
@@ -74,19 +75,19 @@ class PortfolioHoldingServiceTest {
             saved.setId(77L);
             return saved;
         });
-        when(portfolioPriceResolver.resolveCurrentPriceWithFallback("THYAO"))
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-A"), eq(new BigDecimal("100")), any(LocalDateTime.class)))
                 .thenReturn(PriceResolutionResult.available(new BigDecimal("110"), PriceStatus.CACHED, LocalDateTime.of(2026, 4, 22, 11, 0)));
 
         PortfolioHoldingDto result = portfolioHoldingService.createHolding(10L, request);
 
         assertEquals(77L, result.getHoldingId());
-        assertEquals("THYAO", result.getInstrumentCode());
+        assertEquals("ASSET-A", result.getInstrumentCode());
         verify(portfolioHoldingRepository).save(any(PortfolioHolding.class));
     }
 
     @Test
     void updateHolding_updatesQuantityAndBuyPrice() {
-        PortfolioHolding holding = holding(7L, "THYAO", "3", "200");
+        PortfolioHolding holding = holding(7L, "ASSET-A", "3", "200");
         UpdatePortfolioHoldingRequest request = new UpdatePortfolioHoldingRequest();
         request.setQuantity(new BigDecimal("5"));
         request.setBuyPrice(new BigDecimal("210"));
@@ -94,7 +95,7 @@ class PortfolioHoldingServiceTest {
         when(portfolioRepository.existsById(10L)).thenReturn(true);
         when(portfolioHoldingRepository.findByIdAndPortfolioId(7L, 10L)).thenReturn(Optional.of(holding));
         when(portfolioHoldingRepository.save(any(PortfolioHolding.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(portfolioPriceResolver.resolveCurrentPriceWithFallback("THYAO"))
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-A"), eq(new BigDecimal("210")), any(LocalDateTime.class)))
                 .thenReturn(PriceResolutionResult.available(new BigDecimal("220"), PriceStatus.LIVE, LocalDateTime.of(2026, 4, 22, 11, 0)));
 
         PortfolioHoldingDto result = portfolioHoldingService.updateHolding(10L, 7L, request);
@@ -107,7 +108,7 @@ class PortfolioHoldingServiceTest {
 
     @Test
     void deleteHolding_deletesResolvedHolding() {
-        PortfolioHolding holding = holding(7L, "THYAO", "3", "200");
+        PortfolioHolding holding = holding(7L, "ASSET-A", "3", "200");
 
         when(portfolioRepository.existsById(10L)).thenReturn(true);
         when(portfolioHoldingRepository.findByIdAndPortfolioId(7L, 10L)).thenReturn(Optional.of(holding));
@@ -119,14 +120,14 @@ class PortfolioHoldingServiceTest {
 
     @Test
     void getPortfolioSummary_whenSomePricesMissing_returnsPartialSummary() {
-        PortfolioHolding valuedHolding = holding(1L, "THYAO", "10", "100");
-        PortfolioHolding missingHolding = holding(2L, "ASELS", "4", "50");
+        PortfolioHolding valuedHolding = holding(1L, "ASSET-A", "10", "100");
+        PortfolioHolding missingHolding = holding(2L, "ASSET-B", "4", "50");
 
         when(portfolioRepository.existsById(10L)).thenReturn(true);
         when(portfolioHoldingRepository.findByPortfolioId(10L)).thenReturn(List.of(valuedHolding, missingHolding));
-        when(portfolioPriceResolver.resolveCurrentPriceWithFallback("THYAO"))
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-A"), eq(new BigDecimal("100")), any(LocalDateTime.class)))
                 .thenReturn(PriceResolutionResult.available(new BigDecimal("120"), PriceStatus.LIVE, LocalDateTime.of(2026, 4, 22, 11, 0)));
-        when(portfolioPriceResolver.resolveCurrentPriceWithFallback("ASELS"))
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-B"), eq(new BigDecimal("50")), any(LocalDateTime.class)))
                 .thenReturn(PriceResolutionResult.unavailable());
 
         PortfolioSummaryResponse result = portfolioHoldingService.getPortfolioSummary(10L);
@@ -141,11 +142,11 @@ class PortfolioHoldingServiceTest {
 
     @Test
     void getHoldingsByPortfolioId_mapsValuationAvailability() {
-        PortfolioHolding holding = holding(1L, "THYAO", "2", "100");
+        PortfolioHolding holding = holding(1L, "ASSET-A", "2", "100");
 
         when(portfolioRepository.existsById(10L)).thenReturn(true);
         when(portfolioHoldingRepository.findByPortfolioId(10L)).thenReturn(List.of(holding));
-        when(portfolioPriceResolver.resolveCurrentPriceWithFallback("THYAO"))
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-A"), eq(new BigDecimal("100")), any(LocalDateTime.class)))
                 .thenReturn(PriceResolutionResult.unavailable());
 
         List<PortfolioHoldingDto> result = portfolioHoldingService.getHoldingsByPortfolioId(10L);
@@ -153,13 +154,13 @@ class PortfolioHoldingServiceTest {
         assertEquals(1, result.size());
         assertFalse(result.get(0).isValuationAvailable());
         assertEquals(PriceStatus.UNAVAILABLE, result.get(0).getPriceStatus());
-        assertEquals("THYAO", result.get(0).getInstrumentCode());
+        assertEquals("ASSET-A", result.get(0).getInstrumentCode());
     }
 
     @Test
     void createHolding_normalizesInstrumentCodeBeforeSaving() {
         CreatePortfolioHoldingRequest request = new CreatePortfolioHoldingRequest();
-        request.setInstrumentCode("  thyao ");
+        request.setInstrumentCode("  asset-a ");
         request.setQuantity(new BigDecimal("10"));
         request.setBuyPrice(new BigDecimal("100"));
 
@@ -169,14 +170,14 @@ class PortfolioHoldingServiceTest {
             saved.setId(99L);
             return saved;
         });
-        when(portfolioPriceResolver.resolveCurrentPriceWithFallback("THYAO"))
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-A"), eq(new BigDecimal("100")), any(LocalDateTime.class)))
                 .thenReturn(PriceResolutionResult.available(new BigDecimal("105"), PriceStatus.CACHED, LocalDateTime.of(2026, 4, 22, 11, 0)));
 
         PortfolioHoldingDto result = portfolioHoldingService.createHolding(10L, request);
         ArgumentCaptor<PortfolioHolding> captor = ArgumentCaptor.forClass(PortfolioHolding.class);
 
         verify(portfolioHoldingRepository).save(captor.capture());
-        assertEquals("THYAO", captor.getValue().getInstrumentCode());
+        assertEquals("ASSET-A", captor.getValue().getInstrumentCode());
         assertTrue(result.isValuationAvailable());
         assertEquals(new BigDecimal("1050"), result.getCurrentValue());
     }
@@ -193,3 +194,6 @@ class PortfolioHoldingServiceTest {
                 .build();
     }
 }
+
+
+

@@ -2,162 +2,129 @@ spring:
   profiles:
     default: local
 
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/financeportaldb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
   flyway:
+    enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
 
   jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
     database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/finance-portal}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8081/realms/finance-portal/protocol/openid-connect/certs}
 
 logging:
   level:
-    com.emrehalli.financeportal.market.provider: INFO
-    com.emrehalli.financeportal.market.provider.tcmb.client: DEBUG
+    com.emrehalli.financeportal.market: INFO
+    com.emrehalli.financeportal.market.provider.evds: DEBUG
     com.emrehalli.financeportal.news.provider.finnhub.client: DEBUG
     com.emrehalli.financeportal.news.provider.bloomberght: DEBUG
 
 market:
   providers:
-    evds:
-      enabled: true
-      api:
-        base-url: https://evds3.tcmb.gov.tr/igmevdsms-dis
-        key: ${EVDS_API_KEY:}
-      scheduling:
-        refresh-cron: "0 */15 * * * *"
-      http:
-        connect-timeout-ms: 3000
-        read-timeout-ms: 5000
-        retry-count: 2
-      series:
-        - field-name: TP_DK_USD_A
-          series-code: TP.DK.USD.A
-          symbol: USDTRY
-          name: USD / TRY
-          instrument-type: FX
-          currency: TRY
-        - field-name: TP_DK_EUR_A
-          series-code: TP.DK.EUR.A
-          symbol: EURTRY
-          name: EUR / TRY
-          instrument-type: FX
-          currency: TRY
-        - field-name: TP_DK_GBP_A
-          series-code: TP.DK.GBP.A
-          symbol: GBPTRY
-          name: GBP / TRY
-          instrument-type: FX
-          currency: TRY
-        - field-name: TP_DK_JPY_A
-          series-code: TP.DK.JPY.A
-          symbol: JPYTRY
-          name: JPY / TRY
-          instrument-type: FX
-          currency: TRY
-        - field-name: TP_DK_CHF_A
-          series-code: TP.DK.CHF.A
-          symbol: CHFTRY
-          name: CHF / TRY
-          instrument-type: FX
-          currency: TRY
-        - field-name: TP_MK_LON_YTL
-          series-code: TP.MK.LON.YTL
-          symbol: XAU_OUNCE_TRY
-          name: Gold Ounce / TRY
-          instrument-type: COMMODITY
-          currency: TRY
-
-    tefas:
-      enabled: true
-      api:
-        base-url: https://www.tefas.gov.tr
-        key: ${TEFAS_API_KEY:}
-      scheduling:
-        refresh-cron: "0 0 20 * * *"
-      http:
-        connect-timeout-ms: 3000
-        read-timeout-ms: 5000
-        retry-count: 2
-      funds:
-        - AFT
-        - TI2
-        - YAY
-
-    yahoo:
-      enabled: true
-      api:
-        base-url: https://query1.finance.yahoo.com
-        key: ${YAHOO_FINANCE_API_KEY:}
-      scheduling:
-        refresh-cron: "0 */15 * * * *"
-      http:
-        connect-timeout-ms: 3000
-        read-timeout-ms: 5000
-        retry-count: 2
-      symbols:
-        - THYAO.IS
-        - ASELS.IS
-        - SISE.IS
-
     binance:
       enabled: true
-      api:
-        base-url: https://api.binance.com
-        key: ${BINANCE_API_KEY:}
-      scheduling:
-        refresh-cron: "0 */1 * * * *"
-      http:
-        connect-timeout-ms: 3000
-        read-timeout-ms: 5000
-        retry-count: 2
+      base-url: https://api.binance.com
       symbols:
         - BTCUSDT
         - ETHUSDT
         - BNBUSDT
-
-    bist:
+        - SOLUSDT
+        - XRPUSDT
+        - ADAUSDT
+        - AVAXUSDT
+        - DOGEUSDT
+    evds:
       enabled: true
       api:
-        base-url: https://www.borsaistanbul.com
-        key: ${BIST_API_KEY:}
-      scheduling:
-        refresh-cron: "0 */10 * * * *"
-      http:
-        connect-timeout-ms: 3000
-        read-timeout-ms: 5000
-        retry-count: 2
-      contracts:
-        - symbol: F_XU030
-          name: BIST 30 Futures
-          path: /piyasalar/viop/vadeli-islem-sozlesmeleri/endeks-vadeli-islem-sozlesmeleri
-          currency: TRY
-        - symbol: F_USDTRY
-          name: USDTRY Futures
-          path: /piyasalar/viop/vadeli-islem-sozlesmeleri/fiziki-teslimatli-doviz-vadeli-islem-sozlesmeleri
-          currency: TRY
-        - symbol: F_XAUTRY
-          name: Gold Futures
-          path: /piyasalar/viop/vadeli-islem-sozlesmeleri/kiymetli-maden-vadeli-islem-sozlesmeleri
+        key: Rb7ROmhyOC
+        url: https://evds3.tcmb.gov.tr/igmevdsms-dis
+      history:
+        scheduler-lookback-days: 7
+        backfill-default-days: 365
+
+      series:
+        - evdsKey: TP_DK_USD_A
+          apiCode: TP.DK.USD.A
+          symbol: USDTRY
+          name: USD / TRY
+          instrumentType: FX
           currency: TRY
 
-    kap:
-      enabled: true
-      api:
-        base-url: https://www.kap.org.tr
-        key: ${KAP_API_KEY:}
-      scheduling:
-        refresh-cron: "0 */30 * * * *"
-      http:
-        connect-timeout-ms: 3000
-        read-timeout-ms: 5000
-        retry-count: 2
-      search-terms:
-        - HALKA ARZ
-        - SERMAYE ARTIRIMI
-        - OZEL DURUM
-      max-items: 25
+        - evdsKey: TP_DK_EUR_A
+          apiCode: TP.DK.EUR.A
+          symbol: EURTRY
+          name: EUR / TRY
+          instrumentType: FX
+          currency: TRY
+
+        - evdsKey: TP_DK_GBP_A
+          apiCode: TP.DK.GBP.A
+          symbol: GBPTRY
+          name: GBP / TRY
+          instrumentType: FX
+          currency: TRY
+
+        - evdsKey: TP_DK_AUD_A_YTL
+          apiCode: TP.DK.AUD.A.YTL
+          symbol: AUDTRY
+          name: AUD / TRY
+          instrumentType: FX
+          currency: TRY
+
+        - evdsKey: TP_DK_CNY_A_YTL
+          apiCode: TP.DK.CNY.A.YTL
+          symbol: CNYTRY
+          name: CNY / TRY
+          instrumentType: FX
+          currency: TRY
+
+        - evdsKey: TP_DK_CHF_A
+          apiCode: TP.DK.CHF.A
+          symbol: CHFTRY
+          name: CHF / TRY
+          instrumentType: FX
+          currency: TRY
+
+        - evdsKey: TP_DK_JPY_A
+          apiCode: TP.DK.JPY.A
+          symbol: JPYTRY
+          name: JPY / TRY
+          instrumentType: FX
+          currency: TRY
+
+  refresh:
+    initial-delay-ms: 0
+    scheduler-delay-ms: 300000
+    providers:
+      binance:
+        enabled: true
+        refresh-minutes: 1
+      evds:
+        enabled: true
+        refresh-minutes: 15
+
 
 finnhub:
+  enabled: true
   api:
     url: https://finnhub.io/api/v1
     key: ${FINNHUB_API_KEY:}

@@ -11,3 +11,6 @@ public class AddWatchlistRequest {
     @NotBlank(message = "instrumentCode cannot be blank")
     private String instrumentCode;
 }
+
+
+

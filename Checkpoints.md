@@ -21,44 +21,7 @@ Tarih: 20 Nisan 2026
 
 Projenin aktif geliştirme sürecinde yaşanan port çakışmalarını (Port 8080 in use) ve ağ izolasyonu sorunlarını (Connection to localhost:5433 refused) çözmek amacıyla docker-compose.yml dosyası bir "Tam Paket" (Full-Stack) formatından çıkarılarak sadece "Altyapı" (Infrastructure) formatına dönüştürülmüştür.
 
-❌ Silinen Kod Bloğu 1: frontend Servisi
-YAML
-frontend:
-build:
-context: ../frontend
-dockerfile: Dockerfile
-container_name: finance_portal_frontend
-ports:
-- "3000:80"
-depends_on:
-backend:
-condition: service_started
-keycloak:
-condition: service_started
-restart: unless-stopped
-Silinme Nedeni: Frontend geliştirmesi aktif olarak npm run start (veya dev) ile React/Node ortamında yapılmaktadır. Bu bloğun Docker içinde kalması, her kod değişikliğinde Docker image'ının yeniden build edilmesini gerektirecek ve geliştirme hızını düşürecekti. Uygulama kodu host makineye taşındı.
 
-❌ Silinen Kod Bloğu 2: backend Servisi
-YAML
-backend:
-build:
-context: ../backend
-dockerfile: Dockerfile
-container_name: finance_portal_backend
-ports:
-- "8080:8080"
-environment:
-SPRING_PROFILES_ACTIVE: prod
-# ... diğer environment ayarları ...
-depends_on:
-postgres:
-condition: service_healthy
-redis:
-condition: service_healthy
-keycloak:
-condition: service_started
-restart: unless-stopped
-Silinme Nedeni: Yaşanan tüm çakışmaların ana kaynağı bu bloktu.
 
 Port Çakışması: Bu servis Docker ayağa kalktığında 8080 portunu işgal ediyor, bu nedenle IDE (IntelliJ) üzerinden Spring Boot çalıştırılmak istendiğinde port çakışması hatası alınıyordu.
 
@@ -116,4 +79,6 @@ Keycloak'tan bir access_token alınmalı.
 
 Bu token, HTTP isteğinin Authorization header'ına eklenmeli.
 (Bundan sonraki adım frontend'i bağlamak — React uygulaması Keycloak'a login olsun, token'ı otomatik backend'e göndersin. Prompt 3'ü Codex'e verdin mi, frontend tarafı hazır mı?)
+
+
 

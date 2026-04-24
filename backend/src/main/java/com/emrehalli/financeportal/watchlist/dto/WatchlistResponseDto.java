@@ -18,3 +18,6 @@ public class WatchlistResponseDto {
     private String source;
     private String lastUpdated;
 }
+
+
+

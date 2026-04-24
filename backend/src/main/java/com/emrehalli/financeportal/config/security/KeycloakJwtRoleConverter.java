@@ -54,3 +54,6 @@ public class KeycloakJwtRoleConverter implements Converter<Jwt, AbstractAuthenti
         return jwt.getSubject();
     }
 }
+
+
+

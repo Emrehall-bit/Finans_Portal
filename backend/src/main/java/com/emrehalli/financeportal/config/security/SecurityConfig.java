@@ -6,9 +6,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 
 @Configuration
 public class SecurityConfig {
@@ -23,39 +21,53 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   HandlerMappingIntrospector introspector) throws Exception {
-        MvcRequestMatcher.Builder mvc = new MvcRequestMatcher.Builder(introspector);
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
-                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                 .authorizeHttpRequests(auth -> auth
-                         .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/v1/users")).permitAll()
-                         .requestMatchers(mvc.pattern(HttpMethod.GET, "/actuator/health")).permitAll()
-                         .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/markets/**")).permitAll()
-                         .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/market-events/**")).permitAll()
-                         .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/v1/alerts/{userId}")).access(resourceAccessManager::canAccessUserId)
-                         .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/alerts/user/{userId}")).access(resourceAccessManager::canAccessUserId)
-                         .requestMatchers(mvc.pattern(HttpMethod.PATCH, "/api/v1/alerts/{userId}/{alertId}/cancel")).access(resourceAccessManager::canAccessUserId)
-                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/v1/portfolios/{userId}")).access(resourceAccessManager::canAccessUserId)
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/portfolios/user/{userId}")).access(resourceAccessManager::canAccessUserId)
-                        .requestMatchers(mvc.pattern(HttpMethod.PUT, "/api/v1/portfolios/{portfolioId}")).access(resourceAccessManager::canAccessPortfolioId)
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/portfolios/{portfolioId}")).access(resourceAccessManager::canAccessPortfolioId)
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/portfolios/{portfolioId}/summary")).access(resourceAccessManager::canAccessPortfolioId)
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/portfolios/{portfolioId}/details")).access(resourceAccessManager::canAccessPortfolioId)
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/portfolio-holdings/portfolio/{portfolioId}")).access(resourceAccessManager::canAccessPortfolioId)
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/portfolio-holdings/portfolio/{portfolioId}/summary")).access(resourceAccessManager::canAccessPortfolioId)
-                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/v1/portfolio-holdings/{portfolioId}")).access(resourceAccessManager::canAccessPortfolioId)
-                        .requestMatchers(mvc.pattern(HttpMethod.PUT, "/api/v1/portfolio-holdings/{portfolioId}/{holdingId}")).access(resourceAccessManager::canAccessPortfolioId)
-                        .requestMatchers(mvc.pattern(HttpMethod.DELETE, "/api/v1/portfolio-holdings/{portfolioId}/{holdingId}")).access(resourceAccessManager::canAccessPortfolioId)
-                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/v1/watchlist/{userId}")).access(resourceAccessManager::canAccessUserId)
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/watchlist/user/{userId}")).access(resourceAccessManager::canAccessUserId)
-                        .requestMatchers(mvc.pattern(HttpMethod.DELETE, "/api/v1/watchlist/{id}")).access(resourceAccessManager::canAccessWatchlistId)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Admin endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/users/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+
+                        // Public endpoints
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
+
+                        // Alert endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/v1/alerts/{userId}").access(resourceAccessManager::canAccessUserId)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/alerts/user/{userId}").access(resourceAccessManager::canAccessUserId)
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/alerts/{userId}/{alertId}/cancel").access(resourceAccessManager::canAccessUserId)
+
+                        // Portfolio endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/v1/portfolios/{userId}").access(resourceAccessManager::canAccessUserId)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portfolios/user/{userId}").access(resourceAccessManager::canAccessUserId)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/portfolios/{portfolioId}").access(resourceAccessManager::canAccessPortfolioId)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portfolios/{portfolioId}").access(resourceAccessManager::canAccessPortfolioId)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portfolios/{portfolioId}/summary").access(resourceAccessManager::canAccessPortfolioId)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portfolios/{portfolioId}/details").access(resourceAccessManager::canAccessPortfolioId)
+
+                        // Portfolio holdings endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portfolio-holdings/portfolio/{portfolioId}").access(resourceAccessManager::canAccessPortfolioId)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portfolio-holdings/portfolio/{portfolioId}/summary").access(resourceAccessManager::canAccessPortfolioId)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/portfolio-holdings/{portfolioId}").access(resourceAccessManager::canAccessPortfolioId)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/portfolio-holdings/{portfolioId}/{holdingId}").access(resourceAccessManager::canAccessPortfolioId)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/portfolio-holdings/{portfolioId}/{holdingId}").access(resourceAccessManager::canAccessPortfolioId)
+
+                        // Watchlist endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/v1/watchlist/{userId}").access(resourceAccessManager::canAccessUserId)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/watchlist/user/{userId}").access(resourceAccessManager::canAccessUserId)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/watchlist/{id}").access(resourceAccessManager::canAccessWatchlistId)
+
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakJwtRoleConverter)));
 
         return http.build();
     }
 }
+
+
+

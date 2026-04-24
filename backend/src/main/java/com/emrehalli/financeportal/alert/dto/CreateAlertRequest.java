@@ -23,3 +23,6 @@ public class CreateAlertRequest {
     @DecimalMin(value = "0.0001", message = "targetPrice must be greater than zero")
     private BigDecimal targetPrice;
 }
+
+
+

@@ -8,13 +8,13 @@ const navGroups = [
     items: [
       { to: "/", label: "Ana Sayfa", badge: "Live" },
       { to: "/dashboard", label: "Dashboard", badge: "Pro" },
-      { to: "/markets", label: "Piyasa Verileri" },
       { to: "/news", label: "Haber Akisi" },
     ],
   },
   {
     label: "Portfolio",
     items: [
+      { to: "/profile", label: "Profilim", requiresAuth: true },
       { to: "/portfolio", label: "Portfoy", requiresAuth: true },
       { to: "/watchlist", label: "Watchlist", requiresAuth: true },
       { to: "/alerts", label: "Alerts", requiresAuth: true },

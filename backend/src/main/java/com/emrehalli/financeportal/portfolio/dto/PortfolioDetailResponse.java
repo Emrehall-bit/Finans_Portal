@@ -17,3 +17,6 @@ public class PortfolioDetailResponse {
     private PortfolioSummaryResponse summary;
     private List<PortfolioHoldingDto> holdings;
 }
+
+
+

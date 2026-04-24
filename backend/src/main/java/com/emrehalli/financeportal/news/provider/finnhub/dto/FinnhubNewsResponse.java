@@ -16,3 +16,6 @@ public class FinnhubNewsResponse {
     private String summary;
     private String url;
 }
+
+
+

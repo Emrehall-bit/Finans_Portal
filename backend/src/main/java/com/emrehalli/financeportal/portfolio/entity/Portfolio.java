@@ -33,3 +33,5 @@ public class Portfolio {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 }
+
+

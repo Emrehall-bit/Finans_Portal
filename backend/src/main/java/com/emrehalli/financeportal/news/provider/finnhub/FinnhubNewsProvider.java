@@ -43,3 +43,6 @@ public class FinnhubNewsProvider implements NewsProvider {
                 .toList();
     }
 }
+
+
+

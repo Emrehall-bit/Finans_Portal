@@ -27,22 +27,29 @@ public class BloombergHtNewsMapper {
     private static final String BASE_URL = "https://www.bloomberght.com";
 
     public List<NewsItemDto> map(Document document) {
+        return mapWithReport(document).items();
+    }
+
+    public ParseReport mapWithReport(Document document) {
         if (document == null) {
-            return List.of();
+            return new ParseReport(List.of(), 0, 0, 0);
         }
 
         List<Element> candidates = collectCandidateAnchors(document);
         List<NewsItemDto> mapped = new ArrayList<>();
         Set<String> seenUrls = new LinkedHashSet<>();
+        int invalidCandidateCount = 0;
 
         for (Element candidate : candidates) {
             String url = normalizeUrl(candidate.absUrl("href"));
             if (!isValidNewsUrl(url) || !seenUrls.add(url)) {
+                invalidCandidateCount++;
                 continue;
             }
 
             String title = extractTitle(candidate);
             if (isBlank(title) || title.length() < 15) {
+                invalidCandidateCount++;
                 continue;
             }
 
@@ -67,7 +74,7 @@ public class BloombergHtNewsMapper {
             );
         }
 
-        return mapped;
+        return new ParseReport(mapped, candidates.size(), seenUrls.size(), invalidCandidateCount);
     }
 
     /**
@@ -372,4 +379,9 @@ public class BloombergHtNewsMapper {
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
+
+    public record ParseReport(List<NewsItemDto> items, int candidateCount, int uniqueUrlCount, int invalidCandidateCount) {
+    }
 }
+
+

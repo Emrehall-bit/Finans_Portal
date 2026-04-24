@@ -1,0 +1,404 @@
+com.emrehalli.financeportal.market
+│
+├── api
+│   ├── MarketController.java
+│   ├── MarketAdminController.java
+│   ├── MarketHistoryController.java
+│   ├── dto/
+│   └── mapper/
+│
+├── service
+│   ├── MarketQueryService.java
+│   ├── MarketRefreshService.java
+│   ├── MarketHistoryService.java
+│   ├── InstrumentRegistryService.java
+│   ├── ProviderOrchestrationService.java
+│   └── model/
+│       └── MarketRefreshResult.java
+│
+├── provider
+│   ├── MarketDataProvider.java        # interface
+│   ├── ProviderFetchRequest.java
+│   ├── evds/
+│   ├── yahoo/
+│   ├── cap/
+│   ├── tefas/
+│   └── binance/
+│
+├── persistence
+│   ├── entity/
+│   ├── repository/
+│   └── mapper/
+│
+├── cache
+│   ├── MarketCacheService.java
+│   ├── MarketCacheKeys.java
+│   └── MarketCacheTtlPolicy.java
+│
+├── scheduler
+│   └── MarketRefreshScheduler.java
+│
+├── domain
+│   ├── enums/
+│   │   ├── DataSource.java
+│   │   └── InstrumentType.java
+│   ├── FreshnessPolicy.java
+│   ├── FallbackPolicy.java
+│   └── MarketQuote.java
+│
+├── support
+│   └── SymbolNormalizer.java
+│
+└── exception
+
+
+
+1. Veri toplama — Scheduler tetikler
+MarketRefreshScheduler periyodik olarak çalışır. "Şimdi veri tazele" der ve MarketRefreshService'i tetikler.
+2. Provider'lar veri üretir
+MarketRefreshService → ProviderOrchestrationService'e sorar: "Bu enstrüman için hangi provider'ı kullanayım?"
+ProviderOrchestrationService → FallbackPolicy'ye bakarak sırayı belirler. Örneğin döviz için önce EVDS, EVDS çökerse CAP.
+Seçilen provider'a ProviderFetchRequest gönderilir. Provider dış API'ye bağlanır, ham veriyi alır, kendi Mapper'ı ile MarketQuote'a dönüştürür ve döner.
+3. MarketQuote sisteme yayılır
+MarketRefreshService elinde MarketQuote var artık.
+FreshnessPolicy'ye sorar: "Bu veri taze mi?" — tazeyse devam, bayatsa tekrar çekmeye çalışır.
+SymbolNormalizer'dan geçirir: sembol normalize edilir.
+persistence/mapper aracılığıyla entity'e dönüştürülür, DB'ye yazılır.
+MarketCacheService'e atılır: Redis'e ya da in-memory cache'e yazılır.
+4. Kullanıcı veri ister — Query akışı
+Kullanıcı frontend'den istek atar → MarketController karşılar → MarketQueryService'e iletir.
+MarketQueryService önce cache'e bakar. Cache'te varsa direkt döner — DB'ye gitme gerek yok.
+Cache'te yoksa persistence/repository'den çeker, cache'e yazar, döner.
+api/mapper MarketQuote veya entity'yi DTO'ya dönüştürür. Controller DTO'yu response olarak döner.
+5. Tarihsel veri
+MarketHistoryController → MarketHistoryService → persistence/repository'den tarih aralığına göre PriceBar veya snapshot listesi çeker → DTO'ya dönüştürür → döner.
+6. Admin işlemleri
+MarketAdminController → InstrumentRegistryService: yeni enstrüman ekle, güncelle, pasife al.
+
+Kısaca veri akışı:
+Scheduler
+    ↓
+MarketRefreshService
+    ↓
+ProviderOrchestrationService → FallbackPolicy
+    ↓
+Provider (EVDS/Yahoo/Binance...) → MarketQuote üretir
+    ↓
+FreshnessPolicy kontrolü + SymbolNormalizer
+    ↓
+DB'ye yaz (persistence) + Cache'e at
+    ↓
+Kullanıcı ister → Cache'ten veya DB'den → DTO → Response
+
+
+InstrumenRegistryService için(evds):
+1. MVP (İlk Sürüm) Yaklaşımı - Şu Anki Durum
+
+Yöntem: Verileri kodun içinde statik (Map.of()) olarak tutmak.
+
+Avantajı: Çok hızlı çalışır. Altyapı yükü sıfırdır.
+
+Tavsiye: YAGNI (İhtiyacın Olmayacak) kuralını uygula. Temel özellikler (portföy, alarmlar, UI) tamamen bitip sistem uçtan uca çalışana kadar bu yapıya dokunma.
+
+2. Ölçekleme (Production) Yaklaşımı - Gelecekteki Hedef
+
+Ne Zaman Geçilmeli?: Sisteme binlerce hisse, kripto veya yeni veri kaynağı ekleneceği zaman.
+
+Yapılacaklar Adımları:
+
+Instrument adında bir @Entity sınıfı oluştur.
+
+Flyway ile veritabanında instruments tablosu aç.
+
+InstrumentRepository arayüzünü (interface) yaz.
+
+Servisteki statik Map yapısını silip, verileri Repository üzerinden DB'den çek.
+
+Veritabanını yormamak için bu listeyi @Cacheable (Redis veya lokal önbellek) ile destekle.
+
+
+
+
+
+
+1. Tetikleme ve Orkestrasyon (Veri Toplama)
+Her şey MarketRefreshScheduler ile başlar. Belirlediğin periyotlarda (5 dakikada bir) alarm çalar ve MarketRefreshService'i uyandırır.
+
+Orkestra Şefi: ProviderOrchestrationService devreye girer. Elindeki tüm veri sağlayıcılarını (EVDS, vb.) gezer.
+
+Akıllı Seçim: Sadece o anki isteği destekleyen (supports) sağlayıcılar çalıştırılır.
+
+Hata Toleransı: Bir sağlayıcı hata verirse (internet kesintisi, API limit vb.), orkestra şefi bunu loglar ama diğer sağlayıcıları durdurmaz. Her sağlayıcıdan gelen veri birer MarketRefreshResult olarak paketlenir.
+
+2. Veri Hazırlama (Adaptasyon)
+Veri sağlayıcı (örneğin EvdsMarketDataProvider), dış dünyayla senin sistemin arasındaki köprüdür.
+
+Toplu İstek (Batch): Sembolleri tek tek sormaz; hepsini birleştirip tek bir HTTP isteğiyle dış API'den çeker.
+
+Temizleme (Mapper): API'den gelen karmaşık, bazen boş veya hatalı tarihli veriler EvdsMarketDataMapper tarafından ayıklanır. Sadece en güncel ve geçerli fiyatlar sisteme kabul edilir.
+
+3. Önbellek Yönetimi (Cache Strategy)
+Veriler sisteme girdikten sonra MarketCacheService devreye girer ve veriyi iki farklı "kutuda" saklar:
+
+Kaynak Kutusu: Veriler hangi sağlayıcıdan geldiyse oraya yazılır (Örn: market:quotes:source:EVDS).
+
+Genel Harman (Aggregate): Her güncelleme sonrası, tüm kaynaklardaki veriler birleştirilerek market:quotes:all anahtarına yazılır. Böylece tek bir kaynağı güncellediğinde diğerleri silinmez, aksine genel liste yeniden harmanlanır.
+
+Sembol Bazlı Hızlı Erişim: Her bir sembol (USDTRY gibi) normalize edilip tekil olarak da kaydedilir.
+
+4. Sorgulama ve Sunum (Query)
+Kullanıcı bir fiyat sorduğunda MarketQueryService devreye girer:
+
+Güvenlik Filtresi: Kullanıcı usd/try veya USD-TRY yazsa bile SymbolNormalizer bunu sistemin anladığı USDTRY formatına çevirir.
+
+Hızlı Yanıt: Veri doğrudan Redis önbelleğinden döner. Eğer önbellekte yoksa anlamlı bir hata fırlatılır.
+
+1. "Eventual Consistency" (Nihai Tutarlılık) Modeli
+Senin sistemin "Push-based Cache" mantığıyla çalışıyor. Yani frontend her istek attığında gidip kaynaktan veri çekmiyorsun. Veriyi arka planda (scheduler ile) önbelleğe "itiyorsun".
+
+Fayda: Kaynak A (EVDS) günde 1 kere, Kaynak B (Binance) saniyede 1 kere güncellense bile, frontend her zaman MarketCacheService üzerinden Redis'teki mevcut en son veriyi görür. Frontend için veri kaynağının ne kadar sık güncellendiği şeffaftır (transparent).
+
+2. Akıllı "Aggregate" (Harmanlama) Mantığı
+MarketCacheService.rebuildAllQuotes metodun burada hayat kurtarıyor.
+
+Diyelim ki EVDS'yi limit dolayısıyla günde 5 kere güncelledin. EVDS güncellendiğinde sadece kendi cache parçasını (market:quotes:source:EVDS) tazeler.
+
+Ardından rebuildAllQuotes çalışır: Redis'teki diğer tüm kaynakların (saat başı güncellenenlerin) mevcut son verilerini de okur, EVDS'nin yeni verisiyle birleştirir ve market:quotes:all anahtarını günceller.
+
+Sonuç: Saat başı güncellenen veri yerinde dururken, sadece 5 kerede bir gelen veri taze hissettirir. Frontend hiçbir zaman boş veri almaz.
+
+3. Esnek Zamanlama (Scheduler & Orchestration)
+Farklı periyotları yönetmek için şu anki yapını iki şekilde genişletebilirsin (şu anki kodun buna hazır):
+
+Ayrı Scheduler Metotları: MarketRefreshScheduler içinde farklı @Scheduled tanımları yaparak farklı kaynakları tetikleyebilirsin.
+
+Request Filtreleme: ProviderFetchRequest içine eklediğin source filtresi sayesinde, "Şimdi sadece EVDS'yi güncelle" diyebilirsin.
+
+Akıştaki Kritik Güvencen: "Max Date" Mapper Mantığı
+EvdsMarketDataMapper içinde yazdığın max(Comparator.comparing(ValidEvdsValue::priceDate)) mantığı, bu "farklı zamanlı güncelleme" işinin sigortasıdır.
+
+Eğer bir kaynak güncellenmeye çalışır ama yeni veri bulamazsa (veya limit takılırsa), mapper geçerli bir veri üretmez.
+
+Böylece cache'deki eski ama "en son geçerli" veri korunmuş olur.
+
+Özetle: Evet, akışın buna %100 uyumlu. Frontend tarafı, arkada hangi kaynağın ne kadar "cimri" davrandığını ruhu bile duymadan, Redis'teki en taze veriyi çekmeye devam eder.
+
+Sisteminin bu haliyle "High Availability" (Yüksek Erişilebilirlik) prensibine çok yakın bir noktada olduğunu söyleyebilirim. Başka bir senaryoyu simüle edelim mi?
+
+
+
+
+EVDS’den daha fazla veri çekmek
+
+Yeni veri eklemek için kodu değil, config’i büyütmen yeterli olmalı.
+
+application-local.yml veya application.yml içinde:
+
+market:
+  providers:
+    evds:
+      series:
+        - evdsKey: TP_DK_USD_A
+          apiCode: TP.DK.USD.A
+          symbol: USDTRY
+          name: USD / TRY
+          instrumentType: FX
+          currency: TRY
+
+altına yeni seri eklersin.
+
+Örnek:
+
+        - evdsKey: TP_DK_CHF_A
+          apiCode: TP.DK.CHF.A
+          symbol: CHFTRY
+          name: CHF / TRY
+          instrumentType: FX
+          currency: TRY
+
+Burada kritik kural:
+
+apiCode: EVDS’ye gönderilen gerçek seri kodu
+evdsKey: JSON response içinde gelen alan adı
+Genelde . karakterleri _ olur:
+TP.DK.USD.A → TP_DK_USD_A
+TP.DK.EUR.A → TP_DK_EUR_A
+
+Sonra uygulamayı restart et veya refresh tetikle:
+
+POST /api/v1/markets/admin/refresh
+
+Eğer seri kodu doğruysa yeni sembol cache’e girer.
+
+Market modülü genel mimarisi
+
+Market modülü artık şu mantıkta çalışıyor:
+
+Scheduler
+→ MarketRefreshCoordinator
+→ MarketRefreshService
+→ ProviderOrchestrationService
+→ MarketDataProvider
+→ EvdsMarketDataProvider
+→ EvdsClient
+→ EvdsMarketDataMapper
+→ MarketQuote
+→ MarketCacheService
+→ Redis
+→ MarketController
+Katmanlar
+api
+
+Dış dünyaya açılan HTTP katmanı.
+
+Görevleri:
+
+market listesini döndürmek
+tek sembol döndürmek
+admin refresh endpoint’i sunmak
+
+Örnek:
+
+GET  /api/v1/markets
+GET  /api/v1/markets/{symbol}
+POST /api/v1/markets/admin/refresh
+
+Controller doğrudan EVDS’ye gitmez. Sadece servis/cache üzerinden veri sunar.
+
+service
+
+Uygulama akışını yönetir.
+
+Başlıca roller:
+
+MarketQueryService: cache’ten veri okur
+MarketRefreshService: provider’dan veri çeker, cache’i günceller
+MarketRefreshCoordinator: hangi provider ne zaman çalışacak kararını verir
+ProviderOrchestrationService: uygun provider’ı seçer ve çalıştırır
+InstrumentRegistryService: sembol/canonical instrument çözümleme için temel alan
+provider
+
+Harici veri kaynaklarının bulunduğu katman.
+
+Ortak contract:
+
+MarketDataProvider
+
+Her provider aynı sözleşmeye uyar:
+
+EVDS
+Binance
+TEFAS
+Yahoo
+KAP
+
+Bugün çalışan gerçek provider:
+
+EvdsMarketDataProvider
+
+Bu yapı sayesinde yeni provider eklenince service/controller tarafı değişmez.
+
+provider.evds
+
+EVDS’ye özel entegrasyon katmanı.
+
+Görev dağılımı:
+
+EvdsMarketDataProvider
+→ MarketDataProvider implementasyonu
+
+EvdsClient
+→ HTTP request atar
+
+EvdsResponse / EvdsItem
+→ Raw EVDS JSON response DTO
+
+EvdsMarketDataMapper
+→ EVDS response → List<MarketQuote>
+
+EVDS şu an tek request ile çoklu seri çekiyor:
+
+/series=TP.DK.USD.A-TP.DK.EUR.A-TP.DK.GBP.A
+
+Yani USD, EUR, GBP ayrı ayrı değil, toplu çekiliyor.
+
+domain
+
+Market modülünün ortak iş dili.
+
+Ana model:
+
+MarketQuote
+
+Temel alanlar:
+
+symbol
+displayName
+instrumentType
+price
+changeRate
+currency
+source
+priceTime
+fetchedAt
+
+Burada ayrım önemli:
+
+priceTime: verinin kaynak tarafındaki zamanı
+fetchedAt: sistemin veriyi çektiği zaman
+cache
+
+Redis erişimini soyutlar.
+
+Görevleri:
+
+source bazlı veri yazmak
+aggregate market listesini üretmek
+tek sembol okumak
+bozuk cache verisini tolere etmek
+
+Mantık:
+
+market:quotes:source:EVDS
+market:quotes:all
+market:quotes:symbol:USDTRY
+
+Böylece refreshSource(EVDS) başka provider verilerini ezmemeli.
+
+scheduler
+
+Periyodik market refresh başlatır.
+
+Akış:
+
+MarketRefreshScheduler
+→ MarketRefreshCoordinator
+
+Coordinator şuna karar verir:
+
+EVDS aktif mi?
+refresh policy var mı?
+zamanı gelmiş mi?
+provider çalıştırılmalı mı?
+Güncel çalışan akış
+
+Şu anda gerçek çalışan akış:
+
+1. Scheduler tick atar
+2. Coordinator EVDS due mu kontrol eder
+3. EVDS due ise refresh başlar
+4. ProviderOrchestrationService EVDS provider’ı seçer
+5. EvdsClient tek HTTP request ile USD/EUR/GBP çeker
+6. EVDS JSON response döner
+7. Mapper response içinden son geçerli fiyatları MarketQuote’a çevirir
+8. MarketRefreshService quote listesini cache’e yazar
+9. Controller cache’ten veriyi servis eder
+Bu modülde şu anda başarılan şey
+EVDS gerçek veri çekiyor
+çoklu seri tek request ile çekiliyor
+provider abstraction çalışıyor
+scheduler çalışıyor
+refresh policy çalışıyor
+cache dayanıklılığı eklendi
+bozuk Redis verisi refresh’i düşürmüyor
+okuma tarafı EVDS’ye direkt gitmiyor

@@ -1,7 +1,5 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { getMarketData } from "../api/marketApi";
 import { getNews } from "../api/newsApi";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
@@ -9,25 +7,16 @@ import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
 import { extractErrorMessage } from "../api/responseUtils";
-import { formatDateTime, formatNumber } from "../utils/formatters";
+import { formatDateTime } from "../utils/formatters";
 
 const links = [
-  { title: "Markets", description: "Canli fiyatlar ve semboller", to: "/markets" },
   { title: "News", description: "Provider bazli haber takibi", to: "/news" },
   { title: "Portfolio", description: "Pozisyonlar ve dagilim", to: "/portfolio" },
   { title: "Watchlist", description: "Izleme listesi", to: "/watchlist" },
   { title: "Alerts", description: "Fiyat tetikleyicileri", to: "/alerts" },
 ];
 
-function toLineData(items) {
-  return items.slice(0, 8).map((item, index) => ({
-    name: item.symbol || `M-${index + 1}`,
-    price: Number(item.price) || 0,
-  }));
-}
-
 export default function DashboardPage() {
-  const [market, setMarket] = useState([]);
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -37,9 +26,8 @@ export default function DashboardPage() {
       try {
         setLoading(true);
         setError("");
-        const [marketData, newsData] = await Promise.all([getMarketData(), getNews()]);
-        setMarket(marketData);
-        setNews(newsData.slice(0, 4));
+        const newsData = await getNews();
+        setNews((newsData.content ?? []).slice(0, 4));
       } catch (err) {
         setError(extractErrorMessage(err, "Dashboard data could not be loaded."));
       } finally {
@@ -49,15 +37,12 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  const featured = market.slice(0, 4);
-  const chartData = toLineData(market);
-
   return (
     <div className="dashboard-stack">
       <PageHeader
         eyebrow="Private Dashboard"
         title="Kontrol Merkezi"
-        description="Portfoy, piyasa ve haber akisinin tek bakista okunabildigi korumali alan."
+        description="Portfoy ve haber akisinin tek bakista okunabildigi korumali alan."
       />
 
       {loading ? <LoadingSpinner label="Loading dashboard..." /> : null}
@@ -66,20 +51,10 @@ export default function DashboardPage() {
       {!loading && !error ? (
         <>
           <section className="ticker-grid">
-            {featured.length === 0 ? (
-              <EmptyState title="No market data" description="No recent market records were returned." />
-            ) : (
-              featured.map((item, idx) => (
-                <SummaryCard
-                  key={`${item.symbol}-${idx}`}
-                  title={item.name || item.symbol || "Unknown Instrument"}
-                  value={formatNumber(item.price)}
-                  subtitle={`${item.instrumentType || "-"} | ${item.source || "-"} | ${formatDateTime(item.lastUpdated)}`}
-                  trend={`+${idx + 1}.2%`}
-                  tone="cool"
-                />
-              ))
-            )}
+            <EmptyState
+              title="Piyasa verisi yok"
+              description="Canli fiyat modulu bu surumda devre disi. Haber ve portfoy modullerini kullanmaya devam edebilirsiniz."
+            />
           </section>
 
           <section className="dashboard-grid">
@@ -87,31 +62,14 @@ export default function DashboardPage() {
               <div className="panel-head">
                 <div>
                   <p className="eyebrow">Flow</p>
-                  <h3>Piyasa Momentumu</h3>
+                  <h3>Ozet</h3>
                 </div>
                 <span className="pill">Today</span>
               </div>
 
-              {chartData.length === 0 ? (
-                <EmptyState title="Grafik verisi yok" description="Anlik piyasa hareketi okunamadi." />
-              ) : (
-                <div className="dashboard-chart">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                      <YAxis axisLine={false} tickLine={false} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="price" stroke="#4c7fff" strokeWidth={3} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+              <EmptyState title="Grafik verisi yok" description="Piyasa grafigi icin veri kaynagi yapilandirilmamis." />
 
               <div className="mini-stat-row">
-                <div>
-                  <span>Takip edilen semboller</span>
-                  <strong>{market.length}</strong>
-                </div>
                 <div>
                   <span>Aktif haberler</span>
                   <strong>{news.length}</strong>

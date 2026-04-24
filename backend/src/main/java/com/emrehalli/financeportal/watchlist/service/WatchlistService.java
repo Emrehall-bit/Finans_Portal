@@ -3,8 +3,6 @@ package com.emrehalli.financeportal.watchlist.service;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
-import com.emrehalli.financeportal.market.dto.common.MarketDataDto;
-import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.repository.UserRepository;
 import com.emrehalli.financeportal.watchlist.dto.WatchlistResponseDto;
@@ -12,7 +10,6 @@ import com.emrehalli.financeportal.watchlist.entity.Watchlist;
 import com.emrehalli.financeportal.watchlist.repository.WatchlistRepository;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -21,14 +18,11 @@ public class WatchlistService {
 
     private final WatchlistRepository watchlistRepository;
     private final UserRepository userRepository;
-    private final MarketQueryService marketQueryService;
 
     public WatchlistService(WatchlistRepository watchlistRepository,
-                            UserRepository userRepository,
-                            MarketQueryService marketQueryService) {
+                            UserRepository userRepository) {
         this.watchlistRepository = watchlistRepository;
         this.userRepository = userRepository;
-        this.marketQueryService = marketQueryService;
     }
 
     public WatchlistResponseDto addFavorite(Long userId, String instrumentCode) {
@@ -69,17 +63,14 @@ public class WatchlistService {
     }
 
     private WatchlistResponseDto toResponse(Watchlist watchlist) {
-        MarketDataDto marketData = marketQueryService.findCurrentBySymbol(watchlist.getInstrumentCode()).orElse(null);
-        BigDecimal currentPrice = marketData != null ? marketData.getPrice() : null;
-
         return WatchlistResponseDto.builder()
                 .id(watchlist.getId())
                 .userId(watchlist.getUser().getId())
                 .instrumentCode(watchlist.getInstrumentCode())
                 .createdAt(watchlist.getCreatedAt())
-                .currentPrice(currentPrice)
-                .source(marketData != null ? marketData.getSource() : null)
-                .lastUpdated(marketData != null && marketData.getPriceTime() != null ? marketData.getPriceTime().toString() : null)
+                .currentPrice(null)
+                .source(null)
+                .lastUpdated(null)
                 .build();
     }
 
@@ -90,3 +81,6 @@ public class WatchlistService {
         return symbol.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
     }
 }
+
+
+

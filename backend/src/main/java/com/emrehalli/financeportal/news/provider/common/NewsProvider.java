@@ -12,3 +12,6 @@ public interface NewsProvider {
 
     List<NewsItemDto> fetchCompanyNews(String symbol);
 }
+
+
+

@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.user.controller;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
+import com.emrehalli.financeportal.user.dto.UpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.UserProfileResponseDto;
 import com.emrehalli.financeportal.user.dto.UserResponseDto;
 import com.emrehalli.financeportal.user.service.UserService;
@@ -61,4 +62,18 @@ public class UserController {
                 .message("Current user profile fetched successfully")
                 .build();
     }
+
+    @PutMapping("/me")
+    public ApiResponse<UserProfileResponseDto> updateCurrentUserProfile(@Valid @RequestBody UpdateUserRequest request) {
+        UserProfileResponseDto profile = userService.updateCurrentUserProfile(request);
+
+        return ApiResponse.<UserProfileResponseDto>builder()
+                .success(true)
+                .data(profile)
+                .message("Current user profile updated successfully")
+                .build();
+    }
 }
+
+
+

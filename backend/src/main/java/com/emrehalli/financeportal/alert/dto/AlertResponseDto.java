@@ -24,3 +24,6 @@ public class AlertResponseDto {
     private String source;
     private String lastUpdated;
 }
+
+
+

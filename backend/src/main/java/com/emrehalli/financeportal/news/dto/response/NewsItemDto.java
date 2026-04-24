@@ -21,3 +21,6 @@ public class NewsItemDto {
     private String url;
     private LocalDateTime publishedAt;
 }
+
+
+

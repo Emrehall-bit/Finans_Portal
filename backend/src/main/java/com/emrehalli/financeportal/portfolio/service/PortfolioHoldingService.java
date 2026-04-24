@@ -119,8 +119,12 @@ public class PortfolioHoldingService {
 
     // Converts DB-backed holdings into best-effort valuations without failing the whole response.
     private PortfolioHoldingDto toDto(PortfolioHolding holding) {
+        LocalDateTime priceRef = holding.getUpdatedAt() != null ? holding.getUpdatedAt() : holding.getCreatedAt();
         PriceResolutionResult priceResolution = portfolioPriceResolver
-                .resolveCurrentPriceWithFallback(holding.getInstrumentCode());
+                .resolveCurrentPriceWithFallback(
+                        holding.getInstrumentCode(),
+                        holding.getBuyPrice(),
+                        priceRef);
 
         BigDecimal currentValue = null;
         BigDecimal profitLoss = null;
@@ -190,3 +194,6 @@ public class PortfolioHoldingService {
         return SummaryStatus.PARTIAL;
     }
 }
+
+
+

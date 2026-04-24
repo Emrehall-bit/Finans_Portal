@@ -7,7 +7,12 @@ export async function getCurrentUserProfile() {
   return normalizeApiResponse(response).data ?? null;
 }
 
+export async function updateCurrentUserProfile(payload) {
+  const response = await axiosClient.put(`${API_CONFIG.ENDPOINTS.users}/me`, payload);
+  return normalizeApiResponse(response).data ?? null;
+}
+
 export async function getAllUsers() {
-  const response = await axiosClient.get(API_CONFIG.ENDPOINTS.users);
+  const response = await axiosClient.get(`${API_CONFIG.ENDPOINTS.users}/admin`);
   return normalizeApiResponse(response).data ?? [];
 }

@@ -1,14 +1,4 @@
 import { useEffect, useState } from "react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { getMarketData } from "../api/marketApi";
 import { getNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
@@ -16,17 +6,9 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
-import { formatDateTime, formatNumber } from "../utils/formatters";
-
-function toChartData(items) {
-  return items.slice(0, 7).map((item, index) => ({
-    name: item.symbol || `FX-${index + 1}`,
-    value: Number(item.price) || 0,
-  }));
-}
+import { formatDateTime } from "../utils/formatters";
 
 export default function HomePage() {
-  const [market, setMarket] = useState([]);
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,14 +21,13 @@ export default function HomePage() {
         setLoading(true);
         setError("");
 
-        const [marketData, newsData] = await Promise.all([getMarketData(), getNews()]);
+        const newsData = await getNews();
 
         if (!active) {
           return;
         }
 
-        setMarket(marketData);
-        setNews(newsData.slice(0, 4));
+        setNews((newsData.content ?? []).slice(0, 4));
       } catch (err) {
         if (!active) {
           return;
@@ -66,15 +47,14 @@ export default function HomePage() {
     };
   }, []);
 
-  const featuredMarket = market.slice(0, 5);
-  const chartData = toChartData(market);
+  const featuredNews = news.slice(0, 5);
 
   return (
     <div className="dashboard-stack">
       <PageHeader
         eyebrow="Public Landing"
         title="Finans Portali"
-        description="Haber akisiniz, piyasa snapshot'i ve grafikler herkese acik ilk ekranda."
+        description="Haber akisi ve finansal ozet herkese acik ilk ekranda."
       />
 
       {loading ? <LoadingSpinner label="Ana sayfa yukleniyor..." /> : null}
@@ -85,33 +65,15 @@ export default function HomePage() {
           <section className="hero-grid">
             <div className="hero-card panel-surface">
               <div className="hero-copy">
-                <p className="eyebrow">Market Pulse</p>
-                <h2>Tek ekranda piyasa ozeti, haberler ve finansal ritim.</h2>
+                <p className="eyebrow">Haber Odagi</p>
+                <h2>Tek ekranda haberler ve finansal ritim.</h2>
                 <p className="page-description">
-                  Public ziyaretciler piyasayi izler, uye kullanicilar dashboard ve portfoy modullerine devam eder.
+                  Public ziyaretciler haberleri izler, uye kullanicilar dashboard ve portfoy modullerine devam eder.
                 </p>
               </div>
 
               <div className="hero-chart">
-                {chartData.length === 0 ? (
-                  <EmptyState title="Grafik verisi yok" description="Piyasa grafigi olusturulamadi." />
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="heroArea" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#7ca7ff" stopOpacity="0.75" />
-                          <stop offset="100%" stopColor="#7ca7ff" stopOpacity="0.08" />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid stroke="#e8eefb" vertical={false} />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                      <YAxis axisLine={false} tickLine={false} />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="value" stroke="#4c7fff" strokeWidth={3} fill="url(#heroArea)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
+                <EmptyState title="Piyasa grafigi yok" description="Canli fiyat modulu bu surumda devre disi." />
               </div>
             </div>
 
@@ -144,16 +106,16 @@ export default function HomePage() {
           </section>
 
           <section className="ticker-grid">
-            {featuredMarket.length === 0 ? (
-              <EmptyState title="Piyasa verisi yok" description="Su anda gosterilecek piyasa verisi bulunamadi." />
+            {featuredNews.length === 0 ? (
+              <EmptyState title="Ozet yok" description="Su anda one cikan haber bulunamadi." />
             ) : (
-              featuredMarket.map((item, idx) => (
+              featuredNews.map((item, idx) => (
                 <SummaryCard
-                  key={`${item.symbol}-${idx}`}
-                  title={item.symbol || item.name || "FX"}
-                  value={formatNumber(item.price)}
-                  subtitle={[item.name, item.instrumentType, item.source].filter(Boolean).join(" | ") || "-"}
-                  trend={`+0.${idx + 2}%`}
+                  key={`${item.id}-${idx}`}
+                  title={(item.title || "Haber").slice(0, 48)}
+                  value="News"
+                  subtitle={[item.provider, item.source].filter(Boolean).join(" | ") || "-"}
+                  trend={formatDateTime(item.publishedAt)}
                   tone={idx % 2 === 0 ? "cool" : "warm"}
                 />
               ))

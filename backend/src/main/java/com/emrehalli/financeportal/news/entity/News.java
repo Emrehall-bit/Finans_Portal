@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -22,6 +23,13 @@ import java.time.LocalDateTime;
         name = "news",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_news_external_id", columnNames = "external_id")
+        },
+        indexes = {
+                @Index(name = "idx_news_published_at", columnList = "published_at"),
+                @Index(name = "idx_news_provider", columnList = "provider"),
+                @Index(name = "idx_news_region_scope", columnList = "region_scope"),
+                @Index(name = "idx_news_category", columnList = "category"),
+                @Index(name = "idx_news_related_symbol", columnList = "related_symbol")
         }
 )
 @Getter
@@ -47,13 +55,13 @@ public class News {
     @Column(nullable = false, length = 100)
     private String source;
 
-    @Column(length = 100)
+    @Column(nullable = false, length = 100)
     private String provider;
 
     @Column(length = 10)
     private String language;
 
-    @Column(name = "region_scope", length = 20)
+    @Column(name = "region_scope", nullable = false, length = 20)
     private String regionScope;
 
     @Column(length = 100)
@@ -68,7 +76,7 @@ public class News {
     @Column(name = "published_at", nullable = false)
     private LocalDateTime publishedAt;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
@@ -86,3 +94,5 @@ public class News {
         updatedAt = LocalDateTime.now();
     }
 }
+
+

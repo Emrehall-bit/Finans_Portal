@@ -23,3 +23,6 @@ public record PriceResolutionResult(
         return new PriceResolutionResult(null, PriceStatus.UNAVAILABLE, null, false);
     }
 }
+
+
+

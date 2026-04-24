@@ -1,9 +1,9 @@
 package com.emrehalli.financeportal.news.provider.finnhub.client;
 
+import com.emrehalli.financeportal.news.provider.finnhub.FinnhubProperties;
 import com.emrehalli.financeportal.news.provider.finnhub.dto.FinnhubNewsResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -22,39 +22,32 @@ public class FinnhubClient {
     private static final Logger logger = LogManager.getLogger(FinnhubClient.class);
 
     private final RestTemplate restTemplate;
+    private final FinnhubProperties finnhubProperties;
 
-    @Value("${finnhub.api.key}")
-    private String apiKey;
-
-    @Value("${finnhub.api.url}")
-    private String baseUrl;
-
-    @Value("${finnhub.sync.default-days-back:1}")
-    private int defaultDaysBack;
-
-    public FinnhubClient(RestTemplate restTemplate) {
+    public FinnhubClient(RestTemplate restTemplate, FinnhubProperties finnhubProperties) {
         this.restTemplate = restTemplate;
+        this.finnhubProperties = finnhubProperties;
     }
 
     public List<FinnhubNewsResponse> fetchGeneralNews() {
-        String url = UriComponentsBuilder.fromHttpUrl(baseUrl)
+        String url = UriComponentsBuilder.fromHttpUrl(finnhubProperties.getApi().getUrl())
                 .path("/news")
                 .queryParam("category", "general")
-                .queryParam("token", apiKey)
+                .queryParam("token", finnhubProperties.getApi().getKey())
                 .toUriString();
         return execute(url, "general-news");
     }
 
     public List<FinnhubNewsResponse> fetchCompanyNews(String symbol) {
         LocalDate toDate = LocalDate.now();
-        LocalDate fromDate = toDate.minusDays(defaultDaysBack);
+        LocalDate fromDate = toDate.minusDays(finnhubProperties.getSync().getDefaultDaysBack());
 
-        String url = UriComponentsBuilder.fromHttpUrl(baseUrl)
+        String url = UriComponentsBuilder.fromHttpUrl(finnhubProperties.getApi().getUrl())
                 .path("/company-news")
                 .queryParam("symbol", symbol)
                 .queryParam("from", fromDate)
                 .queryParam("to", toDate)
-                .queryParam("token", apiKey)
+                .queryParam("token", finnhubProperties.getApi().getKey())
                 .toUriString();
         return execute(url, "company-news");
     }
@@ -93,3 +86,6 @@ public class FinnhubClient {
         }
     }
 }
+
+
+

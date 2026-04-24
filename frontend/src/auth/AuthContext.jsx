@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { getCurrentUserProfile } from "../api/userApi";
+import { getCurrentUserProfile, updateCurrentUserProfile } from "../api/userApi";
 import keycloak, { initKeycloak, isAuthenticated as hasAuthenticatedSession, isCallbackUrl, login, logout } from "./keycloak";
 
 const AuthContext = createContext(null);
@@ -14,6 +14,12 @@ export function AuthProvider({ children }) {
 
   const loadUserProfile = useCallback(async () => {
     const profile = await getCurrentUserProfile();
+    setUserProfile(profile);
+    return profile;
+  }, []);
+
+  const saveUserProfile = useCallback(async (payload) => {
+    const profile = await updateCurrentUserProfile(payload);
     setUserProfile(profile);
     return profile;
   }, []);
@@ -140,6 +146,8 @@ export function AuthProvider({ children }) {
     login: handleLogin,
     logout: handleLogout,
     ensureAuthenticated,
+    refreshUserProfile: loadUserProfile,
+    updateUserProfile: saveUserProfile,
     userProfile,
     user: userProfile?.user ?? null,
     userId: userProfile?.user?.id ?? null,

@@ -22,3 +22,6 @@ public class NewsResponseDto {
     private String url;
     private LocalDateTime publishedAt;
 }
+
+
+

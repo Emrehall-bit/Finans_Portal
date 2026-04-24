@@ -43,3 +43,6 @@ public class CreatePortfolioHoldingRequest {
         this.buyPrice = buyPrice;
     }
 }
+
+
+

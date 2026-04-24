@@ -47,3 +47,6 @@ public class FinnhubNewsMapper {
         return LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds), ZoneOffset.UTC);
     }
 }
+
+
+

@@ -15,3 +15,6 @@ public class UserProfileResponseDto {
     private boolean authenticated;
     private String authProvider;
 }
+
+
+

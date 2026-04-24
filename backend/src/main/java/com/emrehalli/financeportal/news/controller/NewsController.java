@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.service.NewsService;
+import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/news")
@@ -27,14 +27,18 @@ public class NewsController {
     }
 
     @GetMapping
-    public ApiResponse<List<NewsResponseDto>> getNews(
+    public ApiResponse<Page<NewsResponseDto>> getNews(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String symbol,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String scope,
             @RequestParam(required = false) String provider,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "publishedAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection) {
 
         NewsSearchRequest request = NewsSearchRequest.builder()
                 .keyword(keyword)
@@ -46,9 +50,9 @@ public class NewsController {
                 .toDate(toDate)
                 .build();
 
-        List<NewsResponseDto> response = newsService.getNews(request);
+        Page<NewsResponseDto> response = newsService.getNews(request, page, size, sortBy, sortDirection);
 
-        return ApiResponse.<List<NewsResponseDto>>builder()
+        return ApiResponse.<Page<NewsResponseDto>>builder()
                 .success(true)
                 .data(response)
                 .message("News listed successfully")
@@ -66,20 +70,7 @@ public class NewsController {
                 .build();
     }
 
-    @GetMapping("/symbol/{symbol}")
-    public ApiResponse<List<NewsResponseDto>> getNewsBySymbol(@PathVariable String symbol) {
-        NewsSearchRequest request = NewsSearchRequest.builder()
-                .symbol(symbol)
-                .build();
 
-        List<NewsResponseDto> response = newsService.getNews(request);
-
-        return ApiResponse.<List<NewsResponseDto>>builder()
-                .success(true)
-                .data(response)
-                .message("Symbol news listed successfully")
-                .build();
-    }
 
     @PostMapping("/sync")
     public ApiResponse<NewsSyncResponseDto> syncNews(
@@ -102,3 +93,6 @@ public class NewsController {
                 .build();
     }
 }
+
+
+

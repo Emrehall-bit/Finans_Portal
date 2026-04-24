@@ -6,6 +6,7 @@ import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.config.security.CurrentUser;
 import com.emrehalli.financeportal.config.security.CurrentUserResolver;
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
+import com.emrehalli.financeportal.user.dto.UpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.UserProfileResponseDto;
 import com.emrehalli.financeportal.user.dto.UserResponseDto;
 import com.emrehalli.financeportal.user.entity.User;
@@ -58,8 +59,22 @@ public class UserService {
         CurrentUser currentUser = currentUserResolver.resolve();
         User persistedUser = findOrCreateCurrentUser(currentUser);
 
+        return toUserProfileResponse(persistedUser, currentUser);
+    }
+
+    public UserProfileResponseDto updateCurrentUserProfile(UpdateUserRequest request) {
+        CurrentUser currentUser = currentUserResolver.resolve();
+        User persistedUser = findOrCreateCurrentUser(currentUser);
+
+        applyProfileUpdate(persistedUser, request);
+        User updatedUser = userRepository.save(persistedUser);
+
+        return toUserProfileResponse(updatedUser, currentUser);
+    }
+
+    private UserProfileResponseDto toUserProfileResponse(User user, CurrentUser currentUser) {
         return UserProfileResponseDto.builder()
-                .user(userMapper.toResponse(persistedUser))
+                .user(userMapper.toResponse(user))
                 .authenticated(currentUser.authenticated())
                 .authProvider(currentUser.authProvider())
                 .build();
@@ -147,6 +162,23 @@ public class UserService {
         return updated;
     }
 
+    private void applyProfileUpdate(User user, UpdateUserRequest request) {
+        String resolvedFullName = normalizeFullName(request.getFullName());
+        if (resolvedFullName != null && !resolvedFullName.equals(user.getFullName())) {
+            user.setFullName(resolvedFullName);
+        }
+
+        String preferredLanguage = normalizeOptionalSetting(request.getPreferredLanguage());
+        if (!java.util.Objects.equals(preferredLanguage, user.getPreferredLanguage())) {
+            user.setPreferredLanguage(preferredLanguage);
+        }
+
+        String themePreference = normalizeOptionalSetting(request.getThemePreference());
+        if (!java.util.Objects.equals(themePreference, user.getThemePreference())) {
+            user.setThemePreference(themePreference);
+        }
+    }
+
     private void validateUniqueUser(String keycloakId, String email) {
         if (email != null && userRepository.findByEmail(email).isPresent()) {
             throw new DuplicateResourceException("A user with this email already exists");
@@ -172,4 +204,29 @@ public class UserService {
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
     }
+
+    private String normalizeFullName(String fullName) {
+        if (fullName == null) {
+            return null;
+        }
+
+        String trimmed = fullName.trim();
+        if (trimmed.isEmpty()) {
+            throw new BadRequestException("Full name cannot be blank");
+        }
+
+        return trimmed;
+    }
+
+    private String normalizeOptionalSetting(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
 }
+
+
+
