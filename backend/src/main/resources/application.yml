@@ -52,6 +52,15 @@ market:
         - ADAUSDT
         - AVAXUSDT
         - DOGEUSDT
+    tefas:
+      enabled: true
+      base-url: https://www.tefas.gov.tr
+      symbols:
+        - AFT
+        - IIH
+        - TCD
+        - IPB
+        - MAC
     evds:
       enabled: true
       api:
@@ -118,6 +127,9 @@ market:
       binance:
         enabled: true
         refresh-minutes: 1
+      tefas:
+        enabled: true
+        refresh-minutes: 1440
       evds:
         enabled: true
         refresh-minutes: 15

@@ -114,6 +114,45 @@ class MarketRefreshServiceTest {
         verify(marketCacheService).rebuildAllQuotes(List.of(DataSource.EVDS, DataSource.BINANCE));
     }
 
+    @Test
+    void tefasRefreshPersistsDailyHistoryRecords() {
+        MarketQuote tefasQuote = new MarketQuote(
+                "AFT",
+                "AK PORTFOY ALTIN FONU",
+                InstrumentType.FUND,
+                new BigDecimal("12.345678"),
+                new BigDecimal("1.2345"),
+                "TRY",
+                DataSource.TEFAS,
+                Instant.now(),
+                Instant.now()
+        );
+        MarketHistoryRecord tefasHistory = new MarketHistoryRecord(
+                "AFT",
+                "AK PORTFOY ALTIN FONU",
+                InstrumentType.FUND,
+                DataSource.TEFAS,
+                java.time.LocalDate.of(2026, 4, 24),
+                new BigDecimal("12.345678"),
+                "TRY"
+        );
+        when(providerOrchestrationService.fetchQuoteResults(any())).thenReturn(List.of(
+                MarketRefreshResult.success(DataSource.TEFAS, new com.emrehalli.financeportal.market.provider.ProviderFetchResult(
+                        List.of(tefasQuote),
+                        List.of(tefasHistory)
+                ))
+        ));
+        when(providerOrchestrationService.availableSources()).thenReturn(List.of(DataSource.TEFAS));
+        when(marketCacheService.rebuildAllQuotes(any())).thenReturn(List.of(tefasQuote));
+        MarketRefreshService service = new MarketRefreshService(providerOrchestrationService, marketCacheService, marketHistoryService);
+
+        service.refreshSource(DataSource.TEFAS);
+
+        verify(marketCacheService).putSourceQuotes(DataSource.TEFAS, List.of(tefasQuote));
+        verify(marketHistoryService).persistHistory(DataSource.TEFAS, List.of(tefasHistory));
+        verify(marketCacheService).rebuildAllQuotes(List.of(DataSource.TEFAS));
+    }
+
     private static MarketQuote quote(String symbol, DataSource source) {
         Instant now = Instant.now();
         return new MarketQuote(

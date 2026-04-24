@@ -96,6 +96,34 @@ class MarketHistoryControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void getHistorySupportsTefasFunds() throws Exception {
+        when(marketHistoryService.getHistory(
+                "AFT",
+                DataSource.TEFAS,
+                LocalDate.of(2025, 4, 24),
+                LocalDate.of(2026, 4, 24)
+        )).thenReturn(List.of(new MarketHistoryRecord(
+                "AFT",
+                "AK PORTFOY ALTIN FONU",
+                InstrumentType.FUND,
+                DataSource.TEFAS,
+                LocalDate.of(2026, 4, 24),
+                new BigDecimal("12.345678"),
+                "TRY"
+        )));
+
+        mockMvc.perform(get("/api/v1/markets/AFT/history")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER"))
+                        .param("source", "TEFAS")
+                        .param("startDate", "2025-04-24")
+                        .param("endDate", "2026-04-24"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].symbol").value("AFT"))
+                .andExpect(jsonPath("$[0].source").value("TEFAS"))
+                .andExpect(jsonPath("$[0].currency").value("TRY"));
+    }
+
     @ParameterizedTest
     @CsvSource({
             "ETHUSDT,ETH / USDT",
