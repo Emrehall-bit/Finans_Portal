@@ -3320,3 +3320,182 @@ org.springframework.web.bind.MissingServletRequestParameterException: Required r
 2026-04-24 18:55:39 INFO  [SpringApplicationShutdownHook] LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
 2026-04-24 18:55:39 INFO  [SpringApplicationShutdownHook] HikariDataSource - HikariPool-1 - Shutdown initiated...
 2026-04-24 18:55:39 INFO  [SpringApplicationShutdownHook] HikariDataSource - HikariPool-1 - Shutdown completed.
+2026-04-24 19:10:12 INFO  [background-preinit] Version - HV000001: Hibernate Validator 8.0.3.Final
+2026-04-24 19:10:12 INFO  [main] BackendApplication - Starting BackendApplication using Java 21.0.10 with PID 12812 (C:\Users\ehall\Desktop\Finans-Portal\backend\target\classes started by ehall in C:\Users\ehall\Desktop\Finans-Portal)
+2026-04-24 19:10:12 INFO  [main] BackendApplication - No active profile set, falling back to 1 default profile: "local"
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 160 ms. Found 7 JPA repository interfaces.
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.alert.repository.AlertRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.market.persistence.repository.MarketHistoryRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.news.repository.NewsRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.portfolio.repository.PortfolioHoldingRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.portfolio.repository.PortfolioRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.user.repository.UserRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationExtensionSupport - Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.emrehalli.financeportal.watchlist.repository.WatchlistRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-04-24 19:10:13 INFO  [main] RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 15 ms. Found 0 Redis repository interfaces.
+2026-04-24 19:10:14 INFO  [main] TomcatWebServer - Tomcat initialized with port 8080 (http)
+2026-04-24 19:10:14 INFO  [main] Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2026-04-24 19:10:14 INFO  [main] StandardService - Starting service [Tomcat]
+2026-04-24 19:10:14 INFO  [main] StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.53]
+2026-04-24 19:10:14 INFO  [main] [/] - Initializing Spring embedded WebApplicationContext
+2026-04-24 19:10:14 INFO  [main] ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 1426 ms
+2026-04-24 19:10:14 INFO  [main] HikariDataSource - HikariPool-1 - Starting...
+2026-04-24 19:10:14 INFO  [main] HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@2ce24a1a
+2026-04-24 19:10:14 INFO  [main] HikariDataSource - HikariPool-1 - Start completed.
+2026-04-24 19:10:14 INFO  [main] FlywayExecutor - Database: jdbc:postgresql://localhost:5433/financeportaldb (PostgreSQL 16.13)
+2026-04-24 19:10:15 INFO  [main] DbValidate - Successfully validated 2 migrations (execution time 00:00.043s)
+2026-04-24 19:10:15 INFO  [main] DbMigrate - Current version of schema "public": 2
+2026-04-24 19:10:15 INFO  [main] DbMigrate - Schema "public" is up to date. No migration necessary.
+2026-04-24 19:10:15 INFO  [main] LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-04-24 19:10:15 INFO  [main] Version - HHH000412: Hibernate ORM core version 6.6.45.Final
+2026-04-24 19:10:15 INFO  [main] RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2026-04-24 19:10:15 INFO  [main] SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-24 19:10:15 WARN  [main] deprecation - HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-04-24 19:10:15 INFO  [main] pooling - HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 16.13
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-04-24 19:10:17 INFO  [main] JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-04-24 19:10:17 INFO  [main] LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-24 19:10:17 INFO  [main] EvdsMarketDataProvider - EVDS provider bean initialized: enabled=true, seriesCount=7
+2026-04-24 19:10:18 INFO  [main] NewsScheduler - NewsScheduler started. Loading latest news on startup...
+2026-04-24 19:10:18 INFO  [main] NewsScheduler - Scheduled Finnhub news sync started
+2026-04-24 19:10:18 INFO  [main] FinnhubClient - Sending Finnhub request to endpoint: general-news
+2026-04-24 19:10:18 DEBUG [main] FinnhubClient - Finnhub request URL: https://finnhub.io/api/v1/news?category=general&token=
+2026-04-24 19:10:18 ERROR [main] FinnhubClient - Finnhub client error. Endpoint: general-news, status: 401 UNAUTHORIZED, body: {"error":"Please use an API key."}
+2026-04-24 19:10:18 INFO  [main] NewsService - No news items fetched from provider: FINNHUB
+2026-04-24 19:10:18 INFO  [main] NewsService - News sync stats. provider: FINNHUB, fetched: 0, valid: 0, invalid: 0, duplicate: 0, existing: 0, saved: 0, parseSuccessRatio: 0,00
+2026-04-24 19:10:18 INFO  [main] NewsScheduler - Scheduled Finnhub sync completed. provider: FINNHUB, fetched: 0, saved: 0
+2026-04-24 19:10:18 INFO  [main] NewsScheduler - Scheduled Bloomberg HT news sync started
+2026-04-24 19:10:18 INFO  [main] BloombergHtClient - Sending Bloomberg HT request
+2026-04-24 19:10:19 INFO  [main] BloombergHtNewsProvider - Bloomberg HT parse stats. candidates: 90, uniqueUrls: 73, invalidCandidates: 22, mapped: 68, parseSuccessRatio: 0,76
+2026-04-24 19:10:19 INFO  [main] NewsService - News persistence completed. provider: BLOOMBERG_HT, fetched: 68, valid: 68, invalid: 0, duplicate: 0, existing: 67, saved: 1
+2026-04-24 19:10:19 INFO  [main] NewsService - News sync stats. provider: BLOOMBERG_HT, fetched: 68, valid: 68, invalid: 0, duplicate: 0, existing: 67, saved: 1, parseSuccessRatio: 1,00
+2026-04-24 19:10:19 INFO  [main] NewsScheduler - Scheduled Bloomberg HT sync completed. provider: BLOOMBERG_HT, fetched: 68, saved: 1
+2026-04-24 19:10:19 WARN  [main] JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-04-24 19:10:20 INFO  [main] Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2026-04-24 19:10:20 INFO  [main] TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+2026-04-24 19:10:20 INFO  [main] BackendApplication - Started BackendApplication in 8.249 seconds (process running for 8.743)
+2026-04-24 19:10:20 INFO  [scheduling-1] MarketRefreshScheduler - Market refresh scheduler tick started
+2026-04-24 19:10:20 INFO  [scheduling-1] MarketRefreshCoordinator - Market refresh coordinator evaluating providers: sources=[BINANCE, EVDS]
+2026-04-24 19:10:20 INFO  [scheduling-1] MarketRefreshCoordinator - Market provider due refresh started: source=BINANCE
+2026-04-24 19:10:20 INFO  [scheduling-1] ProviderOrchestrationService - Market provider orchestration started: providerCount=2, sourceFilter=BINANCE
+2026-04-24 19:10:20 INFO  [scheduling-1] ProviderOrchestrationService - Market provider refresh started: source=BINANCE
+2026-04-24 19:10:20 INFO  [scheduling-1] BinanceClient - Binance client request started: symbolCount=8, uri=https://api.binance.com/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22,%22BNBUSDT%22,%22SOLUSDT%22,%22XRPUSDT%22,%22ADAUSDT%22,%22AVAXUSDT%22,%22DOGEUSDT%22%5D
+2026-04-24 19:10:21 INFO  [scheduling-1] BinanceClient - Binance client request completed: quoteCount=8
+2026-04-24 19:10:21 INFO  [scheduling-1] BinanceMarketDataProvider - Binance provider fetch completed: requestedSymbolCount=8, quoteCount=8, historyRecordCount=0
+2026-04-24 19:10:21 INFO  [scheduling-1] ProviderOrchestrationService - Market provider refresh completed: source=BINANCE, quoteCount=8, historyRecordCount=0
+2026-04-24 19:10:21 INFO  [scheduling-1] EvdsMarketDataProvider - EVDS provider supports evaluated: supported=false, enabled=true, requestSource=BINANCE
+2026-04-24 19:10:21 INFO  [scheduling-1] ProviderOrchestrationService - Market provider skipped by supports: providerSource=EVDS, requestSource=BINANCE
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:source:BINANCE, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:BTCUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:ETHUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:BNBUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:ADAUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:XRPUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:DOGEUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:SOLUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:AVAXUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketHistoryService - Market history persistence completed: source=BINANCE, received=0, saved=0, skippedDuplicate=0
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=ALL, key=market:quotes:all, ttl=PT10M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:BTCUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:ETHUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:BNBUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:ADAUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:XRPUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:DOGEUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:SOLUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:AVAXUSDT, ttl=PT1M
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketRefreshService - Market refresh completed: processedQuoteCount=8, historyRecordCount=0, aggregateQuoteCount=8, failedProviderCount=0
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketRefreshCoordinator - Market provider refresh completed: source=BINANCE, quoteCount=8
+2026-04-24 19:10:21 INFO  [scheduling-1] MarketRefreshCoordinator - Market provider due refresh started: source=EVDS
+2026-04-24 19:10:21 INFO  [scheduling-1] ProviderOrchestrationService - Market provider orchestration started: providerCount=2, sourceFilter=EVDS
+2026-04-24 19:10:21 INFO  [scheduling-1] ProviderOrchestrationService - Market provider skipped by supports: providerSource=BINANCE, requestSource=EVDS
+2026-04-24 19:10:21 INFO  [scheduling-1] EvdsMarketDataProvider - EVDS provider supports evaluated: supported=true, enabled=true, requestSource=EVDS
+2026-04-24 19:10:21 INFO  [scheduling-1] ProviderOrchestrationService - Market provider refresh started: source=EVDS
+2026-04-24 19:10:21 INFO  [scheduling-1] EvdsMarketDataProvider - EVDS provider fetch started: symbolCount=7, seriesCodes=[TP.DK.USD.A, TP.DK.EUR.A, TP.DK.GBP.A, TP.DK.AUD.A.YTL, TP.DK.CNY.A.YTL, TP.DK.CHF.A, TP.DK.JPY.A]
+2026-04-24 19:10:21 INFO  [scheduling-1] EvdsClient - EVDS client request started: seriesCount=7, startDate=2026-04-17, endDate=2026-04-24, url=https://evds3.tcmb.gov.tr/igmevdsms-dis/series=TP.DK.USD.A-TP.DK.EUR.A-TP.DK.GBP.A-TP.DK.AUD.A.YTL-TP.DK.CNY.A.YTL-TP.DK.CHF.A-TP.DK.JPY.A&startDate=17-04-2026&endDate=24-04-2026&type=json
+2026-04-24 19:10:21 INFO  [scheduling-1] EvdsClient - EVDS client response received: status=200 OK, contentType=application/json;charset=UTF-8
+2026-04-24 19:10:21 DEBUG [scheduling-1] EvdsClient - EVDS client raw response body: {"totalCount":8,"items":[{"Tarih":"17-04-2026","TP_DK_USD_A":"44.67880000","TP_DK_EUR_A":"52.66510000","TP_DK_GBP_A":"60.44790000","TP_DK_AUD_A_YTL":"31.98610000","TP_DK_CNY_A_YTL":"6.51510000","TP_DK_CHF_A":"56.95150000","TP_DK_JPY_A":"28.04240000","UNIXTIME":{"$numberLong":"1776373200"}},{"Tarih":"18-04-2026","TP_DK_USD_A":null,"TP_DK_EUR_A":null,"TP_DK_GBP_A":null,"TP_DK_AUD_A_YTL":null,"TP_DK_CNY_A_YTL":null,"TP_DK_CHF_A":null,"TP_DK_JPY_A":null,"UNIXTIME":{"$numberLong":"1776459600"}},{"Tarih":"19-04-2026","TP_DK_USD_A":null,"TP_DK_EUR_A":null,"TP_DK_GBP_A":null,"TP_DK_AUD_A_YTL":null,"TP_DK_CNY_A_YTL":null,"TP_DK_CHF_A":null,"TP_DK_JPY_A":null,"UNIXTIME":{"$numberLong":"1776546000"}},{"Tarih":"20-04-2026","TP_DK_USD_A":"44.69890000","TP_DK_EUR_A":"52.69450000","TP_DK_GBP_A":"60.35020000","TP_DK_AUD_A_YTL":"31.98080000","TP_DK_CNY_A_YTL":"6.51350000","TP_DK_CHF_A":"56.96750000","TP_DK_JPY_A":"28.00950000","UNIXTIME":{"$numberLong":"1776632400"}},{"Tarih":"21-04-2026","TP_DK_USD_A":"44.79520000","TP_DK_EUR_A":"52.70120000","TP_DK_GBP_A":"60.41610000","TP_DK_AUD_A_YTL":"31.97520000","TP_DK_CNY_A_YTL":"6.53280000","TP_DK_CHF_A":"57.17540000","TP_DK_JPY_A":"28.12000000","UNIXTIME":{"$numberLong":"1776718800"}},{"Tarih":"22-04-2026","TP_DK_USD_A":"44.81010000","TP_DK_EUR_A":"52.72090000","TP_DK_GBP_A":"60.43840000","TP_DK_AUD_A_YTL":"31.99850000","TP_DK_CNY_A_YTL":"6.53760000","TP_DK_CHF_A":"57.34420000","TP_DK_JPY_A":"28.10130000","UNIXTIME":{"$numberLong":"1776805200"}},{"Tarih":"23-04-2026","TP_DK_USD_A":null,"TP_DK_EUR_A":null,"TP_DK_GBP_A":null,"TP_DK_AUD_A_YTL":null,"TP_DK_CNY_A_YTL":null,"TP_DK_CHF_A":null,"TP_DK_JPY_A":null,"UNIXTIME":{"$numberLong":"1776891600"}},{"Tarih":"24-04-2026","TP_DK_USD_A":"44.81320000","TP_DK_EUR_A":"52.64990000","TP_DK_GBP_A":"60.48240000","TP_DK_AUD_A_YTL":"32.02490000","TP_DK_CNY_A_YTL":"6.53120000","TP_DK_CHF_A":"57.27400000","TP_DK_JPY_A":"28.07140000","UNIXTIME":{"$numberLong":"1776978000"}}]}
+2026-04-24 19:10:22 INFO  [scheduling-1] EvdsClient - EVDS client request completed: recordCount=8
+2026-04-24 19:10:22 INFO  [scheduling-1] EvdsMarketDataProvider - EVDS provider fetch completed: quoteCount=7, historyRecordCount=35
+2026-04-24 19:10:22 INFO  [scheduling-1] ProviderOrchestrationService - Market provider refresh completed: source=EVDS, quoteCount=7, historyRecordCount=35
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:source:EVDS, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:USDTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:EURTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:GBPTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:AUDTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:CNYTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:CHFTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:JPYTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketHistoryService - Market history persistence completed: source=EVDS, received=35, saved=0, skippedDuplicate=35
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=ALL, key=market:quotes:all, ttl=PT10M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:BTCUSDT, ttl=PT1M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:ETHUSDT, ttl=PT1M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:BNBUSDT, ttl=PT1M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:ADAUSDT, ttl=PT1M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:XRPUSDT, ttl=PT1M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:DOGEUSDT, ttl=PT1M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:SOLUSDT, ttl=PT1M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:AVAXUSDT, ttl=PT1M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:USDTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:EURTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:GBPTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:AUDTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:CNYTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:CHFTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:JPYTRY, ttl=PT15M
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketRefreshService - Market refresh completed: processedQuoteCount=7, historyRecordCount=35, aggregateQuoteCount=15, failedProviderCount=0
+2026-04-24 19:10:22 INFO  [scheduling-1] MarketRefreshCoordinator - Market provider refresh completed: source=EVDS, quoteCount=7
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketRefreshScheduler - Market refresh scheduler tick started
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketRefreshCoordinator - Market refresh coordinator evaluating providers: sources=[BINANCE, EVDS]
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketRefreshCoordinator - Market provider due refresh started: source=BINANCE
+2026-04-24 19:15:22 INFO  [scheduling-1] ProviderOrchestrationService - Market provider orchestration started: providerCount=2, sourceFilter=BINANCE
+2026-04-24 19:15:22 INFO  [scheduling-1] ProviderOrchestrationService - Market provider refresh started: source=BINANCE
+2026-04-24 19:15:22 INFO  [scheduling-1] BinanceClient - Binance client request started: symbolCount=8, uri=https://api.binance.com/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22,%22BNBUSDT%22,%22SOLUSDT%22,%22XRPUSDT%22,%22ADAUSDT%22,%22AVAXUSDT%22,%22DOGEUSDT%22%5D
+2026-04-24 19:15:22 INFO  [scheduling-1] BinanceClient - Binance client request completed: quoteCount=8
+2026-04-24 19:15:22 INFO  [scheduling-1] BinanceMarketDataProvider - Binance provider fetch completed: requestedSymbolCount=8, quoteCount=8, historyRecordCount=0
+2026-04-24 19:15:22 INFO  [scheduling-1] ProviderOrchestrationService - Market provider refresh completed: source=BINANCE, quoteCount=8, historyRecordCount=0
+2026-04-24 19:15:22 INFO  [scheduling-1] EvdsMarketDataProvider - EVDS provider supports evaluated: supported=false, enabled=true, requestSource=BINANCE
+2026-04-24 19:15:22 INFO  [scheduling-1] ProviderOrchestrationService - Market provider skipped by supports: providerSource=EVDS, requestSource=BINANCE
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:source:BINANCE, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:BTCUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:ETHUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:BNBUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:ADAUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:XRPUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:DOGEUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:SOLUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:AVAXUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketHistoryService - Market history persistence completed: source=BINANCE, received=0, saved=0, skippedDuplicate=0
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=ALL, key=market:quotes:all, ttl=PT10M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:BTCUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:ETHUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:BNBUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:ADAUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:XRPUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:DOGEUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:SOLUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=BINANCE, key=market:quotes:symbol:AVAXUSDT, ttl=PT1M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:USDTRY, ttl=PT15M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:EURTRY, ttl=PT15M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:GBPTRY, ttl=PT15M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:AUDTRY, ttl=PT15M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:CNYTRY, ttl=PT15M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:CHFTRY, ttl=PT15M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketCacheService - Market cache write: source=EVDS, key=market:quotes:symbol:JPYTRY, ttl=PT15M
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketRefreshService - Market refresh completed: processedQuoteCount=8, historyRecordCount=0, aggregateQuoteCount=15, failedProviderCount=0
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketRefreshCoordinator - Market provider refresh completed: source=BINANCE, quoteCount=8
+2026-04-24 19:15:22 INFO  [scheduling-1] MarketRefreshCoordinator - Market provider skipped: source=EVDS, reason=not-due, refreshMinutes=15
+2026-04-24 19:16:15 INFO  [SpringApplicationShutdownHook] GracefulShutdown - Commencing graceful shutdown. Waiting for active requests to complete
+2026-04-24 19:16:15 INFO  [tomcat-shutdown] GracefulShutdown - Graceful shutdown complete
+2026-04-24 19:16:15 INFO  [SpringApplicationShutdownHook] LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-04-24 19:16:15 INFO  [SpringApplicationShutdownHook] HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-04-24 19:16:15 INFO  [SpringApplicationShutdownHook] HikariDataSource - HikariPool-1 - Shutdown completed.

@@ -24,6 +24,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,6 +51,9 @@ class MarketCacheServiceTest {
         lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         lenient().when(ttlPolicy.allQuotesTtl()).thenReturn(Duration.ofMinutes(5));
         lenient().when(ttlPolicy.symbolQuoteTtl()).thenReturn(Duration.ofMinutes(1));
+        lenient().when(ttlPolicy.ttlFor(DataSource.EVDS)).thenReturn(Duration.ofMinutes(15));
+        lenient().when(ttlPolicy.ttlFor(DataSource.BINANCE)).thenReturn(Duration.ofMinutes(1));
+        lenient().when(ttlPolicy.ttlFor(DataSource.TEFAS)).thenReturn(Duration.ofDays(1));
         lenient().doAnswer(invocation -> {
             redisStore.put(invocation.getArgument(0), invocation.getArgument(1));
             return null;
@@ -78,6 +82,8 @@ class MarketCacheServiceTest {
                 .usingRecursiveComparison()
                 .ignoringFields("priceTime", "fetchedAt")
                 .isEqualTo(quote);
+        verify(valueOperations).set(eq("market:quotes:source:EVDS"), anyString(), eq(Duration.ofMinutes(15)));
+        verify(valueOperations).set(eq("market:quotes:symbol:USDTRY"), anyString(), eq(Duration.ofMinutes(15)));
     }
 
     @Test
@@ -97,6 +103,7 @@ class MarketCacheServiceTest {
                 .containsExactly(evdsQuote, binanceQuote);
         assertThat(cachedAllQuotes).usingRecursiveFieldByFieldElementComparatorIgnoringFields("priceTime", "fetchedAt")
                 .containsExactly(evdsQuote, binanceQuote);
+        verify(valueOperations).set(eq(MarketCacheKeys.ALL_QUOTES), anyString(), eq(Duration.ofMinutes(5)));
     }
 
     @Test

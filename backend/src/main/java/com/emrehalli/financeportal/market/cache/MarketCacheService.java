@@ -45,7 +45,12 @@ public class MarketCacheService {
     public void putSourceQuotes(DataSource source, List<MarketQuote> quotes) {
         List<MarketQuote> safeQuotes = quotes == null ? List.of() : quotes;
 
-        writeValue(MarketCacheKeys.quotesBySource(source.name()), safeQuotes, ttlPolicy.allQuotesTtl());
+        writeValue(
+                source,
+                MarketCacheKeys.quotesBySource(source.name()),
+                safeQuotes,
+                ttlPolicy.ttlFor(source)
+        );
 
         putSymbolQuotes(safeQuotes);
     }
@@ -62,7 +67,7 @@ public class MarketCacheService {
     public void putAllQuotes(List<MarketQuote> quotes) {
         List<MarketQuote> safeQuotes = quotes == null ? List.of() : quotes;
 
-        writeValue(MarketCacheKeys.ALL_QUOTES, safeQuotes, ttlPolicy.allQuotesTtl());
+        writeValue(null, MarketCacheKeys.ALL_QUOTES, safeQuotes, ttlPolicy.allQuotesTtl());
 
         putSymbolQuotes(safeQuotes);
     }
@@ -71,9 +76,10 @@ public class MarketCacheService {
         for (MarketQuote quote : quotes) {
             symbolNormalizer.normalize(quote.symbol())
                     .ifPresent(symbol -> writeValue(
+                            quote.source(),
                             MarketCacheKeys.quoteBySymbol(symbol),
                             quote,
-                            ttlPolicy.symbolQuoteTtl()
+                            quote.source() == null ? ttlPolicy.symbolQuoteTtl() : ttlPolicy.ttlFor(quote.source())
                     ));
         }
     }
@@ -95,8 +101,9 @@ public class MarketCacheService {
         return safeReadQuote(MarketCacheKeys.quoteBySymbol(canonicalSymbol.get()));
     }
 
-    private void writeValue(String cacheKey, Object value, java.time.Duration ttl) {
+    private void writeValue(DataSource source, String cacheKey, Object value, java.time.Duration ttl) {
         try {
+            log.info("Market cache write: source={}, key={}, ttl={}", source == null ? "ALL" : source, cacheKey, ttl);
             redisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(value), ttl);
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to serialize market cache payload for key: " + cacheKey, ex);
