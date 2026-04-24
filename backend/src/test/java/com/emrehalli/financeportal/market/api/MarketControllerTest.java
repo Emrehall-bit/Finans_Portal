@@ -62,6 +62,19 @@ class MarketControllerTest {
                 .andExpect(jsonPath("$.source").value("TEFAS"));
     }
 
+    @Test
+    void getBySymbolReturnsBistQuote() throws Exception {
+        when(marketQueryService.getQuoteBySymbol("THYAO")).thenReturn(bistQuote());
+
+        mockMvc.perform(get("/api/v1/markets/THYAO")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.symbol").value("THYAO"))
+                .andExpect(jsonPath("$.displayName").value("Turk Hava Yollari"))
+                .andExpect(jsonPath("$.instrumentType").value("STOCK"))
+                .andExpect(jsonPath("$.source").value("BIST"));
+    }
+
     private MarketQuote tefasQuote() {
         Instant now = Instant.parse("2026-04-24T12:00:00Z");
         return new MarketQuote(
@@ -72,6 +85,21 @@ class MarketControllerTest {
                 new BigDecimal("1.2345"),
                 "TRY",
                 DataSource.TEFAS,
+                now,
+                now
+        );
+    }
+
+    private MarketQuote bistQuote() {
+        Instant now = Instant.parse("2026-04-24T12:00:00Z");
+        return new MarketQuote(
+                "THYAO",
+                "Turk Hava Yollari",
+                InstrumentType.STOCK,
+                new BigDecimal("320.40"),
+                new BigDecimal("1.25"),
+                "TRY",
+                DataSource.BIST,
                 now,
                 now
         );

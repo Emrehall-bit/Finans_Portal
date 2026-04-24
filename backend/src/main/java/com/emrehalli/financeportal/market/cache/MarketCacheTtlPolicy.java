@@ -17,6 +17,7 @@ public class MarketCacheTtlPolicy {
             case EVDS -> Duration.ofMinutes(15);
             case BINANCE -> Duration.ofMinutes(1);
             case TEFAS -> Duration.ofDays(1);
+            case BIST -> Duration.ofMinutes(15);
             default -> Duration.ofMinutes(10);
         };
     }

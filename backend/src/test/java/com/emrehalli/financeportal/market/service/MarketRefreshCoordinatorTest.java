@@ -46,10 +46,15 @@ class MarketRefreshCoordinatorTest {
         tefasPolicy.setEnabled(true);
         tefasPolicy.setRefreshMinutes(1440);
 
+        MarketRefreshProperties.ProviderPolicy bistPolicy = new MarketRefreshProperties.ProviderPolicy();
+        bistPolicy.setEnabled(true);
+        bistPolicy.setRefreshMinutes(5);
+
         properties.setProviders(Map.of(
                 "evds", evdsPolicy,
                 "binance", binancePolicy,
-                "tefas", tefasPolicy
+                "tefas", tefasPolicy,
+                "bist", bistPolicy
         ));
         clock = Clock.fixed(Instant.parse("2026-04-23T12:00:00Z"), ZoneOffset.UTC);
     }
@@ -160,5 +165,22 @@ class MarketRefreshCoordinatorTest {
         coordinator.refreshDueProviders();
 
         verify(marketRefreshService).refreshSourceDetailed(DataSource.TEFAS);
+    }
+
+    @Test
+    void schedulerSeesBistAsAvailableSource() {
+        when(providerOrchestrationService.availableSources()).thenReturn(List.of(DataSource.BIST));
+        when(marketRefreshService.refreshSourceDetailed(DataSource.BIST))
+                .thenReturn(List.of(MarketRefreshResult.success(DataSource.BIST, List.of())));
+        MarketRefreshCoordinator coordinator = new MarketRefreshCoordinator(
+                providerOrchestrationService,
+                marketRefreshService,
+                properties,
+                clock
+        );
+
+        coordinator.refreshDueProviders();
+
+        verify(marketRefreshService).refreshSourceDetailed(DataSource.BIST);
     }
 }

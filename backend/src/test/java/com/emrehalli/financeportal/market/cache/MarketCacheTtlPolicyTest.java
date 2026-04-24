@@ -16,6 +16,7 @@ class MarketCacheTtlPolicyTest {
         assertThat(policy.ttlFor(DataSource.EVDS)).isEqualTo(Duration.ofMinutes(15));
         assertThat(policy.ttlFor(DataSource.BINANCE)).isEqualTo(Duration.ofMinutes(1));
         assertThat(policy.ttlFor(DataSource.TEFAS)).isEqualTo(Duration.ofDays(1));
+        assertThat(policy.ttlFor(DataSource.BIST)).isEqualTo(Duration.ofMinutes(15));
         assertThat(policy.ttlFor(DataSource.UNKNOWN)).isEqualTo(Duration.ofMinutes(10));
     }
 

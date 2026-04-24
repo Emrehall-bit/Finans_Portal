@@ -33,13 +33,36 @@ spring:
 
 logging:
   level:
-    com.emrehalli.financeportal.market: INFO
+    com.emrehalli.financeportal.market: DEBUG
     com.emrehalli.financeportal.market.provider.evds: DEBUG
     com.emrehalli.financeportal.news.provider.finnhub.client: DEBUG
     com.emrehalli.financeportal.news.provider.bloomberght: DEBUG
 
 market:
   providers:
+    bist:
+      enabled: true
+      provider-mode: YAHOO_LOW_FREQUENCY
+      batch-size: 5
+      request-delay-ms: 1500
+      cooldown-minutes-on-rate-limit: 60
+      fallback-source: BIST_DELAYED
+      symbols:
+        - THYAO.IS
+        - ASELS.IS
+        - GARAN.IS
+        - AKBNK.IS
+        - BIMAS.IS
+        - KCHOL.IS
+        - SAHOL.IS
+        - EREGL.IS
+        - TUPRS.IS
+        - FROTO.IS
+      yahoo:
+        enabled: true
+        base-url: https://query1.finance.yahoo.com
+      delayed:
+        enabled: false
     binance:
       enabled: true
       base-url: https://api.binance.com
@@ -124,6 +147,9 @@ market:
     initial-delay-ms: 0
     scheduler-delay-ms: 300000
     providers:
+      bist:
+        enabled: true
+        refresh-minutes: 30
       binance:
         enabled: true
         refresh-minutes: 1
@@ -139,7 +165,7 @@ finnhub:
   enabled: true
   api:
     url: https://finnhub.io/api/v1
-    key: ${FINNHUB_API_KEY:}
+    key: d7laeepr01qm7o0b5dt0d7laeepr01qm7o0b5dtg
   sync:
     default-days-back: 3
 

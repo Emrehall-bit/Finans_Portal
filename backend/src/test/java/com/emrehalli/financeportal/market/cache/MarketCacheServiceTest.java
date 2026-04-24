@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -54,6 +55,7 @@ class MarketCacheServiceTest {
         lenient().when(ttlPolicy.ttlFor(DataSource.EVDS)).thenReturn(Duration.ofMinutes(15));
         lenient().when(ttlPolicy.ttlFor(DataSource.BINANCE)).thenReturn(Duration.ofMinutes(1));
         lenient().when(ttlPolicy.ttlFor(DataSource.TEFAS)).thenReturn(Duration.ofDays(1));
+        lenient().when(ttlPolicy.ttlFor(DataSource.BIST)).thenReturn(Duration.ofMinutes(15));
         lenient().doAnswer(invocation -> {
             redisStore.put(invocation.getArgument(0), invocation.getArgument(1));
             return null;
@@ -123,6 +125,25 @@ class MarketCacheServiceTest {
     }
 
     @Test
+    void mergesBistSourceCacheAcrossPartialRefreshes() throws Exception {
+        MarketQuote thyao = quote("THYAO", DataSource.BIST);
+        MarketQuote asels = quote("ASELS", DataSource.BIST);
+
+        marketCacheService.putSourceQuotes(DataSource.BIST, List.of(thyao));
+        marketCacheService.putSourceQuotes(DataSource.BIST, List.of(asels));
+
+        List<MarketQuote> sourceQuotes = objectMapper.readValue(
+                redisStore.get("market:quotes:source:BIST"),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, MarketQuote.class)
+        );
+
+        assertThat(sourceQuotes).extracting(MarketQuote::symbol).containsExactly("THYAO", "ASELS");
+        assertThat(marketCacheService.getQuoteBySymbol("THYAO")).isPresent();
+        assertThat(marketCacheService.getQuoteBySymbol("ASELS")).isPresent();
+        verify(valueOperations, times(2)).set(eq("market:quotes:source:BIST"), anyString(), eq(Duration.ofMinutes(15)));
+    }
+
+    @Test
     void evictsKeyWhenRedisJsonPayloadIsCorrupt() {
         redisStore.put(MarketCacheKeys.quotesBySource(DataSource.EVDS.name()), "not-json");
 
@@ -144,7 +165,7 @@ class MarketCacheServiceTest {
         return new MarketQuote(
                 symbol,
                 symbol,
-                source == DataSource.BINANCE ? InstrumentType.CRYPTO : InstrumentType.FX,
+                source == DataSource.BINANCE ? InstrumentType.CRYPTO : source == DataSource.BIST ? InstrumentType.STOCK : InstrumentType.FX,
                 BigDecimal.ONE,
                 null,
                 "TRY",

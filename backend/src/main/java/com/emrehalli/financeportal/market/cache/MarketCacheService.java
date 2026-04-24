@@ -17,7 +17,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -44,15 +46,18 @@ public class MarketCacheService {
 
     public void putSourceQuotes(DataSource source, List<MarketQuote> quotes) {
         List<MarketQuote> safeQuotes = quotes == null ? List.of() : quotes;
+        List<MarketQuote> sourceQuotes = shouldMergeSourceQuotes(source)
+                ? mergeSourceQuotes(source, safeQuotes)
+                : safeQuotes;
 
         writeValue(
                 source,
                 MarketCacheKeys.quotesBySource(source.name()),
-                safeQuotes,
+                sourceQuotes,
                 ttlPolicy.ttlFor(source)
         );
 
-        putSymbolQuotes(safeQuotes);
+        putSymbolQuotes(sourceQuotes);
     }
 
     public List<MarketQuote> rebuildAllQuotes(Collection<DataSource> sources) {
@@ -99,6 +104,26 @@ public class MarketCacheService {
         }
 
         return safeReadQuote(MarketCacheKeys.quoteBySymbol(canonicalSymbol.get()));
+    }
+
+    private boolean shouldMergeSourceQuotes(DataSource source) {
+        return source == DataSource.BIST;
+    }
+
+    private List<MarketQuote> mergeSourceQuotes(DataSource source, List<MarketQuote> quotes) {
+        Map<String, MarketQuote> mergedBySymbol = new LinkedHashMap<>();
+
+        for (MarketQuote existingQuote : getQuotesBySource(source)) {
+            symbolNormalizer.normalize(existingQuote.symbol())
+                    .ifPresent(symbol -> mergedBySymbol.put(symbol, existingQuote));
+        }
+
+        for (MarketQuote quote : quotes) {
+            symbolNormalizer.normalize(quote.symbol())
+                    .ifPresent(symbol -> mergedBySymbol.put(symbol, quote));
+        }
+
+        return List.copyOf(mergedBySymbol.values());
     }
 
     private void writeValue(DataSource source, String cacheKey, Object value, java.time.Duration ttl) {
