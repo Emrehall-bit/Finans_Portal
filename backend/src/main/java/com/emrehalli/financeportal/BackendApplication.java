@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.market.provider.binance.config.BinanceProvide
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
 import com.emrehalli.financeportal.market.provider.tefas.config.TefasProviderProperties;
 import com.emrehalli.financeportal.market.scheduler.MarketRefreshProperties;
+import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
 import com.emrehalli.financeportal.news.provider.finnhub.FinnhubProperties;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -15,6 +16,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @EnableCaching
 @EnableConfigurationProperties({
+        AaNewsProperties.class,
         FinnhubProperties.class,
         MarketRefreshProperties.class,
         EvdsProperties.class,

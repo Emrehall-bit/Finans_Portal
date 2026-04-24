@@ -3,6 +3,7 @@ import AppLayout from "./components/layout/AppLayout";
 import AlertsPage from "./pages/AlertsPage";
 import DashboardPage from "./pages/DashboardPage";
 import HomePage from "./pages/HomePage";
+import MarketsPage from "./pages/MarketsPage";
 import NewsPage from "./pages/NewsPage";
 import PortfolioDetailPage from "./pages/PortfolioDetailPage";
 import PortfolioPage from "./pages/PortfolioPage";
@@ -15,6 +16,7 @@ function App() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/markets" element={<MarketsPage />} />
         <Route path="/news" element={<NewsPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />

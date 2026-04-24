@@ -7,6 +7,7 @@ const navGroups = [
     label: "Overview",
     items: [
       { to: "/", label: "Ana Sayfa", badge: "Live" },
+      { to: "/markets", label: "Piyasa Verileri", badge: "Feed" },
       { to: "/dashboard", label: "Dashboard", badge: "Pro" },
       { to: "/news", label: "Haber Akisi" },
     ],

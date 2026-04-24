@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getMarketQuotes } from "../api/marketApi";
 import { getNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
@@ -10,6 +11,7 @@ import { formatDateTime } from "../utils/formatters";
 
 export default function HomePage() {
   const [news, setNews] = useState([]);
+  const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -21,13 +23,14 @@ export default function HomePage() {
         setLoading(true);
         setError("");
 
-        const newsData = await getNews();
+        const [newsData, quoteData] = await Promise.all([getNews(), getMarketQuotes()]);
 
         if (!active) {
           return;
         }
 
         setNews((newsData.content ?? []).slice(0, 4));
+        setQuotes((quoteData ?? []).slice(0, 5));
       } catch (err) {
         if (!active) {
           return;
@@ -73,7 +76,26 @@ export default function HomePage() {
               </div>
 
               <div className="hero-chart">
-                <EmptyState title="Piyasa grafigi yok" description="Canli fiyat modulu bu surumda devre disi." />
+                {quotes.length === 0 ? (
+                  <EmptyState title="Piyasa grafigi yok" description="Canli fiyat modulu su anda veri dondurmuyor." />
+                ) : (
+                  <div className="market-board compact">
+                    {quotes.map((item) => (
+                      <article key={item.symbol} className="market-board-row">
+                        <div>
+                          <strong>{item.symbol}</strong>
+                          <p>{item.source || "-"}</p>
+                        </div>
+                        <div className="market-board-metric">
+                          <strong>{item.price ?? "-"}</strong>
+                          <span className={Number(item.changeRate) >= 0 ? "market-up" : "market-down"}>
+                            {formatMarketChange(item.changeRate)}
+                          </span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -106,7 +128,18 @@ export default function HomePage() {
           </section>
 
           <section className="ticker-grid">
-            {featuredNews.length === 0 ? (
+            {quotes.length > 0 ? (
+              quotes.map((item, idx) => (
+                <SummaryCard
+                  key={`${item.symbol}-${idx}`}
+                  title={item.displayName || item.symbol}
+                  value={`${item.price ?? "-"} ${item.currency || ""}`.trim()}
+                  subtitle={`${item.symbol} | ${item.source || "-"}`}
+                  trend={formatMarketChange(item.changeRate)}
+                  tone={Number(item.changeRate) >= 0 ? "cool" : "warm"}
+                />
+              ))
+            ) : featuredNews.length === 0 ? (
               <EmptyState title="Ozet yok" description="Su anda one cikan haber bulunamadi." />
             ) : (
               featuredNews.map((item, idx) => (
@@ -125,4 +158,17 @@ export default function HomePage() {
       ) : null}
     </div>
   );
+}
+
+function formatMarketChange(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) {
+    return String(value);
+  }
+
+  return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
 }

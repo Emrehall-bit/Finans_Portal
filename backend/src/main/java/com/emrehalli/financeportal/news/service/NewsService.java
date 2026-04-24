@@ -57,12 +57,14 @@ public class NewsService {
         validateDateRange(request);
         validatePaging(page, size);
         QueryContext context = resolveQueryContext(request);
+        String resolvedSortBy = resolveSortBy(sortBy);
+        Sort.Direction resolvedSortDirection = resolveSortDirection(sortDirection);
         Pageable pageable = PageRequest.of(
                 page,
                 size,
-                Sort.by(resolveSortDirection(sortDirection), resolveSortBy(sortBy))
+                resolvePageableSort(resolvedSortBy, resolvedSortDirection)
         );
-        Specification<News> specification = buildSpecification(request, context);
+        Specification<News> specification = buildSpecification(request, context, resolvedSortBy, resolvedSortDirection);
 
         return newsRepository.findAll(specification, pageable)
                 .map(this::toResponse);
@@ -178,15 +180,29 @@ public class NewsService {
         int invalidCount = 0;
         int duplicateCount = 0;
         int existingCount = 0;
+        int missingExternalIdCount = 0;
+        int missingTitleCount = 0;
+        int missingUrlCount = 0;
+        int missingSourceCount = 0;
+        int missingDateCount = 0;
         List<News> toSave = new ArrayList<>();
         Set<String> existingExternalIds = findExistingExternalIds(items);
         Set<String> seenExternalIds = new HashSet<>();
 
         for (NewsItemDto item : items) {
-            if (!isValidForPersistence(item)) {
+            ValidationResult validationResult = validateForPersistence(item);
+            if (!validationResult.valid()) {
                 logger.debug("Skipping invalid news item. externalId: {}", item != null ? item.getExternalId() : null);
                 invalidCount++;
+                missingExternalIdCount += validationResult.missingExternalId() ? 1 : 0;
+                missingTitleCount += validationResult.missingTitle() ? 1 : 0;
+                missingUrlCount += validationResult.missingUrl() ? 1 : 0;
+                missingSourceCount += validationResult.missingSource() ? 1 : 0;
                 continue;
+            }
+
+            if (item.getPublishedAt() == null) {
+                missingDateCount++;
             }
 
             String externalId = item.getExternalId().trim();
@@ -222,21 +238,39 @@ public class NewsService {
 
         int validCount = items.size() - invalidCount;
         logger.info(
-                "News persistence completed. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}",
+                "News persistence completed. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, invalidBecauseMissingTitle: {}, invalidBecauseMissingUrl: {}, invalidBecauseMissingSource: {}, invalidBecauseMissingExternalId: {}, invalidBecauseMissingDate: {}",
                 providerName,
                 items.size(),
                 validCount,
                 invalidCount,
                 duplicateCount,
                 existingCount,
-                savedCount
+                savedCount,
+                missingTitleCount,
+                missingUrlCount,
+                missingSourceCount,
+                missingExternalIdCount,
+                missingDateCount
         );
-        return new PersistenceStats(validCount, invalidCount, duplicateCount, existingCount, savedCount);
+        return new PersistenceStats(
+                validCount,
+                invalidCount,
+                duplicateCount,
+                existingCount,
+                savedCount,
+                missingExternalIdCount,
+                missingTitleCount,
+                missingUrlCount,
+                missingSourceCount,
+                missingDateCount
+        );
     }
 
     private Set<String> findExistingExternalIds(List<NewsItemDto> items) {
         Set<String> externalIds = items.stream()
-                .filter(this::isValidForPersistence)
+                .map(this::validateForPersistence)
+                .filter(ValidationResult::valid)
+                .map(ValidationResult::item)
                 .map(NewsItemDto::getExternalId)
                 .filter(this::hasText)
                 .map(String::trim)
@@ -251,26 +285,25 @@ public class NewsService {
                 .collect(java.util.stream.Collectors.toSet());
     }
 
-    private boolean isValidForPersistence(NewsItemDto item) {
+    private ValidationResult validateForPersistence(NewsItemDto item) {
         if (item == null) {
-            return false;
+            return ValidationResult.invalid(null, true, true, true, true);
         }
-        if (!hasText(item.getExternalId())) {
-            return false;
-        }
-        if (!hasText(item.getTitle())) {
-            return false;
-        }
-        if (!hasText(item.getProvider())) {
-            return false;
-        }
-        if (!hasText(item.getRegionScope())) {
-            return false;
-        }
-        if (!hasText(item.getUrl())) {
-            return false;
-        }
-        return item.getPublishedAt() != null;
+        boolean missingExternalId = !hasText(item.getExternalId());
+        boolean missingTitle = !hasText(item.getTitle());
+        boolean missingSource = !hasText(item.getSource());
+        boolean missingUrl = !hasText(item.getUrl());
+        boolean missingProvider = !hasText(item.getProvider());
+        boolean missingRegionScope = !hasText(item.getRegionScope());
+
+        return new ValidationResult(
+                item,
+                !(missingExternalId || missingTitle || missingSource || missingUrl || missingProvider || missingRegionScope),
+                missingExternalId,
+                missingTitle,
+                missingUrl,
+                missingSource
+        );
     }
 
     private void validateDateRange(NewsSearchRequest request) {
@@ -332,14 +365,28 @@ public class NewsService {
         }
     }
 
-    private Specification<News> buildSpecification(NewsSearchRequest request, QueryContext context) {
+    private Sort resolvePageableSort(String resolvedSortBy, Sort.Direction resolvedSortDirection) {
+        if ("publishedAt".equals(resolvedSortBy)) {
+            return Sort.unsorted();
+        }
+        return Sort.by(new Sort.Order(resolvedSortDirection, resolvedSortBy));
+    }
+
+    private Specification<News> buildSpecification(
+            NewsSearchRequest request,
+            QueryContext context,
+            String resolvedSortBy,
+            Sort.Direction resolvedSortDirection
+    ) {
         return Specification.allOf(
                 byProvider(context),
                 byScope(context),
                 byCategory(request),
+                byLanguage(request),
                 bySymbol(request),
                 byKeyword(request),
-                byDateRange(request)
+                byDateRange(request),
+                bySort(resolvedSortBy, resolvedSortDirection)
         );
     }
 
@@ -354,7 +401,12 @@ public class NewsService {
         if (context.scope == NewsScope.ALL) {
             return null;
         }
-        return (root, query, cb) -> cb.equal(root.get("regionScope"), mapScopeToRegion(context.scope));
+        return (root, query, cb) -> {
+            if (context.scope == NewsScope.LOCAL) {
+                return cb.upper(root.get("regionScope")).in("LOCAL", "TR");
+            }
+            return cb.equal(root.get("regionScope"), mapScopeToRegion(context.scope));
+        };
     }
 
     private Specification<News> byCategory(NewsSearchRequest request) {
@@ -363,6 +415,14 @@ public class NewsService {
         }
         String category = request.getCategory().trim().toLowerCase(Locale.ROOT);
         return (root, query, cb) -> cb.equal(cb.lower(root.get("category")), category);
+    }
+
+    private Specification<News> byLanguage(NewsSearchRequest request) {
+        if (!hasText(request.getLanguage())) {
+            return null;
+        }
+        String language = request.getLanguage().trim().toLowerCase(Locale.ROOT);
+        return (root, query, cb) -> cb.equal(cb.lower(root.get("language")), language);
     }
 
     private Specification<News> bySymbol(NewsSearchRequest request) {
@@ -406,6 +466,26 @@ public class NewsService {
         };
     }
 
+    private Specification<News> bySort(String resolvedSortBy, Sort.Direction resolvedSortDirection) {
+        if (!"publishedAt".equals(resolvedSortBy)) {
+            return null;
+        }
+
+        return (root, query, cb) -> {
+            Class<?> resultType = query.getResultType();
+            if (resultType != Long.class && resultType != long.class) {
+                query.orderBy(
+                        cb.asc(cb.selectCase().when(cb.isNull(root.get("publishedAt")), 1).otherwise(0)),
+                        resolvedSortDirection.isAscending()
+                                ? cb.asc(root.get("publishedAt"))
+                                : cb.desc(root.get("publishedAt")),
+                        cb.desc(root.get("createdAt"))
+                );
+            }
+            return cb.conjunction();
+        };
+    }
+
     private String mapScopeToRegion(NewsScope scope) {
         return switch (scope) {
             case LOCAL -> "LOCAL";
@@ -442,12 +522,39 @@ public class NewsService {
     private record QueryContext(NewsScope scope, NewsProviderType provider) {
     }
 
-    private record PersistenceStats(int validCount, int invalidCount, int duplicateCount, int existingCount, int savedCount) {
+    private record ValidationResult(
+            NewsItemDto item,
+            boolean valid,
+            boolean missingExternalId,
+            boolean missingTitle,
+            boolean missingUrl,
+            boolean missingSource
+    ) {
+        private static ValidationResult invalid(
+                NewsItemDto item,
+                boolean missingExternalId,
+                boolean missingTitle,
+                boolean missingUrl,
+                boolean missingSource
+        ) {
+            return new ValidationResult(item, false, missingExternalId, missingTitle, missingUrl, missingSource);
+        }
+    }
+
+    private record PersistenceStats(
+            int validCount,
+            int invalidCount,
+            int duplicateCount,
+            int existingCount,
+            int savedCount,
+            int missingExternalIdCount,
+            int missingTitleCount,
+            int missingUrlCount,
+            int missingSourceCount,
+            int missingDateCount
+    ) {
         private static PersistenceStats empty() {
-            return new PersistenceStats(0, 0, 0, 0, 0);
+            return new PersistenceStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
     }
 }
-
-
-

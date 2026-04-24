@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.news.scheduler;
 
+import com.emrehalli.financeportal.common.exception.ProviderRateLimitException;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.service.NewsService;
@@ -32,8 +33,14 @@ public class NewsScheduler {
         try {
             logger.info("Scheduled Finnhub news sync started");
             NewsSyncResponseDto result = newsService.syncProvider(NewsProviderType.FINNHUB);
-            logger.info("Scheduled Finnhub sync completed. provider: {}, fetched: {}, saved: {}",
-                    result.getProvider(), result.getFetchedCount(), result.getSavedCount());
+            logger.info("Scheduled Finnhub sync completed. provider: {}, fetched: {}, saved: {}, existing: {}, invalid: {}",
+                    result.getProvider(),
+                    result.getFetchedCount(),
+                    result.getSavedCount(),
+                    result.getExistingCount(),
+                    result.getInvalidCount());
+        } catch (ProviderRateLimitException e) {
+            logger.warn("Scheduled Finnhub sync rate limited: {}", e.getMessage());
         } catch (Exception e) {
             logger.error("Scheduled Finnhub sync failed", e);
         }
@@ -44,10 +51,34 @@ public class NewsScheduler {
         try {
             logger.info("Scheduled Bloomberg HT news sync started");
             NewsSyncResponseDto result = newsService.syncProvider(NewsProviderType.BLOOMBERG_HT);
-            logger.info("Scheduled Bloomberg HT sync completed. provider: {}, fetched: {}, saved: {}",
-                    result.getProvider(), result.getFetchedCount(), result.getSavedCount());
+            logger.info("Scheduled Bloomberg HT sync completed. provider: {}, fetched: {}, saved: {}, existing: {}, invalid: {}",
+                    result.getProvider(),
+                    result.getFetchedCount(),
+                    result.getSavedCount(),
+                    result.getExistingCount(),
+                    result.getInvalidCount());
+        } catch (ProviderRateLimitException e) {
+            logger.warn("Scheduled Bloomberg HT sync rate limited: {}", e.getMessage());
         } catch (Exception e) {
             logger.error("Scheduled Bloomberg HT sync failed", e);
+        }
+    }
+
+    @Scheduled(cron = "0 10,40 * * * *")
+    public void syncAaRssNews() {
+        try {
+            logger.info("Scheduled AA RSS news sync started");
+            NewsSyncResponseDto result = newsService.syncProvider(NewsProviderType.AA_RSS);
+            logger.info("Scheduled AA RSS sync completed. provider: {}, fetched: {}, saved: {}, existing: {}, invalid: {}",
+                    result.getProvider(),
+                    result.getFetchedCount(),
+                    result.getSavedCount(),
+                    result.getExistingCount(),
+                    result.getInvalidCount());
+        } catch (ProviderRateLimitException e) {
+            logger.warn("Scheduled AA RSS sync rate limited: {}", e.getMessage());
+        } catch (Exception e) {
+            logger.error("Scheduled AA RSS sync failed", e);
         }
     }
 }

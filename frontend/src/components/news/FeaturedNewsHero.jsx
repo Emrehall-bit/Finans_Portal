@@ -1,5 +1,9 @@
 import { formatDateTime } from "../../utils/formatters";
 
+function formatPublishedAtLabel(value) {
+  return value ? formatDateTime(value) : "Kaynak tarihi alinmadi";
+}
+
 function resolveThumbnail(item) {
   return item?.thumbnailUrl || item?.imageUrl || item?.image || null;
 }
@@ -17,7 +21,7 @@ export default function FeaturedNewsHero({ item, onOpen }) {
         <div className="news-detail-meta">
           <span className="news-card-badge">{item.category || item.provider || "Featured"}</span>
           <span className="muted">
-            {item.provider || item.source || "-"} | {formatDateTime(item.publishedAt)}
+            {item.provider || "-"} | {item.source || "-"} | {(item.language || "-").toUpperCase()} | {formatPublishedAtLabel(item.publishedAt)}
           </span>
         </div>
         <p className="eyebrow">Featured Story</p>

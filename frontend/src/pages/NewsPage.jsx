@@ -11,7 +11,9 @@ import NewsFeedSkeleton from "../components/news/NewsFeedSkeleton";
 import { formatDateTime } from "../utils/formatters";
 
 const DEFAULT_PAGE_SIZE = 20;
-const KNOWN_PROVIDERS = ["FINNHUB", "BLOOMBERG_HT"];
+const KNOWN_PROVIDERS = ["FINNHUB", "BLOOMBERG_HT", "AA_RSS"];
+const KNOWN_CATEGORIES = ["ECONOMY"];
+const KNOWN_LANGUAGES = ["tr", "en"];
 const INITIAL_NEWS_PAGE = {
   content: [],
   page: 0,
@@ -24,13 +26,32 @@ const INITIAL_NEWS_PAGE = {
   hasPrevious: false,
 };
 
+function formatPublishedAtLabel(value) {
+  return value ? formatDateTime(value) : "Kaynak tarihi alinmadi";
+}
+
+function buildNewsQueryParams(filters, page) {
+  return Object.fromEntries(
+    Object.entries({
+      keyword: filters.keyword?.trim() || undefined,
+      category: filters.category || undefined,
+      provider: filters.provider || undefined,
+      language: filters.language || undefined,
+      page,
+      size: DEFAULT_PAGE_SIZE,
+      sortBy: "publishedAt",
+      sortDirection: "desc",
+    }).filter(([, value]) => value !== undefined)
+  );
+}
+
 export default function NewsPage() {
   const [newsPage, setNewsPage] = useState(INITIAL_NEWS_PAGE);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
-  const [filters, setFilters] = useState({ keyword: "", category: "", provider: "" });
-  const [appliedFilters, setAppliedFilters] = useState({ keyword: "", category: "", provider: "" });
+  const [filters, setFilters] = useState({ keyword: "", category: "", provider: "", language: "" });
+  const [appliedFilters, setAppliedFilters] = useState({ keyword: "", category: "", provider: "", language: "" });
   const [currentPage, setCurrentPage] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -41,13 +62,9 @@ export default function NewsPage() {
       try {
         setLoading(true);
         setError("");
-        const result = await getNews({
-          ...appliedFilters,
-          page: currentPage,
-          size: DEFAULT_PAGE_SIZE,
-          sortBy: "publishedAt",
-          sortDirection: "desc",
-        });
+        const requestParams = buildNewsQueryParams(appliedFilters, currentPage);
+        console.debug("News page query params", requestParams);
+        const result = await getNews(requestParams);
 
         if (!active) {
           return;
@@ -89,7 +106,7 @@ export default function NewsPage() {
 
   async function handleSync() {
     try {
-      await syncNews({ provider: appliedFilters.provider || undefined, scope: "GLOBAL" });
+      await syncNews({ provider: appliedFilters.provider || undefined });
       setSelected(null);
       setCurrentPage(0);
       setRefreshKey((prev) => prev + 1);
@@ -115,6 +132,7 @@ export default function NewsPage() {
 
   const categoryOptions = useMemo(() => {
     const values = new Set([
+      ...KNOWN_CATEGORIES,
       filters.category,
       appliedFilters.category,
       ...items.map((item) => item?.category).filter(Boolean),
@@ -122,6 +140,24 @@ export default function NewsPage() {
 
     return [...values].filter(Boolean).sort((a, b) => a.localeCompare(b));
   }, [appliedFilters.category, filters.category, items]);
+
+  const languageOptions = useMemo(() => {
+    const values = new Set([
+      ...KNOWN_LANGUAGES,
+      filters.language,
+      appliedFilters.language,
+      ...items.map((item) => item?.language).filter(Boolean),
+    ]);
+
+    return [...values].filter(Boolean).sort((a, b) => a.localeCompare(b));
+  }, [appliedFilters.language, filters.language, items]);
+
+  function handleSelectFilterChange(field, value) {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+    setAppliedFilters((prev) => ({ ...prev, [field]: value }));
+    setCurrentPage(0);
+    setSelected(null);
+  }
 
   function handleApplyFilters() {
     setAppliedFilters({ ...filters });
@@ -190,7 +226,7 @@ export default function NewsPage() {
             <span>Category</span>
             <select
               value={filters.category}
-              onChange={(e) => setFilters((p) => ({ ...p, category: e.target.value }))}
+              onChange={(e) => handleSelectFilterChange("category", e.target.value)}
             >
               <option value="">All categories</option>
               {categoryOptions.map((option) => (
@@ -204,12 +240,26 @@ export default function NewsPage() {
             <span>Provider</span>
             <select
               value={filters.provider}
-              onChange={(e) => setFilters((p) => ({ ...p, provider: e.target.value }))}
+              onChange={(e) => handleSelectFilterChange("provider", e.target.value)}
             >
               <option value="">All providers</option>
               {providerOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="news-filter-field">
+            <span>Language</span>
+            <select
+              value={filters.language}
+              onChange={(e) => handleSelectFilterChange("language", e.target.value)}
+            >
+              <option value="">All languages</option>
+              {languageOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option.toUpperCase()}
                 </option>
               ))}
             </select>
@@ -285,7 +335,7 @@ export default function NewsPage() {
           <div className="news-detail-meta">
             <span className="news-card-badge">{selected.category || selected.provider || "Detail"}</span>
             <span className="muted">
-              {selected.provider || selected.source || "-"} | {formatDateTime(selected.publishedAt)}
+              {selected.provider || "-"} | {selected.source || "-"} | {(selected.language || "-").toUpperCase()} | {formatPublishedAtLabel(selected.publishedAt)}
             </span>
           </div>
 

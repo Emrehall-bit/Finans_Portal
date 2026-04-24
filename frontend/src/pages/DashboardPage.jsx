@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { getMarketQuotes } from "../api/marketApi";
 import { getNews } from "../api/newsApi";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
@@ -18,24 +19,45 @@ const links = [
 
 export default function DashboardPage() {
   const [news, setNews] = useState([]);
+  const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let active = true;
+
     async function load() {
       try {
         setLoading(true);
         setError("");
-        const newsData = await getNews();
+        const [newsData, quoteData] = await Promise.all([getNews(), getMarketQuotes()]);
+
+        if (!active) {
+          return;
+        }
+
         setNews((newsData.content ?? []).slice(0, 4));
+        setQuotes((quoteData ?? []).slice(0, 6));
       } catch (err) {
+        if (!active) {
+          return;
+        }
         setError(extractErrorMessage(err, "Dashboard data could not be loaded."));
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
     load();
+
+    return () => {
+      active = false;
+    };
   }, []);
+
+  const positiveCount = quotes.filter((item) => Number(item.changeRate) > 0).length;
+  const quoteLeaders = quotes.slice(0, 3);
 
   return (
     <div className="dashboard-stack">
@@ -51,10 +73,23 @@ export default function DashboardPage() {
       {!loading && !error ? (
         <>
           <section className="ticker-grid">
-            <EmptyState
-              title="Piyasa verisi yok"
-              description="Canli fiyat modulu bu surumda devre disi. Haber ve portfoy modullerini kullanmaya devam edebilirsiniz."
-            />
+            {quotes.length === 0 ? (
+              <EmptyState
+                title="Piyasa verisi yok"
+                description="Market modulu backend'den su anda veri dondurmuyor."
+              />
+            ) : (
+              quotes.map((item, index) => (
+                <SummaryCard
+                  key={`${item.symbol}-${index}`}
+                  title={item.displayName || item.symbol}
+                  value={`${item.price ?? "-"} ${item.currency || ""}`.trim()}
+                  subtitle={`${item.symbol} | ${item.source || "-"}`}
+                  trend={formatMarketChange(item.changeRate)}
+                  tone={Number(item.changeRate) >= 0 ? "cool" : "warm"}
+                />
+              ))
+            )}
           </section>
 
           <section className="dashboard-grid">
@@ -67,7 +102,26 @@ export default function DashboardPage() {
                 <span className="pill">Today</span>
               </div>
 
-              <EmptyState title="Grafik verisi yok" description="Piyasa grafigi icin veri kaynagi yapilandirilmamis." />
+              {quotes.length === 0 ? (
+                <EmptyState title="Grafik verisi yok" description="Piyasa grafigi icin veri kaynagi yapilandirilmamis." />
+              ) : (
+                <div className="market-board">
+                  {quoteLeaders.map((item) => (
+                    <article key={item.symbol} className="market-board-row">
+                      <div>
+                        <strong>{item.symbol}</strong>
+                        <p>{item.displayName || item.symbol}</p>
+                      </div>
+                      <div className="market-board-metric">
+                        <strong>{item.price ?? "-"}</strong>
+                        <span className={Number(item.changeRate) >= 0 ? "market-up" : "market-down"}>
+                          {formatMarketChange(item.changeRate)}
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
 
               <div className="mini-stat-row">
                 <div>
@@ -75,8 +129,12 @@ export default function DashboardPage() {
                   <strong>{news.length}</strong>
                 </div>
                 <div>
-                  <span>Cache durumu</span>
-                  <strong>Online</strong>
+                  <span>Pozitif hareket</span>
+                  <strong>{positiveCount}</strong>
+                </div>
+                <div>
+                  <span>Canli sembol</span>
+                  <strong>{quotes.length}</strong>
                 </div>
               </div>
             </div>
@@ -98,6 +156,36 @@ export default function DashboardPage() {
                   </Link>
                 ))}
               </div>
+            </div>
+
+            <div className="panel-surface dashboard-panel">
+              <div className="panel-head">
+                <div>
+                  <p className="eyebrow">Market Tape</p>
+                  <h3>Market Akisi</h3>
+                </div>
+              </div>
+
+              {quotes.length === 0 ? (
+                <EmptyState title="Market akisi bos" description="Backend market verisi geldiginde burada listelenecek." />
+              ) : (
+                <div className="market-list">
+                  {quotes.map((item) => (
+                    <div key={item.symbol} className="market-list-item">
+                      <div className="market-list-main">
+                        <strong>{item.symbol}</strong>
+                        <p>{item.displayName || item.symbol}</p>
+                      </div>
+                      <div className="market-list-side">
+                        <strong>{item.price ?? "-"}</strong>
+                        <span className={Number(item.changeRate) >= 0 ? "market-up" : "market-down"}>
+                          {formatMarketChange(item.changeRate)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="panel-surface dashboard-panel">
@@ -130,4 +218,17 @@ export default function DashboardPage() {
       ) : null}
     </div>
   );
+}
+
+function formatMarketChange(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) {
+    return String(value);
+  }
+
+  return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
 }

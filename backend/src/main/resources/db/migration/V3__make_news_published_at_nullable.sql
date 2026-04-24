@@ -1,0 +1,2 @@
+ALTER TABLE news
+    ALTER COLUMN published_at DROP NOT NULL;

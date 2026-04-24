@@ -16,8 +16,16 @@ function emptyNewsPage() {
   };
 }
 
+function compactParams(params = {}) {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== "" && value !== null && value !== undefined)
+  );
+}
+
 export async function getNews(params = {}) {
-  const response = await axiosClient.get(API_CONFIG.ENDPOINTS.news, { params });
+  const resolvedParams = compactParams(params);
+  console.debug("News API request params", resolvedParams);
+  const response = await axiosClient.get(API_CONFIG.ENDPOINTS.news, { params: resolvedParams });
   const data = normalizeApiResponse(response).data;
 
   if (Array.isArray(data)) {
@@ -55,6 +63,6 @@ export async function getNewsDetail(id) {
 }
 
 export async function syncNews(params = {}) {
-  const response = await axiosClient.post(`${API_CONFIG.ENDPOINTS.news}/sync`, null, { params });
+  const response = await axiosClient.post(`${API_CONFIG.ENDPOINTS.news}/sync`, null, { params: compactParams(params) });
   return normalizeApiResponse(response).data ?? null;
 }

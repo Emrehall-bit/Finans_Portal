@@ -14,6 +14,7 @@ public class NewsSearchRequest {
     private String keyword;
     private String symbol;
     private String category;
+    private String language;
     private LocalDate fromDate;
     private LocalDate toDate;
 }

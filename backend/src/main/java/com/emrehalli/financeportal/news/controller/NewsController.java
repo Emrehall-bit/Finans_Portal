@@ -31,6 +31,7 @@ public class NewsController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String symbol,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) String language,
             @RequestParam(required = false) String scope,
             @RequestParam(required = false) String provider,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -44,6 +45,7 @@ public class NewsController {
                 .keyword(keyword)
                 .symbol(symbol)
                 .category(category)
+                .language(language)
                 .scope(scope)
                 .provider(provider)
                 .fromDate(fromDate)

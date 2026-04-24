@@ -20,17 +20,49 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.Locale;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class BistMarketDataProvider implements MarketDataProvider {
 
     private static final Logger log = LoggerFactory.getLogger(BistMarketDataProvider.class);
     private static final String YAHOO_LOW_FREQUENCY = "YAHOO_LOW_FREQUENCY";
+    private static final int DEFAULT_BATCH_SIZE = 5;
+    private static final List<String> DEFAULT_BIST_SYMBOLS = List.of(
+            "THYAO.IS",
+            "ASELS.IS",
+            "GARAN.IS",
+            "AKBNK.IS",
+            "BIMAS.IS",
+            "KCHOL.IS",
+            "SAHOL.IS",
+            "EREGL.IS",
+            "TUPRS.IS",
+            "FROTO.IS",
+            "YKBNK.IS",
+            "ISCTR.IS",
+            "SISE.IS",
+            "PGSUS.IS",
+            "PETKM.IS",
+            "KOZAL.IS",
+            "KOZAA.IS",
+            "ENKAI.IS",
+            "ASTOR.IS",
+            "HEKTS.IS",
+            "GUBRF.IS",
+            "ALARK.IS",
+            "TOASO.IS",
+            "BRSAN.IS",
+            "CCOLA.IS",
+            "CIMSA.IS",
+            "DOHOL.IS",
+            "ODAS.IS",
+            "OYAKC.IS",
+            "VESTL.IS"
+    );
 
     private final YahooClient yahooClient;
     private final BistDelayedClient delayedClient;
@@ -39,6 +71,7 @@ public class BistMarketDataProvider implements MarketDataProvider {
     private final SymbolNormalizer symbolNormalizer;
     private final BistRoundRobinState roundRobinState;
     private final Clock clock;
+    private final AtomicInteger startIndex = new AtomicInteger(0);
 
     public BistMarketDataProvider(YahooClient yahooClient,
                                   BistDelayedClient delayedClient,
@@ -62,9 +95,19 @@ public class BistMarketDataProvider implements MarketDataProvider {
 
     @Override
     public boolean supports(ProviderFetchRequest request) {
-        return properties.isEnabled()
-                && (request == null || !request.hasSourceFilter() || request.source() == DataSource.BIST)
-                && (request == null || !request.hasInstrumentTypeFilter() || request.instrumentTypes().contains(InstrumentType.STOCK));
+        if (!properties.isEnabled()) {
+            return false;
+        }
+
+        if (request == null) {
+            return true;
+        }
+
+        if (request.hasSourceFilter()) {
+            return request.source() == DataSource.BIST;
+        }
+
+        return true;
     }
 
     @Override
@@ -77,8 +120,8 @@ public class BistMarketDataProvider implements MarketDataProvider {
 
         int batchSize = request != null && request.hasSymbolFilter()
                 ? symbols.size()
-                : Math.max(properties.getBatchSize(), 1);
-        BistRoundRobinState.BatchSelection batchSelection = roundRobinState.nextBatch(symbols, batchSize);
+                : Math.max(properties.getBatchSize(), DEFAULT_BATCH_SIZE);
+        BatchSelection batchSelection = selectBatch(symbols, batchSize, request != null && request.hasSymbolFilter());
         List<String> batchSymbols = batchSelection.symbols();
 
         log.info(
@@ -105,8 +148,6 @@ public class BistMarketDataProvider implements MarketDataProvider {
                 return new ProviderFetchResult(List.of(), List.of());
             }
         }
-
-        roundRobinState.markSuccess(symbols, batchSize);
 
         List<MarketQuote> quotes = mapper.toMarketQuotes(responses);
         List<MarketHistoryRecord> historyRecords = mapper.toHistoryRecords(responses);
@@ -176,27 +217,62 @@ public class BistMarketDataProvider implements MarketDataProvider {
     }
 
     private List<String> resolveSymbols(ProviderFetchRequest request) {
-        List<String> configuredSymbols = properties.getSymbols().stream()
-                .flatMap(symbol -> symbolNormalizer.normalize(symbol).stream())
-                .distinct()
-                .toList();
+        List<String> configuredSymbols = configuredSymbols();
 
         if (request == null || !request.hasSymbolFilter()) {
             return configuredSymbols;
         }
 
-        Set<String> requestedSymbols = request.symbols().stream()
-                .flatMap(symbol -> symbolNormalizer.normalize(symbol).stream())
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-
         return configuredSymbols.stream()
-                .filter(requestedSymbols::contains)
+                .filter(configuredSymbol -> request.symbols().stream().anyMatch(requested -> matchesSymbol(configuredSymbol, requested)))
                 .toList();
     }
 
+    private List<String> configuredSymbols() {
+        List<String> rawSymbols = properties.getSymbols() == null || properties.getSymbols().isEmpty()
+                ? DEFAULT_BIST_SYMBOLS
+                : properties.getSymbols();
+
+        return rawSymbols.stream()
+                .map(this::canonicalSymbol)
+                .filter(symbol -> !symbol.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    private BatchSelection selectBatch(List<String> symbols, int requestedBatchSize, boolean explicitSymbolRequest) {
+        if (symbols.isEmpty()) {
+            return new BatchSelection(0, List.of());
+        }
+
+        if (explicitSymbolRequest) {
+            return new BatchSelection(0, symbols);
+        }
+
+        int safeBatchSize = Math.min(Math.max(requestedBatchSize, 1), symbols.size());
+        int currentIndex = startIndex.getAndUpdate(previous ->
+                Math.floorMod(Math.floorMod(previous, symbols.size()) + safeBatchSize, symbols.size())
+        );
+        currentIndex = Math.floorMod(currentIndex, symbols.size());
+        List<String> batchSymbols = new ArrayList<>(safeBatchSize);
+        for (int offset = 0; offset < safeBatchSize; offset++) {
+            batchSymbols.add(symbols.get((currentIndex + offset) % symbols.size()));
+        }
+
+        return new BatchSelection(currentIndex, List.copyOf(batchSymbols));
+    }
+
+    private boolean matchesSymbol(String configuredSymbol, String requestedSymbol) {
+        return canonicalSymbol(configuredSymbol).equals(canonicalSymbol(requestedSymbol));
+    }
+
+    private String canonicalSymbol(String symbol) {
+        return symbol == null ? "" : symbol.trim().toUpperCase(Locale.ROOT);
+    }
+
     private boolean isYahooLowFrequencyMode() {
-        return properties.getProviderMode() != null
-                && YAHOO_LOW_FREQUENCY.equalsIgnoreCase(properties.getProviderMode().trim().toUpperCase(Locale.ROOT));
+        String providerMode = properties.getProviderMode();
+        return providerMode != null && YAHOO_LOW_FREQUENCY.equalsIgnoreCase(providerMode.trim());
     }
 
     private void sleepQuietly(long delayMs) {
@@ -205,5 +281,8 @@ public class BistMarketDataProvider implements MarketDataProvider {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private record BatchSelection(int startIndex, List<String> symbols) {
     }
 }

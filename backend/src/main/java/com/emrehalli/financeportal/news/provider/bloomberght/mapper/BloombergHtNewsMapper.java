@@ -3,6 +3,8 @@ package com.emrehalli.financeportal.news.provider.bloomberght.mapper;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.enums.NewsRegionScope;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -10,21 +12,37 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class BloombergHtNewsMapper {
 
     private static final String BASE_URL = "https://www.bloomberght.com";
+    private static final Logger logger = LogManager.getLogger(BloombergHtNewsMapper.class);
+    private static final int MAX_DATE_WARN_LOGS = 10;
+    private static final Pattern DATE_TIME_DOTTED_PATTERN = Pattern.compile("^(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})(?:\\s+(\\d{1,2}):(\\d{2}))?$");
+    private static final Pattern DATE_TIME_SLASH_PATTERN = Pattern.compile("^(\\d{1,2})/(\\d{1,2})/(\\d{4})(?:\\s+(\\d{1,2}):(\\d{2}))?$");
+    private static final Pattern TURKISH_DATE_PATTERN = Pattern.compile(
+            "^(\\d{1,2})\\s+([\\p{L}]+)\\s+(\\d{4})(?:\\s+([\\p{L}]+))?(?:\\s+(\\d{1,2}):(\\d{2}))?$",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+    );
+    private static final Pattern TIME_ONLY_PATTERN = Pattern.compile("^(\\d{1,2}):(\\d{2})$");
+    private static final Pattern RELATIVE_DATE_PATTERN = Pattern.compile("^(bugun|dun)(?:\\s+(\\d{1,2}):(\\d{2}))?$");
+    private static final Map<String, Integer> TURKISH_MONTHS = createTurkishMonthMap();
 
     public List<NewsItemDto> map(Document document) {
         return mapWithReport(document).items();
@@ -39,6 +57,7 @@ public class BloombergHtNewsMapper {
         List<NewsItemDto> mapped = new ArrayList<>();
         Set<String> seenUrls = new LinkedHashSet<>();
         int invalidCandidateCount = 0;
+        int dateWarnCount = 0;
 
         for (Element candidate : candidates) {
             String url = normalizeUrl(candidate.absUrl("href"));
@@ -55,7 +74,18 @@ public class BloombergHtNewsMapper {
 
             String summary = extractSummary(candidate);
             String category = extractCategory(candidate);
-            LocalDateTime publishedAt = extractPublishedAt(candidate);
+            PublishedAtParseResult publishedAtResult = extractPublishedAt(candidate);
+            LocalDateTime publishedAt = publishedAtResult.value();
+
+            if (publishedAt == null && !isBlank(publishedAtResult.rawValue()) && dateWarnCount < MAX_DATE_WARN_LOGS) {
+                logger.warn(
+                        "Failed to parse Bloomberg HT publishedAt. title: {}, source: {}, dateRaw: {}",
+                        cleanText(title),
+                        "Bloomberg HT",
+                        publishedAtResult.rawValue()
+                );
+                dateWarnCount++;
+            }
 
             mapped.add(
                     NewsItemDto.builder()
@@ -69,7 +99,7 @@ public class BloombergHtNewsMapper {
                             .category(cleanText(category))
                             .relatedSymbol(null)
                             .url(url)
-                            .publishedAt(publishedAt != null ? publishedAt : LocalDateTime.now())
+                            .publishedAt(publishedAt)
                             .build()
             );
         }
@@ -257,7 +287,7 @@ public class BloombergHtNewsMapper {
         return "Bloomberg HT";
     }
 
-    private LocalDateTime extractPublishedAt(Element anchor) {
+    private PublishedAtParseResult extractPublishedAt(Element anchor) {
         Element card = closestMeaningfulContainer(anchor);
 
         String[] selectors = {
@@ -281,11 +311,15 @@ public class BloombergHtNewsMapper {
 
             LocalDateTime parsed = tryParseDate(raw);
             if (parsed != null) {
-                return parsed;
+                return new PublishedAtParseResult(parsed, raw);
+            }
+
+            if (!isBlank(raw)) {
+                return new PublishedAtParseResult(null, raw);
             }
         }
 
-        return null;
+        return new PublishedAtParseResult(null, null);
     }
 
     private Element closestMeaningfulContainer(Element anchor) {
@@ -315,13 +349,37 @@ public class BloombergHtNewsMapper {
             return null;
         }
 
+        String normalized = normalizeDateText(raw);
+        LocalDateTime relativeDate = parseRelativeDate(normalized);
+        if (relativeDate != null) {
+            return relativeDate;
+        }
+
+        LocalDateTime timeOnlyDate = parseTimeOnly(normalized);
+        if (timeOnlyDate != null) {
+            return timeOnlyDate;
+        }
+
+        LocalDateTime dottedDate = parsePattern(normalized, DATE_TIME_DOTTED_PATTERN);
+        if (dottedDate != null) {
+            return dottedDate;
+        }
+
+        LocalDateTime slashDate = parsePattern(normalized, DATE_TIME_SLASH_PATTERN);
+        if (slashDate != null) {
+            return slashDate;
+        }
+
+        LocalDateTime turkishDate = parseTurkishDate(normalized);
+        if (turkishDate != null) {
+            return turkishDate;
+        }
+
         List<DateTimeFormatter> formatters = List.of(
                 DateTimeFormatter.ISO_DATE_TIME,
-                DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"),
-                DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"),
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
-                DateTimeFormatter.ofPattern("d MMMM yyyy HH:mm", Locale.forLanguageTag("tr-TR")),
-                DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", Locale.forLanguageTag("tr-TR"))
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd")
         );
 
         for (DateTimeFormatter formatter : formatters) {
@@ -337,6 +395,122 @@ public class BloombergHtNewsMapper {
         }
 
         return null;
+    }
+
+    private LocalDateTime parseRelativeDate(String raw) {
+        String normalized = normalizeTurkishToken(raw);
+        Matcher matcher = RELATIVE_DATE_PATTERN.matcher(normalized);
+        if (!matcher.matches()) {
+            return null;
+        }
+
+        LocalDate baseDate = "dun".equals(matcher.group(1)) ? LocalDate.now().minusDays(1) : LocalDate.now();
+        int hour = matcher.group(2) != null ? parseHour(matcher.group(2)) : 0;
+        int minute = matcher.group(3) != null ? parseMinute(matcher.group(3)) : 0;
+        return safeDateTime(baseDate.getYear(), baseDate.getMonthValue(), baseDate.getDayOfMonth(), hour, minute);
+    }
+
+    private LocalDateTime parseTimeOnly(String raw) {
+        Matcher matcher = TIME_ONLY_PATTERN.matcher(raw);
+        if (!matcher.matches()) {
+            return null;
+        }
+
+        return LocalDate.now().atTime(parseHour(matcher.group(1)), parseMinute(matcher.group(2)));
+    }
+
+    private LocalDateTime parsePattern(String raw, Pattern pattern) {
+        Matcher matcher = pattern.matcher(raw);
+        if (!matcher.matches()) {
+            return null;
+        }
+
+        int day = Integer.parseInt(matcher.group(1));
+        int month = Integer.parseInt(matcher.group(2));
+        int year = Integer.parseInt(matcher.group(3));
+        int hour = matcher.group(4) != null ? parseHour(matcher.group(4)) : 0;
+        int minute = matcher.group(5) != null ? parseMinute(matcher.group(5)) : 0;
+        return safeDateTime(year, month, day, hour, minute);
+    }
+
+    private LocalDateTime parseTurkishDate(String raw) {
+        Matcher matcher = TURKISH_DATE_PATTERN.matcher(raw);
+        if (!matcher.matches()) {
+            return null;
+        }
+
+        int day = Integer.parseInt(matcher.group(1));
+        Integer month = TURKISH_MONTHS.get(normalizeTurkishToken(matcher.group(2)));
+        if (month == null) {
+            return null;
+        }
+
+        int year = Integer.parseInt(matcher.group(3));
+        int hour = matcher.group(5) != null ? parseHour(matcher.group(5)) : 0;
+        int minute = matcher.group(6) != null ? parseMinute(matcher.group(6)) : 0;
+        return safeDateTime(year, month, day, hour, minute);
+    }
+
+    private LocalDateTime safeDateTime(int year, int month, int day, int hour, int minute) {
+        try {
+            return LocalDate.of(year, month, day).atTime(hour, minute);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private int parseHour(String rawHour) {
+        return Integer.parseInt(rawHour);
+    }
+
+    private int parseMinute(String rawMinute) {
+        return Integer.parseInt(rawMinute);
+    }
+
+    private String normalizeDateText(String raw) {
+        String normalized = cleanText(raw);
+        if (normalized == null) {
+            return null;
+        }
+
+        return normalized
+                .replace(",", " ")
+                .replace(" - ", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private String normalizeTurkishToken(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        return value.trim()
+                .toLowerCase(Locale.ROOT)
+                .replace('ç', 'c')
+                .replace('ğ', 'g')
+                .replace('ı', 'i')
+                .replace('İ', 'i')
+                .replace('ö', 'o')
+                .replace('ş', 's')
+                .replace('ü', 'u');
+    }
+
+    private static Map<String, Integer> createTurkishMonthMap() {
+        Map<String, Integer> months = new HashMap<>();
+        months.put("ocak", 1);
+        months.put("subat", 2);
+        months.put("mart", 3);
+        months.put("nisan", 4);
+        months.put("mayis", 5);
+        months.put("haziran", 6);
+        months.put("temmuz", 7);
+        months.put("agustos", 8);
+        months.put("eylul", 9);
+        months.put("ekim", 10);
+        months.put("kasim", 11);
+        months.put("aralik", 12);
+        return Map.copyOf(months);
     }
 
     private String normalizeUrl(String url) {
@@ -382,6 +556,7 @@ public class BloombergHtNewsMapper {
 
     public record ParseReport(List<NewsItemDto> items, int candidateCount, int uniqueUrlCount, int invalidCandidateCount) {
     }
+
+    private record PublishedAtParseResult(LocalDateTime value, String rawValue) {
+    }
 }
-
-

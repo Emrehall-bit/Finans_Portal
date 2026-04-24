@@ -73,7 +73,7 @@ public class News {
     @Column(nullable = false, length = 1200)
     private String url;
 
-    @Column(name = "published_at", nullable = false)
+    @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)

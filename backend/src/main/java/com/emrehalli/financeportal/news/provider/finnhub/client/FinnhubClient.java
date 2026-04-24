@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.news.provider.finnhub.client;
 
+import com.emrehalli.financeportal.common.exception.ProviderRateLimitException;
 import com.emrehalli.financeportal.news.provider.finnhub.FinnhubProperties;
 import com.emrehalli.financeportal.news.provider.finnhub.dto.FinnhubNewsResponse;
 import org.apache.logging.log4j.LogManager;
@@ -72,7 +73,7 @@ public class FinnhubClient {
             return body == null ? List.of() : body;
         } catch (HttpClientErrorException.TooManyRequests e) {
             logger.warn("Finnhub rate limit exceeded on endpoint: {}", endpoint);
-            return List.of();
+            throw new ProviderRateLimitException("FINNHUB", endpoint);
         } catch (HttpClientErrorException e) {
             logger.error("Finnhub client error. Endpoint: {}, status: {}, body: {}",
                     endpoint, e.getStatusCode(), e.getResponseBodyAsString());
@@ -86,6 +87,5 @@ public class FinnhubClient {
         }
     }
 }
-
 
 

@@ -37,16 +37,16 @@ logging:
     com.emrehalli.financeportal.market.provider.evds: DEBUG
     com.emrehalli.financeportal.news.provider.finnhub.client: DEBUG
     com.emrehalli.financeportal.news.provider.bloomberght: DEBUG
+    com.emrehalli.financeportal.news.provider.aa: DEBUG
 
 market:
   providers:
     bist:
-      enabled: true
-      provider-mode: YAHOO_LOW_FREQUENCY
+      enabled: true # KRİTİK: Supports metodunun true dönmesi için eklendi
+      provider-mode: YAHOO_LOW_FREQUENCY # KRİTİK: fetchYahoo metodunun çalışması için eklendi
       batch-size: 5
       request-delay-ms: 1500
       cooldown-minutes-on-rate-limit: 60
-      fallback-source: BIST_DELAYED
       symbols:
         - THYAO.IS
         - ASELS.IS
@@ -58,6 +58,26 @@ market:
         - EREGL.IS
         - TUPRS.IS
         - FROTO.IS
+        - SISE.IS
+        - PETKM.IS
+        - PGSUS.IS
+        - TTKOM.IS
+        - KOZAL.IS
+        - ISCTR.IS
+        - YKBNK.IS
+        - HALKB.IS
+        - VAKBN.IS
+        - TCELL.IS
+        - ARCLK.IS
+        - TOASO.IS
+        - DOHOL.IS
+        - ENKAI.IS
+        - MGROS.IS
+        - GUBRF.IS
+        - HEKTS.IS
+        - KRDMD.IS
+        - SASA.IS
+        - ULKER.IS
       yahoo:
         enabled: true
         base-url: https://query1.finance.yahoo.com
@@ -172,3 +192,12 @@ finnhub:
 bloomberght:
   api:
     url: https://www.bloomberght.com/
+
+news:
+  providers:
+    aa:
+      enabled: true
+      rss-url: https://www.aa.com.tr/tr/rss/default?cat=ekonomi
+      default-category: ECONOMY
+      default-language: tr
+      default-region-scope: TR
