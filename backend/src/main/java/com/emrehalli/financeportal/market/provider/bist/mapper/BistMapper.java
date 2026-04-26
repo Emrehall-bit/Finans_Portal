@@ -47,7 +47,7 @@ public class BistMapper {
         }
 
         Instant priceTime = resolvePriceTime(response).orElse(fetchedAt);
-        String symbol = response.symbol().trim();
+        String symbol = canonicalSymbol(response.symbol());
         return Optional.of(new MarketQuote(
                 symbol,
                 resolveDisplayName(response, symbol),
@@ -70,7 +70,7 @@ public class BistMapper {
             return Optional.empty();
         }
 
-        String symbol = response.symbol().trim();
+        String symbol = canonicalSymbol(response.symbol());
         LocalDate priceDate = resolvePriceTime(response)
                 .map(instant -> instant.atZone(ZoneOffset.UTC).toLocalDate())
                 .orElse(LocalDate.now(ZoneOffset.UTC));
@@ -102,6 +102,13 @@ public class BistMapper {
             return response.longName().trim();
         }
         return fallbackSymbol;
+    }
+
+    private String canonicalSymbol(String rawSymbol) {
+        String symbol = rawSymbol.trim();
+        return symbol.endsWith(".IS")
+                ? symbol.substring(0, symbol.length() - 3)
+                : symbol;
     }
 
     private boolean isBlank(String value) {

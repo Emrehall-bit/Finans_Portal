@@ -8,7 +8,13 @@ import PaginationControls from "../components/common/PaginationControls";
 import FeaturedNewsHero from "../components/news/FeaturedNewsHero";
 import NewsCard from "../components/news/NewsCard";
 import NewsFeedSkeleton from "../components/news/NewsFeedSkeleton";
-import { formatDateTime } from "../utils/formatters";
+import {
+  formatNewsPublishedAt,
+  getNewsLanguageLabel,
+  getNewsProviderLabel,
+  getNewsSummaryText,
+} from "../components/news/newsCardUtils";
+import { buildNewsQueryParams, NEWS_SORT_OPTIONS } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = 20;
 const KNOWN_PROVIDERS = ["FINNHUB", "BLOOMBERG_HT", "AA_RSS"];
@@ -26,25 +32,6 @@ const INITIAL_NEWS_PAGE = {
   hasPrevious: false,
 };
 
-function formatPublishedAtLabel(value) {
-  return value ? formatDateTime(value) : "Kaynak tarihi alinmadi";
-}
-
-function buildNewsQueryParams(filters, page) {
-  return Object.fromEntries(
-    Object.entries({
-      keyword: filters.keyword?.trim() || undefined,
-      category: filters.category || undefined,
-      provider: filters.provider || undefined,
-      language: filters.language || undefined,
-      page,
-      size: DEFAULT_PAGE_SIZE,
-      sortBy: "publishedAt",
-      sortDirection: "desc",
-    }).filter(([, value]) => value !== undefined)
-  );
-}
-
 export default function NewsPage() {
   const [newsPage, setNewsPage] = useState(INITIAL_NEWS_PAGE);
   const [loading, setLoading] = useState(false);
@@ -52,6 +39,7 @@ export default function NewsPage() {
   const [selected, setSelected] = useState(null);
   const [filters, setFilters] = useState({ keyword: "", category: "", provider: "", language: "" });
   const [appliedFilters, setAppliedFilters] = useState({ keyword: "", category: "", provider: "", language: "" });
+  const [sortBy, setSortBy] = useState("publishedAt");
   const [currentPage, setCurrentPage] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -62,7 +50,7 @@ export default function NewsPage() {
       try {
         setLoading(true);
         setError("");
-        const requestParams = buildNewsQueryParams(appliedFilters, currentPage);
+        const requestParams = buildNewsQueryParams(appliedFilters, currentPage, sortBy);
         console.debug("News page query params", requestParams);
         const result = await getNews(requestParams);
 
@@ -75,7 +63,7 @@ export default function NewsPage() {
         if (!active) {
           return;
         }
-        setError(extractErrorMessage(err, "News could not be loaded."));
+        setError(extractErrorMessage(err, "Haberler yüklenemedi."));
         setNewsPage(INITIAL_NEWS_PAGE);
       } finally {
         if (active) {
@@ -89,7 +77,7 @@ export default function NewsPage() {
     return () => {
       active = false;
     };
-  }, [appliedFilters, currentPage, refreshKey]);
+  }, [appliedFilters, currentPage, refreshKey, sortBy]);
 
   async function handleOpen(item) {
     if (!item?.id) {
@@ -111,13 +99,15 @@ export default function NewsPage() {
       setCurrentPage(0);
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
-      setError(extractErrorMessage(err, "News sync failed."));
+      setError(extractErrorMessage(err, "Haber senkronizasyonu başarısız oldu."));
     }
   }
 
   const items = newsPage.content ?? [];
   const featuredItem = items[0] ?? null;
   const feedItems = featuredItem ? items.slice(1) : items;
+  const selectedProviderLabel = getNewsProviderLabel(selected?.provider);
+  const selectedLanguageLabel = getNewsLanguageLabel(selected?.language);
 
   const providerOptions = useMemo(() => {
     const values = new Set([
@@ -187,18 +177,25 @@ export default function NewsPage() {
     setCurrentPage(page);
   }
 
+  function handleSortChange(value) {
+    setSortBy(value);
+    setCurrentPage(0);
+    setSelected(null);
+  }
+
   return (
     <div className="news-page-stack">
       <PageHeader
-        title="News"
-        description="Market-moving headlines, provider feeds and finance-focused coverage in a cleaner newsroom layout."
+        title="Haberler"
+        description="Piyasa etkisi yüksek manşetleri, sağlayıcı akışlarını ve finans odaklı gelişmeleri tek ekranda takip edin."
+        eyebrow="Gündem"
         actions={
           <div className="actions-row">
             <button onClick={handleReload} disabled={loading}>
-              Reload
+              Yenile
             </button>
             <button onClick={handleSync} disabled={loading}>
-              Sync News
+              Haberleri Senkronize Et
             </button>
           </div>
         }
@@ -206,29 +203,29 @@ export default function NewsPage() {
 
       <section className="panel-surface news-toolbar">
         <div className="news-toolbar-copy">
-          <p className="eyebrow">Newsroom</p>
-          <h3>Filter the live feed</h3>
+          <p className="eyebrow">Akış</p>
+          <h3>Canlı haber akışını filtreleyin</h3>
           <p className="muted">
-            Search by keyword, narrow by provider or focus on a category without leaving the page.
+            Anahtar kelimeyle arayın, sağlayıcı seçin veya kategori odaklı görünüm oluşturun.
           </p>
         </div>
 
         <div className="news-filter-grid">
           <label className="news-filter-field">
-            <span>Keyword</span>
+            <span>Anahtar Kelime</span>
             <input
-              placeholder="Inflation, earnings, Fed..."
+              placeholder="Enflasyon, bilanço, faiz..."
               value={filters.keyword}
               onChange={(e) => setFilters((p) => ({ ...p, keyword: e.target.value }))}
             />
           </label>
           <label className="news-filter-field">
-            <span>Category</span>
+            <span>Kategori</span>
             <select
               value={filters.category}
               onChange={(e) => handleSelectFilterChange("category", e.target.value)}
             >
-              <option value="">All categories</option>
+              <option value="">Tüm kategoriler</option>
               {categoryOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
@@ -237,29 +234,42 @@ export default function NewsPage() {
             </select>
           </label>
           <label className="news-filter-field">
-            <span>Provider</span>
+            <span>Sağlayıcı</span>
             <select
               value={filters.provider}
               onChange={(e) => handleSelectFilterChange("provider", e.target.value)}
             >
-              <option value="">All providers</option>
+              <option value="">Tüm sağlayıcılar</option>
               {providerOptions.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {getNewsProviderLabel(option)}
                 </option>
               ))}
             </select>
           </label>
           <label className="news-filter-field">
-            <span>Language</span>
+            <span>Dil</span>
             <select
               value={filters.language}
               onChange={(e) => handleSelectFilterChange("language", e.target.value)}
             >
-              <option value="">All languages</option>
+              <option value="">Tüm diller</option>
               {languageOptions.map((option) => (
                 <option key={option} value={option}>
                   {option.toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="news-filter-field">
+            <span>Sıralama</span>
+            <select
+              value={sortBy}
+              onChange={(e) => handleSortChange(e.target.value)}
+            >
+              {NEWS_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
@@ -268,10 +278,10 @@ export default function NewsPage() {
 
         <div className="news-toolbar-actions">
           <button onClick={handleApplyFilters} disabled={loading}>
-            Apply Filters
+            Filtreleri Uygula
           </button>
           <span className="news-toolbar-note">
-            {newsPage.totalElements} stories available
+            {newsPage.totalElements} haber listeleniyor
           </span>
         </div>
       </section>
@@ -279,8 +289,8 @@ export default function NewsPage() {
       {!loading && !error && items.length > 0 ? (
         <section className="news-feed-header">
           <div className="news-feed-copy">
-            <p className="eyebrow">Feed</p>
-            <h3>Latest financial coverage</h3>
+            <p className="eyebrow">Akış</p>
+            <h3>Güncel finans haberleri</h3>
           </div>
 
           <PaginationControls
@@ -300,7 +310,7 @@ export default function NewsPage() {
       {loading ? <NewsFeedSkeleton /> : null}
       {error ? <ErrorMessage message={error} /> : null}
       {!loading && !error && items.length === 0 ? (
-        <EmptyState title="No news found" description="Adjust filters or sync from providers." />
+        <EmptyState title="Haber bulunamadı" description="Filtreleri değiştirin veya sağlayıcılardan yeniden senkronize edin." />
       ) : null}
 
       {!loading && !error && featuredItem ? (
@@ -332,21 +342,30 @@ export default function NewsPage() {
 
       {selected ? (
         <section className="panel-surface news-detail-card">
-          <div className="news-detail-meta">
-            <span className="news-card-badge">{selected.category || selected.provider || "Detail"}</span>
-            <span className="muted">
-              {selected.provider || "-"} | {selected.source || "-"} | {(selected.language || "-").toUpperCase()} | {formatPublishedAtLabel(selected.publishedAt)}
-            </span>
+          <div className="news-detail-topbar">
+            <div className="news-detail-meta">
+              <span className="news-card-badge category">{selected.category || "Gündem"}</span>
+              <span className="news-card-badge provider">{selectedProviderLabel}</span>
+              {selectedLanguageLabel ? <span className="news-meta-badge">{selectedLanguageLabel}</span> : null}
+              <span className="muted">{formatNewsPublishedAt(selected.publishedAt)}</span>
+            </div>
+            <button type="button" className="secondary-button news-detail-back" onClick={() => setSelected(null)}>
+              Haberlere dön
+            </button>
           </div>
 
-          <h3 className="news-detail-title">{selected.title || "Untitled"}</h3>
-          <p className="news-detail-summary">{selected.summary || "No summary provided."}</p>
+          <h3 className="news-detail-title">{selected.title || "Başlık bulunmuyor"}</h3>
+          <p className={`news-detail-summary${selected.summary ? "" : " is-fallback"}`}>
+            {getNewsSummaryText(selected.summary, "Bu haber için kaynak tarafından özet sağlanmadı.")}
+          </p>
 
-          {selected.url ? (
-            <a className="secondary-button news-detail-link" href={selected.url} target="_blank" rel="noreferrer">
-              Open source link
-            </a>
-          ) : null}
+          <div className="news-detail-actions">
+            {selected.url ? (
+              <a className="secondary-button news-detail-link" href={selected.url} target="_blank" rel="noreferrer">
+                Kaynakta aç
+              </a>
+            ) : null}
+          </div>
         </section>
       ) : null}
     </div>

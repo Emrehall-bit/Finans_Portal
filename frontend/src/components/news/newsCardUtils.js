@@ -1,4 +1,4 @@
-import { formatDateTime } from "../../utils/formatters";
+import { formatDateTime } from "../../utils/formatters.js";
 
 const PROVIDER_LABELS = {
   BLOOMBERG_HT: "Bloomberg HT",

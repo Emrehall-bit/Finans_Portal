@@ -21,6 +21,7 @@ public class NewsResponseDto {
     private String relatedSymbol;
     private String url;
     private LocalDateTime publishedAt;
+    private Integer importanceScore;
 }
 
 

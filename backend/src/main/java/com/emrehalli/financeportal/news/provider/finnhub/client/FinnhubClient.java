@@ -56,7 +56,7 @@ public class FinnhubClient {
     private List<FinnhubNewsResponse> execute(String url, String endpoint) {
         try {
             logger.info("Sending Finnhub request to endpoint: {}", endpoint);
-            logger.debug("Finnhub request URL: {}", url);
+            logger.debug("Finnhub request prepared. endpoint={}, category={}", endpoint, resolveCategory(endpoint));
 
             ResponseEntity<List<FinnhubNewsResponse>> response = restTemplate.exchange(
                     url,
@@ -85,6 +85,10 @@ public class FinnhubClient {
             logger.error("Unexpected Finnhub error on endpoint: {}", endpoint, e);
             return List.of();
         }
+    }
+
+    private String resolveCategory(String endpoint) {
+        return "company-news".equals(endpoint) ? "company" : "general";
     }
 }
 

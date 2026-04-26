@@ -2,8 +2,11 @@ package com.emrehalli.financeportal.news.service;
 
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
+import com.emrehalli.financeportal.common.logging.LoggingConstants;
+import com.emrehalli.financeportal.common.logging.LoggingContext;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
+import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.entity.News;
@@ -18,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,9 +41,20 @@ public class NewsService {
 
     private final NewsRepository newsRepository;
     private final Map<String, NewsProvider> providerMap;
+    private final NewsImportanceScoringService newsImportanceScoringService;
 
     public NewsService(NewsRepository newsRepository, List<NewsProvider> providers) {
+        this(newsRepository, providers, new NewsImportanceScoringService());
+    }
+
+    @Autowired
+    public NewsService(
+            NewsRepository newsRepository,
+            List<NewsProvider> providers,
+            NewsImportanceScoringService newsImportanceScoringService
+    ) {
         this.newsRepository = newsRepository;
+        this.newsImportanceScoringService = newsImportanceScoringService;
         this.providerMap = new HashMap<>();
         for (NewsProvider provider : providers) {
             providerMap.put(provider.getProviderName(), provider);
@@ -75,6 +90,29 @@ public class NewsService {
         News news = newsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("News not found with id: " + id));
         return toResponse(news);
+    }
+
+    @Transactional(readOnly = true)
+    public List<NewsResponseDto> getTopNews(int size) {
+        validatePaging(0, size);
+        return getNews(NewsSearchRequest.builder().build(), 0, size, "importanceScore", "desc").getContent();
+    }
+
+    @Transactional
+    public NewsImportanceRecalculationResponseDto recalculateImportanceScores() {
+        List<News> allNews = newsRepository.findAll();
+        int updatedCount = 0;
+        for (News news : allNews) {
+            int recalculated = newsImportanceScoringService.calculateScore(news);
+            if (!java.util.Objects.equals(news.getImportanceScore(), recalculated)) {
+                news.setImportanceScore(recalculated);
+                updatedCount++;
+            }
+        }
+        newsRepository.saveAll(allNews);
+        NewsImportanceRecalculationResponseDto response = buildRecalculationResponse(allNews, updatedCount);
+        logScoreDistribution(allNews, response);
+        return response;
     }
 
     @Transactional
@@ -139,35 +177,73 @@ public class NewsService {
 
     private NewsSyncResponseDto syncSingleProvider(NewsProviderType providerType, String symbol) {
         NewsProvider provider = getProvider(providerType);
-        List<NewsItemDto> items = hasText(symbol)
-                ? provider.fetchCompanyNews(symbol)
-                : provider.fetchLatestNews();
+        long startedAt = System.nanoTime();
+        LoggingContext.put(LoggingConstants.PROVIDER_NAME_KEY, providerType.name());
 
-        PersistenceStats stats = saveNewsItems(items, providerType.name());
-        double parseSuccessRatio = items.isEmpty() ? 0.0 : (double) stats.validCount() / items.size();
+        try {
+            List<NewsItemDto> items = hasText(symbol)
+                    ? provider.fetchCompanyNews(symbol)
+                    : provider.fetchLatestNews();
 
-        logger.info(
-                "News sync stats. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, parseSuccessRatio: {}",
-                providerType.name(),
-                items.size(),
-                stats.validCount(),
-                stats.invalidCount(),
-                stats.duplicateCount(),
-                stats.existingCount(),
-                stats.savedCount(),
-                String.format("%.2f", parseSuccessRatio)
-        );
+            PersistenceStats stats = saveNewsItems(items, providerType.name());
+            double parseSuccessRatio = items.isEmpty() ? 0.0 : (double) stats.validCount() / items.size();
+            long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
 
-        return NewsSyncResponseDto.builder()
-                .provider(providerType.name())
-                .fetchedCount(items.size())
-                .validCount(stats.validCount())
-                .invalidCount(stats.invalidCount())
-                .duplicateCount(stats.duplicateCount())
-                .existingCount(stats.existingCount())
-                .savedCount(stats.savedCount())
-                .parseSuccessRatio(parseSuccessRatio)
-                .build();
+            LoggingContext.put(LoggingConstants.SUCCESS_KEY, Boolean.TRUE.toString());
+            LoggingContext.put(LoggingConstants.DURATION_MS_KEY, String.valueOf(durationMs));
+            LoggingContext.put(LoggingConstants.FETCHED_ITEM_COUNT_KEY, String.valueOf(items.size()));
+
+            logger.info(
+                    "News sync stats. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, parseSuccessRatio: {}, durationMs: {}",
+                    providerType.name(),
+                    items.size(),
+                    stats.validCount(),
+                    stats.invalidCount(),
+                    stats.duplicateCount(),
+                    stats.existingCount(),
+                    stats.savedCount(),
+                    String.format("%.2f", parseSuccessRatio),
+                    durationMs
+            );
+
+            return NewsSyncResponseDto.builder()
+                    .provider(providerType.name())
+                    .fetchedCount(items.size())
+                    .validCount(stats.validCount())
+                    .invalidCount(stats.invalidCount())
+                    .duplicateCount(stats.duplicateCount())
+                    .existingCount(stats.existingCount())
+                    .savedCount(stats.savedCount())
+                    .parseSuccessRatio(parseSuccessRatio)
+                    .build();
+        } catch (Exception ex) {
+            long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
+            LoggingContext.put(LoggingConstants.SUCCESS_KEY, Boolean.FALSE.toString());
+            LoggingContext.put(LoggingConstants.DURATION_MS_KEY, String.valueOf(durationMs));
+            logger.error(
+                    "News provider sync failed. provider: {}, symbol: {}, durationMs: {}, message: {}",
+                    providerType.name(),
+                    symbol,
+                    durationMs,
+                    ex.getMessage(),
+                    ex
+            );
+            return NewsSyncResponseDto.builder()
+                    .provider(providerType.name())
+                    .fetchedCount(0)
+                    .validCount(0)
+                    .invalidCount(0)
+                    .duplicateCount(0)
+                    .existingCount(0)
+                    .savedCount(0)
+                    .parseSuccessRatio(0.0)
+                    .build();
+        } finally {
+            LoggingContext.remove(LoggingConstants.PROVIDER_NAME_KEY);
+            LoggingContext.remove(LoggingConstants.SUCCESS_KEY);
+            LoggingContext.remove(LoggingConstants.DURATION_MS_KEY);
+            LoggingContext.remove(LoggingConstants.FETCHED_ITEM_COUNT_KEY);
+        }
     }
 
     private PersistenceStats saveNewsItems(List<NewsItemDto> items, String providerName) {
@@ -186,8 +262,10 @@ public class NewsService {
         int missingSourceCount = 0;
         int missingDateCount = 0;
         List<News> toSave = new ArrayList<>();
-        Set<String> existingExternalIds = findExistingExternalIds(items);
+        Map<String, News> existingNewsByExternalId = findExistingNewsByExternalId(items);
+        Set<String> existingExternalIds = existingNewsByExternalId.keySet();
         Set<String> seenExternalIds = new HashSet<>();
+        List<News> existingToUpdate = new ArrayList<>();
 
         for (NewsItemDto item : items) {
             ValidationResult validationResult = validateForPersistence(item);
@@ -214,6 +292,14 @@ public class NewsService {
 
             if (existingExternalIds.contains(externalId)) {
                 existingCount++;
+                News existingNews = existingNewsByExternalId.get(externalId);
+                if (existingNews != null && shouldRefreshImportanceScore(existingNews)) {
+                    int recalculatedScore = newsImportanceScoringService.calculateScore(existingNews);
+                    if (!java.util.Objects.equals(existingNews.getImportanceScore(), recalculatedScore)) {
+                        existingNews.setImportanceScore(recalculatedScore);
+                        existingToUpdate.add(existingNews);
+                    }
+                }
                 continue;
             }
 
@@ -229,11 +315,17 @@ public class NewsService {
                     .relatedSymbol(item.getRelatedSymbol())
                     .url(item.getUrl())
                     .publishedAt(item.getPublishedAt())
+                    .importanceScore(0)
                     .build());
         }
 
+        toSave.forEach(news -> news.setImportanceScore(newsImportanceScoringService.calculateScore(news)));
+
         if (!toSave.isEmpty()) {
             savedCount = newsRepository.saveAll(toSave).size();
+        }
+        if (!existingToUpdate.isEmpty()) {
+            newsRepository.saveAll(existingToUpdate);
         }
 
         int validCount = items.size() - invalidCount;
@@ -266,7 +358,7 @@ public class NewsService {
         );
     }
 
-    private Set<String> findExistingExternalIds(List<NewsItemDto> items) {
+    private Map<String, News> findExistingNewsByExternalId(List<NewsItemDto> items) {
         Set<String> externalIds = items.stream()
                 .map(this::validateForPersistence)
                 .filter(ValidationResult::valid)
@@ -277,12 +369,11 @@ public class NewsService {
                 .collect(java.util.stream.Collectors.toSet());
 
         if (externalIds.isEmpty()) {
-            return Set.of();
+            return Map.of();
         }
 
         return newsRepository.findByExternalIdIn(externalIds).stream()
-                .map(News::getExternalId)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(java.util.stream.Collectors.toMap(News::getExternalId, news -> news));
     }
 
     private ValidationResult validateForPersistence(NewsItemDto item) {
@@ -347,9 +438,9 @@ public class NewsService {
     private String resolveSortBy(String sortBy) {
         String resolvedSortBy = hasText(sortBy) ? sortBy.trim() : "publishedAt";
         return switch (resolvedSortBy) {
-            case "publishedAt", "title", "source", "category", "provider", "regionScope" -> resolvedSortBy;
+            case "publishedAt", "importanceScore", "title", "source", "category", "provider", "regionScope" -> resolvedSortBy;
             default -> throw new BadRequestException(
-                    "Invalid sortBy. Allowed values: publishedAt, title, source, category, provider, regionScope"
+                    "Invalid sortBy. Allowed values: publishedAt, importanceScore, title, source, category, provider, regionScope"
             );
         };
     }
@@ -366,7 +457,7 @@ public class NewsService {
     }
 
     private Sort resolvePageableSort(String resolvedSortBy, Sort.Direction resolvedSortDirection) {
-        if ("publishedAt".equals(resolvedSortBy)) {
+        if ("publishedAt".equals(resolvedSortBy) || "importanceScore".equals(resolvedSortBy)) {
             return Sort.unsorted();
         }
         return Sort.by(new Sort.Order(resolvedSortDirection, resolvedSortBy));
@@ -467,20 +558,31 @@ public class NewsService {
     }
 
     private Specification<News> bySort(String resolvedSortBy, Sort.Direction resolvedSortDirection) {
-        if (!"publishedAt".equals(resolvedSortBy)) {
+        if (!"publishedAt".equals(resolvedSortBy) && !"importanceScore".equals(resolvedSortBy)) {
             return null;
         }
 
         return (root, query, cb) -> {
             Class<?> resultType = query.getResultType();
             if (resultType != Long.class && resultType != long.class) {
-                query.orderBy(
-                        cb.asc(cb.selectCase().when(cb.isNull(root.get("publishedAt")), 1).otherwise(0)),
-                        resolvedSortDirection.isAscending()
-                                ? cb.asc(root.get("publishedAt"))
-                                : cb.desc(root.get("publishedAt")),
-                        cb.desc(root.get("createdAt"))
-                );
+                if ("importanceScore".equals(resolvedSortBy)) {
+                    query.orderBy(
+                            resolvedSortDirection.isAscending()
+                                    ? cb.asc(root.get("importanceScore"))
+                                    : cb.desc(root.get("importanceScore")),
+                            cb.asc(cb.selectCase().when(cb.isNull(root.get("publishedAt")), 1).otherwise(0)),
+                            cb.desc(root.get("publishedAt")),
+                            cb.desc(root.get("createdAt"))
+                    );
+                } else {
+                    query.orderBy(
+                            cb.asc(cb.selectCase().when(cb.isNull(root.get("publishedAt")), 1).otherwise(0)),
+                            resolvedSortDirection.isAscending()
+                                    ? cb.asc(root.get("publishedAt"))
+                                    : cb.desc(root.get("publishedAt")),
+                            cb.desc(root.get("createdAt"))
+                    );
+                }
             }
             return cb.conjunction();
         };
@@ -502,6 +604,10 @@ public class NewsService {
         return provider;
     }
 
+    private boolean shouldRefreshImportanceScore(News news) {
+        return news.getImportanceScore() == null || news.getImportanceScore() <= 0;
+    }
+
     private NewsResponseDto toResponse(News news) {
         return NewsResponseDto.builder()
                 .id(news.getId())
@@ -516,7 +622,65 @@ public class NewsService {
                 .relatedSymbol(news.getRelatedSymbol())
                 .url(news.getUrl())
                 .publishedAt(news.getPublishedAt())
+                .importanceScore(news.getImportanceScore())
                 .build();
+    }
+
+    private NewsImportanceRecalculationResponseDto buildRecalculationResponse(List<News> allNews, int updatedCount) {
+        if (allNews.isEmpty()) {
+            return NewsImportanceRecalculationResponseDto.builder()
+                    .totalProcessed(0)
+                    .updatedCount(0)
+                    .minScore(0)
+                    .maxScore(0)
+                    .averageScore(0.0)
+                    .build();
+        }
+
+        int minScore = allNews.stream()
+                .map(News::getImportanceScore)
+                .filter(java.util.Objects::nonNull)
+                .min(Integer::compareTo)
+                .orElse(0);
+        int maxScore = allNews.stream()
+                .map(News::getImportanceScore)
+                .filter(java.util.Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0);
+        double averageScore = allNews.stream()
+                .map(News::getImportanceScore)
+                .filter(java.util.Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0.0);
+
+        return NewsImportanceRecalculationResponseDto.builder()
+                .totalProcessed(allNews.size())
+                .updatedCount(updatedCount)
+                .minScore(minScore)
+                .maxScore(maxScore)
+                .averageScore(averageScore)
+                .build();
+    }
+
+    private void logScoreDistribution(List<News> allNews, NewsImportanceRecalculationResponseDto response) {
+        logger.info(
+                "News importance score recalculation completed. totalProcessed: {}, updatedCount: {}, minScore: {}, maxScore: {}, averageScore: {}",
+                response.getTotalProcessed(),
+                response.getUpdatedCount(),
+                response.getMinScore(),
+                response.getMaxScore(),
+                String.format("%.2f", response.getAverageScore())
+        );
+
+        List<String> topFive = allNews.stream()
+                .sorted(java.util.Comparator
+                        .comparing(News::getImportanceScore, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder()))
+                        .thenComparing(News::getPublishedAt, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .limit(5)
+                .map(news -> String.format("%s (%d)", news.getTitle(), news.getImportanceScore()))
+                .toList();
+        logger.info("News importance score top 5: {}", topFive);
     }
 
     private record QueryContext(NewsScope scope, NewsProviderType provider) {

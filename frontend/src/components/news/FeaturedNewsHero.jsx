@@ -1,8 +1,10 @@
-import { formatDateTime } from "../../utils/formatters";
-
-function formatPublishedAtLabel(value) {
-  return value ? formatDateTime(value) : "Kaynak tarihi alinmadi";
-}
+import {
+  buildNewsPlaceholderLabel,
+  formatNewsPublishedAt,
+  getNewsLanguageLabel,
+  getNewsProviderLabel,
+  getNewsSummaryText,
+} from "./newsCardUtils";
 
 function resolveThumbnail(item) {
   return item?.thumbnailUrl || item?.imageUrl || item?.image || null;
@@ -14,28 +16,36 @@ export default function FeaturedNewsHero({ item, onOpen }) {
   }
 
   const thumbnail = resolveThumbnail(item);
+  const providerLabel = getNewsProviderLabel(item.provider);
+  const languageLabel = getNewsLanguageLabel(item.language);
+  const summaryText = getNewsSummaryText(item.summary);
 
   return (
     <button type="button" className="panel-surface news-featured-hero" onClick={() => onOpen(item)}>
       <div className="news-featured-copy">
         <div className="news-detail-meta">
-          <span className="news-card-badge">{item.category || item.provider || "Featured"}</span>
-          <span className="muted">
-            {item.provider || "-"} | {item.source || "-"} | {(item.language || "-").toUpperCase()} | {formatPublishedAtLabel(item.publishedAt)}
-          </span>
+          <span className="news-card-badge category">{item.category || "Gündem"}</span>
+          <span className="news-card-badge provider">{providerLabel}</span>
         </div>
-        <p className="eyebrow">Featured Story</p>
-        <h2>{item.title || "Untitled"}</h2>
-        <p>{item.summary || "Summary is not available for this story yet."}</p>
-        <span className="news-card-link">Open detail</span>
+        <div className="news-card-meta featured">
+          <span className="news-card-provider">{providerLabel}</span>
+          {languageLabel ? <span className="news-card-dot" /> : null}
+          {languageLabel ? <span className="news-meta-badge">{languageLabel}</span> : null}
+          <span className="news-card-dot" />
+          <span>{formatNewsPublishedAt(item.publishedAt)}</span>
+        </div>
+        <p className="eyebrow">Öne Çıkan Haber</p>
+        <h2>{item.title || "Başlık bulunmuyor"}</h2>
+        <p className={!item.summary ? "is-fallback" : undefined}>{summaryText}</p>
+        <span className="news-card-link">Haberi aç</span>
       </div>
 
       <div className="news-featured-media">
         {thumbnail ? (
-          <img src={thumbnail} alt={item?.title || "Featured news"} loading="lazy" />
+          <img src={thumbnail} alt={item?.title || "Öne çıkan haber"} loading="lazy" />
         ) : (
           <div className="news-featured-placeholder" aria-hidden="true">
-            <span>{(item.provider || "News").slice(0, 2).toUpperCase()}</span>
+            <span>{buildNewsPlaceholderLabel(item)}</span>
           </div>
         )}
       </div>

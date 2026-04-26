@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
         },
         indexes = {
                 @Index(name = "idx_news_published_at", columnList = "published_at"),
+                @Index(name = "idx_news_importance_score", columnList = "importance_score"),
                 @Index(name = "idx_news_provider", columnList = "provider"),
                 @Index(name = "idx_news_region_scope", columnList = "region_scope"),
                 @Index(name = "idx_news_category", columnList = "category"),
@@ -75,6 +76,10 @@ public class News {
 
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
+
+    @Builder.Default
+    @Column(name = "importance_score", nullable = false)
+    private Integer importanceScore = 0;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -1,17 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
 
+    <Properties>
+        <Property name="logDir">${spring:app.logging.path}</Property>
+        <Property name="serviceName">finance-portal-backend</Property>
+        <Property name="humanPattern">%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%t] %c{1} requestId=%X{requestId} userId=%X{userId} method=%X{method} uri=%X{uri} status=%X{status} durationMs=%X{durationMs} - %msg%n%throwable</Property>
+    </Properties>
+
     <Appenders>
-        <Console name="Console" target="SYSTEM_OUT">
-            <PatternLayout
-                    pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level [%t] %c{1} - %msg%n%throwable" />
-        </Console>
+        <SpringProfile name="local">
+            <Console name="ConsolePretty" target="SYSTEM_OUT">
+                <PatternLayout pattern="${humanPattern}" />
+            </Console>
+        </SpringProfile>
+
+        <SpringProfile name="!local">
+            <Console name="ConsoleJson" target="SYSTEM_OUT">
+                <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json" />
+            </Console>
+        </SpringProfile>
 
         <RollingFile name="FileAppender"
-                     fileName="logs/app.log"
-                     filePattern="logs/app-%d{yyyy-MM-dd}-%i.log.gz">
-            <PatternLayout
-                    pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level [%t] %c{1} - %msg%n%throwable" />
+                     fileName="${logDir}/app.log"
+                     filePattern="${logDir}/app-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${humanPattern}" />
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="10" />
+        </RollingFile>
+
+        <RollingFile name="JsonFile"
+                     fileName="${logDir}/finance-portal/finance-portal-backend.json"
+                     filePattern="${logDir}/finance-portal/finance-portal-backend-%d{yyyy-MM-dd}-%i.json.gz">
+            <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json" />
             <Policies>
                 <TimeBasedTriggeringPolicy />
                 <SizeBasedTriggeringPolicy size="10 MB" />
@@ -21,9 +44,20 @@
     </Appenders>
 
     <Loggers>
-        <Root level="info">
-            <AppenderRef ref="Console" />
-            <AppenderRef ref="FileAppender" />
-        </Root>
+        <SpringProfile name="local">
+            <Root level="info">
+                <AppenderRef ref="ConsolePretty" />
+                <AppenderRef ref="FileAppender" />
+                <AppenderRef ref="JsonFile" />
+            </Root>
+        </SpringProfile>
+
+        <SpringProfile name="!local">
+            <Root level="info">
+                <AppenderRef ref="ConsoleJson" />
+                <AppenderRef ref="FileAppender" />
+                <AppenderRef ref="JsonFile" />
+            </Root>
+        </SpringProfile>
     </Loggers>
 </Configuration>

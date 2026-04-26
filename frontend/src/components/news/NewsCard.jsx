@@ -1,24 +1,26 @@
-import { formatDateTime } from "../../utils/formatters";
-import { buildNewsPlaceholderLabel } from "./newsCardUtils";
-
-function formatPublishedAtLabel(value) {
-  return value ? formatDateTime(value) : "Tarih yok";
-}
+import {
+  buildNewsPlaceholderLabel,
+  formatNewsPublishedAt,
+  getNewsLanguageLabel,
+  getNewsProviderLabel,
+  getNewsSummaryText,
+} from "./newsCardUtils";
 
 function resolveThumbnail(item) {
   return item?.thumbnailUrl || item?.imageUrl || item?.image || null;
 }
 
 function resolveAccentLabel(item) {
-  return item?.category || item?.provider || item?.source || "News";
+  return item?.category || getNewsProviderLabel(item?.provider) || "Haber";
 }
 
 export default function NewsCard({ item, onClick }) {
   const thumbnail = resolveThumbnail(item);
   const accentLabel = resolveAccentLabel(item);
-  const providerLabel = item?.provider || "Unknown Provider";
-  const sourceLabel = item?.source || "Unknown Source";
-  const languageLabel = item?.language ? item.language.toUpperCase() : null;
+  const providerLabel = getNewsProviderLabel(item?.provider);
+  const languageLabel = getNewsLanguageLabel(item?.language);
+  const publishedAtLabel = formatNewsPublishedAt(item?.publishedAt);
+  const summaryText = getNewsSummaryText(item?.summary);
 
   return (
     <button className="news-card news-card-shell" onClick={() => onClick(item)} type="button">
@@ -27,7 +29,7 @@ export default function NewsCard({ item, onClick }) {
           <img
             className="news-card-image"
             src={thumbnail}
-            alt={item?.title || "News thumbnail"}
+            alt={item?.title || "Haber gorseli"}
             loading="lazy"
           />
         ) : (
@@ -37,32 +39,28 @@ export default function NewsCard({ item, onClick }) {
         )}
         <div className="news-card-overlay" />
         <div className="news-card-badges">
-          <span className="news-card-badge">{accentLabel}</span>
-          {item?.regionScope ? (
-            <span className="news-card-badge secondary">{item.regionScope}</span>
-          ) : null}
+          <span className="news-card-badge category">{accentLabel}</span>
+          <span className="news-card-badge provider">{providerLabel}</span>
         </div>
       </div>
 
       <div className="news-card-body">
         <div className="news-card-meta">
           <span className="news-card-provider">{providerLabel}</span>
-          <span className="news-card-dot" />
-          <span>{sourceLabel}</span>
           {languageLabel ? <span className="news-card-dot" /> : null}
-          {languageLabel ? <span>{languageLabel}</span> : null}
+          {languageLabel ? <span className="news-meta-badge">{languageLabel}</span> : null}
           <span className="news-card-dot" />
-          <time dateTime={item?.publishedAt || ""}>{formatPublishedAtLabel(item?.publishedAt)}</time>
+          <time dateTime={item?.publishedAt || ""}>{publishedAtLabel}</time>
         </div>
 
-        <h3 className="news-card-title">{item?.title || "Untitled"}</h3>
+        <h3 className="news-card-title">{item?.title || "Başlık bulunmuyor"}</h3>
 
-        <p className="news-card-summary">
-          {item?.summary || "Summary is not available for this item yet."}
+        <p className={`news-card-summary${item?.summary ? "" : " is-fallback"}`}>
+          {summaryText}
         </p>
 
         <div className="news-card-footer">
-          <span className="news-card-link">Open detail</span>
+          <span className="news-card-link">Detayı görüntüle</span>
         </div>
       </div>
     </button>

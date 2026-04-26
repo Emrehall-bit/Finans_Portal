@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.news.controller;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
+import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.service.NewsService;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/news")
@@ -72,7 +74,27 @@ public class NewsController {
                 .build();
     }
 
+    @GetMapping("/top")
+    public ApiResponse<List<NewsResponseDto>> getTopNews(@RequestParam(defaultValue = "5") int size) {
+        List<NewsResponseDto> response = newsService.getTopNews(size);
 
+        return ApiResponse.<List<NewsResponseDto>>builder()
+                .success(true)
+                .data(response)
+                .message("Top news fetched successfully")
+                .build();
+    }
+
+    @PostMapping("/admin/recalculate-importance")
+    public ApiResponse<NewsImportanceRecalculationResponseDto> recalculateImportanceScores() {
+        NewsImportanceRecalculationResponseDto response = newsService.recalculateImportanceScores();
+
+        return ApiResponse.<NewsImportanceRecalculationResponseDto>builder()
+                .success(true)
+                .data(response)
+                .message("Importance scores recalculated successfully")
+                .build();
+    }
 
     @PostMapping("/sync")
     public ApiResponse<NewsSyncResponseDto> syncNews(

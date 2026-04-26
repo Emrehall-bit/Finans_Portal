@@ -30,11 +30,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Admin endpoints
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/news/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                         // Public endpoints
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/info").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/metrics").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/metrics/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
 
                         // Alert endpoints
@@ -68,6 +74,4 @@ public class SecurityConfig {
         return http.build();
     }
 }
-
-
 

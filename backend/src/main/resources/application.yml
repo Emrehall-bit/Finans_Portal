@@ -1,6 +1,10 @@
 spring:
+  application:
+    name: finance-portal-backend
   profiles:
     default: local
+
+
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/financeportaldb}
@@ -21,7 +25,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    show-sql: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
   security:
@@ -38,6 +42,20 @@ logging:
     com.emrehalli.financeportal.news.provider.finnhub.client: DEBUG
     com.emrehalli.financeportal.news.provider.bloomberght: DEBUG
     com.emrehalli.financeportal.news.provider.aa: DEBUG
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: finance-portal-backend
 
 market:
   providers:
@@ -107,7 +125,7 @@ market:
     evds:
       enabled: true
       api:
-        key: Rb7ROmhyOC
+        key: ${EVDS_API_KEY:}
         url: https://evds3.tcmb.gov.tr/igmevdsms-dis
       history:
         scheduler-lookback-days: 7
@@ -185,7 +203,7 @@ finnhub:
   enabled: true
   api:
     url: https://finnhub.io/api/v1
-    key: d7laeepr01qm7o0b5dt0d7laeepr01qm7o0b5dtg
+    key: ${FINNHUB_API_KEY:}
   sync:
     default-days-back: 3
 

@@ -1,8 +1,12 @@
 package com.emrehalli.financeportal.market.api;
 
+import com.emrehalli.financeportal.common.exception.GlobalExceptionHandler;
+import com.emrehalli.financeportal.config.ObservabilityFilterConfig;
 import com.emrehalli.financeportal.config.security.KeycloakJwtRoleConverter;
 import com.emrehalli.financeportal.config.security.ResourceAccessManager;
 import com.emrehalli.financeportal.config.security.SecurityConfig;
+import com.emrehalli.financeportal.market.exception.MarketDataNotFoundException;
+import com.emrehalli.financeportal.market.exception.MarketExceptionHandler;
 import com.emrehalli.financeportal.market.api.mapper.MarketApiMapper;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
@@ -22,11 +26,19 @@ import java.util.List;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(MarketController.class)
-@Import({SecurityConfig.class, KeycloakJwtRoleConverter.class, MarketApiMapper.class})
+@Import({
+        SecurityConfig.class,
+        KeycloakJwtRoleConverter.class,
+        MarketApiMapper.class,
+        ObservabilityFilterConfig.class,
+        MarketExceptionHandler.class,
+        GlobalExceptionHandler.class
+})
 class MarketControllerTest {
 
     @Autowired
@@ -43,8 +55,10 @@ class MarketControllerTest {
         when(marketQueryService.getAllQuotes()).thenReturn(List.of(tefasQuote()));
 
         mockMvc.perform(get("/api/v1/markets")
+                        .header("X-Request-Id", "market-request-123")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER")))
                 .andExpect(status().isOk())
+                .andExpect(header().string("X-Request-Id", "market-request-123"))
                 .andExpect(jsonPath("$[0].symbol").value("AFT"))
                 .andExpect(jsonPath("$[0].instrumentType").value("FUND"))
                 .andExpect(jsonPath("$[0].source").value("TEFAS"));
@@ -69,10 +83,24 @@ class MarketControllerTest {
         mockMvc.perform(get("/api/v1/markets/THYAO")
                         .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER")))
                 .andExpect(status().isOk())
+                .andExpect(header().exists("X-Request-Id"))
                 .andExpect(jsonPath("$.symbol").value("THYAO"))
                 .andExpect(jsonPath("$.displayName").value("Turk Hava Yollari"))
                 .andExpect(jsonPath("$.instrumentType").value("STOCK"))
                 .andExpect(jsonPath("$.source").value("BIST"));
+    }
+
+    @Test
+    void marketErrorsIncludeRequestId() throws Exception {
+        when(marketQueryService.getQuoteBySymbol("UNKNOWN"))
+                .thenThrow(new MarketDataNotFoundException("Market quote not found for symbol: UNKNOWN"));
+
+        mockMvc.perform(get("/api/v1/markets/UNKNOWN")
+                        .header("X-Request-Id", "market-error-req")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER")))
+                .andExpect(status().isNotFound())
+                .andExpect(header().string("X-Request-Id", "market-error-req"))
+                .andExpect(jsonPath("$.requestId").value("market-error-req"));
     }
 
     private MarketQuote tefasQuote() {

@@ -1,0 +1,69 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: finance-portal-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: finance-portal-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: finance-portal-opensearch
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      DISABLE_SECURITY_PLUGIN: "true"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    restart: unless-stopped
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: finance-portal-opensearch-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    depends_on:
+      - opensearch
+    restart: unless-stopped
+
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    container_name: finance-portal-fluent-bit
+    volumes:
+      - "./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro"
+      - "./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro"
+      - "../logs/finance-portal:/var/log/finance-portal:ro"
+    depends_on:
+      - opensearch
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  opensearch_data:

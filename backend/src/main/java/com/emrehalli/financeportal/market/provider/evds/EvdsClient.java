@@ -54,8 +54,8 @@ public class EvdsClient {
 
         String url = buildSeriesUrl(seriesCodes, startDate, endDate);
 
-        log.info("EVDS client request started: seriesCount={}, startDate={}, endDate={}, url={}",
-                seriesCodes.size(), startDate, endDate, url);
+        log.info("EVDS client request started: seriesCount={}, startDate={}, endDate={}",
+                seriesCodes.size(), startDate, endDate);
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("key", properties.getApi().getKey());
@@ -72,7 +72,6 @@ public class EvdsClient {
 
         log.info("EVDS client response received: status={}, contentType={}",
                 response.getStatusCode(), response.getHeaders().getContentType());
-        log.debug("EVDS client raw response body: {}", rawBody);
 
         if (isBlank(rawBody)) {
             log.warn("EVDS client returned empty response body");

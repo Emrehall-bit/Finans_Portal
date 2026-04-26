@@ -23,7 +23,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class BistMarketDataProvider implements MarketDataProvider {
@@ -71,7 +70,6 @@ public class BistMarketDataProvider implements MarketDataProvider {
     private final SymbolNormalizer symbolNormalizer;
     private final BistRoundRobinState roundRobinState;
     private final Clock clock;
-    private final AtomicInteger startIndex = new AtomicInteger(0);
 
     public BistMarketDataProvider(YahooClient yahooClient,
                                   BistDelayedClient delayedClient,
@@ -120,7 +118,7 @@ public class BistMarketDataProvider implements MarketDataProvider {
 
         int batchSize = request != null && request.hasSymbolFilter()
                 ? symbols.size()
-                : Math.max(properties.getBatchSize(), DEFAULT_BATCH_SIZE);
+                : resolveBatchSize(symbols.size());
         BatchSelection batchSelection = selectBatch(symbols, batchSize, request != null && request.hasSymbolFilter());
         List<String> batchSymbols = batchSelection.symbols();
 
@@ -151,6 +149,9 @@ public class BistMarketDataProvider implements MarketDataProvider {
 
         List<MarketQuote> quotes = mapper.toMarketQuotes(responses);
         List<MarketHistoryRecord> historyRecords = mapper.toHistoryRecords(responses);
+        if (!explicitSymbolRequest(request)) {
+            roundRobinState.markSuccess(symbols, batchSize);
+        }
         log.info(
                 "BIST provider fetch completed: requestedSymbolCount={}, quoteCount={}, historyRecordCount={}",
                 batchSymbols.size(),
@@ -249,17 +250,28 @@ public class BistMarketDataProvider implements MarketDataProvider {
             return new BatchSelection(0, symbols);
         }
 
-        int safeBatchSize = Math.min(Math.max(requestedBatchSize, 1), symbols.size());
-        int currentIndex = startIndex.getAndUpdate(previous ->
-                Math.floorMod(Math.floorMod(previous, symbols.size()) + safeBatchSize, symbols.size())
-        );
-        currentIndex = Math.floorMod(currentIndex, symbols.size());
-        List<String> batchSymbols = new ArrayList<>(safeBatchSize);
-        for (int offset = 0; offset < safeBatchSize; offset++) {
-            batchSymbols.add(symbols.get((currentIndex + offset) % symbols.size()));
+        BistRoundRobinState.BatchSelection stateBatch = roundRobinState.nextBatch(symbols, requestedBatchSize);
+        if (stateBatch.symbols().size() == requestedBatchSize || stateBatch.symbols().isEmpty()) {
+            return new BatchSelection(stateBatch.startIndex(), stateBatch.symbols());
         }
 
-        return new BatchSelection(currentIndex, List.copyOf(batchSymbols));
+        List<String> batchSymbols = new ArrayList<>(stateBatch.symbols());
+        int nextIndex = 0;
+        while (batchSymbols.size() < requestedBatchSize) {
+            batchSymbols.add(symbols.get(nextIndex));
+            nextIndex++;
+        }
+
+        return new BatchSelection(stateBatch.startIndex(), List.copyOf(batchSymbols));
+    }
+
+    private int resolveBatchSize(int symbolCount) {
+        int configuredBatchSize = properties.getBatchSize() > 0 ? properties.getBatchSize() : DEFAULT_BATCH_SIZE;
+        return Math.min(configuredBatchSize, symbolCount);
+    }
+
+    private boolean explicitSymbolRequest(ProviderFetchRequest request) {
+        return request != null && request.hasSymbolFilter();
     }
 
     private boolean matchesSymbol(String configuredSymbol, String requestedSymbol) {

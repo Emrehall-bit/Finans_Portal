@@ -17,6 +17,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,6 +70,68 @@ class NewsServiceTest {
         assertThat(captor.getValue()).singleElement().satisfies(news -> {
             assertThat(news.getTitle()).isEqualTo("Baslik mevcut ve kayit icin yeterli uzunlukta");
             assertThat(news.getPublishedAt()).isNull();
+            assertThat(news.getImportanceScore()).isGreaterThan(0);
         });
+    }
+
+    @Test
+    void recalculatesExistingImportanceScoreWhenExistingRecordHasZeroScore() {
+        News existingNews = News.builder()
+                .id(10L)
+                .externalId("BLOOMBERG_HT-2")
+                .title("TCMB faiz ve dolar haberi")
+                .summary("Merkez bankasi ve piyasa etkisi")
+                .source("Bloomberg HT")
+                .provider("BLOOMBERG_HT")
+                .language("tr")
+                .regionScope("TR")
+                .url("https://www.bloomberght.com/ornek-haber-2")
+                .importanceScore(0)
+                .build();
+
+        when(newsRepository.findByExternalIdIn(Set.of("BLOOMBERG_HT-2"))).thenReturn(Set.of(existingNews));
+        when(newsRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        NewsProvider provider = new NewsProvider() {
+            @Override
+            public String getProviderName() {
+                return "BLOOMBERG_HT";
+            }
+
+            @Override
+            public List<NewsItemDto> fetchLatestNews() {
+                return List.of(NewsItemDto.builder()
+                        .externalId("BLOOMBERG_HT-2")
+                        .title("TCMB faiz ve dolar haberi")
+                        .summary("Merkez bankasi ve piyasa etkisi")
+                        .source("Bloomberg HT")
+                        .provider("BLOOMBERG_HT")
+                        .language("tr")
+                        .regionScope("TR")
+                        .url("https://www.bloomberght.com/ornek-haber-2")
+                        .build());
+            }
+
+            @Override
+            public List<NewsItemDto> fetchCompanyNews(String symbol) {
+                return List.of();
+            }
+        };
+
+        NewsService service = new NewsService(newsRepository, List.of(provider));
+
+        NewsSyncResponseDto result = service.syncProvider(NewsProviderType.BLOOMBERG_HT);
+
+        assertThat(result.getExistingCount()).isEqualTo(1);
+        verify(newsRepository).saveAll(argThat(iterable -> {
+            java.util.Iterator<News> iterator = iterable.iterator();
+            if (!iterator.hasNext()) {
+                return false;
+            }
+            News updated = iterator.next();
+            return !iterator.hasNext()
+                    && updated.getImportanceScore() != null
+                    && updated.getImportanceScore() > 0;
+        }));
     }
 }

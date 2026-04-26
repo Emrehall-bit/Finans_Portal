@@ -1,0 +1,93 @@
+{
+  "timestamp": {
+    "$resolver": "timestamp",
+    "pattern": {
+      "format": "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+      "timeZone": "UTC"
+    }
+  },
+  "level": {
+    "$resolver": "level",
+    "field": "name"
+  },
+  "logger": {
+    "$resolver": "logger",
+    "field": "name"
+  },
+  "thread": {
+    "$resolver": "thread",
+    "field": "name"
+  },
+  "serviceName": "finance-portal-backend",
+  "message": {
+    "$resolver": "message",
+    "stringified": true
+  },
+  "requestId": {
+    "$resolver": "mdc",
+    "key": "requestId"
+  },
+  "traceId": {
+    "$resolver": "mdc",
+    "key": "traceId"
+  },
+  "spanId": {
+    "$resolver": "mdc",
+    "key": "spanId"
+  },
+  "userId": {
+    "$resolver": "mdc",
+    "key": "userId"
+  },
+  "method": {
+    "$resolver": "mdc",
+    "key": "method"
+  },
+  "uri": {
+    "$resolver": "mdc",
+    "key": "uri"
+  },
+  "queryString": {
+    "$resolver": "mdc",
+    "key": "queryString"
+  },
+  "status": {
+    "$resolver": "mdc",
+    "key": "status"
+  },
+  "durationMs": {
+    "$resolver": "mdc",
+    "key": "durationMs"
+  },
+  "path": {
+    "$resolver": "mdc",
+    "key": "path"
+  },
+  "providerName": {
+    "$resolver": "mdc",
+    "key": "providerName"
+  },
+  "source": {
+    "$resolver": "mdc",
+    "key": "source"
+  },
+  "success": {
+    "$resolver": "mdc",
+    "key": "success"
+  },
+  "fetchedItemCount": {
+    "$resolver": "mdc",
+    "key": "fetchedItemCount"
+  },
+  "exceptionClass": {
+    "$resolver": "exception",
+    "field": "className"
+  },
+  "exception": {
+    "$resolver": "exception",
+    "field": "stackTrace",
+    "stackTrace": {
+      "stringified": true
+    }
+  }
+}

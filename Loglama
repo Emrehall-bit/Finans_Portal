@@ -1,0 +1,2 @@
+Prometheus → Spring Boot'un /actuator/prometheus endpoint'ini periyodik olarak çekip metrikleri depolar. "Son 1 saatte kaç istek geldi, ortalama response süresi neydi" gibi sorular sorabilirsin.
+Grafana → Prometheus'taki verileri görsel dashboard'a çevirir. Güzel grafikler, alertler vs.
