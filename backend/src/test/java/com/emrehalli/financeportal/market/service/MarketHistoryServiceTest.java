@@ -152,6 +152,40 @@ class MarketHistoryServiceTest {
         assertThat(history).containsExactly(record);
     }
 
+    @Test
+    void getHistorySupportsCanonicalBistSymbols() {
+        MarketHistoryService service = new MarketHistoryService(
+                marketHistoryRepository,
+                new MarketHistoryPersistenceMapper(),
+                new SymbolNormalizer()
+        );
+        MarketHistoryRecord record = new MarketHistoryRecord(
+                "THYAO",
+                "Turk Hava Yollari",
+                InstrumentType.STOCK,
+                DataSource.BIST,
+                LocalDate.of(2026, 4, 23),
+                new BigDecimal("320.400000"),
+                "TRY"
+        );
+
+        when(marketHistoryRepository.findBySymbolAndSourceAndPriceDateBetweenOrderByPriceDateAsc(
+                "THYAO",
+                DataSource.BIST,
+                LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 4, 24)
+        )).thenReturn(List.of(new MarketHistoryPersistenceMapper().toEntity(record)));
+
+        List<MarketHistoryRecord> history = service.getHistory(
+                "THYAO",
+                DataSource.BIST,
+                LocalDate.of(2026, 4, 1),
+                LocalDate.of(2026, 4, 24)
+        );
+
+        assertThat(history).containsExactly(record);
+    }
+
     private static MarketHistoryRecord record(LocalDate date) {
         return new MarketHistoryRecord(
                 "USDTRY",

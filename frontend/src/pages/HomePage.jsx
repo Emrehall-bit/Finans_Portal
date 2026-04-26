@@ -35,7 +35,7 @@ export default function HomePage() {
         if (!active) {
           return;
         }
-        setError(extractErrorMessage(err, "Ana sayfa verileri yuklenemedi."));
+        setError(extractErrorMessage(err, "Ana sayfa verileri yüklenemedi."));
       } finally {
         if (active) {
           setLoading(false);
@@ -56,11 +56,11 @@ export default function HomePage() {
     <div className="dashboard-stack">
       <PageHeader
         eyebrow="Public Landing"
-        title="Finans Portali"
-        description="Haber akisi ve finansal ozet herkese acik ilk ekranda."
+        title="Finans Portalı"
+        description="Haber akışı ve finansal özet herkese açık ilk ekranda."
       />
 
-      {loading ? <LoadingSpinner label="Ana sayfa yukleniyor..." /> : null}
+      {loading ? <LoadingSpinner label="Ana sayfa yükleniyor..." /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {!loading && !error ? (
@@ -68,16 +68,16 @@ export default function HomePage() {
           <section className="hero-grid">
             <div className="hero-card panel-surface">
               <div className="hero-copy">
-                <p className="eyebrow">Haber Odagi</p>
+                <p className="eyebrow">Haber Odağı</p>
                 <h2>Tek ekranda haberler ve finansal ritim.</h2>
                 <p className="page-description">
-                  Public ziyaretciler haberleri izler, uye kullanicilar dashboard ve portfoy modullerine devam eder.
+                  Açık ziyaretçiler haberleri izler, üyeler dashboard ve portföy modüllerine devam eder.
                 </p>
               </div>
 
               <div className="hero-chart">
                 {quotes.length === 0 ? (
-                  <EmptyState title="Piyasa grafigi yok" description="Canli fiyat modulu su anda veri dondurmuyor." />
+                  <EmptyState title="Piyasa grafiği yok" description="Canlı fiyat modülü şu anda veri döndürmüyor." />
                 ) : (
                   <div className="market-board compact">
                     {quotes.map((item) => (
@@ -102,21 +102,21 @@ export default function HomePage() {
             <div className="news-rail panel-surface">
               <div className="panel-head">
                 <div>
-                  <p className="eyebrow">News Flow</p>
-                  <h3>One Cikan Basliklar</h3>
+                  <p className="eyebrow">Haber Akışı</p>
+                  <h3>Öne Çıkan Başlıklar</h3>
                 </div>
                 <span className="pill">Live</span>
               </div>
 
               {news.length === 0 ? (
-                <EmptyState title="Haber bulunamadi" description="Backend su anda haber dondurmedi." />
+                <EmptyState title="Haber bulunamadı" description="Backend şu anda haber döndürmedi." />
               ) : (
                 <div className="news-rail-list">
                   {news.map((item) => (
                     <article key={item.id} className="news-rail-item">
                       <div className="news-rail-badge">{(item.provider || item.source || "N").slice(0, 1)}</div>
                       <div>
-                        <strong>{item.title || "Basliksiz haber"}</strong>
+                        <strong>{item.title || "Başlıksız haber"}</strong>
                         <p>{item.provider || item.source || "-"}</p>
                         <span>{formatDateTime(item.publishedAt)}</span>
                       </div>
@@ -140,7 +140,7 @@ export default function HomePage() {
                 />
               ))
             ) : featuredNews.length === 0 ? (
-              <EmptyState title="Ozet yok" description="Su anda one cikan haber bulunamadi." />
+              <EmptyState title="Özet yok" description="Şu anda öne çıkan haber bulunamadı." />
             ) : (
               featuredNews.map((item, idx) => (
                 <SummaryCard

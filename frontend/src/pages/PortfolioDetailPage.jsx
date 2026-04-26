@@ -122,8 +122,8 @@ export default function PortfolioDetailPage() {
     if (visibilityChanged) {
       const confirmed = window.confirm(
         settingsForm.visibilityStatus === "PUBLIC"
-          ? "Bu portfoyu PUBLIC yaparsan ileride diger kullanicilar tarafindan gorunebilir hale gelecek. Devam etmek istiyor musun?"
-          : "Bu portfoyu PRIVATE yaparsan sadece sen gorebileceksin. Devam etmek istiyor musun?",
+          ? "Bu portföyü PUBLIC yaparsan ileride diğer kullanıcılar tarafından görünür hâle gelecek. Devam etmek istiyor musun?"
+          : "Bu portföyü PRIVATE yaparsan sadece sen görebileceksin. Devam etmek istiyor musun?",
       );
 
       if (!confirmed) {
@@ -343,7 +343,7 @@ export default function PortfolioDetailPage() {
                     </label>
                   </div>
                   <div className="portfolio-inline-settings-note">
-                    Visibility degisikligi ileride portfoyun gorunurlugunu etkiler. Kaydetmeden once onay istenir.
+                    Visibility değişikliği ileride portföyün görünürlüğünü etkiler. Kaydetmeden önce onay istenir.
                   </div>
                   <div className="actions-row">
                     <button type="submit">Save Settings</button>
@@ -428,12 +428,12 @@ export default function PortfolioDetailPage() {
                             instrumentCode: normalized,
                           }));
                         }}
-                        placeholder="Ornek: AAPL, THYAO (sembolu yazin)"
+                        placeholder="Örnek: AAPL, THYAO (sembolü yazın)"
                       />
                       {isInstrumentMenuOpen ? (
                         <div className="instrument-picker compact">
                           {filteredInstruments.length === 0 ? (
-                            <div className="instrument-picker-empty">Sembolu yazip miktar ve als fiyatini girin.</div>
+                            <div className="instrument-picker-empty">Sembolü yazıp miktar ve alış fiyatını girin.</div>
                           ) : (
                             filteredInstruments.map((instrument, idx) => {
                               const isActive = instrument.symbol === holdingForm.instrumentCode;
@@ -466,7 +466,7 @@ export default function PortfolioDetailPage() {
                   <div className="selected-instrument-card compact">
                     <p className="eyebrow">Selected Instrument</p>
                     <strong>{selectedInstrument ? selectedInstrument.symbol : "No instrument selected"}</strong>
-                    <p>{selectedInstrument ? selectedInstrument.name : "Arama alanina sembol yazarak devam edin."}</p>
+                    <p>{selectedInstrument ? selectedInstrument.name : "Arama alanına sembol yazarak devam edin."}</p>
                     <div className="selected-instrument-meta">
                       <span>{selectedInstrument?.instrumentType || "-"}</span>
                       <span>{selectedInstrument?.source || "-"}</span>

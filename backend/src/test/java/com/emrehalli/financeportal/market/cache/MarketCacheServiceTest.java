@@ -50,12 +50,12 @@ class MarketCacheServiceTest {
     @BeforeEach
     void setUp() {
         lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        lenient().when(ttlPolicy.allQuotesTtl()).thenReturn(Duration.ofMinutes(5));
-        lenient().when(ttlPolicy.symbolQuoteTtl()).thenReturn(Duration.ofMinutes(1));
-        lenient().when(ttlPolicy.ttlFor(DataSource.EVDS)).thenReturn(Duration.ofMinutes(15));
-        lenient().when(ttlPolicy.ttlFor(DataSource.BINANCE)).thenReturn(Duration.ofMinutes(1));
+        lenient().when(ttlPolicy.allQuotesTtl()).thenReturn(Duration.ofMinutes(30));
+        lenient().when(ttlPolicy.symbolQuoteTtl()).thenReturn(Duration.ofHours(1));
+        lenient().when(ttlPolicy.ttlFor(DataSource.EVDS)).thenReturn(Duration.ofHours(6));
+        lenient().when(ttlPolicy.ttlFor(DataSource.BINANCE)).thenReturn(Duration.ofMinutes(2));
         lenient().when(ttlPolicy.ttlFor(DataSource.TEFAS)).thenReturn(Duration.ofDays(1));
-        lenient().when(ttlPolicy.ttlFor(DataSource.BIST)).thenReturn(Duration.ofMinutes(15));
+        lenient().when(ttlPolicy.ttlFor(DataSource.BIST)).thenReturn(Duration.ofDays(1));
         lenient().doAnswer(invocation -> {
             redisStore.put(invocation.getArgument(0), invocation.getArgument(1));
             return null;
@@ -84,8 +84,8 @@ class MarketCacheServiceTest {
                 .usingRecursiveComparison()
                 .ignoringFields("priceTime", "fetchedAt")
                 .isEqualTo(quote);
-        verify(valueOperations).set(eq("market:quotes:source:EVDS"), anyString(), eq(Duration.ofMinutes(15)));
-        verify(valueOperations).set(eq("market:quotes:symbol:USDTRY"), anyString(), eq(Duration.ofMinutes(15)));
+        verify(valueOperations).set(eq("market:quotes:source:EVDS"), anyString(), eq(Duration.ofHours(6)));
+        verify(valueOperations).set(eq("market:quotes:symbol:USDTRY"), anyString(), eq(Duration.ofHours(6)));
     }
 
     @Test
@@ -105,7 +105,7 @@ class MarketCacheServiceTest {
                 .containsExactly(evdsQuote, binanceQuote);
         assertThat(cachedAllQuotes).usingRecursiveFieldByFieldElementComparatorIgnoringFields("priceTime", "fetchedAt")
                 .containsExactly(evdsQuote, binanceQuote);
-        verify(valueOperations).set(eq(MarketCacheKeys.ALL_QUOTES), anyString(), eq(Duration.ofMinutes(5)));
+        verify(valueOperations).set(eq(MarketCacheKeys.ALL_QUOTES), anyString(), eq(Duration.ofMinutes(30)));
     }
 
     @Test
@@ -140,7 +140,7 @@ class MarketCacheServiceTest {
         assertThat(sourceQuotes).extracting(MarketQuote::symbol).containsExactly("THYAO", "ASELS");
         assertThat(marketCacheService.getQuoteBySymbol("THYAO")).isPresent();
         assertThat(marketCacheService.getQuoteBySymbol("ASELS")).isPresent();
-        verify(valueOperations, times(2)).set(eq("market:quotes:source:BIST"), anyString(), eq(Duration.ofMinutes(15)));
+        verify(valueOperations, times(2)).set(eq("market:quotes:source:BIST"), anyString(), eq(Duration.ofDays(1)));
     }
 
     @Test

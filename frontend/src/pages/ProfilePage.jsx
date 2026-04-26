@@ -41,7 +41,7 @@ export default function ProfilePage() {
         await refreshUserProfile();
       } catch (err) {
         if (active) {
-          setError(extractErrorMessage(err, "Profil bilgileri yuklenemedi."));
+          setError(extractErrorMessage(err, "Profil bilgileri yüklenemedi."));
         }
       } finally {
         if (active) {
@@ -63,9 +63,9 @@ export default function ProfilePage() {
       setSubmitting(true);
       setError("");
       await updateUserProfile(form);
-      showToast("success", "Profil bilgileri guncellendi.");
+      showToast("success", "Profil bilgileri güncellendi.");
     } catch (err) {
-      setError(extractErrorMessage(err, "Profil guncellenemedi."));
+      setError(extractErrorMessage(err, "Profil güncellenemedi."));
     } finally {
       setSubmitting(false);
     }
@@ -83,13 +83,13 @@ export default function ProfilePage() {
     <div className="profile-page-stack">
       <PageHeader
         eyebrow="Profile"
-        title="Hesap Ayarlari"
-        description="Kendi profil bilgilerinizi goruntuleyin, adinizi ve portal tercihlerinizi guncelleyin."
+        title="Hesap Ayarları"
+        description="Kendi profil bilgilerinizi görüntüleyin, adınızı ve portal tercihlerinizi güncelleyin."
       />
 
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
       {error ? <ErrorMessage message={error} /> : null}
-      {authLoading || loading ? <LoadingSpinner label="Profil yukleniyor..." /> : null}
+      {authLoading || loading ? <LoadingSpinner label="Profil yükleniyor..." /> : null}
 
       {!authLoading && !loading && user ? (
         <div className="profile-grid">
@@ -105,7 +105,7 @@ export default function ProfilePage() {
                   .join("")}
               </div>
               <div>
-                <h3>{user.fullName || "Adsiz kullanici"}</h3>
+                <h3>{user.fullName || "Adsız kullanıcı"}</h3>
                 <p>{user.email}</p>
               </div>
             </div>
@@ -120,7 +120,7 @@ export default function ProfilePage() {
                 <strong>{userProfile?.authProvider || "-"}</strong>
               </div>
               <div className="profile-stat">
-                <span>Hesap Olusturma</span>
+                <span>Hesap Oluşturma</span>
                 <strong>{formatDateTime(user.createdAt)}</strong>
               </div>
               <div className="profile-stat">
@@ -133,7 +133,7 @@ export default function ProfilePage() {
           <form className="card profile-form-card" onSubmit={handleSubmit}>
             <div className="panel-head">
               <div>
-                <p className="eyebrow">Duzenle</p>
+                <p className="eyebrow">Düzenle</p>
                 <h3>Profil Bilgileri</h3>
               </div>
               <span className="pill">Self-service</span>
@@ -159,8 +159,8 @@ export default function ProfilePage() {
               <label className="profile-field">
                 <span>Tercih Edilen Dil</span>
                 <select name="preferredLanguage" value={form.preferredLanguage} onChange={handleChange}>
-                  <option value="">Seciniz</option>
-                  <option value="tr">Turkce</option>
+                  <option value="">Seçiniz</option>
+                  <option value="tr">Türkçe</option>
                   <option value="en">English</option>
                 </select>
               </label>
@@ -168,7 +168,7 @@ export default function ProfilePage() {
               <label className="profile-field">
                 <span>Tema Tercihi</span>
                 <select name="themePreference" value={form.themePreference} onChange={handleChange}>
-                  <option value="">Sistem Varsayilani</option>
+                  <option value="">Sistem Varsayılanı</option>
                   <option value="light">Light</option>
                   <option value="dark">Dark</option>
                 </select>
@@ -176,12 +176,12 @@ export default function ProfilePage() {
             </div>
 
             <div className="profile-note">
-              E-posta ve rol Keycloak ile senkronize edilir. Buradan yalnizca portal ici gorunum ve profil tercihleri guncellenir.
+              E-posta ve rol Keycloak ile senkronize edilir. Buradan yalnızca portal içi görünüm ve profil tercihleri güncellenir.
             </div>
 
             <div className="actions-row">
               <button type="submit" disabled={submitting}>
-                {submitting ? "Kaydediliyor..." : "Degisiklikleri Kaydet"}
+                {submitting ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
               </button>
             </div>
           </form>

@@ -12,6 +12,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -25,9 +26,18 @@ import java.util.regex.Pattern;
 public class TefasClient {
 
     private static final Logger log = LoggerFactory.getLogger(TefasClient.class);
-    private static final Pattern LAST_PRICE_PATTERN = Pattern.compile("Son Fiyat \\(TL\\)\\s*([\\d.,]+)");
-    private static final Pattern DAILY_RETURN_PATTERN = Pattern.compile("Günlük Getiri \\(%\\)\\s*%?([-\\d.,]+)");
-    private static final Pattern PRICE_DATE_PATTERN = Pattern.compile("Fiyat Tarihi\\s*(\\d{2}[./-]\\d{2}[./-]\\d{4})");
+    private static final Pattern LAST_PRICE_PATTERN = Pattern.compile(
+            "son\\s*fiyat(?:\\s*\\(tl\\))?[^\\d-]{0,20}([-]?[\\d.,]+)",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+    );
+    private static final Pattern DAILY_RETURN_PATTERN = Pattern.compile(
+            "g[üu]nl[üu]k\\s*getiri(?:\\s*\\(%\\))?[^\\d%-]{0,20}%?\\s*([-]?[\\d.,]+)",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+    );
+    private static final Pattern PRICE_DATE_PATTERN = Pattern.compile(
+            "fiyat\\s*tarihi[^\\d]{0,20}(\\d{2}[./-]\\d{2}[./-]\\d{4})",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+    );
 
     private final RestTemplate restTemplate;
     private final TefasProviderProperties properties;
@@ -80,7 +90,7 @@ public class TefasClient {
 
     private Optional<TefasFundResponse> parseFundResponse(String symbol, URI uri, String html) {
         Document document = Jsoup.parse(html, uri.toString());
-        String pageText = document.text();
+        String pageText = normalizeText(document.text());
         String displayName = document.select("h2").stream()
                 .map(element -> element.text().trim())
                 .filter(text -> !text.isBlank())
@@ -89,7 +99,11 @@ public class TefasClient {
 
         String price = extract(pageText, LAST_PRICE_PATTERN);
         if (price == null || price.isBlank()) {
-            log.info("TEFAS client parse skipped: symbol={}, reason=missing-price", symbol);
+            log.info(
+                    "TEFAS client parse skipped: symbol={}, reason=missing-price, pageTextSnippet={}",
+                    symbol,
+                    abbreviate(pageText)
+            );
             return Optional.empty();
         }
 
@@ -118,6 +132,29 @@ public class TefasClient {
     private String extract(String text, Pattern pattern) {
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+
+        String normalized = value
+                .replace('\u00A0', ' ')
+                .replace('\u202F', ' ');
+
+        normalized = Normalizer.normalize(normalized, Normalizer.Form.NFKC);
+        return normalized.replaceAll("\\s+", " ").trim();
+    }
+
+    private String abbreviate(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+
+        return value.length() <= 300
+                ? value
+                : value.substring(0, 300) + "...";
     }
 
     private String normalizeBaseUrl(String baseUrl) {

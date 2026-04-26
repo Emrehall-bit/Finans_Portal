@@ -13,15 +13,17 @@ class MarketCacheTtlPolicyTest {
 
     @Test
     void resolvesSourceSpecificTtls() {
-        assertThat(policy.ttlFor(DataSource.EVDS)).isEqualTo(Duration.ofMinutes(15));
-        assertThat(policy.ttlFor(DataSource.BINANCE)).isEqualTo(Duration.ofMinutes(1));
+        assertThat(policy.ttlFor(DataSource.EVDS)).isEqualTo(Duration.ofHours(6));
+        assertThat(policy.ttlFor(DataSource.BINANCE)).isEqualTo(Duration.ofMinutes(2));
         assertThat(policy.ttlFor(DataSource.TEFAS)).isEqualTo(Duration.ofDays(1));
-        assertThat(policy.ttlFor(DataSource.BIST)).isEqualTo(Duration.ofMinutes(15));
-        assertThat(policy.ttlFor(DataSource.UNKNOWN)).isEqualTo(Duration.ofMinutes(10));
+        assertThat(policy.ttlFor(DataSource.BIST)).isEqualTo(Duration.ofDays(1));
+        assertThat(policy.ttlFor(DataSource.KAP)).isEqualTo(Duration.ofDays(1));
+        assertThat(policy.ttlFor(DataSource.UNKNOWN)).isEqualTo(Duration.ofMinutes(30));
     }
 
     @Test
     void keepsGlobalAllQuotesTtlAsDefault() {
-        assertThat(policy.allQuotesTtl()).isEqualTo(Duration.ofMinutes(10));
+        assertThat(policy.allQuotesTtl()).isEqualTo(Duration.ofMinutes(30));
+        assertThat(policy.symbolQuoteTtl()).isEqualTo(Duration.ofHours(1));
     }
 }

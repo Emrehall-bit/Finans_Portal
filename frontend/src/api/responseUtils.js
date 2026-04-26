@@ -18,6 +18,8 @@ export function normalizeApiResponse(response) {
 
 export function extractErrorMessage(error, fallback = "An unexpected error occurred.") {
   const apiMessage = error?.response?.data?.message;
+  const problemDetail = error?.response?.data?.detail;
+  const problemTitle = error?.response?.data?.title;
   const genericMessage = error?.message;
-  return apiMessage || genericMessage || fallback;
+  return apiMessage || problemDetail || problemTitle || genericMessage || fallback;
 }

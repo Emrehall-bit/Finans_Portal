@@ -14,19 +14,20 @@ public class MarketCacheTtlPolicy {
         }
 
         return switch (source) {
-            case EVDS -> Duration.ofMinutes(15);
-            case BINANCE -> Duration.ofMinutes(1);
+            case EVDS -> Duration.ofHours(6);
+            case BINANCE -> Duration.ofMinutes(2);
             case TEFAS -> Duration.ofDays(1);
-            case BIST -> Duration.ofMinutes(15);
-            default -> Duration.ofMinutes(10);
+            case BIST -> Duration.ofDays(1);
+            case KAP -> Duration.ofDays(1);
+            default -> Duration.ofMinutes(30);
         };
     }
 
     public Duration allQuotesTtl() {
-        return Duration.ofMinutes(10);
+        return Duration.ofMinutes(30);
     }
 
     public Duration symbolQuoteTtl() {
-        return Duration.ofMinutes(10);
+        return Duration.ofHours(1);
     }
 }

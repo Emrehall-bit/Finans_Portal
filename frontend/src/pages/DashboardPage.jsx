@@ -11,9 +11,9 @@ import { extractErrorMessage } from "../api/responseUtils";
 import { formatDateTime } from "../utils/formatters";
 
 const links = [
-  { title: "News", description: "Provider bazli haber takibi", to: "/news" },
-  { title: "Portfolio", description: "Pozisyonlar ve dagilim", to: "/portfolio" },
-  { title: "Watchlist", description: "Izleme listesi", to: "/watchlist" },
+  { title: "News", description: "Sağlayıcı bazlı haber takibi", to: "/news" },
+  { title: "Portfolio", description: "Pozisyonlar ve dağılım", to: "/portfolio" },
+  { title: "Watchlist", description: "İzleme listesi", to: "/watchlist" },
   { title: "Alerts", description: "Fiyat tetikleyicileri", to: "/alerts" },
 ];
 
@@ -42,7 +42,7 @@ export default function DashboardPage() {
         if (!active) {
           return;
         }
-        setError(extractErrorMessage(err, "Dashboard data could not be loaded."));
+        setError(extractErrorMessage(err, "Dashboard verileri yüklenemedi."));
       } finally {
         if (active) {
           setLoading(false);
@@ -64,10 +64,10 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="Private Dashboard"
         title="Kontrol Merkezi"
-        description="Portfoy ve haber akisinin tek bakista okunabildigi korumali alan."
+        description="Portföy ve haber akışının tek bakışta okunabildiği korumalı alan."
       />
 
-      {loading ? <LoadingSpinner label="Loading dashboard..." /> : null}
+      {loading ? <LoadingSpinner label="Dashboard yükleniyor..." /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {!loading && !error ? (
@@ -76,7 +76,7 @@ export default function DashboardPage() {
             {quotes.length === 0 ? (
               <EmptyState
                 title="Piyasa verisi yok"
-                description="Market modulu backend'den su anda veri dondurmuyor."
+                description="Market modülü backend'den şu anda veri döndürmüyor."
               />
             ) : (
               quotes.map((item, index) => (
@@ -97,13 +97,13 @@ export default function DashboardPage() {
               <div className="panel-head">
                 <div>
                   <p className="eyebrow">Flow</p>
-                  <h3>Ozet</h3>
+                  <h3>Özet</h3>
                 </div>
-                <span className="pill">Today</span>
+                <span className="pill">Bugün</span>
               </div>
 
               {quotes.length === 0 ? (
-                <EmptyState title="Grafik verisi yok" description="Piyasa grafigi icin veri kaynagi yapilandirilmamis." />
+                <EmptyState title="Grafik verisi yok" description="Piyasa grafiği için veri kaynağı yapılandırılmamış." />
               ) : (
                 <div className="market-board">
                   {quoteLeaders.map((item) => (
@@ -133,7 +133,7 @@ export default function DashboardPage() {
                   <strong>{positiveCount}</strong>
                 </div>
                 <div>
-                  <span>Canli sembol</span>
+                  <span>Canlı sembol</span>
                   <strong>{quotes.length}</strong>
                 </div>
               </div>
@@ -142,8 +142,8 @@ export default function DashboardPage() {
             <div className="panel-surface dashboard-panel">
               <div className="panel-head">
                 <div>
-                  <p className="eyebrow">Modules</p>
-                  <h3>Hizli Erisim</h3>
+                  <p className="eyebrow">Modüller</p>
+                  <h3>Hızlı Erişim</h3>
                 </div>
               </div>
 
@@ -152,7 +152,7 @@ export default function DashboardPage() {
                   <Link key={item.to} to={item.to} className="quick-link-card">
                     <strong>{item.title}</strong>
                     <p>{item.description}</p>
-                    <span>Open module</span>
+                    <span>Modülü aç</span>
                   </Link>
                 ))}
               </div>
@@ -161,13 +161,13 @@ export default function DashboardPage() {
             <div className="panel-surface dashboard-panel">
               <div className="panel-head">
                 <div>
-                  <p className="eyebrow">Market Tape</p>
-                  <h3>Market Akisi</h3>
+                  <p className="eyebrow">Market Akışı</p>
+                  <h3>Market Akışı</h3>
                 </div>
               </div>
 
               {quotes.length === 0 ? (
-                <EmptyState title="Market akisi bos" description="Backend market verisi geldiginde burada listelenecek." />
+                <EmptyState title="Market akışı boş" description="Backend market verisi geldiğinde burada listelenecek." />
               ) : (
                 <div className="market-list">
                   {quotes.map((item) => (
@@ -192,19 +192,19 @@ export default function DashboardPage() {
               <div className="panel-head">
                 <div>
                   <p className="eyebrow">News Flow</p>
-                  <h3>Guncel Haberler</h3>
+                  <h3>Güncel Haberler</h3>
                 </div>
               </div>
 
               {news.length === 0 ? (
-                <EmptyState title="No news available" description="No news records returned by backend." />
+                <EmptyState title="Haber bulunamadı" description="Backend tarafından haber kaydı döndürülmedi." />
               ) : (
                 <div className="news-rail-list compact">
                   {news.map((item) => (
                     <div key={item.id} className="news-rail-item">
                       <div className="news-rail-badge">{(item.provider || "N").slice(0, 1)}</div>
                       <div>
-                        <strong>{item.title || "Untitled"}</strong>
+                        <strong>{item.title || "Başlıksız"}</strong>
                         <p>{item.provider || item.source || "-"}</p>
                         <span>{formatDateTime(item.publishedAt)}</span>
                       </div>

@@ -78,7 +78,26 @@ class BistMarketDataProviderTest {
         var result = provider.fetch(ProviderFetchRequest.forSource(DataSource.BIST));
 
         verify(delayedClient).fetchQuotes(List.of("THYAO.IS", "ASELS.IS"));
-        assertThat(result.quotes()).singleElement().satisfies(quote -> assertThat(quote.symbol()).isEqualTo("THYAO.IS"));
+        assertThat(result.quotes()).singleElement().satisfies(quote -> assertThat(quote.symbol()).isEqualTo("THYAO"));
+    }
+
+    @Test
+    void usesFallbackDuringYahooCooldownWhenDelayedEnabled() {
+        BistProviderProperties properties = properties();
+        properties.getDelayed().setEnabled(true);
+        BistRoundRobinState state = new BistRoundRobinState();
+        BistMarketDataProvider provider = provider(properties, state);
+        when(yahooClient.fetchQuotes(any()))
+                .thenReturn(YahooClient.FetchResult.rateLimited(429));
+        when(delayedClient.fetchQuotes(any())).thenReturn(List.of(
+                new BistQuoteResponse("THYAO.IS", "THYAO", null, new BigDecimal("320.40"), null, 1777032000L)
+        ));
+
+        provider.fetch(ProviderFetchRequest.forSource(DataSource.BIST));
+        var result = provider.fetch(ProviderFetchRequest.forSource(DataSource.BIST));
+
+        verify(delayedClient).fetchQuotes(List.of("THYAO.IS", "ASELS.IS"));
+        assertThat(result.quotes()).singleElement().satisfies(quote -> assertThat(quote.symbol()).isEqualTo("THYAO"));
     }
 
     @Test

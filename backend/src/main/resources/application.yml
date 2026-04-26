@@ -62,7 +62,7 @@ market:
     bist:
       enabled: true # KRİTİK: Supports metodunun true dönmesi için eklendi
       provider-mode: YAHOO_LOW_FREQUENCY # KRİTİK: fetchYahoo metodunun çalışması için eklendi
-      batch-size: 5
+      batch-size: 10
       request-delay-ms: 1500
       cooldown-minutes-on-rate-limit: 60
       symbols:
@@ -125,7 +125,7 @@ market:
     evds:
       enabled: true
       api:
-        key: ${EVDS_API_KEY:}
+        key: Rb7ROmhyOC
         url: https://evds3.tcmb.gov.tr/igmevdsms-dis
       history:
         scheduler-lookback-days: 7
@@ -153,20 +153,6 @@ market:
           instrumentType: FX
           currency: TRY
 
-        - evdsKey: TP_DK_AUD_A_YTL
-          apiCode: TP.DK.AUD.A.YTL
-          symbol: AUDTRY
-          name: AUD / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_CNY_A_YTL
-          apiCode: TP.DK.CNY.A.YTL
-          symbol: CNYTRY
-          name: CNY / TRY
-          instrumentType: FX
-          currency: TRY
-
         - evdsKey: TP_DK_CHF_A
           apiCode: TP.DK.CHF.A
           symbol: CHFTRY
@@ -180,6 +166,50 @@ market:
           name: JPY / TRY
           instrumentType: FX
           currency: TRY
+
+        - evdsKey: TP_DK_AUD_A
+          apiCode: TP.DK.AUD.A
+          symbol: AUDTRY
+          name: AUD / TRY
+          instrumentType: FX
+          currency: TRY
+
+        - evdsKey: TP_DK_CNY_A_YTL
+          apiCode: TP.DK.CNY.A.YTL
+          symbol: CNYTRY
+          name: CNY / TRY
+          instrumentType: FX
+          currency: TRY
+
+        - evdsKey: TP_DK_NOK_A
+          apiCode: TP.DK.NOK.A
+          symbol: NOKTRY
+          name: NOK / TRY
+          instrumentType: FX
+          currency: TRY
+
+        - evdsKey: TP_DK_SEK_A
+          apiCode: TP.DK.SEK.A
+          symbol: SEKTRY
+          name: SEK / TRY
+          instrumentType: FX
+          currency: TRY
+
+        - evdsKey: TP_DK_DKK_A
+          apiCode: TP.DK.DKK.A
+          symbol: DKKTRY
+          name: DKK / TRY
+          instrumentType: FX
+          currency: TRY
+
+        - evdsKey: TP_DK_SAR_A
+          apiCode: TP.DK.SAR.A
+          symbol: SARTRY
+          name: SAR / TRY
+          instrumentType: FX
+          currency: TRY
+
+
 
   refresh:
     initial-delay-ms: 0

@@ -42,6 +42,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/actuator/metrics/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/technical-analysis/**").permitAll()
 
                         // Alert endpoints
                         .requestMatchers(HttpMethod.POST, "/api/v1/alerts/{userId}").access(resourceAccessManager::canAccessUserId)
@@ -74,4 +76,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-

@@ -65,6 +65,15 @@ class MarketControllerTest {
     }
 
     @Test
+    void getAllQuotesAllowsGuestAccess() throws Exception {
+        when(marketQueryService.getAllQuotes()).thenReturn(List.of(tefasQuote()));
+
+        mockMvc.perform(get("/api/v1/markets"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].symbol").value("AFT"));
+    }
+
+    @Test
     void getBySymbolReturnsTefasFund() throws Exception {
         when(marketQueryService.getQuoteBySymbol("AFT")).thenReturn(tefasQuote());
 
@@ -88,6 +97,15 @@ class MarketControllerTest {
                 .andExpect(jsonPath("$.displayName").value("Turk Hava Yollari"))
                 .andExpect(jsonPath("$.instrumentType").value("STOCK"))
                 .andExpect(jsonPath("$.source").value("BIST"));
+    }
+
+    @Test
+    void getBySymbolAllowsGuestAccess() throws Exception {
+        when(marketQueryService.getQuoteBySymbol("THYAO")).thenReturn(bistQuote());
+
+        mockMvc.perform(get("/api/v1/markets/THYAO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.symbol").value("THYAO"));
     }
 
     @Test

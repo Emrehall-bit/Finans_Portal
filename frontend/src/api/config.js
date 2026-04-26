@@ -2,6 +2,7 @@ export const API_CONFIG = {
   BASE_URL: "http://localhost:8080",
   ENDPOINTS: {
     markets: "/api/v1/markets",
+    technicalAnalysis: "/api/v1/technical-analysis",
     news: "/api/v1/news",
     portfolios: "/api/v1/portfolios",
     portfolioHoldings: "/api/v1/portfolio-holdings",

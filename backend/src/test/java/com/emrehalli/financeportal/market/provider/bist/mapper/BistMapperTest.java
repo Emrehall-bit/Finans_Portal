@@ -31,7 +31,7 @@ class BistMapperTest {
         var historyRecords = mapper.toHistoryRecords(List.of(response));
 
         assertThat(quotes).singleElement().satisfies(quote -> {
-            assertThat(quote.symbol()).isEqualTo("THYAO.IS");
+            assertThat(quote.symbol()).isEqualTo("THYAO");
             assertThat(quote.displayName()).isEqualTo("Turk Hava Yollari");
             assertThat(quote.instrumentType()).isEqualTo(InstrumentType.STOCK);
             assertThat(quote.source()).isEqualTo(DataSource.BIST);
@@ -41,7 +41,7 @@ class BistMapperTest {
             assertThat(quote.priceTime()).isEqualTo(Instant.ofEpochSecond(1777033800L));
         });
         assertThat(historyRecords).singleElement().satisfies(record -> {
-            assertThat(record.symbol()).isEqualTo("THYAO.IS");
+            assertThat(record.symbol()).isEqualTo("THYAO");
             assertThat(record.instrumentType()).isEqualTo(InstrumentType.STOCK);
             assertThat(record.source()).isEqualTo(DataSource.BIST);
             assertThat(record.priceDate()).isEqualTo(LocalDate.of(2026, 4, 24));
@@ -56,7 +56,7 @@ class BistMapperTest {
         ));
 
         assertThat(quotes).singleElement().satisfies(quote -> {
-            assertThat(quote.symbol()).isEqualTo("ASELS.IS");
+            assertThat(quote.symbol()).isEqualTo("ASELS");
             assertThat(quote.displayName()).isEqualTo("Aselsan");
             assertThat(quote.price()).hasToString("145.20");
         });

@@ -63,6 +63,23 @@ class MarketHistoryControllerTest {
     }
 
     @Test
+    void getHistoryAllowsGuestAccess() throws Exception {
+        when(marketHistoryService.getHistory(
+                "USDTRY",
+                DataSource.EVDS,
+                LocalDate.of(2025, 4, 24),
+                LocalDate.of(2026, 4, 24)
+        )).thenReturn(List.of(historyRecord()));
+
+        mockMvc.perform(get("/api/v1/markets/USDTRY/history")
+                        .param("source", "EVDS")
+                        .param("startDate", "2025-04-24")
+                        .param("endDate", "2026-04-24"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].symbol").value("USDTRY"));
+    }
+
+    @Test
     void getHistoryKeepsExistingBehaviorWhenSourceIsMissing() throws Exception {
         when(marketHistoryService.getHistory(
                 "USDTRY",

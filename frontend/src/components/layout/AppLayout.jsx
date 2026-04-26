@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { getMarketQuotes } from "../../api/marketApi";
+import { formatNumber } from "../../utils/formatters";
 
 const navGroups = [
   {
-    label: "Overview",
+    label: "Genel Bakis",
     items: [
       { to: "/", label: "Ana Sayfa", badge: "Live" },
       { to: "/markets", label: "Piyasa Verileri", badge: "Feed" },
@@ -13,7 +15,7 @@ const navGroups = [
     ],
   },
   {
-    label: "Portfolio",
+    label: "Portfoy",
     items: [
       { to: "/profile", label: "Profilim", requiresAuth: true },
       { to: "/portfolio", label: "Portfoy", requiresAuth: true },
@@ -21,6 +23,21 @@ const navGroups = [
       { to: "/alerts", label: "Alerts", requiresAuth: true },
     ],
   },
+];
+
+const PRIORITY_SYMBOLS = [
+  "XU100",
+  "BIST100",
+  "BTCUSDT",
+  "BTCTRY",
+  "BTC",
+  "USDTRY",
+  "EURTRY",
+  "XAUTRY",
+  "GRAMALTIN",
+  "ETHUSDT",
+  "ETHTRY",
+  "ETH",
 ];
 
 function getInitials(user) {
@@ -36,8 +53,61 @@ function getInitials(user) {
 export default function AppLayout() {
   const { isAuthenticated, login, logout, user } = useAuth();
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
-  const displayName = user?.fullName || user?.email || "Guest";
-  const profileLabel = isAuthenticated ? "Connected account" : "Public access";
+  const [tickerQuotes, setTickerQuotes] = useState([]);
+  const displayName = user?.fullName || user?.email || "Misafir";
+  const profileLabel = isAuthenticated ? "Bagli hesap" : "Acik erisim";
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadTicker() {
+      try {
+        const data = await getMarketQuotes();
+        if (!active) {
+          return;
+        }
+        setTickerQuotes(data ?? []);
+      } catch {
+        if (active) {
+          setTickerQuotes([]);
+        }
+      }
+    }
+
+    loadTicker();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const tapeItems = useMemo(() => {
+    if (!tickerQuotes.length) {
+      return [];
+    }
+
+    const priorityMatches = PRIORITY_SYMBOLS.map((symbol) =>
+      tickerQuotes.find((item) => item.symbol?.toUpperCase() === symbol),
+    ).filter(Boolean);
+
+    const fallback = [...tickerQuotes]
+      .sort((left, right) => Math.abs(Number(right.changeRate) || 0) - Math.abs(Number(left.changeRate) || 0))
+      .slice(0, 8);
+
+    const merged = [...priorityMatches, ...fallback];
+    const unique = [];
+    const seen = new Set();
+
+    merged.forEach((item) => {
+      if (!item?.symbol || seen.has(item.symbol)) {
+        return;
+      }
+      seen.add(item.symbol);
+      unique.push(item);
+    });
+
+    return unique.slice(0, 10);
+  }, [tickerQuotes]);
 
   function handleProtectedNavigation(event, item) {
     if (!item.requiresAuth || isAuthenticated) {
@@ -55,12 +125,28 @@ export default function AppLayout() {
 
   return (
     <>
+      {tapeItems.length > 0 ? (
+        <div className="market-tape-shell" aria-label="Canli piyasa bandi">
+          <div className="market-tape-track">
+            {[...tapeItems, ...tapeItems].map((item, index) => (
+              <div key={`${item.symbol}-${index}`} className="market-tape-item">
+                <span className="market-tape-symbol">{item.symbol}</span>
+                <strong>{formatNumber(item.price)}</strong>
+                <span className={Number(item.changeRate) >= 0 ? "market-up" : "market-down"}>
+                  {formatTapeChange(item.changeRate)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="app-shell">
         <aside className="app-sidebar">
           <div className="brand-block">
             <div className="brand-mark">F</div>
             <div>
-              <p className="eyebrow">Finance Suite</p>
+              <p className="eyebrow">Market Terminal</p>
               <h2>Finans Portal</h2>
             </div>
           </div>
@@ -74,9 +160,9 @@ export default function AppLayout() {
           </div>
 
           <div className="sidebar-action-card">
-            <p>{isAuthenticated ? "Hesabiniz senkronize durumda." : "Public alanlari hemen kullanabilirsiniz."}</p>
+            <p>{isAuthenticated ? "Verileriniz ve kisisel listeleriniz eszamanli." : "Acik modda market ve haber ekranlari hazir."}</p>
             <button type="button" className="ghost-button light" onClick={isAuthenticated ? logout : handleLoginClick}>
-              {isAuthenticated ? "Logout" : "Giris Yap"}
+              {isAuthenticated ? "Cikis Yap" : "Giris Yap"}
             </button>
           </div>
 
@@ -103,7 +189,7 @@ export default function AppLayout() {
 
           <div className="sidebar-footnote">
             <span className="live-dot" />
-            <p>Piyasa ve haber modulleri tek panelde birlesiyor.</p>
+            <p>Piyasa, haber ve teknik analiz ayni shell icinde.</p>
           </div>
         </aside>
 
@@ -115,13 +201,17 @@ export default function AppLayout() {
             </div>
 
             <div className="topbar-actions">
+              <div className="topbar-status-pill">
+                <span className="live-dot" />
+                <strong>Canli feed</strong>
+              </div>
               <button type="button" className="icon-button" aria-label="Notifications">
                 1
               </button>
               <div className="topbar-user">
                 <div className="topbar-user-copy">
                   <strong>{displayName}</strong>
-                  <span>{isAuthenticated ? "Analyst mode" : "Guest mode"}</span>
+                  <span>{isAuthenticated ? "Analist modu" : "Misafir modu"}</span>
                 </div>
                 <div className="profile-avatar small">{getInitials(user)}</div>
               </div>
@@ -146,7 +236,7 @@ export default function AppLayout() {
             <p className="eyebrow">Yetki Gerekiyor</p>
             <h3 id="auth-required-title">Goruntuleyebilmek icin giris yapmaniz gerekmektedir.</h3>
             <p className="auth-modal-copy">
-              Bu bolum kullaniciya ozel veriler icerir. Devam etmek icin once hesabinizla giris yapin.
+              Bu bolum kullaniciya ozel veriler icerir. Devam etmek icin once hesabiniza giris yapin.
             </p>
             <div className="actions-row">
               <button type="button" className="secondary-button" onClick={() => setAuthPromptOpen(false)}>
@@ -161,4 +251,17 @@ export default function AppLayout() {
       ) : null}
     </>
   );
+}
+
+function formatTapeChange(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) {
+    return String(value);
+  }
+
+  return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
 }

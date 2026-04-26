@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,6 +52,7 @@ class TefasClientTest {
             assertThat(response.displayName()).isEqualTo("AK PORTFOY ALTIN FONU");
             assertThat(response.price()).isEqualTo("12,345678");
             assertThat(response.changeRate()).isEqualTo("1,2345");
+            assertThat(response.priceDate()).isEqualTo(LocalDate.of(2026, 4, 24));
         });
     }
 
@@ -67,8 +69,9 @@ class TefasClientTest {
                 <html>
                 <body>
                 <h2>AK PORTFOY ALTIN FONU</h2>
-                <div>Son Fiyat (TL) 12,345678</div>
-                <div>Günlük Getiri (%) %1,2345</div>
+                <div>Son Fiyat (TL): 12,345678</div>
+                <div>Günlük Getiri (%): %1,2345</div>
+                <div>Fiyat Tarihi 24.04.2026</div>
                 </body>
                 </html>
                 """;

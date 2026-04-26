@@ -135,7 +135,7 @@ public class BistMarketDataProvider implements MarketDataProvider {
 
         if (isYahooLowFrequencyMode() && roundRobinState.isCoolingDown(clock)) {
             log.info("BIST Yahoo cooldown active: symbols={}, cooldownMinutes={}", batchSymbols, properties.getCooldownMinutesOnRateLimit());
-            return new ProviderFetchResult(List.of(), List.of());
+            return mapFallbackResult(batchSymbols);
         }
 
         List<BistQuoteResponse> responses = fetchYahoo(batchSymbols);
@@ -215,6 +215,18 @@ public class BistMarketDataProvider implements MarketDataProvider {
 
         log.info("BIST fallback used: fallbackSource={}", properties.getFallbackSource());
         return delayedClient.fetchQuotes(batchSymbols);
+    }
+
+    private ProviderFetchResult mapFallbackResult(List<String> batchSymbols) {
+        List<BistQuoteResponse> fallbackResponses = fetchFallback(batchSymbols);
+        if (fallbackResponses.isEmpty()) {
+            return new ProviderFetchResult(List.of(), List.of());
+        }
+
+        return new ProviderFetchResult(
+                mapper.toMarketQuotes(fallbackResponses),
+                mapper.toHistoryRecords(fallbackResponses)
+        );
     }
 
     private List<String> resolveSymbols(ProviderFetchRequest request) {
