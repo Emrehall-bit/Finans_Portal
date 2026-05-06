@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -5,34 +6,36 @@ import { formatNumber } from "../../utils/formatters";
 import { formatSignalLabel, formatTrendLabel } from "./analysisUtils";
 
 export default function AnalysisInsightPanel({ analysis, loading, error }) {
+  const { t } = useTranslation();
+
   return (
     <aside className="panel-surface analysis-lab-panel">
       <div className="panel-head">
         <div>
-          <p className="eyebrow">Indikatorler</p>
-          <h3>Trend ve sinyaller</h3>
+          <p className="eyebrow">{t("analysis.insight.eyebrow")}</p>
+          <h3>{t("analysis.insight.title")}</h3>
         </div>
       </div>
 
-      {loading ? <LoadingSpinner label="Analiz ozetleri yukleniyor..." /> : null}
+      {loading ? <LoadingSpinner label={t("analysis.insight.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
       {!loading && !error && !analysis ? (
-        <EmptyState title="Teknik analiz verisi bulunamadi" description="Secili enstruman icin analiz sonucu gelmedi." />
+        <EmptyState title={t("analysis.insight.emptyTitle")} description={t("analysis.insight.emptyDescription")} />
       ) : null}
 
       {!loading && !error && analysis ? (
         <>
           <div className="instrument-overview-summary">
             <div className="instrument-overview-metric">
-              <span>Trend</span>
+              <span>{t("instrumentDetail.trend")}</span>
               <strong>{formatTrendLabel(analysis.trendDirection)}</strong>
             </div>
             <div className="instrument-overview-metric">
-              <span>Son fiyat</span>
+              <span>{t("instrumentDetail.latestPrice")}</span>
               <strong>{formatNumber(analysis.latestPrice)}</strong>
             </div>
             <div className="instrument-overview-metric">
-              <span>Veri noktasi</span>
+              <span>{t("instrumentDetail.dataPoints")}</span>
               <strong>{analysis.points?.length ?? 0}</strong>
             </div>
           </div>
@@ -45,7 +48,7 @@ export default function AnalysisInsightPanel({ analysis, loading, error }) {
                 </span>
               ))
             ) : (
-              <span className="signal-pill neutral">Belirgin sinyal yok</span>
+              <span className="signal-pill neutral">{t("instrumentDetail.noSignal")}</span>
             )}
           </div>
 
@@ -58,7 +61,7 @@ export default function AnalysisInsightPanel({ analysis, loading, error }) {
                 </div>
               ))
             ) : (
-              <EmptyState title="Indikator bulunamadi" description="Secili aralik icin indikator degerleri olusmadi." />
+              <EmptyState title={t("instrumentDetail.indicatorsEmptyTitle")} description={t("instrumentDetail.indicatorsEmptyDescription")} />
             )}
           </div>
         </>

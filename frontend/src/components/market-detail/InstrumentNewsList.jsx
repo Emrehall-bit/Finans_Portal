@@ -1,23 +1,26 @@
+import { useTranslation } from "react-i18next";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { formatDateTime } from "../../utils/formatters";
 
 export default function InstrumentNewsList({ loading, error, items }) {
+  const { t } = useTranslation();
+
   return (
     <section className="panel-surface instrument-news-panel">
       <div className="panel-head">
         <div>
-          <p className="eyebrow">Haberler</p>
-          <h3>Secili enstrumanla ilgili akis</h3>
+          <p className="eyebrow">{t("instrumentDetail.newsEyebrow")}</p>
+          <h3>{t("instrumentDetail.newsTitle")}</h3>
         </div>
       </div>
 
-      {loading ? <LoadingSpinner label="Haberler yukleniyor..." /> : null}
+      {loading ? <LoadingSpinner label={t("instrumentDetail.newsLoading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {!loading && !error && items.length === 0 ? (
-        <EmptyState title="Haber bulunamadi" description="Bu enstruman icin eslesen haber kaydi gelmedi." />
+        <EmptyState title={t("instrumentDetail.newsEmptyTitle")} description={t("instrumentDetail.newsEmptyDescription")} />
       ) : null}
 
       {!loading && !error && items.length > 0 ? (
@@ -25,14 +28,14 @@ export default function InstrumentNewsList({ loading, error, items }) {
           {items.map((item) => (
             <article key={item.id ?? item.externalId ?? item.url} className="instrument-news-card">
               <div className="instrument-news-meta">
-                <span>{item.provider || item.source || "Kaynak yok"}</span>
+                <span>{item.provider || item.source || t("instrumentDetail.noSource")}</span>
                 <span>{formatDateTime(item.publishedAt)}</span>
               </div>
-              <h4>{item.title || "Baslik yok"}</h4>
-              <p>{item.summary || "Ozet bilgisi gelmedi."}</p>
+              <h4>{item.title || t("instrumentDetail.noTitle")}</h4>
+              <p>{item.summary || t("instrumentDetail.noSummary")}</p>
               {item.url ? (
                 <a href={item.url} target="_blank" rel="noreferrer">
-                  Habere git
+                  {t("instrumentDetail.openNews")}
                 </a>
               ) : null}
             </article>

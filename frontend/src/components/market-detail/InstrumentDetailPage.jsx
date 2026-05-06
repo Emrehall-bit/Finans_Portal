@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { getMarketHistory, getMarketBySymbol, getTechnicalAnalysis } from "../../api/marketApi";
 import { getNews } from "../../api/newsApi";
@@ -26,6 +27,7 @@ import {
 } from "./marketDetailUtils";
 
 export default function InstrumentDetailPage() {
+  const { t } = useTranslation();
   const { symbol = "" } = useParams();
   const normalizedSymbol = decodeURIComponent(symbol);
   const { userId, login } = useAuth();
@@ -58,7 +60,7 @@ export default function InstrumentDetailPage() {
   useEffect(() => {
     if (!normalizedSymbol) {
       setQuote(null);
-      setQuoteError("Gecerli bir enstruman secilmedi.");
+      setQuoteError(t("instrumentDetail.invalidInstrument"));
       setQuoteLoading(false);
       return;
     }
@@ -76,7 +78,7 @@ export default function InstrumentDetailPage() {
       } catch (err) {
         if (active) {
           setQuote(null);
-          setQuoteError(extractErrorMessage(err, "Enstruman bilgisi yuklenemedi."));
+          setQuoteError(extractErrorMessage(err, t("instrumentDetail.quoteError")));
         }
       } finally {
         if (active) {
@@ -127,7 +129,7 @@ export default function InstrumentDetailPage() {
   useEffect(() => {
     if (!normalizedSymbol || !dateRange.from || !dateRange.to || isDateRangeInvalid) {
       setAnalysis(null);
-      setAnalysisError(isDateRangeInvalid ? "Baslangic tarihi bitis tarihinden sonra olamaz." : "");
+      setAnalysisError(isDateRangeInvalid ? t("instrumentDetail.invalidDateRange") : "");
       setAnalysisLoading(false);
       return;
     }
@@ -150,7 +152,7 @@ export default function InstrumentDetailPage() {
       } catch (err) {
         if (active) {
           setAnalysis(null);
-          setAnalysisError(extractErrorMessage(err, "Teknik analiz yuklenemedi."));
+          setAnalysisError(extractErrorMessage(err, t("instrumentDetail.analysisError")));
         }
       } finally {
         if (active) {
@@ -183,7 +185,7 @@ export default function InstrumentDetailPage() {
       } catch (err) {
         if (active) {
           setNewsItems([]);
-          setNewsError(extractErrorMessage(err, "Haberler yuklenemedi."));
+          setNewsError(extractErrorMessage(err, t("instrumentDetail.newsError")));
         }
       } finally {
         if (active) {
@@ -260,15 +262,15 @@ export default function InstrumentDetailPage() {
       setFavoriteBusy(true);
       if (isFavorite && favoriteItemId) {
         await removeWatchlistItem(favoriteItemId);
-        showToast("success", "Favorilerden cikarildi.");
+        showToast("success", t("instrumentDetail.favoriteRemoved"));
       } else {
         await addWatchlistItem(userId, { instrumentCode: normalizedSymbol });
-        showToast("success", "Favorilere eklendi.");
+        showToast("success", t("instrumentDetail.favoriteAdded"));
       }
 
       setWatchlistItems(await getUserWatchlist(userId));
     } catch (err) {
-      setQuoteError(extractErrorMessage(err, "Favori islemi tamamlanamadi."));
+      setQuoteError(extractErrorMessage(err, t("instrumentDetail.favoriteError")));
     } finally {
       setFavoriteBusy(false);
     }
@@ -336,12 +338,12 @@ export default function InstrumentDetailPage() {
 
       <InstrumentTabs activeTab={activeTab} onChange={setActiveTab} />
 
-      {quoteLoading ? <LoadingSpinner label="Enstruman verisi yukleniyor..." /> : null}
+      {quoteLoading ? <LoadingSpinner label={t("instrumentDetail.loading")} /> : null}
       {quoteError ? <ErrorMessage message={quoteError} /> : null}
 
       {!quoteLoading && !quoteError && quoteUnavailable ? (
         <section className="panel-surface">
-          <EmptyState title="Veri bulunamadi" description="Bu sembol icin guncel fiyat verisi donmedi." />
+          <EmptyState title={t("instrumentDetail.emptyTitle")} description={t("instrumentDetail.emptyDescription")} />
         </section>
       ) : null}
 
@@ -353,30 +355,30 @@ export default function InstrumentDetailPage() {
                 <section className="panel-surface instrument-overview-card">
                   <div className="panel-head">
                     <div>
-                      <p className="eyebrow">Genel Bakis</p>
-                      <h3>Trend ve sinyal ozeti</h3>
+                      <p className="eyebrow">{t("instrumentDetail.overviewEyebrow")}</p>
+                      <h3>{t("instrumentDetail.overviewTitle")}</h3>
                     </div>
                   </div>
 
-                  {analysisLoading ? <LoadingSpinner label="Analiz ozetleri yukleniyor..." /> : null}
+                  {analysisLoading ? <LoadingSpinner label={t("instrumentDetail.analysisLoading")} /> : null}
                   {!analysisLoading && analysisError ? <ErrorMessage message={analysisError} /> : null}
                   {!analysisLoading && !analysisError && !analysis ? (
-                    <EmptyState title="Analiz verisi bulunamadi" description="Bu enstruman icin teknik ozet olusmadi." />
+                    <EmptyState title={t("instrumentDetail.analysisEmptyTitle")} description={t("instrumentDetail.analysisEmptyDescription")} />
                   ) : null}
 
                   {!analysisLoading && !analysisError && analysis ? (
                     <>
                       <div className="instrument-overview-summary">
                         <div className="instrument-overview-metric">
-                          <span>Trend</span>
+                          <span>{t("instrumentDetail.trend")}</span>
                           <strong>{formatTrendLabel(analysis.trendDirection)}</strong>
                         </div>
                         <div className="instrument-overview-metric">
-                          <span>Son fiyat</span>
+                          <span>{t("instrumentDetail.latestPrice")}</span>
                           <strong>{latestPrice ?? "-"}</strong>
                         </div>
                         <div className="instrument-overview-metric">
-                          <span>Veri noktasi</span>
+                          <span>{t("instrumentDetail.dataPoints")}</span>
                           <strong>{chartData.length}</strong>
                         </div>
                       </div>
@@ -389,7 +391,7 @@ export default function InstrumentDetailPage() {
                             </span>
                           ))
                         ) : (
-                          <span className="signal-pill neutral">Belirgin sinyal yok</span>
+                          <span className="signal-pill neutral">{t("instrumentDetail.noSignal")}</span>
                         )}
                       </div>
 
@@ -403,8 +405,8 @@ export default function InstrumentDetailPage() {
                           ))
                         ) : (
                           <EmptyState
-                            title="Indikator bulunamadi"
-                            description="Secili aralik icin son indikator degerleri olusmadi."
+                            title={t("instrumentDetail.indicatorsEmptyTitle")}
+                            description={t("instrumentDetail.indicatorsEmptyDescription")}
                           />
                         )}
                       </div>
@@ -448,14 +450,14 @@ export default function InstrumentDetailPage() {
               <section className="panel-surface instrument-financials-panel">
                 <div className="panel-head">
                   <div>
-                    <p className="eyebrow">Finansallar</p>
-                    <h3>Sirket finansallari</h3>
+                    <p className="eyebrow">{t("instrumentDetail.financialsEyebrow")}</p>
+                    <h3>{t("instrumentDetail.financialsTitle")}</h3>
                   </div>
                 </div>
                 {/* TODO: replace this fallback with a backend financial statements endpoint when available. */}
                 <EmptyState
-                  title="Bu enstruman icin finansal veri bulunmuyor"
-                  description="Backend tarafinda finansal tablo endpointi tanimlandiginda bu alan doldurulacak."
+                  title={t("instrumentDetail.financialsEmptyTitle")}
+                  description={t("instrumentDetail.financialsEmptyDescription")}
                 />
               </section>
             ) : null}
@@ -468,17 +470,17 @@ export default function InstrumentDetailPage() {
               <section className="panel-surface instrument-context-card">
                 <div className="panel-head">
                   <div>
-                    <p className="eyebrow">Baglam</p>
-                    <h3>Gecmis veri ozeti</h3>
+                    <p className="eyebrow">{t("instrumentDetail.contextEyebrow")}</p>
+                    <h3>{t("instrumentDetail.contextTitle")}</h3>
                   </div>
                 </div>
                 <div className="instrument-stats-list">
                   <div className="instrument-stats-row">
-                    <span>Gecmis veri noktasi</span>
+                    <span>{t("instrumentDetail.historyPoints")}</span>
                     <strong>{annualHistory.length}</strong>
                   </div>
                   <div className="instrument-stats-row">
-                    <span>Analiz araligi</span>
+                    <span>{t("instrumentDetail.analysisRange")}</span>
                     <strong>
                       {dateRange.from} / {dateRange.to}
                     </strong>
@@ -496,7 +498,7 @@ export default function InstrumentDetailPage() {
         symbol={normalizedSymbol}
         currentPrice={latestPrice}
         userId={userId}
-        onSuccess={() => handleActionSuccess("Enstruman portfoye eklendi.")}
+        onSuccess={() => handleActionSuccess(t("instrumentDetail.addedToPortfolio"))}
       />
 
       <CreateAlertModal
@@ -505,7 +507,7 @@ export default function InstrumentDetailPage() {
         symbol={normalizedSymbol}
         currentPrice={latestPrice}
         userId={userId}
-        onSuccess={() => handleActionSuccess("Alarm olusturuldu.")}
+        onSuccess={() => handleActionSuccess(t("instrumentDetail.alertCreated"))}
       />
     </div>
   );

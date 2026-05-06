@@ -1,23 +1,22 @@
-const TABS = [
-  { key: "overview", label: "Genel Bakis" },
-  { key: "chart", label: "Grafik" },
-  { key: "news", label: "Haberler" },
-  { key: "financials", label: "Finansallar" },
-];
+import { useTranslation } from "react-i18next";
+
+const TABS = ["overview", "chart", "news", "financials"];
 
 export default function InstrumentTabs({ activeTab, onChange }) {
+  const { t } = useTranslation();
+
   return (
-    <div className="instrument-detail-tabs" role="tablist" aria-label="Enstruman detay sekmeleri">
+    <div className="instrument-detail-tabs" role="tablist" aria-label={t("instrumentDetail.tabs.ariaLabel")}>
       {TABS.map((tab) => (
         <button
-          key={tab.key}
+          key={tab}
           type="button"
           role="tab"
-          className={`market-detail-tab ${activeTab === tab.key ? "active" : ""}`}
-          aria-selected={activeTab === tab.key}
-          onClick={() => onChange(tab.key)}
+          className={`market-detail-tab ${activeTab === tab ? "active" : ""}`}
+          aria-selected={activeTab === tab}
+          onClick={() => onChange(tab)}
         >
-          {tab.label}
+          {t(`instrumentDetail.tabs.${tab}`)}
         </button>
       ))}
     </div>

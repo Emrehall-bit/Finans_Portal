@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../utils/formatters";
 import { formatMarketChange } from "./marketDetailUtils";
 
@@ -16,6 +17,7 @@ export default function InstrumentHeader({
   onOpenAlert,
   onOpenPortfolio,
 }) {
+  const { t } = useTranslation();
   const changeNumeric = Number(changeRate);
   const isPositive = Number.isFinite(changeNumeric) ? changeNumeric >= 0 : false;
 
@@ -23,13 +25,13 @@ export default function InstrumentHeader({
     <section className="panel-surface instrument-detail-hero">
       <div className="instrument-detail-hero-main">
         <Link to="/markets" className="secondary-button market-detail-back">
-          Piyasa ekranina don
+          {t("instrumentDetail.back")}
         </Link>
         <div className="instrument-detail-heading">
           <div>
-            <p className="eyebrow">Enstruman Detayi</p>
+            <p className="eyebrow">{t("instrumentDetail.eyebrow")}</p>
             <h1>{symbol || "-"}</h1>
-            <p className="instrument-detail-subtitle">{displayName || "Piyasa verisi yukleniyor"}</p>
+            <p className="instrument-detail-subtitle">{displayName || t("instrumentDetail.loadingSubtitle")}</p>
           </div>
           <div className="instrument-detail-price-block">
             <strong>{formatNumber(price)}</strong>
@@ -43,27 +45,27 @@ export default function InstrumentHeader({
       <div className="instrument-detail-hero-side">
         <div className="instrument-detail-action-row">
           <button type="button" className="secondary-button" onClick={onFavoriteToggle} disabled={favoriteBusy}>
-            {favoriteBusy ? "Isleniyor..." : isFavorite ? "Favoriden cikar" : "Favoriye ekle"}
+            {favoriteBusy ? t("instrumentDetail.processing") : isFavorite ? t("instrumentDetail.removeFavorite") : t("instrumentDetail.addFavorite")}
           </button>
           <button type="button" className="secondary-button" onClick={onOpenAlert}>
-            Alarm olustur
+            {t("instrumentDetail.createAlert")}
           </button>
           <button type="button" onClick={onOpenPortfolio}>
-            Portfoye ekle
+            {t("instrumentDetail.addToPortfolio")}
           </button>
         </div>
 
         <div className="instrument-detail-hero-meta">
           <div className="terminal-price-card">
-            <span>Kaynak</span>
+            <span>{t("instrumentDetail.source")}</span>
             <strong>{source || "-"}</strong>
           </div>
           <div className="terminal-price-card">
-            <span>Tip</span>
+            <span>{t("instrumentDetail.type")}</span>
             <strong>{instrumentType || "-"}</strong>
           </div>
           <div className="terminal-price-card">
-            <span>Para birimi</span>
+            <span>{t("instrumentDetail.currency")}</span>
             <strong>{currency || "-"}</strong>
           </div>
         </div>

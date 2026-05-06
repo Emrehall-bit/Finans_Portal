@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 import { Pie, PieChart, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import {
@@ -12,7 +13,6 @@ import {
   updatePortfolioHolding,
 } from "../api/portfolioApi";
 import { extractErrorMessage } from "../api/responseUtils";
-import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -24,6 +24,7 @@ import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../
 const CHART_COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4f46e5"];
 
 export default function PortfolioDetailPage() {
+  const { t } = useTranslation();
   const { chartTheme } = useTheme();
   const { portfolioId } = useParams();
   const [portfolioInfo, setPortfolioInfo] = useState(null);
@@ -43,7 +44,6 @@ export default function PortfolioDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { toast, showToast } = useToast();
-  const { userId } = useAuth();
 
   async function loadPortfolioData() {
     if (!portfolioId) return;
@@ -80,7 +80,7 @@ export default function PortfolioDetailPage() {
       setSummary(summaryData);
       setHoldings(holdingsData);
     } catch (err) {
-      setError(extractErrorMessage(err, "Portfolio detail could not be loaded."));
+      setError(extractErrorMessage(err, t("portfolioDetail.loadError")));
     } finally {
       setLoading(false);
     }
@@ -108,24 +108,24 @@ export default function PortfolioDetailPage() {
     if (!code) return null;
     return {
       symbol: code,
-      name: "Manual symbol entry",
+      name: t("portfolioDetail.manualSymbol"),
       instrumentType: "MANUAL",
       source: "-",
       currency: "-",
     };
-  }, [holdingForm.instrumentCode]);
+  }, [holdingForm.instrumentCode, t]);
 
   const valuationReadyCount = holdings.filter((holding) => holding.valuationAvailable).length;
 
-  async function handleSaveSettings(e) {
-    e.preventDefault();
+  async function handleSaveSettings(event) {
+    event.preventDefault();
     const visibilityChanged = portfolioInfo?.visibilityStatus && portfolioInfo.visibilityStatus !== settingsForm.visibilityStatus;
 
     if (visibilityChanged) {
       const confirmed = window.confirm(
         settingsForm.visibilityStatus === "PUBLIC"
-          ? "Bu portföyü PUBLIC yaparsan ileride diğer kullanıcılar tarafından görünür hâle gelecek. Devam etmek istiyor musun?"
-          : "Bu portföyü PRIVATE yaparsan sadece sen görebileceksin. Devam etmek istiyor musun?",
+          ? t("portfolioDetail.visibilityConfirmPublic")
+          : t("portfolioDetail.visibilityConfirmPrivate"),
       );
 
       if (!confirmed) {
@@ -145,9 +145,9 @@ export default function PortfolioDetailPage() {
         visibilityStatus: updated?.visibilityStatus || settingsForm.visibilityStatus,
       });
       setIsSettingsOpen(false);
-      showToast("success", "Portfolio settings saved.");
+      showToast("success", t("portfolioDetail.settingsSaved"));
     } catch (err) {
-      setError(extractErrorMessage(err, "Portfolio settings update failed."));
+      setError(extractErrorMessage(err, t("portfolioDetail.settingsUpdateError")));
     }
   }
 
@@ -180,8 +180,8 @@ export default function PortfolioDetailPage() {
     setHighlightedInstrumentIndex(0);
   }
 
-  async function handleSaveHolding(e) {
-    e.preventDefault();
+  async function handleSaveHolding(event) {
+    event.preventDefault();
     const numericQuantity = Number(holdingForm.quantity);
     const numericBuyPrice = Number(holdingForm.buyPrice);
 
@@ -192,7 +192,7 @@ export default function PortfolioDetailPage() {
       !Number.isFinite(numericBuyPrice) ||
       numericBuyPrice <= 0
     ) {
-      setError("Please choose an instrument and enter valid quantity and buy price values.");
+      setError(t("portfolioDetail.validationError"));
       return;
     }
 
@@ -203,20 +203,20 @@ export default function PortfolioDetailPage() {
           quantity: numericQuantity,
           buyPrice: numericBuyPrice,
         });
-        showToast("success", "Holding updated.");
+        showToast("success", t("portfolioDetail.holdingUpdated"));
       } else {
         await createPortfolioHolding(portfolioId, {
           instrumentCode: holdingForm.instrumentCode,
           quantity: numericQuantity,
           buyPrice: numericBuyPrice,
         });
-        showToast("success", "Holding added to portfolio.");
+        showToast("success", t("portfolioDetail.holdingAdded"));
       }
 
       resetHoldingForm();
       await loadPortfolioData();
     } catch (err) {
-      setError(extractErrorMessage(err, "Holding could not be saved."));
+      setError(extractErrorMessage(err, t("portfolioDetail.holdingSaveError")));
     }
   }
 
@@ -227,10 +227,10 @@ export default function PortfolioDetailPage() {
       if (editingHoldingId === holdingId) {
         resetHoldingForm();
       }
-      showToast("success", "Holding removed.");
+      showToast("success", t("portfolioDetail.holdingRemoved"));
       await loadPortfolioData();
     } catch (err) {
-      setError(extractErrorMessage(err, "Holding could not be deleted."));
+      setError(extractErrorMessage(err, t("portfolioDetail.holdingDeleteError")));
     }
   }
 
@@ -286,7 +286,7 @@ export default function PortfolioDetailPage() {
   return (
     <div className="portfolio-page-stack">
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
-      {loading ? <LoadingSpinner label="Loading portfolio details..." /> : null}
+      {loading ? <LoadingSpinner label={t("portfolioDetail.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {!loading && !error ? (
@@ -295,79 +295,77 @@ export default function PortfolioDetailPage() {
             <div className="card portfolio-hero-card">
               <div className="portfolio-hero-header">
                 <div className="portfolio-hero-copy">
-                  <p className="eyebrow">Portfolio Snapshot</p>
+                  <p className="eyebrow">{t("portfolioDetail.snapshotEyebrow")}</p>
                   <h2>{portfolioInfo?.portfolioName || "-"}</h2>
                   <p className="page-description">
                     {summary?.summaryStatus === "UNAVAILABLE"
-                      ? "Valuation data is currently unavailable, but your holdings are still editable and safe."
-                      : "Use this workspace to maintain your current positions with quantity and purchase price."}
+                      ? t("portfolioDetail.snapshotUnavailableDescription")
+                      : t("portfolioDetail.snapshotDescription")}
                   </p>
                 </div>
                 <div className="portfolio-hero-actions">
                   <Link className="secondary-button portfolio-back-link" to="/portfolio">
-                    Back to Portfolio List
+                    {t("portfolioDetail.back")}
                   </Link>
                   <button
                     type="button"
                     className="secondary-button portfolio-settings-toggle"
                     onClick={() => setIsSettingsOpen((prev) => !prev)}
                   >
-                    {isSettingsOpen ? "Close Settings" : "Settings"}
+                    {isSettingsOpen ? t("portfolioDetail.closeSettings") : t("portfolioDetail.settings")}
                   </button>
                 </div>
               </div>
               {isSettingsOpen ? (
                 <form className="portfolio-inline-settings" onSubmit={handleSaveSettings}>
                   <div className="portfolio-inline-settings-header">
-                    <strong>Portfolio Settings</strong>
+                    <strong>{t("portfolioDetail.settingsTitle")}</strong>
                     <span className="summary-chip">{formatDateTime(portfolioInfo?.createdAt)}</span>
                   </div>
                   <div className="portfolio-inline-settings-grid">
                     <label className="portfolio-field">
-                      <span>Name</span>
+                      <span>{t("portfolioDetail.name")}</span>
                       <input
                         required
                         value={settingsForm.portfolioName}
-                        onChange={(e) => setSettingsForm((prev) => ({ ...prev, portfolioName: e.target.value }))}
-                        placeholder="Portfolio name"
+                        onChange={(event) => setSettingsForm((prev) => ({ ...prev, portfolioName: event.target.value }))}
+                        placeholder={t("portfolioDetail.namePlaceholder")}
                       />
                     </label>
                     <label className="portfolio-field">
-                      <span>Visibility</span>
+                      <span>{t("portfolioDetail.visibility")}</span>
                       <select
                         required
                         value={settingsForm.visibilityStatus}
-                        onChange={(e) => setSettingsForm((prev) => ({ ...prev, visibilityStatus: e.target.value }))}
+                        onChange={(event) => setSettingsForm((prev) => ({ ...prev, visibilityStatus: event.target.value }))}
                       >
-                        <option value="PRIVATE">PRIVATE</option>
-                        <option value="PUBLIC">PUBLIC</option>
+                        <option value="PRIVATE">{t("portfolio.visibilityOptions.PRIVATE")}</option>
+                        <option value="PUBLIC">{t("portfolio.visibilityOptions.PUBLIC")}</option>
                       </select>
                     </label>
                   </div>
-                  <div className="portfolio-inline-settings-note">
-                    Visibility değişikliği ileride portföyün görünürlüğünü etkiler. Kaydetmeden önce onay istenir.
-                  </div>
+                  <div className="portfolio-inline-settings-note">{t("portfolioDetail.visibilityNote")}</div>
                   <div className="actions-row">
-                    <button type="submit">Save Settings</button>
+                    <button type="submit">{t("portfolioDetail.saveSettings")}</button>
                   </div>
                 </form>
               ) : null}
               <div className="portfolio-hero-stats">
                 <div className="portfolio-kpi">
-                  <span>Total Holdings</span>
+                  <span>{t("portfolioDetail.totalHoldings")}</span>
                   <strong>{formatNumber(holdings.length, 0)}</strong>
                 </div>
                 <div className="portfolio-kpi">
-                  <span>Valuation Ready</span>
+                  <span>{t("portfolioDetail.valuationReady")}</span>
                   <strong>{formatNumber(valuationReadyCount, 0)}</strong>
                 </div>
                 <div className="portfolio-kpi">
-                  <span>Missing Prices</span>
+                  <span>{t("portfolioDetail.missingPrices")}</span>
                   <strong>{formatNumber(summary?.missingPriceCount, 0)}</strong>
                 </div>
                 <div className="portfolio-kpi">
-                  <span>Visibility</span>
-                  <strong>{portfolioInfo?.visibilityStatus || "-"}</strong>
+                  <span>{t("portfolioDetail.visibility")}</span>
+                  <strong>{formatVisibilityStatus(portfolioInfo?.visibilityStatus, t)}</strong>
                 </div>
               </div>
             </div>
@@ -376,20 +374,20 @@ export default function PortfolioDetailPage() {
           <section className="portfolio-summary-stack">
             <div className="panel-head">
               <div>
-                <p className="eyebrow">Valuation Overview</p>
-                <h3>Summary</h3>
+                <p className="eyebrow">{t("portfolioDetail.valuationEyebrow")}</p>
+                <h3>{t("portfolioDetail.summaryTitle")}</h3>
               </div>
               <span className={`portfolio-status-pill ${getPriceStatusClass(summary?.summaryStatus === "COMPLETE" ? "LIVE" : summary?.summaryStatus === "PARTIAL" ? "CACHED" : "UNAVAILABLE")}`}>
-                {summary?.summaryStatus || "UNKNOWN"}
+                {formatSummaryStatus(summary?.summaryStatus, t)}
               </span>
             </div>
             <div className="cards-grid compact">
-              <SummaryCard title="Total Cost" value={formatCurrency(summary?.totalCost)} subtitle="Recorded purchase basis" tone="cool" />
-              <SummaryCard title="Current Value" value={formatCurrency(summary?.currentValue ?? summary?.totalCurrentValue)} subtitle="Best-effort market valuation" tone={getSummaryTone()} />
-              <SummaryCard title="Profit / Loss" value={formatCurrency(summary?.profitLoss ?? summary?.totalProfitLoss)} subtitle="Based on available prices" tone={getSummaryTone()} />
-              <SummaryCard title="Profit / Loss %" value={formatPercent(summary?.profitLossPercent)} subtitle="Weighted by valued holdings" tone="cool" />
-              <SummaryCard title="Priced Holdings" value={`${formatNumber(valuationReadyCount, 0)} / ${formatNumber(holdings.length, 0)}`} subtitle="Holdings with valuation data" tone="cool" />
-              <SummaryCard title="Missing Price Count" value={formatNumber(summary?.missingPriceCount, 0)} subtitle="Holdings without current valuation" tone="warm" />
+              <SummaryCard title={t("portfolioDetail.cards.totalCost")} value={formatCurrency(summary?.totalCost)} subtitle={t("portfolioDetail.cards.totalCostSubtitle")} tone="cool" />
+              <SummaryCard title={t("portfolioDetail.cards.currentValue")} value={formatCurrency(summary?.currentValue ?? summary?.totalCurrentValue)} subtitle={t("portfolioDetail.cards.currentValueSubtitle")} tone={getSummaryTone()} />
+              <SummaryCard title={t("portfolioDetail.cards.profitLoss")} value={formatCurrency(summary?.profitLoss ?? summary?.totalProfitLoss)} subtitle={t("portfolioDetail.cards.profitLossSubtitle")} tone={getSummaryTone()} />
+              <SummaryCard title={t("portfolioDetail.cards.profitLossPercent")} value={formatPercent(summary?.profitLossPercent)} subtitle={t("portfolioDetail.cards.profitLossPercentSubtitle")} tone="cool" />
+              <SummaryCard title={t("portfolioDetail.cards.pricedHoldings")} value={`${formatNumber(valuationReadyCount, 0)} / ${formatNumber(holdings.length, 0)}`} subtitle={t("portfolioDetail.cards.pricedHoldingsSubtitle")} tone="cool" />
+              <SummaryCard title={t("portfolioDetail.cards.missingPriceCount")} value={formatNumber(summary?.missingPriceCount, 0)} subtitle={t("portfolioDetail.cards.missingPriceCountSubtitle")} tone="warm" />
             </div>
           </section>
 
@@ -397,12 +395,12 @@ export default function PortfolioDetailPage() {
             <form className="card portfolio-holding-form" onSubmit={handleSaveHolding}>
               <div className="panel-head">
                 <div>
-                  <p className="eyebrow">Position Entry</p>
-                  <h3>{editingHoldingId ? "Update Holding" : "Add Holding"}</h3>
+                  <p className="eyebrow">{t("portfolioDetail.positionEntryEyebrow")}</p>
+                  <h3>{editingHoldingId ? t("portfolioDetail.updateHolding") : t("portfolioDetail.addHolding")}</h3>
                 </div>
                 {editingHoldingId ? (
                   <button type="button" className="secondary-button" onClick={resetHoldingForm}>
-                    Cancel Edit
+                    {t("portfolioDetail.cancelEdit")}
                   </button>
                 ) : null}
               </div>
@@ -410,7 +408,7 @@ export default function PortfolioDetailPage() {
               <div className="portfolio-workbench-columns compact-search-layout">
                 <div className="portfolio-search-column">
                   <label className="portfolio-field">
-                    <span>Instrument Search</span>
+                    <span>{t("portfolioDetail.instrumentSearch")}</span>
                     <div className="instrument-search-shell">
                       <input
                         type="text"
@@ -419,8 +417,8 @@ export default function PortfolioDetailPage() {
                         onFocus={() => setIsInstrumentMenuOpen(true)}
                         onBlur={() => setTimeout(() => setIsInstrumentMenuOpen(false), 120)}
                         onKeyDown={handleInstrumentSearchKeyDown}
-                        onChange={(e) => {
-                          const raw = e.target.value;
+                        onChange={(event) => {
+                          const raw = event.target.value;
                           const normalized = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
                           setIsInstrumentMenuOpen(true);
                           setHighlightedInstrumentIndex(0);
@@ -430,30 +428,30 @@ export default function PortfolioDetailPage() {
                             instrumentCode: normalized,
                           }));
                         }}
-                        placeholder="Örnek: AAPL, THYAO (sembolü yazın)"
+                        placeholder={t("portfolioDetail.instrumentSearchPlaceholder")}
                       />
                       {isInstrumentMenuOpen ? (
                         <div className="instrument-picker compact">
                           {filteredInstruments.length === 0 ? (
-                            <div className="instrument-picker-empty">Sembolü yazıp miktar ve alış fiyatını girin.</div>
+                            <div className="instrument-picker-empty">{t("portfolioDetail.instrumentPickerEmpty")}</div>
                           ) : (
-                            filteredInstruments.map((instrument, idx) => {
+                            filteredInstruments.map((instrument, index) => {
                               const isActive = instrument.symbol === holdingForm.instrumentCode;
-                              const isHighlighted = idx === highlightedInstrumentIndex;
+                              const isHighlighted = index === highlightedInstrumentIndex;
                               return (
                                 <button
-                                  key={`${instrument.symbol || "instrument"}-${idx}`}
+                                  key={`${instrument.symbol || "instrument"}-${index}`}
                                   type="button"
                                   className={`instrument-option compact${isActive ? " active" : ""}${isHighlighted ? " highlighted" : ""}`}
                                   onMouseDown={(event) => event.preventDefault()}
-                                  onMouseEnter={() => setHighlightedInstrumentIndex(idx)}
+                                  onMouseEnter={() => setHighlightedInstrumentIndex(index)}
                                   onClick={() => handleInstrumentSelect(instrument)}
                                 >
                                   <div className="instrument-option-top">
-                                    <strong>{instrument.symbol || "N/A"}</strong>
-                                    <span className="portfolio-status-pill is-cached">{instrument.instrumentType || "UNKNOWN"}</span>
+                                    <strong>{instrument.symbol || t("portfolioDetail.notAvailable")}</strong>
+                                    <span className="portfolio-status-pill is-cached">{formatInstrumentType(instrument.instrumentType, t)}</span>
                                   </div>
-                                  <span>{instrument.name || "Unnamed instrument"}</span>
+                                  <span>{instrument.name || t("portfolioDetail.unnamedInstrument")}</span>
                                 </button>
                               );
                             })
@@ -466,11 +464,11 @@ export default function PortfolioDetailPage() {
 
                 <div className="portfolio-entry-column">
                   <div className="selected-instrument-card compact">
-                    <p className="eyebrow">Selected Instrument</p>
-                    <strong>{selectedInstrument ? selectedInstrument.symbol : "No instrument selected"}</strong>
-                    <p>{selectedInstrument ? selectedInstrument.name : "Arama alanına sembol yazarak devam edin."}</p>
+                    <p className="eyebrow">{t("portfolioDetail.selectedInstrumentEyebrow")}</p>
+                    <strong>{selectedInstrument ? selectedInstrument.symbol : t("portfolioDetail.noInstrumentSelected")}</strong>
+                    <p>{selectedInstrument ? selectedInstrument.name : t("portfolioDetail.selectedInstrumentDescription")}</p>
                     <div className="selected-instrument-meta">
-                      <span>{selectedInstrument?.instrumentType || "-"}</span>
+                      <span>{formatInstrumentType(selectedInstrument?.instrumentType, t)}</span>
                       <span>{selectedInstrument?.source || "-"}</span>
                       <span>{selectedInstrument?.currency || "TRY"}</span>
                     </div>
@@ -478,24 +476,24 @@ export default function PortfolioDetailPage() {
 
                   <div className="portfolio-entry-grid">
                     <label className="portfolio-field">
-                      <span>Quantity</span>
+                      <span>{t("portfolio.quantity")}</span>
                       <input
                         type="number"
                         step="any"
                         required
                         value={holdingForm.quantity}
-                        onChange={(e) => setHoldingForm((prev) => ({ ...prev, quantity: e.target.value }))}
+                        onChange={(event) => setHoldingForm((prev) => ({ ...prev, quantity: event.target.value }))}
                         placeholder="0.00"
                       />
                     </label>
                     <label className="portfolio-field">
-                      <span>Buy Price</span>
+                      <span>{t("portfolio.buyPrice")}</span>
                       <input
                         type="number"
                         step="any"
                         required
                         value={holdingForm.buyPrice}
-                        onChange={(e) => setHoldingForm((prev) => ({ ...prev, buyPrice: e.target.value }))}
+                        onChange={(event) => setHoldingForm((prev) => ({ ...prev, buyPrice: event.target.value }))}
                         placeholder="0.00"
                       />
                     </label>
@@ -506,7 +504,7 @@ export default function PortfolioDetailPage() {
                       type="submit"
                       disabled={!holdingForm.instrumentCode || Number(holdingForm.quantity) <= 0 || Number(holdingForm.buyPrice) <= 0}
                     >
-                      {editingHoldingId ? "Update Holding" : "Add Holding"}
+                      {editingHoldingId ? t("portfolioDetail.updateHolding") : t("portfolioDetail.addHolding")}
                     </button>
                   </div>
                 </div>
@@ -516,12 +514,12 @@ export default function PortfolioDetailPage() {
             <div className="card portfolio-chart-card">
               <div className="panel-head">
                 <div>
-                  <p className="eyebrow">Allocation</p>
-                  <h3>Holdings Chart</h3>
+                  <p className="eyebrow">{t("portfolioDetail.allocationEyebrow")}</p>
+                  <h3>{t("portfolioDetail.allocationTitle")}</h3>
                 </div>
               </div>
               {allocationData.length === 0 ? (
-                <EmptyState title="No chart data" description="Add holdings with quantity and buy price to build allocation." />
+                <EmptyState title={t("portfolioDetail.chartEmptyTitle")} description={t("portfolioDetail.chartEmptyDescription")} />
               ) : (
                 <>
                   <div className="portfolio-chart-stage">
@@ -562,35 +560,35 @@ export default function PortfolioDetailPage() {
           <section className="card table-wrap portfolio-table-card">
             <div className="panel-head">
               <div>
-                <p className="eyebrow">Recorded Positions</p>
-                <h3>Holdings</h3>
+                <p className="eyebrow">{t("portfolioDetail.recordedPositionsEyebrow")}</p>
+                <h3>{t("portfolio.holdingsTitle")}</h3>
               </div>
-              <span className="summary-chip">{formatNumber(holdings.length, 0)} items</span>
+              <span className="summary-chip">{t("common.records", { count: holdings.length })}</span>
             </div>
             {holdings.length === 0 ? (
-              <EmptyState title="No holdings" description="No holdings yet for this portfolio." />
+              <EmptyState title={t("portfolioDetail.noHoldingsTitle")} description={t("portfolioDetail.noHoldingsDescription")} />
             ) : (
               <table>
                 <thead>
                   <tr>
-                    <th>Instrument</th>
-                    <th>Quantity</th>
-                    <th>Buy Price</th>
-                    <th>Current Price</th>
-                    <th>Current Value</th>
-                    <th>Profit / Loss</th>
-                    <th>Status</th>
-                    <th>Last Update</th>
-                    <th>Action</th>
+                    <th>{t("analysis.symbolPicker.primaryInstrument")}</th>
+                    <th>{t("portfolio.table.quantity")}</th>
+                    <th>{t("portfolio.buyPrice")}</th>
+                    <th>{t("portfolio.table.currentPrice")}</th>
+                    <th>{t("portfolio.table.currentValue")}</th>
+                    <th>{t("portfolio.table.profitLoss")}</th>
+                    <th>{t("portfolio.table.status")}</th>
+                    <th>{t("portfolioDetail.lastUpdate")}</th>
+                    <th>{t("portfolio.table.action")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {holdings.map((holding, idx) => (
-                    <tr key={`${holding.instrumentCode}-${idx}`}>
+                  {holdings.map((holding, index) => (
+                    <tr key={`${holding.instrumentCode}-${index}`}>
                       <td>
                         <div className="portfolio-cell-stack">
                           <strong>{holding.instrumentCode}</strong>
-                          <span className="muted">Holding #{idx + 1}</span>
+                          <span className="muted">{t("portfolioDetail.holdingNumber", { index: index + 1 })}</span>
                         </div>
                       </td>
                       <td>{formatNumber(holding.quantity)}</td>
@@ -605,17 +603,17 @@ export default function PortfolioDetailPage() {
                       </td>
                       <td>
                         <span className={`portfolio-status-pill ${getPriceStatusClass(holding.priceStatus)}`}>
-                          {holding.priceStatus || "UNAVAILABLE"}
+                          {formatHoldingStatus(holding.priceStatus, t)}
                         </span>
                       </td>
                       <td>{formatDateTime(holding.lastPriceUpdateTime)}</td>
                       <td>
                         <div className="actions-row">
                           <button type="button" className="secondary-button" onClick={() => handleEditHolding(holding)}>
-                            Edit
+                            {t("portfolio.update")}
                           </button>
                           <button type="button" className="danger-button" onClick={() => handleDeleteHolding(holding.holdingId)}>
-                            Delete
+                            {t("portfolio.delete")}
                           </button>
                         </div>
                       </td>
@@ -629,4 +627,34 @@ export default function PortfolioDetailPage() {
       ) : null}
     </div>
   );
+}
+
+function formatVisibilityStatus(value, t) {
+  return {
+    PRIVATE: t("portfolio.visibilityOptions.PRIVATE"),
+    PUBLIC: t("portfolio.visibilityOptions.PUBLIC"),
+  }[value] ?? (value || "-");
+}
+
+function formatSummaryStatus(value, t) {
+  return {
+    COMPLETE: t("portfolioDetail.summaryStatus.COMPLETE"),
+    PARTIAL: t("portfolioDetail.summaryStatus.PARTIAL"),
+    UNAVAILABLE: t("portfolioDetail.summaryStatus.UNAVAILABLE"),
+  }[value] ?? t("portfolioDetail.summaryStatus.UNKNOWN");
+}
+
+function formatHoldingStatus(value, t) {
+  return {
+    LIVE: t("portfolio.status.LIVE"),
+    CACHED: t("portfolio.status.CACHED"),
+    STALE: t("portfolio.status.STALE"),
+    UNAVAILABLE: t("portfolio.status.UNAVAILABLE"),
+  }[value] ?? t("portfolio.status.UNAVAILABLE");
+}
+
+function formatInstrumentType(value, t) {
+  return {
+    MANUAL: t("portfolioDetail.instrumentType.MANUAL"),
+  }[value] ?? (value || "-");
 }

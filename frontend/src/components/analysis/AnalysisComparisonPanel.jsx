@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   CartesianGrid,
   Legend,
@@ -17,6 +18,7 @@ import { buildComparisonData, formatAxisNumber } from "./analysisUtils";
 const COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2"];
 
 export default function AnalysisComparisonPanel({ loading, error, comparison }) {
+  const { t } = useTranslation();
   const { chartTheme } = useTheme();
   const series = comparison?.series ?? [];
   const chartData = buildComparisonData(series);
@@ -25,15 +27,15 @@ export default function AnalysisComparisonPanel({ loading, error, comparison }) 
     <section className="panel-surface analysis-lab-panel">
       <div className="panel-head">
         <div>
-          <p className="eyebrow">Karsilastirma</p>
-          <h3>Normalize performans</h3>
+          <p className="eyebrow">{t("analysis.comparison.eyebrow")}</p>
+          <h3>{t("analysis.comparison.title")}</h3>
         </div>
       </div>
 
-      {loading ? <LoadingSpinner label="Karsilastirma yukleniyor..." /> : null}
+      {loading ? <LoadingSpinner label={t("analysis.comparison.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
       {!loading && !error && series.length < 2 ? (
-        <EmptyState title="Karsilastirma verisi bulunamadi" description="En az iki enstruman secildiginde karsilastirma olusur." />
+        <EmptyState title={t("analysis.comparison.emptyTitle")} description={t("analysis.comparison.emptyDescription")} />
       ) : null}
 
       {!loading && !error && series.length >= 2 ? (
@@ -46,15 +48,7 @@ export default function AnalysisComparisonPanel({ loading, error, comparison }) 
               <Tooltip content={<ComparisonTooltip chartTheme={chartTheme} />} />
               <Legend wrapperStyle={{ color: chartTheme.legendText }} />
               {series.map((item, index) => (
-                <Line
-                  key={item.symbol}
-                  type="monotone"
-                  dataKey={item.symbol}
-                  name={item.symbol}
-                  stroke={COLORS[index % COLORS.length]}
-                  strokeWidth={2.2}
-                  dot={false}
-                />
+                <Line key={item.symbol} type="monotone" dataKey={item.symbol} name={item.symbol} stroke={COLORS[index % COLORS.length]} strokeWidth={2.2} dot={false} />
               ))}
             </LineChart>
           </ResponsiveContainer>
@@ -70,14 +64,7 @@ function ComparisonTooltip({ active, payload, label, chartTheme }) {
   }
 
   return (
-    <div
-      className="chart-tooltip terminal-tooltip"
-      style={{
-        backgroundColor: chartTheme.tooltipBg,
-        borderColor: chartTheme.tooltipBorder,
-        color: chartTheme.tooltipText,
-      }}
-    >
+    <div className="chart-tooltip terminal-tooltip" style={{ backgroundColor: chartTheme.tooltipBg, borderColor: chartTheme.tooltipBorder, color: chartTheme.tooltipText }}>
       <strong>{label}</strong>
       {payload.map((item) => (
         <div key={item.dataKey} className="chart-tooltip-row">

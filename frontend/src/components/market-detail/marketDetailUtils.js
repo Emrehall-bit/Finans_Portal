@@ -1,12 +1,13 @@
 import { formatDateTime, formatNumber } from "../../utils/formatters";
+import i18n from "../../i18n";
 
 export const RANGE_PRESETS = [
-  { key: "1D", label: "1G", days: 1 },
-  { key: "1W", label: "1H", days: 7 },
-  { key: "1M", label: "1A", days: 30 },
-  { key: "3M", label: "3A", days: 90 },
-  { key: "1Y", label: "1Y", days: 365 },
-  { key: "MAX", label: "MAX", days: 3650 },
+  { key: "1D", days: 1 },
+  { key: "1W", days: 7 },
+  { key: "1M", days: 30 },
+  { key: "3M", days: 90 },
+  { key: "1Y", days: 365 },
+  { key: "MAX", days: 3650 },
 ];
 
 export const DEFAULT_INDICATORS = ["SMA7", "SMA20", "SMA50", "RSI14"];
@@ -75,21 +76,21 @@ export function formatTrendLabel(value) {
   }
 
   return {
-    UPTREND: "Yukselis",
-    DOWNTREND: "Dusus",
-    SIDEWAYS: "Yatay",
+    UPTREND: i18n.t("trend.uptrend"),
+    DOWNTREND: i18n.t("trend.downtrend"),
+    SIDEWAYS: i18n.t("trend.sideways"),
   }[value] ?? value;
 }
 
 export function formatSignalLabel(value) {
   return {
-    PRICE_ABOVE_SMA20: "Fiyat > SMA20",
-    PRICE_BELOW_SMA20: "Fiyat < SMA20",
-    SMA7_ABOVE_SMA20: "MA7 > MA20",
-    SMA7_BELOW_SMA20: "MA7 < MA20",
-    RSI_OVERBOUGHT: "RSI asiri alim",
-    RSI_OVERSOLD: "RSI asiri satim",
-    RSI_NEUTRAL: "RSI dengeli",
+    PRICE_ABOVE_SMA20: i18n.t("signals.PRICE_ABOVE_SMA20"),
+    PRICE_BELOW_SMA20: i18n.t("signals.PRICE_BELOW_SMA20"),
+    SMA7_ABOVE_SMA20: i18n.t("signals.SMA7_ABOVE_SMA20"),
+    SMA7_BELOW_SMA20: i18n.t("signals.SMA7_BELOW_SMA20"),
+    RSI_OVERBOUGHT: i18n.t("signals.RSI_OVERBOUGHT"),
+    RSI_OVERSOLD: i18n.t("signals.RSI_OVERSOLD"),
+    RSI_NEUTRAL: i18n.t("signals.RSI_NEUTRAL"),
   }[value] ?? value;
 }
 
@@ -146,13 +147,13 @@ export function buildStats(quote, annualHistory = []) {
 
   // TODO: expose open, volume and 52-week summary fields from backend market quote endpoint.
   return [
-    { label: "Son fiyat", value: formatNumber(quote?.price), tone: "neutral" },
-    { label: "Gunluk degisim", value: formatMarketChange(quote?.changeRate), tone: changeTone(quote?.changeRate) },
-    { label: "Acilis", value: "-", tone: "muted" },
-    { label: "Hacim", value: "-", tone: "muted" },
-    { label: "52 hafta araligi", value: annualRange, tone: "neutral" },
-    { label: "Veri kaynagi", value: quote?.source || "-", tone: "neutral" },
-    { label: "Son guncelleme", value: formatDateTime(priceTime), tone: "neutral" },
+    { label: i18n.t("stats.lastPrice"), value: formatNumber(quote?.price), tone: "neutral" },
+    { label: i18n.t("stats.dailyChange"), value: formatMarketChange(quote?.changeRate), tone: changeTone(quote?.changeRate) },
+    { label: i18n.t("stats.open"), value: "-", tone: "muted" },
+    { label: i18n.t("stats.volume"), value: "-", tone: "muted" },
+    { label: i18n.t("stats.yearRange"), value: annualRange, tone: "neutral" },
+    { label: i18n.t("stats.dataSource"), value: quote?.source || "-", tone: "neutral" },
+    { label: i18n.t("stats.lastUpdate"), value: formatDateTime(priceTime), tone: "neutral" },
   ];
 }
 

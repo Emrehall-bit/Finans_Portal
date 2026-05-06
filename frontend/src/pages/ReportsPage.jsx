@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getMarketQuotes } from "../api/marketApi";
 import { getUserPortfolios } from "../api/portfolioApi";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -11,6 +12,7 @@ import SummaryCard from "../components/common/SummaryCard";
 import { formatDateTime, formatNumber } from "../utils/formatters";
 
 export default function ReportsPage() {
+  const { t } = useTranslation();
   const { userId } = useAuth();
   const [quotes, setQuotes] = useState([]);
   const [portfolios, setPortfolios] = useState([]);
@@ -42,7 +44,7 @@ export default function ReportsPage() {
         setPortfolios(userPortfolios ?? []);
       } catch (err) {
         if (active) {
-          setError(extractErrorMessage(err, "Rapor verileri yuklenemedi."));
+          setError(extractErrorMessage(err, t("reports.loadError")));
         }
       } finally {
         if (active) {
@@ -72,12 +74,12 @@ export default function ReportsPage() {
   return (
     <div className="dashboard-stack reports-shell">
       <PageHeader
-        eyebrow="Raporlar"
-        title="Raporlar"
-        description="Portfoy ve piyasa akisina ait ozet raporlar icin hazir kartlar."
+        eyebrow={t("reports.eyebrow")}
+        title={t("reports.title")}
+        description={t("reports.description")}
       />
 
-      {loading ? <LoadingSpinner label="Rapor verileri yukleniyor..." /> : null}
+      {loading ? <LoadingSpinner label={t("reports.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {!loading && !error ? (
@@ -85,27 +87,27 @@ export default function ReportsPage() {
           <article className="panel-surface reports-card">
             <div className="panel-head">
               <div>
-                <p className="eyebrow">Portfoy Raporu</p>
-                <h3>Portfoy ozet ciktilari</h3>
+                <p className="eyebrow">{t("reports.portfolioEyebrow")}</p>
+                <h3>{t("reports.portfolioTitle")}</h3>
               </div>
-              <span className="summary-chip">{formatNumber(portfolios.length, 0)} portfoy</span>
+              <span className="summary-chip">{t("reports.portfolioCount", { count: portfolios.length })}</span>
             </div>
 
             {portfolios.length === 0 ? (
-              <EmptyState title="Portfoy raporu hazir degil" description="Kullaniciya ait portfoy bulunmuyor." />
+              <EmptyState title={t("reports.portfolioEmptyTitle")} description={t("reports.portfolioEmptyDescription")} />
             ) : (
               <div className="cards-grid compact">
-                <SummaryCard title="Portfoy adedi" value={formatNumber(portfolios.length, 0)} subtitle="Raporlanabilir kayit" tone="cool" />
-                <SummaryCard title="Son olusturulan" value={portfolios[0]?.portfolioName || "-"} subtitle={formatDateTime(portfolios[0]?.createdAt)} tone="neutral" />
+                <SummaryCard title={t("reports.cards.portfolioCount")} value={formatNumber(portfolios.length, 0)} subtitle={t("reports.cards.portfolioCountSubtitle")} tone="cool" />
+                <SummaryCard title={t("reports.cards.latestPortfolio")} value={portfolios[0]?.portfolioName || "-"} subtitle={formatDateTime(portfolios[0]?.createdAt)} tone="neutral" />
               </div>
             )}
 
             <div className="reports-action-row">
-              <button type="button" className="secondary-button" disabled title="TODO: backend PDF export endpointi gerekli">
-                PDF export
+              <button type="button" className="secondary-button" disabled title={t("reports.pdfHint")}>
+                {t("reports.pdf")}
               </button>
-              <button type="button" className="secondary-button" disabled title="TODO: backend Excel export endpointi gerekli">
-                Excel export
+              <button type="button" className="secondary-button" disabled title={t("reports.excelHint")}>
+                {t("reports.excel")}
               </button>
             </div>
           </article>
@@ -113,29 +115,29 @@ export default function ReportsPage() {
           <article className="panel-surface reports-card">
             <div className="panel-head">
               <div>
-                <p className="eyebrow">Piyasa Takip Raporu</p>
-                <h3>Market akis ozeti</h3>
+                <p className="eyebrow">{t("reports.marketEyebrow")}</p>
+                <h3>{t("reports.marketTitle")}</h3>
               </div>
-              <span className="summary-chip">{formatNumber(marketSummary.total, 0)} sembol</span>
+              <span className="summary-chip">{t("reports.symbolCount", { count: marketSummary.total })}</span>
             </div>
 
             {quotes.length === 0 ? (
-              <EmptyState title="Piyasa raporu hazir degil" description="Market servisinden raporlanabilir veri gelmedi." />
+              <EmptyState title={t("reports.marketEmptyTitle")} description={t("reports.marketEmptyDescription")} />
             ) : (
               <div className="cards-grid compact">
-                <SummaryCard title="Toplam sembol" value={formatNumber(marketSummary.total, 0)} subtitle="Gozlenen piyasa kaydi" tone="cool" />
-                <SummaryCard title="Artida olanlar" value={formatNumber(marketSummary.positiveCount, 0)} subtitle="Pozitif gunluk hareket" tone="cool" />
-                <SummaryCard title="Ekside olanlar" value={formatNumber(marketSummary.negativeCount, 0)} subtitle="Negatif gunluk hareket" tone="warm" />
-                <SummaryCard title="Rapor zamani" value={formatDateTime(marketSummary.updatedAt)} subtitle="Anlik olusan ozet" tone="neutral" />
+                <SummaryCard title={t("reports.cards.totalSymbols")} value={formatNumber(marketSummary.total, 0)} subtitle={t("reports.cards.totalSymbolsSubtitle")} tone="cool" />
+                <SummaryCard title={t("reports.cards.positiveSymbols")} value={formatNumber(marketSummary.positiveCount, 0)} subtitle={t("reports.cards.positiveSymbolsSubtitle")} tone="cool" />
+                <SummaryCard title={t("reports.cards.negativeSymbols")} value={formatNumber(marketSummary.negativeCount, 0)} subtitle={t("reports.cards.negativeSymbolsSubtitle")} tone="warm" />
+                <SummaryCard title={t("reports.cards.reportTime")} value={formatDateTime(marketSummary.updatedAt)} subtitle={t("reports.cards.reportTimeSubtitle")} tone="neutral" />
               </div>
             )}
 
             <div className="reports-action-row">
-              <button type="button" className="secondary-button" disabled title="TODO: backend PDF export endpointi gerekli">
-                PDF export
+              <button type="button" className="secondary-button" disabled title={t("reports.pdfHint")}>
+                {t("reports.pdf")}
               </button>
-              <button type="button" className="secondary-button" disabled title="TODO: backend Excel export endpointi gerekli">
-                Excel export
+              <button type="button" className="secondary-button" disabled title={t("reports.excelHint")}>
+                {t("reports.excel")}
               </button>
             </div>
           </article>

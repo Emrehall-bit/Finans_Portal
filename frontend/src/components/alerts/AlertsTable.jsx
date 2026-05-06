@@ -1,17 +1,19 @@
 import { formatDateTime, formatNumber } from "../../utils/formatters";
+import { useTranslation } from "react-i18next";
 
 export default function AlertsTable({ rows, onCancel }) {
+  const { t } = useTranslation();
   return (
     <div className="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Instrument</th>
-            <th>Condition</th>
-            <th>Target</th>
-            <th>Status</th>
-            <th>Current Price</th>
-            <th>Created</th>
+            <th>{t("alerts.table.instrument")}</th>
+            <th>{t("alerts.table.condition")}</th>
+            <th>{t("alerts.table.threshold")}</th>
+            <th>{t("alerts.table.status")}</th>
+            <th>{t("alerts.table.lastPrice")}</th>
+            <th>{t("watchlist.table.created")}</th>
             <th></th>
           </tr>
         </thead>
@@ -27,7 +29,7 @@ export default function AlertsTable({ rows, onCancel }) {
               <td>
                 {item.status === "ACTIVE" ? (
                   <button className="btn-danger" onClick={() => onCancel(item.id)}>
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                 ) : (
                   "-"

@@ -166,9 +166,9 @@ export default function NewsPage() {
 
   const languageOptions = useMemo(
     () => [
-      { value: "", label: "Hepsi" },
+      { value: "", label: t("news.all") },
       { value: "tr", label: t("common.turkish") },
-      { value: "en", label: "English" },
+      { value: "en", label: t("common.english") },
     ],
     [t],
   );

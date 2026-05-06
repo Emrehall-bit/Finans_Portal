@@ -1,15 +1,18 @@
+import { useTranslation } from "react-i18next";
 import { formatDateTime, formatNumber } from "../../utils/formatters";
 
 export default function WatchlistTable({ rows, onRemove }) {
+  const { t } = useTranslation();
+
   return (
     <div className="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Instrument</th>
-            <th>Current Price</th>
-            <th>Source</th>
-            <th>Created</th>
+            <th>{t("watchlist.table.instrument")}</th>
+            <th>{t("watchlist.table.currentPrice")}</th>
+            <th>{t("watchlist.table.source")}</th>
+            <th>{t("watchlist.table.created")}</th>
             <th></th>
           </tr>
         </thead>
@@ -22,7 +25,7 @@ export default function WatchlistTable({ rows, onRemove }) {
               <td>{formatDateTime(item.createdAt)}</td>
               <td>
                 <button className="btn-danger" onClick={() => onRemove(item.id)}>
-                  Remove
+                  {t("watchlist.remove")}
                 </button>
               </td>
             </tr>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 import { getNewsDetail } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -11,6 +12,7 @@ import { getStoredNewsLanguage } from "./newsLanguagePreference";
 import { buildNewsPlaceholderLabel, getNewsFallbackLogoUrl, getNewsProviderLabel } from "../components/news/newsCardUtils";
 
 export default function NewsDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const selectedLanguage = getStoredNewsLanguage();
   const [item, setItem] = useState(null);
@@ -35,7 +37,7 @@ export default function NewsDetailPage() {
       } catch (err) {
         if (active) {
           setItem(null);
-          setError(extractErrorMessage(err, "Haber detayi yuklenemedi."));
+          setError(extractErrorMessage(err, t("newsDetail.loadError")));
         }
       } finally {
         if (active) {
@@ -48,41 +50,41 @@ export default function NewsDetailPage() {
       load();
     } else {
       setLoading(false);
-      setError("Haber numarasi bulunamadi.");
+      setError(t("newsDetail.missingId"));
     }
 
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, t]);
 
   return (
     <div className="news-page-stack">
       <PageHeader
-        eyebrow="Haber Detayi"
-        title={item?.title || "Haber"}
-        description={item?.provider || item?.source || "Finans gundemi"}
+        eyebrow={t("newsDetail.eyebrow")}
+        title={item?.title || t("newsDetail.titleFallback")}
+        description={item?.provider || item?.source || t("newsDetail.descriptionFallback")}
         actions={
           <Link className="secondary-button" to="/news">
-            Haberlere don
+            {t("newsDetail.back")}
           </Link>
         }
       />
 
-      {loading ? <LoadingSpinner label="Haber detayi yukleniyor..." /> : null}
+      {loading ? <LoadingSpinner label={t("newsDetail.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {!loading && !error && !item ? (
         <section className="panel-surface">
-          <EmptyState title="Haber bulunamadi" description="Kayit silinmis veya erisilemiyor olabilir." />
+          <EmptyState title={t("newsDetail.emptyTitle")} description={t("newsDetail.emptyDescription")} />
         </section>
       ) : null}
 
       {!loading && !error && item && item.language && item.language !== selectedLanguage ? (
         <section className="panel-surface">
           <EmptyState
-            title="Haber secili dilde goruntulenemiyor"
-            description="Bu kayit farkli dilde tutuluyor. Haber listesine donup dil filtresini degistirebilirsin."
+            title={t("newsDetail.languageMismatchTitle")}
+            description={t("newsDetail.languageMismatchDescription")}
           />
         </section>
       ) : null}
@@ -94,7 +96,7 @@ export default function NewsDetailPage() {
               <img
                 className="news-detail-image"
                 src={item.imageUrl}
-                alt={item.title || "Haber gorseli"}
+                alt={item.title || t("newsDetail.imageAlt")}
                 loading="lazy"
                 onError={() => setImageFailed(true)}
               />
@@ -112,7 +114,7 @@ export default function NewsDetailPage() {
                 <strong className="news-card-placeholder-provider">
                   {getNewsProviderLabel(item.provider || item.source || "-")}
                 </strong>
-                <small className="news-card-placeholder-note">Kaynak logosu</small>
+                <small className="news-card-placeholder-note">{t("newsDetail.sourceLogo")}</small>
               </div>
             </div>
           ) : (
@@ -128,21 +130,21 @@ export default function NewsDetailPage() {
 
           <div className="news-detail-topbar">
             <div className="news-detail-meta">
-              <span className="news-card-badge category">{item.category || "Gundem"}</span>
+              <span className="news-card-badge category">{item.category || t("newsDetail.defaultCategory")}</span>
               <span className="news-card-badge provider">{getNewsProviderLabel(item.provider || item.source || "-")}</span>
               <span className="muted">{formatDateTime(item.publishedAt)}</span>
             </div>
           </div>
 
-          <h3 className="news-detail-title">{item.title || "Baslik bulunamiyor"}</h3>
+          <h3 className="news-detail-title">{item.title || t("newsDetail.titleMissing")}</h3>
           <p className={`news-detail-summary${item.summary ? "" : " is-fallback"}`}>
-            {item.summary || "Bu haber icin kaynak tarafi ozet bilgisi saglamadi."}
+            {item.summary || t("newsDetail.summaryMissing")}
           </p>
 
           {item.url ? (
             <div className="news-detail-actions">
               <a className="secondary-button news-detail-link" href={item.url} target="_blank" rel="noreferrer">
-                Kaynakta ac
+                {t("newsDetail.openSource")}
               </a>
             </div>
           ) : null}

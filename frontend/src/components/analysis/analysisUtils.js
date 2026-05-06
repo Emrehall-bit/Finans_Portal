@@ -9,11 +9,11 @@ import {
 } from "../market-detail/marketDetailUtils";
 
 export const ANALYSIS_RANGE_PRESETS = [
-  { key: "1M", label: "1A", days: 30 },
-  { key: "3M", label: "3A", days: 90 },
-  { key: "6M", label: "6A", days: 180 },
-  { key: "1Y", label: "1Y", days: 365 },
-  { key: "MAX", label: "MAX", days: 3650 },
+  { key: "1M", days: 30 },
+  { key: "3M", days: 90 },
+  { key: "6M", days: 180 },
+  { key: "1Y", days: 365 },
+  { key: "MAX", days: 3650 },
 ];
 
 export { buildChartData, buildPresetRange, DEFAULT_INDICATORS, formatAxisNumber, formatChartDate, formatSignalLabel, formatTrendLabel };

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getMarketHistory, getMarketQuote, getMarketQuotes } from "../api/marketApi";
 import { getPortfolioDetails, getUserPortfolios } from "../api/portfolioApi";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -11,6 +12,7 @@ import SummaryCard from "../components/common/SummaryCard";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
 
 export default function SimulationPage() {
+  const { t } = useTranslation();
   const { userId } = useAuth();
   const [quotes, setQuotes] = useState([]);
   const [portfolios, setPortfolios] = useState([]);
@@ -67,7 +69,7 @@ export default function SimulationPage() {
         }));
       } catch (err) {
         if (active) {
-          setError(extractErrorMessage(err, "Simulasyon verileri yuklenemedi."));
+          setError(extractErrorMessage(err, t("simulation.loadError")));
         }
       } finally {
         if (active) {
@@ -180,7 +182,7 @@ export default function SimulationPage() {
 
       if (!Number.isFinite(historicalPrice) || !Number.isFinite(currentPrice) || !Number.isFinite(amount) || amount <= 0) {
         setPastResult(null);
-        setPastError("Simulasyon icin yeterli veri bulunamadi.");
+        setPastError(t("simulation.past.insufficientData"));
         return;
       }
 
@@ -200,7 +202,7 @@ export default function SimulationPage() {
         source: currentQuote?.source || historicalPoint?.source || "-",
       });
     } catch (err) {
-      setPastError(extractErrorMessage(err, "Gecmis simulasyonu hesaplanamadi."));
+      setPastError(extractErrorMessage(err, t("simulation.past.calculateError")));
     } finally {
       setPastLoading(false);
     }
@@ -209,12 +211,12 @@ export default function SimulationPage() {
   return (
     <div className="dashboard-stack simulation-shell">
       <PageHeader
-        eyebrow="Simulasyon"
-        title="Simulasyon Laboratuvari"
-        description="Gecmis bir tarihteki yatirimin bugunku etkisini ve varsayimsal fiyat senaryolarini test et."
+        eyebrow={t("simulation.eyebrow")}
+        title={t("simulation.title")}
+        description={t("simulation.description")}
       />
 
-      {loading ? <LoadingSpinner label="Simulasyon verileri yukleniyor..." /> : null}
+      {loading ? <LoadingSpinner label={t("simulation.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {!loading && !error ? (
@@ -222,20 +224,20 @@ export default function SimulationPage() {
           <section className="panel-surface simulation-panel">
             <div className="panel-head">
               <div>
-                <p className="eyebrow">Gecmis Simulasyonu</p>
-                <h3>Bugun degeri ne olurdu?</h3>
+                <p className="eyebrow">{t("simulation.past.eyebrow")}</p>
+                <h3>{t("simulation.past.title")}</h3>
               </div>
             </div>
 
             <form className="simulation-form" onSubmit={handlePastSimulation}>
               <label className="portfolio-field">
-                <span>Enstruman sec</span>
+                <span>{t("simulation.past.instrument")}</span>
                 <select
                   required
                   value={pastForm.instrumentCode}
                   onChange={(event) => setPastForm((current) => ({ ...current, instrumentCode: event.target.value }))}
                 >
-                  <option value="">Enstruman sec</option>
+                  <option value="">{t("simulation.past.instrumentPlaceholder")}</option>
                   {quotes.map((item) => (
                     <option key={`${item.symbol}-${item.source}`} value={item.symbol}>
                       {item.symbol} {item.displayName ? `- ${item.displayName}` : ""}
@@ -246,7 +248,7 @@ export default function SimulationPage() {
 
               <div className="simulation-form-grid">
                 <label className="portfolio-field">
-                  <span>Tarih sec</span>
+                  <span>{t("simulation.past.date")}</span>
                   <input
                     required
                     type="date"
@@ -255,7 +257,7 @@ export default function SimulationPage() {
                   />
                 </label>
                 <label className="portfolio-field">
-                  <span>Tutar gir</span>
+                  <span>{t("simulation.past.amount")}</span>
                   <input
                     required
                     type="number"
@@ -270,7 +272,7 @@ export default function SimulationPage() {
 
               <div className="instrument-action-footer">
                 <button type="submit" disabled={pastLoading}>
-                  {pastLoading ? "Hesaplaniyor..." : "Bugun degeri ne olurdu?"}
+                  {pastLoading ? t("simulation.past.submitting") : t("simulation.past.submit")}
                 </button>
               </div>
             </form>
@@ -278,17 +280,17 @@ export default function SimulationPage() {
             {pastError ? <ErrorMessage message={pastError} /> : null}
             {!pastLoading && !pastError && !pastResult ? (
               <EmptyState
-                title="Gecmis simulasyonu hazir"
-                description="Tarih ve tutar girildiginde mevcut market history verisi ile sonuc hesaplanir."
+                title={t("simulation.past.emptyTitle")}
+                description={t("simulation.past.emptyDescription")}
               />
             ) : null}
 
             {pastResult ? (
               <div className="cards-grid compact">
-                <SummaryCard title="Alis fiyati" value={formatCurrency(pastResult.historicalPrice)} subtitle={pastResult.priceDate} tone="neutral" />
-                <SummaryCard title="Bugunku fiyat" value={formatCurrency(pastResult.currentPrice)} subtitle={pastResult.source} tone="cool" />
-                <SummaryCard title="Alinabilecek miktar" value={formatNumber(pastResult.quantity, 6)} subtitle="Varsayimsal lot/adet" tone="neutral" />
-                <SummaryCard title="Bugunku deger" value={formatCurrency(pastResult.todayValue)} subtitle={formatSigned(pastResult.profitLoss)} tone={pastResult.profitLoss >= 0 ? "cool" : "warm"} />
+                <SummaryCard title={t("simulation.past.cards.buyPrice")} value={formatCurrency(pastResult.historicalPrice)} subtitle={pastResult.priceDate} tone="neutral" />
+                <SummaryCard title={t("simulation.past.cards.currentPrice")} value={formatCurrency(pastResult.currentPrice)} subtitle={pastResult.source} tone="cool" />
+                <SummaryCard title={t("simulation.past.cards.quantity")} value={formatNumber(pastResult.quantity, 6)} subtitle={t("simulation.past.cards.quantitySubtitle")} tone="neutral" />
+                <SummaryCard title={t("simulation.past.cards.todayValue")} value={formatCurrency(pastResult.todayValue)} subtitle={formatSigned(pastResult.profitLoss)} tone={pastResult.profitLoss >= 0 ? "cool" : "warm"} />
               </div>
             ) : null}
           </section>
@@ -296,8 +298,8 @@ export default function SimulationPage() {
           <section className="panel-surface simulation-panel">
             <div className="panel-head">
               <div>
-                <p className="eyebrow">Gelecek Senaryosu</p>
-                <h3>Tahmini etki</h3>
+                <p className="eyebrow">{t("simulation.future.eyebrow")}</p>
+                <h3>{t("simulation.future.title")}</h3>
               </div>
             </div>
 
@@ -308,26 +310,26 @@ export default function SimulationPage() {
                 className={`table-chip-button ${futureForm.mode === "instrument" ? "active" : ""}`}
                 onClick={() => setFutureForm((current) => ({ ...current, mode: "instrument" }))}
               >
-                Enstruman
+                {t("simulation.future.instrumentMode")}
               </button>
               <button
                 type="button"
                 className={`table-chip-button ${futureForm.mode === "portfolio" ? "active" : ""}`}
                 onClick={() => setFutureForm((current) => ({ ...current, mode: "portfolio" }))}
               >
-                Portfoy
+                {t("simulation.future.portfolioMode")}
               </button>
             </div>
 
             <div className="simulation-form">
               {futureForm.mode === "instrument" ? (
                 <label className="portfolio-field">
-                  <span>Enstruman sec</span>
+                  <span>{t("simulation.future.instrument")}</span>
                   <select
                     value={futureForm.instrumentCode}
                     onChange={(event) => setFutureForm((current) => ({ ...current, instrumentCode: event.target.value }))}
                   >
-                    <option value="">Enstruman sec</option>
+                    <option value="">{t("simulation.past.instrumentPlaceholder")}</option>
                     {quotes.map((item) => (
                       <option key={`${item.symbol}-${item.source}`} value={item.symbol}>
                         {item.symbol} {item.displayName ? `- ${item.displayName}` : ""}
@@ -337,12 +339,12 @@ export default function SimulationPage() {
                 </label>
               ) : (
                 <label className="portfolio-field">
-                  <span>Portfoy sec</span>
+                  <span>{t("simulation.future.portfolio")}</span>
                   <select
                     value={futureForm.portfolioId}
                     onChange={(event) => setFutureForm((current) => ({ ...current, portfolioId: event.target.value }))}
                   >
-                    <option value="">Portfoy sec</option>
+                    <option value="">{t("simulation.future.portfolioPlaceholder")}</option>
                     {portfolios.map((item) => (
                       <option key={item.portfolioId} value={item.portfolioId}>
                         {item.portfolioName}
@@ -353,44 +355,44 @@ export default function SimulationPage() {
               )}
 
               <label className="portfolio-field">
-                <span>Yuzde degisim gir</span>
+                <span>{t("simulation.future.percentChange")}</span>
                 <input
                   type="number"
                   step="any"
                   value={futureForm.percentChange}
                   onChange={(event) => setFutureForm((current) => ({ ...current, percentChange: event.target.value }))}
-                  placeholder="10 veya -7.5"
+                  placeholder={t("simulation.future.percentPlaceholder")}
                 />
               </label>
             </div>
 
             {!futureScenario ? (
               <EmptyState
-                title="Senaryo sonucu hazir degil"
-                description="Enstruman veya portfoy secip yuzde degisim girdiginde tahmini etki hesaplanir."
+                title={t("simulation.future.emptyTitle")}
+                description={t("simulation.future.emptyDescription")}
               />
             ) : (
               <div className="cards-grid compact">
                 <SummaryCard
-                  title={futureScenario.type === "instrument" ? "Mevcut fiyat" : "Mevcut portfoy degeri"}
+                  title={futureScenario.type === "instrument" ? t("simulation.future.cards.currentPrice") : t("simulation.future.cards.currentPortfolioValue")}
                   value={formatCurrency(futureScenario.baseValue)}
-                  subtitle="Bugunku baz deger"
+                  subtitle={t("simulation.future.cards.baseValue")}
                   tone="neutral"
                 />
                 <SummaryCard
-                  title="Senaryo etkisi"
+                  title={t("simulation.future.cards.scenarioImpact")}
                   value={formatPercent(futureForm.percentChange)}
-                  subtitle="Elle girilen varsayim"
+                  subtitle={t("simulation.future.cards.manualAssumption")}
                   tone={Number(futureForm.percentChange) >= 0 ? "cool" : "warm"}
                 />
                 <SummaryCard
-                  title="Tahmini sonuc"
+                  title={t("simulation.future.cards.projectedResult")}
                   value={formatCurrency(futureScenario.projectedValue)}
-                  subtitle="Yeni varsayimsal deger"
+                  subtitle={t("simulation.future.cards.projectedValue")}
                   tone={futureScenario.difference >= 0 ? "cool" : "warm"}
                 />
                 <SummaryCard
-                  title="Net fark"
+                  title={t("simulation.future.cards.netDifference")}
                   value={formatCurrency(futureScenario.difference)}
                   subtitle={formatSigned(futureScenario.difference)}
                   tone={futureScenario.difference >= 0 ? "cool" : "warm"}
@@ -399,12 +401,12 @@ export default function SimulationPage() {
             )}
 
             <section className="simulation-note-card">
-              <strong>Hesap notu</strong>
+              <strong>{t("simulation.note.title")}</strong>
               <p>
-                Bu ekran gercek yatirim islemi olusturmaz. Gecmis simulasyonu market history verisiyle, gelecek senaryosu ise mevcut fiyat ve portfoy degeri uzerinden tahmini hesap yapar.
+                {t("simulation.note.description")}
               </p>
               {selectedPortfolioDetails?.summary?.currentValue ? (
-                <span>Portfoy son guncel deger: {formatCurrency(selectedPortfolioDetails.summary.currentValue)}</span>
+                <span>{t("simulation.note.portfolioValue", { value: formatCurrency(selectedPortfolioDetails.summary.currentValue) })}</span>
               ) : null}
             </section>
           </section>

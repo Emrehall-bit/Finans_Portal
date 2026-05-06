@@ -235,8 +235,8 @@ export default function PortfolioPage() {
                 value={newPortfolio.visibilityStatus}
                 onChange={(event) => setNewPortfolio((current) => ({ ...current, visibilityStatus: event.target.value }))}
               >
-                <option value="PRIVATE">PRIVATE</option>
-                <option value="PUBLIC">PUBLIC</option>
+                <option value="PRIVATE">{t("portfolio.visibilityOptions.PRIVATE")}</option>
+                <option value="PUBLIC">{t("portfolio.visibilityOptions.PUBLIC")}</option>
               </select>
             </label>
             <button type="submit">{t("portfolio.create")}</button>
@@ -257,7 +257,7 @@ export default function PortfolioPage() {
                   onClick={() => setSelectedPortfolioId(portfolio.portfolioId)}
                 >
                   <strong>{portfolio.portfolioName}</strong>
-                  <span>{portfolio.visibilityStatus || "-"}</span>
+                  <span>{formatVisibilityStatus(portfolio.visibilityStatus, t)}</span>
                   <small>{formatDateTime(portfolio.createdAt)}</small>
                 </button>
               ))}
@@ -282,7 +282,7 @@ export default function PortfolioPage() {
                     <p className="eyebrow">{t("portfolio.selectedEyebrow")}</p>
                     <h2>{selectedPortfolio.portfolioName || "-"}</h2>
                     <p className="page-description">
-                      {selectedPortfolio.visibilityStatus || "PRIVATE"} · {t("portfolio.createdAt", { value: formatDateTime(selectedPortfolio.createdAt) })}
+                      {formatVisibilityStatus(selectedPortfolio.visibilityStatus || "PRIVATE", t)} · {t("portfolio.createdAt", { value: formatDateTime(selectedPortfolio.createdAt) })}
                     </p>
                   </div>
                   <div className="actions-row">
@@ -305,7 +305,7 @@ export default function PortfolioPage() {
                   <div className="panel-head">
                     <div>
                       <p className="eyebrow">{t("portfolio.allocationEyebrow")}</p>
-                      <h3>Pie chart</h3>
+                      <h3>{t("portfolio.allocationTitle")}</h3>
                     </div>
                   </div>
 
@@ -350,15 +350,12 @@ export default function PortfolioPage() {
                 <section className="panel-surface portfolio-management-panel">
                   <div className="panel-head">
                     <div>
-                      <p className="eyebrow">Performans Gecmisi</p>
-                      <h3>Zaman serisi</h3>
+                      <p className="eyebrow">{t("portfolio.historyEyebrow")}</p>
+                      <h3>{t("portfolio.historyTitle")}</h3>
                     </div>
                   </div>
                   {/* TODO: backend tarafinda portfoy performans gecmisi endpointi eklendiginde bu alan gercek veriyle doldurulacak. */}
-                  <EmptyState
-                    title="Performans gecmisi bulunmuyor"
-                    description="Bu portfoy icin zaman bazli performans verisi henuz mevcut degil."
-                  />
+                  <EmptyState title={t("portfolio.historyEmptyTitle")} description={t("portfolio.historyEmptyDescription")} />
                 </section>
               </section>
 
@@ -366,26 +363,26 @@ export default function PortfolioPage() {
                 <div className="panel-head">
                   <div>
                     <p className="eyebrow">{t("portfolio.holdingsEyebrow")}</p>
-                    <h3>Holdingler</h3>
+                    <h3>{t("portfolio.holdingsTitle")}</h3>
                   </div>
-                  <span className="summary-chip">{formatNumber(holdings.length, 0)} satir</span>
+                  <span className="summary-chip">{t("common.rows", { count: formatNumber(holdings.length, 0) })}</span>
                 </div>
 
                 {holdings.length === 0 ? (
-                  <EmptyState title="Varlik bulunmuyor" description="Secili portfoye varlik ekleyerek tabloyu olustur." />
+                  <EmptyState title={t("portfolio.emptyHoldingsTitle")} description={t("portfolio.emptyHoldingsDescription")} />
                 ) : (
                   <table>
                     <thead>
                       <tr>
-                        <th>Varlik</th>
-                        <th>Miktar</th>
-                        <th>Maliyet</th>
-                        <th>Guncel fiyat</th>
-                        <th>Guncel deger</th>
-                        <th>Kar / Zarar</th>
-                        <th>Durum</th>
-                        <th>Guncelleme</th>
-                        <th>Aksiyon</th>
+                        <th>{t("portfolio.table.asset")}</th>
+                        <th>{t("portfolio.table.quantity")}</th>
+                        <th>{t("portfolio.table.cost")}</th>
+                        <th>{t("portfolio.table.currentPrice")}</th>
+                        <th>{t("portfolio.table.currentValue")}</th>
+                        <th>{t("portfolio.table.profitLoss")}</th>
+                        <th>{t("portfolio.table.status")}</th>
+                        <th>{t("portfolio.table.updatedAt")}</th>
+                        <th>{t("portfolio.table.action")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -394,7 +391,7 @@ export default function PortfolioPage() {
                           <td>
                             <div className="portfolio-cell-stack">
                               <strong>{holding.instrumentCode || "-"}</strong>
-                              <span className="muted">Varlik #{index + 1}</span>
+                              <span className="muted">{t("portfolio.assetNumber", { index: index + 1 })}</span>
                             </div>
                           </td>
                           <td>{formatNumber(holding.quantity)}</td>
@@ -413,17 +410,17 @@ export default function PortfolioPage() {
                           </td>
                           <td>
                             <span className={`portfolio-status-pill ${getPriceStatusClass(holding.priceStatus)}`}>
-                              {formatPriceStatus(holding.priceStatus)}
+                              {formatPriceStatus(holding.priceStatus, t)}
                             </span>
                           </td>
                           <td>{formatDateTime(holding.lastPriceUpdateTime)}</td>
                           <td>
                             <div className="actions-row">
                               <button type="button" className="secondary-button" onClick={() => openEditHoldingModal(holding)}>
-                                Guncelle
+                                {t("portfolio.update")}
                               </button>
                               <button type="button" className="danger-button" onClick={() => handleDeleteHolding(holding.holdingId)}>
-                                Sil
+                                {t("portfolio.delete")}
                               </button>
                             </div>
                           </td>
@@ -444,28 +441,28 @@ export default function PortfolioPage() {
             <div className="portfolio-action-modal-head">
               <div>
                 <p className="eyebrow">{t("portfolio.modalEyebrow")}</p>
-                <h3>{editingHolding ? "Varlik guncelle" : "Varlik ekle"}</h3>
+                <h3>{editingHolding ? t("portfolio.modalEditTitle") : t("portfolio.modalAddTitle")}</h3>
               </div>
               <button type="button" className="secondary-button" onClick={closeHoldingModal}>
-                Kapat
+                {t("common.close")}
               </button>
             </div>
 
             <form className="instrument-action-form" onSubmit={handleSaveHolding}>
               <label className="portfolio-field">
-                <span>Enstruman kodu</span>
+                <span>{t("portfolio.instrumentCode")}</span>
                 <input
                   required
                   disabled={Boolean(editingHolding)}
                   value={holdingForm.instrumentCode}
                   onChange={(event) => setHoldingForm((current) => ({ ...current, instrumentCode: event.target.value }))}
-                  placeholder="THYAO, BTCUSDT, USDTRY"
+                  placeholder={t("portfolio.instrumentCodePlaceholder")}
                 />
               </label>
 
               <div className="instrument-action-grid">
                 <label className="portfolio-field">
-                  <span>Miktar</span>
+                  <span>{t("portfolio.quantity")}</span>
                   <input
                     required
                     type="number"
@@ -476,7 +473,7 @@ export default function PortfolioPage() {
                   />
                 </label>
                 <label className="portfolio-field">
-                  <span>Alis fiyati</span>
+                  <span>{t("portfolio.buyPrice")}</span>
                   <input
                     required
                     type="number"
@@ -523,11 +520,18 @@ function getPriceStatusClass(priceStatus) {
   }
 }
 
-function formatPriceStatus(value) {
+function formatPriceStatus(value, t) {
   return {
-    LIVE: "Canli",
-    CACHED: "Cache",
-    STALE: "Eksik veri",
-    UNAVAILABLE: "Fiyat yok",
-  }[value] ?? "Fiyat yok";
+    LIVE: t("portfolio.status.LIVE"),
+    CACHED: t("portfolio.status.CACHED"),
+    STALE: t("portfolio.status.STALE"),
+    UNAVAILABLE: t("portfolio.status.UNAVAILABLE"),
+  }[value] ?? t("portfolio.status.UNAVAILABLE");
+}
+
+function formatVisibilityStatus(value, t) {
+  return {
+    PRIVATE: t("portfolio.visibilityOptions.PRIVATE"),
+    PUBLIC: t("portfolio.visibilityOptions.PUBLIC"),
+  }[value] ?? (value || "-");
 }

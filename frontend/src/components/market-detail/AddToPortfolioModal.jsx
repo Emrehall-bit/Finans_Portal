@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { createPortfolioHolding, getUserPortfolios } from "../../api/portfolioApi";
 import { extractErrorMessage } from "../../api/responseUtils";
@@ -7,6 +8,7 @@ import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 
 export default function AddToPortfolioModal({ isOpen, onClose, symbol, currentPrice, userId, onSuccess }) {
+  const { t } = useTranslation();
   const [portfolios, setPortfolios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,7 +43,7 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, currentPr
         }));
       } catch (err) {
         if (active) {
-          setError(extractErrorMessage(err, "Portfoyler yuklenemedi."));
+          setError(extractErrorMessage(err, t("marketDetail.addToPortfolio.loadError")));
         }
       } finally {
         if (active) {
@@ -55,7 +57,7 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, currentPr
     return () => {
       active = false;
     };
-  }, [isOpen, userId, currentPrice]);
+  }, [currentPrice, isOpen, t, userId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -82,7 +84,7 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, currentPr
       onSuccess?.();
       onClose();
     } catch (err) {
-      setError(extractErrorMessage(err, "Enstruman portfoye eklenemedi."));
+      setError(extractErrorMessage(err, t("marketDetail.addToPortfolio.saveError")));
     } finally {
       setSubmitting(false);
     }
@@ -93,34 +95,34 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, currentPr
       <div className="auth-modal instrument-action-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <div className="instrument-action-modal-head">
           <div>
-            <p className="eyebrow">Portfoye ekle</p>
+            <p className="eyebrow">{t("marketDetail.addToPortfolio.eyebrow")}</p>
             <h3>{symbol}</h3>
           </div>
           <button type="button" className="secondary-button" onClick={onClose}>
-            Kapat
+            {t("common.close")}
           </button>
         </div>
 
-        {loading ? <LoadingSpinner label="Portfoyler yukleniyor..." /> : null}
+        {loading ? <LoadingSpinner label={t("marketDetail.addToPortfolio.loading")} /> : null}
         {error ? <ErrorMessage message={error} /> : null}
 
         {!loading && portfolios.length === 0 ? (
           <EmptyState
-            title="Portfoy bulunamadi"
-            description="Bu enstrumani eklemek icin once en az bir portfoy olustur."
+            title={t("marketDetail.addToPortfolio.emptyTitle")}
+            description={t("marketDetail.addToPortfolio.emptyDescription")}
           />
         ) : null}
 
         {!loading && portfolios.length === 0 ? (
           <Link to="/portfolio" className="secondary-button" onClick={onClose}>
-            Portfoy sayfasina git
+            {t("marketDetail.addToPortfolio.goPortfolio")}
           </Link>
         ) : null}
 
         {!loading && portfolios.length > 0 ? (
           <form className="instrument-action-form" onSubmit={handleSubmit}>
             <label className="portfolio-field">
-              <span>Portfoy</span>
+              <span>{t("marketDetail.addToPortfolio.portfolio")}</span>
               <select
                 required
                 value={form.portfolioId}
@@ -136,7 +138,7 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, currentPr
 
             <div className="instrument-action-grid">
               <label className="portfolio-field">
-                <span>Miktar</span>
+                <span>{t("marketDetail.addToPortfolio.quantity")}</span>
                 <input
                   type="number"
                   step="any"
@@ -147,7 +149,7 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, currentPr
                 />
               </label>
               <label className="portfolio-field">
-                <span>Alis fiyati</span>
+                <span>{t("marketDetail.addToPortfolio.buyPrice")}</span>
                 <input
                   type="number"
                   step="any"
@@ -161,7 +163,7 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, currentPr
 
             <div className="instrument-action-footer">
               <button type="submit" disabled={submitting}>
-                {submitting ? "Ekleniyor..." : "Portfoye ekle"}
+                {submitting ? t("marketDetail.addToPortfolio.submitting") : t("marketDetail.addToPortfolio.submit")}
               </button>
             </div>
           </form>
