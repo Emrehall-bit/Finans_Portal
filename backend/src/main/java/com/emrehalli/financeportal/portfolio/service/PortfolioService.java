@@ -6,10 +6,12 @@ import com.emrehalli.financeportal.portfolio.dto.PortfolioResponseDto;
 import com.emrehalli.financeportal.portfolio.dto.UpdatePortfolioRequest;
 import com.emrehalli.financeportal.portfolio.entity.Portfolio;
 import com.emrehalli.financeportal.portfolio.entity.PortfolioVisibility;
+import com.emrehalli.financeportal.portfolio.repository.PortfolioHoldingRepository;
 import com.emrehalli.financeportal.portfolio.repository.PortfolioRepository;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,14 +20,18 @@ import java.util.List;
 public class PortfolioService {
 
     private final PortfolioRepository portfolioRepository;
+    private final PortfolioHoldingRepository portfolioHoldingRepository;
     private final UserRepository userRepository;
 
     public PortfolioService(PortfolioRepository portfolioRepository,
+                            PortfolioHoldingRepository portfolioHoldingRepository,
                             UserRepository userRepository) {
         this.portfolioRepository = portfolioRepository;
+        this.portfolioHoldingRepository = portfolioHoldingRepository;
         this.userRepository = userRepository;
     }
 
+    @Transactional
     public PortfolioResponseDto createPortfolio(Long userId, CreatePortfolioRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
@@ -40,6 +46,7 @@ public class PortfolioService {
         return toResponseDto(portfolioRepository.save(portfolio));
     }
 
+    @Transactional(readOnly = true)
     public List<PortfolioResponseDto> getPortfoliosByUserId(Long userId) {
         return portfolioRepository.findByUserId(userId)
                 .stream()
@@ -47,6 +54,7 @@ public class PortfolioService {
                 .toList();
     }
 
+    @Transactional
     public PortfolioResponseDto updatePortfolio(Long portfolioId, UpdatePortfolioRequest request) {
         Portfolio portfolio = getPortfolioEntityById(portfolioId);
         portfolio.setPortfolioName(request.getPortfolioName());
@@ -54,6 +62,14 @@ public class PortfolioService {
         return toResponseDto(portfolioRepository.save(portfolio));
     }
 
+    @Transactional
+    public void deletePortfolio(Long portfolioId) {
+        Portfolio portfolio = getPortfolioEntityById(portfolioId);
+        portfolioHoldingRepository.deleteByPortfolioId(portfolioId);
+        portfolioRepository.delete(portfolio);
+    }
+
+    @Transactional(readOnly = true)
     public Portfolio getPortfolioEntityById(Long portfolioId) {
         Portfolio portfolio = portfolioRepository.findById(portfolioId)
                 .orElseThrow(() -> new ResourceNotFoundException("Portfolio not found with id: " + portfolioId));

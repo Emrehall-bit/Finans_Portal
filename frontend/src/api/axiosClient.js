@@ -1,6 +1,6 @@
 import axios from "axios";
 import { API_CONFIG } from "./config";
-import { getValidAccessToken, isAuthenticated, logout } from "../auth/keycloak";
+import { getValidAccessToken } from "../auth/keycloak";
 
 const axiosClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
@@ -21,15 +21,6 @@ axiosClient.interceptors.request.use(async (config) => {
   return nextConfig;
 });
 
-axiosClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error?.response?.status === 401 && isAuthenticated()) {
-      await logout();
-    }
-
-    return Promise.reject(error);
-  },
-);
+axiosClient.interceptors.response.use((response) => response, (error) => Promise.reject(error));
 
 export default axiosClient;

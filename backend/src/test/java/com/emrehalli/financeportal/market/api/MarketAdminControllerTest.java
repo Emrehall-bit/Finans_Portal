@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.market.api;
 
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.config.security.KeycloakJwtRoleConverter;
 import com.emrehalli.financeportal.config.security.ResourceAccessManager;
 import com.emrehalli.financeportal.config.security.SecurityConfig;
@@ -8,6 +9,7 @@ import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.service.MarketHistoryBackfillService;
 import com.emrehalli.financeportal.market.service.MarketRefreshService;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryPersistenceResult;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -39,6 +41,14 @@ class MarketAdminControllerTest {
     @MockBean
     private ResourceAccessManager resourceAccessManager;
 
+    @MockBean
+    private AppMessageSource appMessageSource;
+
+    @BeforeEach
+    void setUp() {
+        when(appMessageSource.get("market.dataFetched")).thenReturn("Market data fetched");
+    }
+
     @Test
     void backfillHistoryAcceptsBinanceSource() throws Exception {
         when(marketHistoryBackfillService.resolveLookbackDays(DataSource.BINANCE, 365))
@@ -54,5 +64,14 @@ class MarketAdminControllerTest {
                 .andExpect(jsonPath("$[0].source").value("BINANCE"))
                 .andExpect(jsonPath("$[0].lookbackDays").value(365))
                 .andExpect(jsonPath("$[0].saved").value(365));
+    }
+
+    @Test
+    void backfillHistoryRejectsNonAdminUsers() throws Exception {
+        mockMvc.perform(post("/api/v1/markets/admin/history/backfill")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER"))
+                        .param("source", "BINANCE")
+                        .param("days", "365"))
+                .andExpect(status().isForbidden());
     }
 }

@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.market.service;
 
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
+import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryPersistenceResult;
 import com.emrehalli.financeportal.market.service.model.MarketRefreshResult;
@@ -12,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -65,5 +67,25 @@ class MarketHistoryBackfillServiceTest {
         assertThat(service.resolveLookbackDays(DataSource.BINANCE, null)).isEqualTo(365);
         assertThat(results).singleElement().satisfies(result -> assertThat(result.source()).isEqualTo(DataSource.BINANCE));
         verify(providerOrchestrationService).fetchQuoteResults(any());
+    }
+
+    @Test
+    void includesRequestedSymbolsWhenBackfillingSpecificInstrument() {
+        MarketHistoryBackfillService service = new MarketHistoryBackfillService(
+                providerOrchestrationService,
+                marketHistoryService,
+                new EvdsProperties()
+        );
+        when(providerOrchestrationService.fetchQuoteResults(any()))
+                .thenReturn(List.of(MarketRefreshResult.success(DataSource.BINANCE, List.of())));
+        when(marketHistoryService.persistHistory(any(), any()))
+                .thenReturn(new MarketHistoryPersistenceResult(DataSource.BINANCE, 0, 0, 0));
+
+        service.backfill(DataSource.BINANCE, List.of("BTCUSDT"), 180);
+
+        verify(providerOrchestrationService).fetchQuoteResults(argThat((ProviderFetchRequest request) ->
+                request.source() == DataSource.BINANCE
+                        && request.symbols().equals(List.of("BTCUSDT"))
+        ));
     }
 }

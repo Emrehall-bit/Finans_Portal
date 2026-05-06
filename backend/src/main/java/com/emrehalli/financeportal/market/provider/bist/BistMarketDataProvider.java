@@ -12,6 +12,7 @@ import com.emrehalli.financeportal.market.provider.bist.config.BistProviderPrope
 import com.emrehalli.financeportal.market.provider.bist.dto.BistQuoteResponse;
 import com.emrehalli.financeportal.market.provider.bist.mapper.BistMapper;
 import com.emrehalli.financeportal.market.provider.bist.support.BistRoundRobinState;
+import com.emrehalli.financeportal.market.service.InstrumentRegistryService;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import org.slf4j.Logger;
@@ -21,8 +22,10 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Component
 public class BistMarketDataProvider implements MarketDataProvider {
@@ -70,13 +73,15 @@ public class BistMarketDataProvider implements MarketDataProvider {
     private final SymbolNormalizer symbolNormalizer;
     private final BistRoundRobinState roundRobinState;
     private final Clock clock;
+    private final InstrumentRegistryService instrumentRegistryService;
 
     public BistMarketDataProvider(YahooClient yahooClient,
                                   BistDelayedClient delayedClient,
                                   BistProviderProperties properties,
                                   BistMapper mapper,
                                   SymbolNormalizer symbolNormalizer,
-                                  BistRoundRobinState roundRobinState) {
+                                  BistRoundRobinState roundRobinState,
+                                  InstrumentRegistryService instrumentRegistryService) {
         this.yahooClient = yahooClient;
         this.delayedClient = delayedClient;
         this.properties = properties;
@@ -84,6 +89,7 @@ public class BistMarketDataProvider implements MarketDataProvider {
         this.symbolNormalizer = symbolNormalizer;
         this.roundRobinState = roundRobinState;
         this.clock = Clock.systemUTC();
+        this.instrumentRegistryService = instrumentRegistryService;
     }
 
     @Override
@@ -114,6 +120,16 @@ public class BistMarketDataProvider implements MarketDataProvider {
         if (symbols.isEmpty()) {
             log.info("BIST provider fetch skipped: no matching configured symbols");
             return new ProviderFetchResult(List.of(), List.of());
+        }
+
+        if (isHistoryRequest(request)) {
+            List<MarketHistoryRecord> historyRecords = fetchHistoryRecords(symbols, request);
+            log.info(
+                    "BIST provider history fetch completed: requestedSymbolCount={}, historyRecordCount={}",
+                    symbols.size(),
+                    historyRecords.size()
+            );
+            return new ProviderFetchResult(List.of(), historyRecords);
         }
 
         int batchSize = request != null && request.hasSymbolFilter()
@@ -164,6 +180,14 @@ public class BistMarketDataProvider implements MarketDataProvider {
     @Override
     public List<MarketQuote> fetchQuotes(ProviderFetchRequest request) {
         return fetch(request).quotes();
+    }
+
+    private List<MarketHistoryRecord> fetchHistoryRecords(List<String> symbols, ProviderFetchRequest request) {
+        return symbols.stream()
+                .flatMap(symbol -> mapper.toHistoryRecordsFromHistoryPoints(
+                        yahooClient.fetchDailyHistory(symbol, request == null ? null : request.from(), request == null ? null : request.to())
+                ).stream())
+                .toList();
     }
 
     private List<BistQuoteResponse> fetchYahoo(List<String> batchSymbols) {
@@ -230,27 +254,56 @@ public class BistMarketDataProvider implements MarketDataProvider {
     }
 
     private List<String> resolveSymbols(ProviderFetchRequest request) {
-        List<String> configuredSymbols = configuredSymbols();
+        List<ConfiguredSymbol> configuredSymbols = configuredSymbols();
 
         if (request == null || !request.hasSymbolFilter()) {
-            return configuredSymbols;
+            return configuredSymbols.stream()
+                    .map(ConfiguredSymbol::providerSymbol)
+                    .toList();
         }
 
+        Set<String> requestedSymbols = request.symbols().stream()
+                .map(this::requestSymbolKey)
+                .filter(symbol -> !symbol.isBlank())
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+
         return configuredSymbols.stream()
-                .filter(configuredSymbol -> request.symbols().stream().anyMatch(requested -> matchesSymbol(configuredSymbol, requested)))
+                .filter(configuredSymbol -> requestedSymbols.contains(configuredSymbol.symbolKey()))
+                .map(ConfiguredSymbol::providerSymbol)
                 .toList();
     }
 
-    private List<String> configuredSymbols() {
-        List<String> rawSymbols = properties.getSymbols() == null || properties.getSymbols().isEmpty()
-                ? DEFAULT_BIST_SYMBOLS
-                : properties.getSymbols();
-
-        return rawSymbols.stream()
-                .map(this::canonicalSymbol)
-                .filter(symbol -> !symbol.isBlank())
+    private List<ConfiguredSymbol> configuredSymbols() {
+        InstrumentRegistryService.Resolution resolution = instrumentRegistryService.resolveMappings(DataSource.BIST);
+        List<ConfiguredSymbol> configuredSymbols = resolution.mappings().stream()
+                .map(mapping -> new ConfiguredSymbol(
+                        canonicalSymbol(mapping.providerSymbol()),
+                        requestSymbolKey(mapping.symbol())
+                ))
+                .filter(symbol -> !symbol.providerSymbol().isBlank() && !symbol.symbolKey().isBlank())
                 .distinct()
                 .toList();
+
+        if (configuredSymbols.isEmpty()) {
+            List<String> rawSymbols = properties.getSymbols() == null || properties.getSymbols().isEmpty()
+                    ? DEFAULT_BIST_SYMBOLS
+                    : properties.getSymbols();
+            configuredSymbols = rawSymbols.stream()
+                    .map(this::canonicalSymbol)
+                    .filter(symbol -> !symbol.isBlank())
+                    .map(symbol -> new ConfiguredSymbol(symbol, requestSymbolKey(symbol)))
+                    .distinct()
+                    .toList();
+        }
+
+        log.info(
+                "Market provider registry resolved: providerSource={}, registryMappingCount={}, resolvedSymbols={}, fallbackToYaml={}",
+                DataSource.BIST,
+                resolution.mappings().size(),
+                configuredSymbols.stream().map(ConfiguredSymbol::providerSymbol).toList(),
+                resolution.fallbackToYaml()
+        );
+        return configuredSymbols;
     }
 
     private BatchSelection selectBatch(List<String> symbols, int requestedBatchSize, boolean explicitSymbolRequest) {
@@ -286,12 +339,20 @@ public class BistMarketDataProvider implements MarketDataProvider {
         return request != null && request.hasSymbolFilter();
     }
 
-    private boolean matchesSymbol(String configuredSymbol, String requestedSymbol) {
-        return canonicalSymbol(configuredSymbol).equals(canonicalSymbol(requestedSymbol));
+    private boolean isHistoryRequest(ProviderFetchRequest request) {
+        return request != null && (request.from() != null || request.to() != null);
     }
 
     private String canonicalSymbol(String symbol) {
         return symbol == null ? "" : symbol.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String requestSymbolKey(String symbol) {
+        String canonical = canonicalSymbol(symbol);
+        if (canonical.endsWith(".IS")) {
+            canonical = canonical.substring(0, canonical.length() - 3);
+        }
+        return symbolNormalizer.normalize(canonical).orElse(canonical);
     }
 
     private boolean isYahooLowFrequencyMode() {
@@ -308,5 +369,8 @@ public class BistMarketDataProvider implements MarketDataProvider {
     }
 
     private record BatchSelection(int startIndex, List<String> symbols) {
+    }
+
+    private record ConfiguredSymbol(String providerSymbol, String symbolKey) {
     }
 }

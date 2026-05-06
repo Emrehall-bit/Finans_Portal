@@ -30,14 +30,25 @@ public class MarketHistoryBackfillService {
     }
 
     public List<MarketHistoryPersistenceResult> backfill(DataSource source, Integer days) {
+        return backfill(source, List.of(), days);
+    }
+
+    public List<MarketHistoryPersistenceResult> backfill(DataSource source, List<String> symbols, Integer days) {
         int lookbackDays = resolveLookbackDays(source, days);
         LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(lookbackDays);
+        LocalDate startDate = endDate.minusDays(Math.max(lookbackDays - 1L, 0L));
 
-        log.info("Market history backfill started: source={}, lookbackDays={}", source, lookbackDays);
+        log.info("Market history backfill started: source={}, lookbackDays={}, symbolCount={}", source, lookbackDays, symbols == null ? 0 : symbols.size());
 
         List<MarketRefreshResult> results = providerOrchestrationService.fetchQuoteResults(
-                new ProviderFetchRequest(source, List.of(), java.util.Set.of(), startDate, endDate, java.util.Map.of())
+                new ProviderFetchRequest(
+                        source,
+                        symbols == null ? List.of() : symbols,
+                        java.util.Set.of(),
+                        startDate,
+                        endDate,
+                        java.util.Map.of()
+                )
         );
 
         List<MarketHistoryPersistenceResult> persistenceResults = results.stream()
@@ -45,7 +56,7 @@ public class MarketHistoryBackfillService {
                 .map(result -> marketHistoryService.persistHistory(result.source(), result.historyRecords()))
                 .toList();
 
-        log.info("Market history backfill completed: source={}, lookbackDays={}", source, lookbackDays);
+        log.info("Market history backfill completed: source={}, lookbackDays={}, symbolCount={}", source, lookbackDays, symbols == null ? 0 : symbols.size());
         return persistenceResults;
     }
 

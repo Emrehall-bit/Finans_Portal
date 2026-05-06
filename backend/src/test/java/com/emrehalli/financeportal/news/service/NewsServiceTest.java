@@ -28,25 +28,25 @@ class NewsServiceTest {
     private NewsRepository newsRepository;
 
     @Test
-    void acceptsBloombergHtItemWithoutPublishedAtWhenRequiredFieldsExist() {
-        when(newsRepository.findByExternalIdIn(Set.of("BLOOMBERG_HT-1"))).thenReturn(Set.of());
+    void acceptsAaRssItemWithoutPublishedAtWhenRequiredFieldsExist() {
+        when(newsRepository.findByExternalIdIn(Set.of("AA_RSS-1"))).thenReturn(Set.of());
         when(newsRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         NewsProvider provider = new NewsProvider() {
             @Override
             public String getProviderName() {
-                return "BLOOMBERG_HT";
+                return "AA_RSS";
             }
 
             @Override
             public List<NewsItemDto> fetchLatestNews() {
                 return List.of(NewsItemDto.builder()
-                        .externalId("BLOOMBERG_HT-1")
+                        .externalId("AA_RSS-1")
                         .title("Baslik mevcut ve kayit icin yeterli uzunlukta")
-                        .source("Bloomberg HT")
-                        .provider("BLOOMBERG_HT")
-                        .regionScope("LOCAL")
-                        .url("https://www.bloomberght.com/ornek-haber-1")
+                        .source("Anadolu Ajansi")
+                        .provider("AA_RSS")
+                        .regionScope("TR")
+                        .url("https://www.aa.com.tr/tr/ekonomi/ornek-haber-1")
                         .publishedAt(null)
                         .build());
             }
@@ -59,7 +59,7 @@ class NewsServiceTest {
 
         NewsService service = new NewsService(newsRepository, List.of(provider));
 
-        NewsSyncResponseDto result = service.syncProvider(NewsProviderType.BLOOMBERG_HT);
+        NewsSyncResponseDto result = service.syncProvider(NewsProviderType.AA_RSS);
 
         ArgumentCaptor<List<News>> captor = ArgumentCaptor.forClass(List.class);
         verify(newsRepository).saveAll(captor.capture());
@@ -78,37 +78,37 @@ class NewsServiceTest {
     void recalculatesExistingImportanceScoreWhenExistingRecordHasZeroScore() {
         News existingNews = News.builder()
                 .id(10L)
-                .externalId("BLOOMBERG_HT-2")
+                .externalId("INVESTING_RSS-2")
                 .title("TCMB faiz ve dolar haberi")
                 .summary("Merkez bankasi ve piyasa etkisi")
-                .source("Bloomberg HT")
-                .provider("BLOOMBERG_HT")
+                .source("Investing.com")
+                .provider("INVESTING_RSS")
                 .language("tr")
-                .regionScope("TR")
-                .url("https://www.bloomberght.com/ornek-haber-2")
+                .regionScope("GLOBAL")
+                .url("https://www.investing.com/news/economy/ornek-haber-2")
                 .importanceScore(0)
                 .build();
 
-        when(newsRepository.findByExternalIdIn(Set.of("BLOOMBERG_HT-2"))).thenReturn(Set.of(existingNews));
+        when(newsRepository.findByExternalIdIn(Set.of("INVESTING_RSS-2"))).thenReturn(Set.of(existingNews));
         when(newsRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         NewsProvider provider = new NewsProvider() {
             @Override
             public String getProviderName() {
-                return "BLOOMBERG_HT";
+                return "INVESTING_RSS";
             }
 
             @Override
             public List<NewsItemDto> fetchLatestNews() {
                 return List.of(NewsItemDto.builder()
-                        .externalId("BLOOMBERG_HT-2")
+                        .externalId("INVESTING_RSS-2")
                         .title("TCMB faiz ve dolar haberi")
                         .summary("Merkez bankasi ve piyasa etkisi")
-                        .source("Bloomberg HT")
-                        .provider("BLOOMBERG_HT")
+                        .source("Investing.com")
+                        .provider("INVESTING_RSS")
                         .language("tr")
-                        .regionScope("TR")
-                        .url("https://www.bloomberght.com/ornek-haber-2")
+                        .regionScope("GLOBAL")
+                        .url("https://www.investing.com/news/economy/ornek-haber-2")
                         .build());
             }
 
@@ -120,7 +120,7 @@ class NewsServiceTest {
 
         NewsService service = new NewsService(newsRepository, List.of(provider));
 
-        NewsSyncResponseDto result = service.syncProvider(NewsProviderType.BLOOMBERG_HT);
+        NewsSyncResponseDto result = service.syncProvider(NewsProviderType.INVESTING_RSS);
 
         assertThat(result.getExistingCount()).isEqualTo(1);
         verify(newsRepository).saveAll(argThat(iterable -> {
@@ -132,6 +132,129 @@ class NewsServiceTest {
             return !iterator.hasNext()
                     && updated.getImportanceScore() != null
                     && updated.getImportanceScore() > 0;
+        }));
+    }
+
+    @Test
+    void updatesExistingImageUrlWhenStoredRecordIsMissingImage() {
+        News existingNews = News.builder()
+                .id(15L)
+                .externalId("AA_RSS-IMAGE-1")
+                .title("Guncel ekonomi haberi")
+                .summary("Ozet")
+                .source("Anadolu Ajansi")
+                .provider("AA_RSS")
+                .language("tr")
+                .regionScope("TR")
+                .url("https://www.aa.com.tr/tr/ekonomi/ornek-haber")
+                .imageUrl(null)
+                .importanceScore(10)
+                .build();
+
+        when(newsRepository.findByExternalIdIn(Set.of("AA_RSS-IMAGE-1"))).thenReturn(Set.of(existingNews));
+        when(newsRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        NewsProvider provider = new NewsProvider() {
+            @Override
+            public String getProviderName() {
+                return "AA_RSS";
+            }
+
+            @Override
+            public List<NewsItemDto> fetchLatestNews() {
+                return List.of(NewsItemDto.builder()
+                        .externalId("AA_RSS-IMAGE-1")
+                        .title("Guncel ekonomi haberi")
+                        .summary("Ozet")
+                        .source("Anadolu Ajansi")
+                        .provider("AA_RSS")
+                        .language("tr")
+                        .regionScope("TR")
+                        .url("https://www.aa.com.tr/tr/ekonomi/ornek-haber")
+                        .imageUrl("https://cdn.example.com/aa-image.jpg")
+                        .build());
+            }
+
+            @Override
+            public List<NewsItemDto> fetchCompanyNews(String symbol) {
+                return List.of();
+            }
+        };
+
+        NewsService service = new NewsService(newsRepository, List.of(provider));
+
+        NewsSyncResponseDto result = service.syncProvider(NewsProviderType.AA_RSS);
+
+        assertThat(result.getExistingCount()).isEqualTo(1);
+        verify(newsRepository).saveAll(argThat(iterable -> {
+            java.util.Iterator<News> iterator = iterable.iterator();
+            if (!iterator.hasNext()) {
+                return false;
+            }
+            News updated = iterator.next();
+            return !iterator.hasNext()
+                    && "https://cdn.example.com/aa-image.jpg".equals(updated.getImageUrl());
+        }));
+    }
+
+    @Test
+    void clearsExistingLogoImageWhenProviderNoLongerSuppliesRealImage() {
+        News existingNews = News.builder()
+                .id(16L)
+                .externalId("FINNHUB-LOGO-1")
+                .title("Reuters sourced story")
+                .summary("Summary")
+                .source("Reuters")
+                .provider("FINNHUB")
+                .language("en")
+                .regionScope("GLOBAL")
+                .url("https://example.com/reuters-story")
+                .imageUrl("https://static2.finnhub.io/file/finnhub/logo/reuters_logo.jpeg")
+                .importanceScore(10)
+                .build();
+
+        when(newsRepository.findByExternalIdIn(Set.of("FINNHUB-LOGO-1"))).thenReturn(Set.of(existingNews));
+        when(newsRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        NewsProvider provider = new NewsProvider() {
+            @Override
+            public String getProviderName() {
+                return "FINNHUB";
+            }
+
+            @Override
+            public List<NewsItemDto> fetchLatestNews() {
+                return List.of(NewsItemDto.builder()
+                        .externalId("FINNHUB-LOGO-1")
+                        .title("Reuters sourced story")
+                        .summary("Summary")
+                        .source("Reuters")
+                        .provider("FINNHUB")
+                        .language("en")
+                        .regionScope("GLOBAL")
+                        .url("https://example.com/reuters-story")
+                        .imageUrl(null)
+                        .build());
+            }
+
+            @Override
+            public List<NewsItemDto> fetchCompanyNews(String symbol) {
+                return List.of();
+            }
+        };
+
+        NewsService service = new NewsService(newsRepository, List.of(provider));
+
+        NewsSyncResponseDto result = service.syncProvider(NewsProviderType.FINNHUB);
+
+        assertThat(result.getExistingCount()).isEqualTo(1);
+        verify(newsRepository).saveAll(argThat(iterable -> {
+            java.util.Iterator<News> iterator = iterable.iterator();
+            if (!iterator.hasNext()) {
+                return false;
+            }
+            News updated = iterator.next();
+            return !iterator.hasNext() && updated.getImageUrl() == null;
         }));
     }
 }

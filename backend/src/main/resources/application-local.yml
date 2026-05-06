@@ -5,4 +5,4 @@ management:
 
 app:
   logging:
-    path: ${LOG_PATH:backend/logs}
+    path: ${LOG_PATH:logs}

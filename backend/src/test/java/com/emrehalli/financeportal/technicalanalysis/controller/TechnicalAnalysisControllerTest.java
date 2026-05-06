@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.technicalanalysis.controller;
 
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.config.ObservabilityFilterConfig;
 import com.emrehalli.financeportal.config.security.KeycloakJwtRoleConverter;
 import com.emrehalli.financeportal.config.security.ResourceAccessManager;
@@ -8,7 +9,6 @@ import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.enums.TechnicalSignal;
 import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisExceptionHandler;
-import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisNotFoundException;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisValidationException;
 import com.emrehalli.financeportal.technicalanalysis.mapper.TechnicalAnalysisMapper;
 import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisService;
@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -56,6 +57,9 @@ class TechnicalAnalysisControllerTest {
     @MockBean
     private ResourceAccessManager resourceAccessManager;
 
+    @MockBean
+    private AppMessageSource appMessageSource;
+
     @Test
     void analyzeReturnsRsi14InResponse() throws Exception {
         when(technicalAnalysisService.analyze(eq("USDTRY"), any(), any(), any()))
@@ -64,6 +68,8 @@ class TechnicalAnalysisControllerTest {
                         LocalDate.of(2026, 1, 1),
                         LocalDate.of(2026, 4, 27),
                         new BigDecimal("38.50"),
+                        "AVAILABLE",
+                        null,
                         TrendDirection.UPTREND,
                         List.of(TechnicalSignal.PRICE_ABOVE_SMA20, TechnicalSignal.RSI_NEUTRAL),
                         Map.of(
@@ -83,6 +89,7 @@ class TechnicalAnalysisControllerTest {
                 ));
 
         mockMvc.perform(get("/api/v1/technical-analysis/USDTRY")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER"))
                         .header("X-Request-Id", "ta-rsi-req")
                         .param("from", "2026-01-01")
                         .param("to", "2026-04-27")
@@ -95,8 +102,37 @@ class TechnicalAnalysisControllerTest {
     }
 
     @Test
+    void analyzeSupportsEmptyIndicatorValuesWithoutServerError() throws Exception {
+        when(technicalAnalysisService.analyze(eq("TCD"), any(), any(), any()))
+                .thenReturn(new TechnicalAnalysisResult(
+                        "TCD",
+                        LocalDate.of(2026, 1, 1),
+                        LocalDate.of(2026, 4, 27),
+                        new BigDecimal("45.67"),
+                        "INSUFFICIENT_HISTORY",
+                        "Teknik analiz için yeterli tarihsel veri yok.",
+                        TrendDirection.SIDEWAYS,
+                        List.of(),
+                        Map.of(),
+                        List.of()
+                ));
+
+        mockMvc.perform(get("/api/v1/technical-analysis/TCD")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER"))
+                        .param("from", "2026-01-01")
+                        .param("to", "2026-04-27")
+                        .param("indicators", "SMA7,SMA20,SMA50,RSI14"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.symbol").value("TCD"))
+                .andExpect(jsonPath("$.analysisStatus").value("INSUFFICIENT_HISTORY"))
+                .andExpect(jsonPath("$.indicatorValues").isArray())
+                .andExpect(jsonPath("$.indicatorValues").isEmpty());
+    }
+
+    @Test
     void analyzeReturnsBadRequestWhenFromIsMissing() throws Exception {
         mockMvc.perform(get("/api/v1/technical-analysis/USDTRY")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER"))
                         .param("to", "2026-04-27"))
                 .andExpect(status().isBadRequest());
     }
@@ -104,6 +140,7 @@ class TechnicalAnalysisControllerTest {
     @Test
     void analyzeReturnsBadRequestWhenToIsMissing() throws Exception {
         mockMvc.perform(get("/api/v1/technical-analysis/USDTRY")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER"))
                         .param("from", "2026-01-01"))
                 .andExpect(status().isBadRequest());
     }
@@ -114,6 +151,7 @@ class TechnicalAnalysisControllerTest {
                 .thenThrow(new TechnicalAnalysisValidationException("from cannot be after to"));
 
         mockMvc.perform(get("/api/v1/technical-analysis/USDTRY")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER"))
                         .param("from", "2026-04-27")
                         .param("to", "2026-01-01"))
                 .andExpect(status().isBadRequest())
@@ -121,15 +159,27 @@ class TechnicalAnalysisControllerTest {
     }
 
     @Test
-    void analyzeReturnsNotFoundWhenHistoryIsMissing() throws Exception {
+    void analyzeReturnsInsufficientHistoryWithoutServerError() throws Exception {
         when(technicalAnalysisService.analyze(eq("USDTRY"), any(), any(), any()))
-                .thenThrow(new TechnicalAnalysisNotFoundException("Historical price data not found for symbol: USDTRY"));
+                .thenReturn(new TechnicalAnalysisResult(
+                        "USDTRY",
+                        LocalDate.of(2026, 1, 1),
+                        LocalDate.of(2026, 4, 27),
+                        null,
+                        "INSUFFICIENT_HISTORY",
+                        "Teknik analiz için yeterli tarihsel veri yok.",
+                        TrendDirection.SIDEWAYS,
+                        List.of(),
+                        Map.of(),
+                        List.of()
+                ));
 
         mockMvc.perform(get("/api/v1/technical-analysis/USDTRY")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER"))
                         .param("from", "2026-01-01")
                         .param("to", "2026-04-27"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.detail").value("Historical price data not found for symbol: USDTRY"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.analysisStatus").value("INSUFFICIENT_HISTORY"));
     }
 
     @Test
@@ -151,6 +201,7 @@ class TechnicalAnalysisControllerTest {
                 ));
 
         mockMvc.perform(get("/api/v1/technical-analysis/compare")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER"))
                         .param("symbols", "USDTRY,EURTRY")
                         .param("from", "2026-04-01")
                         .param("to", "2026-04-27"))
@@ -166,6 +217,7 @@ class TechnicalAnalysisControllerTest {
                 .thenThrow(new TechnicalAnalysisValidationException("symbols parameter cannot be blank"));
 
         mockMvc.perform(get("/api/v1/technical-analysis/compare")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER"))
                         .param("symbols", " ")
                         .param("from", "2026-04-01")
                         .param("to", "2026-04-27"))

@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.market.exception;
 
+import com.emrehalli.financeportal.common.exception.BadRequestException;
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,12 +20,17 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class MarketExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(MarketExceptionHandler.class);
+    private final AppMessageSource appMessageSource;
+
+    public MarketExceptionHandler(AppMessageSource appMessageSource) {
+        this.appMessageSource = appMessageSource;
+    }
 
     @ExceptionHandler(MarketDataNotFoundException.class)
     public ProblemDetail handleMarketDataNotFound(MarketDataNotFoundException ex, HttpServletRequest request) {
         logException("Market data not found", ex, request);
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
-        problem.setTitle("Market data not found");
+        problem.setTitle(appMessageSource.get("market.error.dataNotFound.title"));
         problem.setDetail(ex.getMessage());
         problem.setProperty("requestId", LoggingContext.get(LoggingConstants.REQUEST_ID_KEY));
         return problem;
@@ -33,7 +40,17 @@ public class MarketExceptionHandler {
     public ProblemDetail handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
         logException("Invalid market request parameter", ex, request);
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
-        problem.setTitle("Invalid market request parameter");
+        problem.setTitle(appMessageSource.get("market.error.invalidRequestParameter.title"));
+        problem.setDetail(ex.getMessage());
+        problem.setProperty("requestId", LoggingContext.get(LoggingConstants.REQUEST_ID_KEY));
+        return problem;
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ProblemDetail handleBadRequest(BadRequestException ex, HttpServletRequest request) {
+        logException("Invalid market request", ex, request);
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setTitle(appMessageSource.get("market.error.invalidRequest.title"));
         problem.setDetail(ex.getMessage());
         problem.setProperty("requestId", LoggingContext.get(LoggingConstants.REQUEST_ID_KEY));
         return problem;
@@ -43,7 +60,7 @@ public class MarketExceptionHandler {
     public ProblemDetail handleGeneric(Exception ex, HttpServletRequest request) {
         logException("Market module error", ex, request);
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
-        problem.setTitle("Market module error");
+        problem.setTitle(appMessageSource.get("market.error.module.title"));
         problem.setDetail(ex.getMessage());
         problem.setProperty("requestId", LoggingContext.get(LoggingConstants.REQUEST_ID_KEY));
         return problem;

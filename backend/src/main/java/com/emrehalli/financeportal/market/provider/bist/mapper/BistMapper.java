@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.market.provider.bist.mapper;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.provider.bist.dto.BistHistoryPoint;
 import com.emrehalli.financeportal.market.provider.bist.dto.BistQuoteResponse;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
 import org.springframework.stereotype.Component;
@@ -34,6 +35,16 @@ public class BistMapper {
 
         return responses.stream()
                 .flatMap(response -> toHistoryRecord(response).stream())
+                .toList();
+    }
+
+    public List<MarketHistoryRecord> toHistoryRecordsFromHistoryPoints(List<BistHistoryPoint> points) {
+        if (points == null || points.isEmpty()) {
+            return List.of();
+        }
+
+        return points.stream()
+                .flatMap(point -> toHistoryRecord(point).stream())
                 .toList();
     }
 
@@ -82,6 +93,24 @@ public class BistMapper {
                 DataSource.BIST,
                 priceDate,
                 response.regularMarketPrice(),
+                "TRY"
+        ));
+    }
+
+    private Optional<MarketHistoryRecord> toHistoryRecord(BistHistoryPoint point) {
+        if (point == null || isBlank(point.providerSymbol()) || point.closePrice() == null || point.priceDate() == null) {
+            return Optional.empty();
+        }
+
+        String symbol = canonicalSymbol(point.providerSymbol());
+        String displayName = isBlank(point.displayName()) ? symbol : point.displayName().trim();
+        return Optional.of(new MarketHistoryRecord(
+                symbol,
+                displayName,
+                InstrumentType.STOCK,
+                DataSource.BIST,
+                point.priceDate(),
+                point.closePrice(),
                 "TRY"
         ));
     }

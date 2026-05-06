@@ -1,33 +1,50 @@
 package com.emrehalli.financeportal.market.cache;
 
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.Map;
 
 @Component
 public class MarketCacheTtlPolicy {
+
+    private static final Logger log = LoggerFactory.getLogger(MarketCacheTtlPolicy.class);
+
+    private final Map<String, Duration> configuredTtls;
+
+    public MarketCacheTtlPolicy(MarketCacheProperties marketCacheProperties) {
+        this.configuredTtls = marketCacheProperties.getTtl();
+    }
 
     public Duration ttlFor(DataSource source) {
         if (source == null) {
             return allQuotesTtl();
         }
 
-        return switch (source) {
-            case EVDS -> Duration.ofHours(6);
-            case BINANCE -> Duration.ofMinutes(2);
-            case TEFAS -> Duration.ofDays(1);
-            case BIST -> Duration.ofDays(1);
-            case KAP -> Duration.ofDays(1);
-            default -> Duration.ofMinutes(30);
-        };
+        Duration ttl = configuredTtls.getOrDefault(source.name(), fallbackTtlFor(source));
+        log.info("Market cache ttl resolved: source={}, ttl={}", source, ttl);
+        return ttl;
     }
 
     public Duration allQuotesTtl() {
-        return Duration.ofMinutes(30);
+        Duration ttl = configuredTtls.getOrDefault("ALL", Duration.ofMinutes(30));
+        log.info("Market cache ttl resolved: source={}, ttl={}", "ALL", ttl);
+        return ttl;
     }
 
     public Duration symbolQuoteTtl() {
-        return Duration.ofHours(1);
+        return allQuotesTtl();
+    }
+
+    private Duration fallbackTtlFor(DataSource source) {
+        return switch (source) {
+            case EVDS -> Duration.ofHours(6);
+            case BINANCE -> Duration.ofMinutes(2);
+            case BIST -> Duration.ofDays(1);
+            default -> Duration.ofMinutes(30);
+        };
     }
 }

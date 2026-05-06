@@ -1,0 +1,97 @@
+{
+  "realm": "finance-portal",
+  "enabled": true,
+  "displayName": "Finance Portal",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "clients": [
+    {
+      "clientId": "finance-portal-backend",
+      "name": "finance-portal-backend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+
+
+    },
+    {
+      "clientId": "finance-portal-frontend",
+      "name": "finance-portal-frontend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:3000",
+      "baseUrl": "http://localhost:3000",
+      "adminUrl": "http://localhost:3000",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*##http://127.0.0.1:3000/*"
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "GUEST",        "description": "Giriş yapmadan erişim" },
+      { "name": "USER",         "description": "Kayıtlı standart kullanıcı" },
+      { "name": "USER_PREMIUM", "description": "Premium özellikli kullanıcı" },
+      { "name": "ADMIN",        "description": "Sistem yöneticisi" }
+    ]
+  },
+  "users": [
+    {
+      "username": "testuser",
+      "email": "testuser@financeportal.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [{ "type": "password", "value": "test123", "temporary": false }],
+      "realmRoles": ["USER"]
+    },
+    {
+      "username": "premiumuser",
+      "email": "premium@financeportal.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Premium",
+      "lastName": "User",
+      "credentials": [{ "type": "password", "value": "premium123", "temporary": false }],
+      "realmRoles": ["USER_PREMIUM"]
+    },
+    {
+      "username": "adminuser",
+      "email": "admin@financeportal.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [{ "type": "password", "value": "admin123", "temporary": false }],
+      "realmRoles": ["ADMIN"]
+    }
+
+  ],
+  "defaultRole": {
+    "name": "USER"
+  }
+}

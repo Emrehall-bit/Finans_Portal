@@ -11,11 +11,11 @@ import lombok.Setter;
 @Setter
 public class CreatePortfolioRequest {
 
-    @NotBlank(message = "Portfolio name cannot be blank")
-    @Size(max = 100, message = "Portfolio name cannot exceed 100 characters")
+    @NotBlank(message = "{validation.portfolioName.blank}")
+    @Size(max = 100, message = "{validation.portfolioName.max}")
     private String portfolioName;
 
-    @NotNull(message = "Visibility status is required")
+    @NotNull(message = "{validation.visibility.required}")
     private PortfolioVisibility visibilityStatus;
 }
 

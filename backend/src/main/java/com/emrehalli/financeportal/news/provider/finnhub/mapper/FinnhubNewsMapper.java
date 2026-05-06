@@ -29,8 +29,23 @@ public class FinnhubNewsMapper {
                 .category(source.getCategory())
                 .relatedSymbol(source.getRelated())
                 .url(source.getUrl())
+                .imageUrl(resolveImageUrl(source.getImage()))
                 .publishedAt(mapDate(source.getDatetime()))
                 .build();
+    }
+
+    private String resolveImageUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return null;
+        }
+
+        String normalized = imageUrl.trim().toLowerCase();
+        if (normalized.contains("/logo/") || normalized.contains("_logo.") || normalized.endsWith("logo.jpeg")
+                || normalized.endsWith("logo.jpg") || normalized.endsWith("logo.png") || normalized.endsWith("logo.webp")) {
+            return null;
+        }
+
+        return imageUrl.trim();
     }
 
     private String resolveExternalId(FinnhubNewsResponse source) {

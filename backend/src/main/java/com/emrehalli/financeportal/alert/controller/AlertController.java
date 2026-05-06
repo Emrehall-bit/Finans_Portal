@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.alert.controller;
 import com.emrehalli.financeportal.alert.dto.AlertResponseDto;
 import com.emrehalli.financeportal.alert.dto.CreateAlertRequest;
 import com.emrehalli.financeportal.alert.service.AlertService;
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,9 +21,11 @@ import java.util.List;
 public class AlertController {
 
     private final AlertService alertService;
+    private final AppMessageSource appMessageSource;
 
-    public AlertController(AlertService alertService) {
+    public AlertController(AlertService alertService, AppMessageSource appMessageSource) {
         this.alertService = alertService;
+        this.appMessageSource = appMessageSource;
     }
 
     @PostMapping("/{userId}")
@@ -33,7 +36,7 @@ public class AlertController {
         return ApiResponse.<AlertResponseDto>builder()
                 .success(true)
                 .data(response)
-                .message("Alert created successfully")
+                .message(appMessageSource.get("alert.created"))
                 .build();
     }
 
@@ -44,7 +47,7 @@ public class AlertController {
         return ApiResponse.<List<AlertResponseDto>>builder()
                 .success(true)
                 .data(response)
-                .message("User alerts fetched successfully")
+                .message(appMessageSource.get("alert.list.fetched"))
                 .build();
     }
 
@@ -56,7 +59,7 @@ public class AlertController {
         return ApiResponse.<Void>builder()
                 .success(true)
                 .data(null)
-                .message("Alert cancelled successfully")
+                .message(appMessageSource.get("alert.cancelled"))
                 .build();
     }
 }

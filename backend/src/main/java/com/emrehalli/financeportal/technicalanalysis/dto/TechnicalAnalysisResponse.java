@@ -9,6 +9,8 @@ public record TechnicalAnalysisResponse(
         LocalDate from,
         LocalDate to,
         BigDecimal latestPrice,
+        String analysisStatus,
+        String message,
         String trendDirection,
         List<String> signals,
         List<IndicatorValueDto> indicatorValues,

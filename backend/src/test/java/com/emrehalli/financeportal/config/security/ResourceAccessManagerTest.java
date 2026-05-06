@@ -58,6 +58,25 @@ class ResourceAccessManagerTest {
     }
 
     @Test
+    void canAccessPortfolioId_whenPortfolioIdIsMalformed_returnsDenied() {
+        boolean granted = resourceAccessManager.canAccessPortfolioId(authentication("kc-user-1"), context("portfolioId", "not-a-number"))
+                .isGranted();
+
+        assertFalse(granted);
+    }
+
+    @Test
+    void canAccessPortfolioId_whenAuthenticationIsNotJwt_returnsDenied() {
+        TestingAuthenticationToken token = new TestingAuthenticationToken("plain-user", "secret");
+        token.setAuthenticated(true);
+        Supplier<Authentication> authentication = () -> token;
+
+        boolean granted = resourceAccessManager.canAccessPortfolioId(authentication, context("portfolioId", "25")).isGranted();
+
+        assertFalse(granted);
+    }
+
+    @Test
     void canAccessUserId_whenUserMatchesJwtSubject_returnsGranted() {
         when(userRepository.findById(5L))
                 .thenReturn(Optional.of(User.builder().id(5L).keycloakId("kc-user-1").fullName("User").email("u@example.com").build()));

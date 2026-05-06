@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculation
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.entity.News;
 import com.emrehalli.financeportal.news.repository.NewsRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +14,6 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
-import jakarta.persistence.EntityManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -52,9 +52,9 @@ class NewsServicePublishedAtSortIntegrationTest {
         persistWithCreatedAt(buildNews(
                 "news-1",
                 "Older dated news",
-                "Bloomberg HT",
-                "BLOOMBERG_HT",
-                "LOCAL",
+                "Investing.com",
+                "INVESTING_RSS",
+                "GLOBAL",
                 "economy",
                 "https://example.com/1",
                 LocalDateTime.of(2026, 4, 24, 9, 0),
@@ -63,7 +63,7 @@ class NewsServicePublishedAtSortIntegrationTest {
         persistWithCreatedAt(buildNews(
                 "news-2",
                 "Newest dated news",
-                "Anadolu Ajansı",
+                "Anadolu Ajansi",
                 "AA_RSS",
                 "TR",
                 "economy",
@@ -74,7 +74,7 @@ class NewsServicePublishedAtSortIntegrationTest {
         persistWithCreatedAt(buildNews(
                 "news-3",
                 "Null dated but newer created",
-                "Anadolu Ajansı",
+                "Anadolu Ajansi",
                 "AA_RSS",
                 "TR",
                 "economy",
@@ -85,9 +85,9 @@ class NewsServicePublishedAtSortIntegrationTest {
         persistWithCreatedAt(buildNews(
                 "news-4",
                 "Null dated second",
-                "Bloomberg HT",
-                "BLOOMBERG_HT",
-                "LOCAL",
+                "Investing.com",
+                "INVESTING_RSS",
+                "GLOBAL",
                 "economy",
                 "https://example.com/4",
                 null,
@@ -156,8 +156,8 @@ class NewsServicePublishedAtSortIntegrationTest {
         persistWithCreatedAt(buildNews(
                 "news-7",
                 "TCMB faiz ve dolar haberi",
-                "Bloomberg HT",
-                "BLOOMBERG_HT",
+                "Anadolu Ajansi",
+                "AA_RSS",
                 "TR",
                 "economy",
                 "https://example.com/7",
@@ -251,8 +251,8 @@ class NewsServicePublishedAtSortIntegrationTest {
         persistWithCreatedAt(buildNews(
                 "news-8",
                 "TCMB faiz karari ve kredi piyasasi",
-                "Bloomberg HT",
-                "BLOOMBERG_HT",
+                "Anadolu Ajansi",
+                "AA_RSS",
                 "TR",
                 "economy",
                 "https://example.com/8",

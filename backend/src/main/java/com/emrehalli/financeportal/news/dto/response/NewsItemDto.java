@@ -19,6 +19,7 @@ public class NewsItemDto {
     private String category;
     private String relatedSymbol;
     private String url;
+    private String imageUrl;
     private LocalDateTime publishedAt;
 }
 

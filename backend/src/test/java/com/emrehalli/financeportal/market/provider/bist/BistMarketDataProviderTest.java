@@ -8,6 +8,7 @@ import com.emrehalli.financeportal.market.provider.bist.config.BistProviderPrope
 import com.emrehalli.financeportal.market.provider.bist.dto.BistQuoteResponse;
 import com.emrehalli.financeportal.market.provider.bist.mapper.BistMapper;
 import com.emrehalli.financeportal.market.provider.bist.support.BistRoundRobinState;
+import com.emrehalli.financeportal.market.service.InstrumentRegistryService;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -111,14 +113,64 @@ class BistMarketDataProviderTest {
         assertThat(result.quotes()).isEmpty();
     }
 
+    @Test
+    void resolvesBistProviderSymbolsFromRegistryMappings() {
+        BistProviderProperties properties = properties();
+        properties.setSymbols(List.of("SHOULDNOT.IS"));
+        BistMarketDataProvider provider = provider(properties, new BistRoundRobinState(), registryService());
+        when(yahooClient.fetchQuotes(any())).thenReturn(YahooClient.FetchResult.success(List.of(
+                new BistQuoteResponse("THYAO.IS", "THYAO", null, new BigDecimal("320.40"), null, 1777032000L)
+        )));
+
+        provider.fetchQuotes(ProviderFetchRequest.forSymbols(List.of("thy ao")));
+
+        verify(yahooClient).fetchQuotes(List.of("THYAO.IS"));
+    }
+
+    @Test
+    void usesYahooHistoryWhenDateRangeIsProvided() {
+        BistMarketDataProvider provider = provider(properties(), new BistRoundRobinState());
+        when(yahooClient.fetchDailyHistory("THYAO.IS", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 4, 30))).thenReturn(List.of(
+                new com.emrehalli.financeportal.market.provider.bist.dto.BistHistoryPoint(
+                        "THYAO.IS",
+                        "THYAO.IS",
+                        LocalDate.of(2026, 1, 2),
+                        new BigDecimal("320.40")
+                )
+        ));
+
+        var result = provider.fetch(new ProviderFetchRequest(
+                DataSource.BIST,
+                List.of("THYAO"),
+                java.util.Set.of(),
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 4, 30),
+                java.util.Map.of()
+        ));
+
+        verify(yahooClient).fetchDailyHistory("THYAO.IS", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 4, 30));
+        assertThat(result.quotes()).isEmpty();
+        assertThat(result.historyRecords()).singleElement().satisfies(record -> {
+            assertThat(record.symbol()).isEqualTo("THYAO");
+            assertThat(record.priceDate()).isEqualTo(LocalDate.of(2026, 1, 2));
+        });
+    }
+
     private BistMarketDataProvider provider(BistProviderProperties properties, BistRoundRobinState state) {
+        return provider(properties, state, registryService());
+    }
+
+    private BistMarketDataProvider provider(BistProviderProperties properties,
+                                            BistRoundRobinState state,
+                                            InstrumentRegistryService registryService) {
         return new BistMarketDataProvider(
                 yahooClient,
                 delayedClient,
                 properties,
                 new BistMapper(),
                 new SymbolNormalizer(),
-                state
+                state,
+                registryService
         );
     }
 
@@ -135,5 +187,38 @@ class BistMarketDataProviderTest {
         properties.getYahoo().setBaseUrl("https://query1.finance.yahoo.com");
         properties.getDelayed().setEnabled(false);
         return properties;
+    }
+
+    private InstrumentRegistryService registryService() {
+        return InstrumentRegistryService.seeded(new SymbolNormalizer(), List.of(
+                new InstrumentRegistryService.InstrumentDefinition(
+                        "THYAO",
+                        "THYAO",
+                        com.emrehalli.financeportal.market.domain.enums.InstrumentType.STOCK,
+                        "TRY",
+                        java.util.Map.of(DataSource.BIST, "THYAO.IS")
+                ),
+                new InstrumentRegistryService.InstrumentDefinition(
+                        "ASELS",
+                        "ASELS",
+                        com.emrehalli.financeportal.market.domain.enums.InstrumentType.STOCK,
+                        "TRY",
+                        java.util.Map.of(DataSource.BIST, "ASELS.IS")
+                ),
+                new InstrumentRegistryService.InstrumentDefinition(
+                        "GARAN",
+                        "GARAN",
+                        com.emrehalli.financeportal.market.domain.enums.InstrumentType.STOCK,
+                        "TRY",
+                        java.util.Map.of(DataSource.BIST, "GARAN.IS")
+                ),
+                new InstrumentRegistryService.InstrumentDefinition(
+                        "AKBNK",
+                        "AKBNK",
+                        com.emrehalli.financeportal.market.domain.enums.InstrumentType.STOCK,
+                        "TRY",
+                        java.util.Map.of(DataSource.BIST, "AKBNK.IS")
+                )
+        ));
     }
 }

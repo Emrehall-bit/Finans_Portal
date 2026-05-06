@@ -1,6 +1,6 @@
 export const NEWS_SORT_OPTIONS = [
   { value: "publishedAt", label: "En yeni" },
-  { value: "importanceScore", label: "Önemli haberler" },
+  { value: "importanceScore", label: "Onemli haberler" },
 ];
 
 export function buildNewsQueryParams(filters, page, sortBy = "publishedAt") {

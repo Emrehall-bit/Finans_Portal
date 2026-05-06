@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.market.api.mapper;
 
 import com.emrehalli.financeportal.market.api.dto.MarketQuoteResponse;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
+import com.emrehalli.financeportal.market.service.model.CurrentPriceSnapshot;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +19,25 @@ public class MarketApiMapper {
                 quote.currency(),
                 quote.source().name(),
                 quote.priceTime(),
-                quote.fetchedAt()
+                quote.fetchedAt(),
+                "LIVE",
+                quote.fetchedAt() != null ? quote.fetchedAt() : quote.priceTime()
+        );
+    }
+
+    public MarketQuoteResponse toResponse(CurrentPriceSnapshot snapshot) {
+        return new MarketQuoteResponse(
+                snapshot.symbol(),
+                snapshot.displayName(),
+                snapshot.instrumentType() == null ? null : snapshot.instrumentType().name(),
+                snapshot.price(),
+                snapshot.changeRate(),
+                snapshot.currency(),
+                snapshot.source() == null ? null : snapshot.source().name(),
+                snapshot.priceTime(),
+                snapshot.fetchedAt(),
+                snapshot.priceStatus().name(),
+                snapshot.lastUpdatedAt()
         );
     }
 

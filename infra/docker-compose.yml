@@ -1,4 +1,4 @@
-services:
+﻿services:
   redis:
     image: redis:7
     container_name: finance_redis
@@ -22,7 +22,7 @@ services:
       - "5433:5432"
     volumes:
       - finance_portal_pgdata:/var/lib/postgresql/data
-      - ../backend/docker/postgres/init:/docker-entrypoint-initdb.d
+      - ./backend/docker/postgres/init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d financeportaldb"]
       interval: 10s
@@ -49,7 +49,7 @@ services:
     restart: "no"
 
   keycloak:
-    image: quay.io/keycloak/keycloak:23.0
+    image: quay.io/keycloak/keycloak:26.1
     container_name: finance_portal_keycloak
     command:
       - start-dev
@@ -61,14 +61,127 @@ services:
       KC_DB_PASSWORD: postgres
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
     ports:
       - "8081:8080"
     volumes:
-      - ../backend/docker/keycloak/realm-import:/opt/keycloak/data/import
+      - ./backend/docker/keycloak/realm-import:/opt/keycloak/data/import
+      - ./backend/docker/keycloak/providers:/opt/keycloak/providers
     depends_on:
       keycloak-db-init:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: finance_portal_backend
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DB_URL: jdbc:postgresql://postgres:5432/financeportaldb
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/finance-portal
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/finance-portal/protocol/openid-connect/certs
+      LOG_PATH: /logs
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../backend/logs:/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: finance_portal_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+      - keycloak
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: finance-portal-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: finance-portal-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: finance-portal-opensearch
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      DISABLE_SECURITY_PLUGIN: "true"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    restart: unless-stopped
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: finance-portal-opensearch-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    depends_on:
+      - opensearch
+    restart: unless-stopped
+
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    container_name: finance-portal-fluent-bit
+    volumes:
+      - ./observability/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./observability/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - ../backend/logs/finance-portal:/var/log/finance-portal:ro
+    depends_on:
+      - opensearch
+      - backend
+    restart: unless-stopped
+
 volumes:
   finance_portal_pgdata:
+  prometheus_data:
+  grafana_data:
+  opensearch_data:
+

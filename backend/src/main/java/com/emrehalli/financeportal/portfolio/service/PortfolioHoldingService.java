@@ -11,6 +11,7 @@ import com.emrehalli.financeportal.portfolio.enums.SummaryStatus;
 import com.emrehalli.financeportal.portfolio.repository.PortfolioHoldingRepository;
 import com.emrehalli.financeportal.portfolio.repository.PortfolioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -32,6 +33,7 @@ public class PortfolioHoldingService {
         this.portfolioPriceResolver = portfolioPriceResolver;
     }
 
+    @Transactional
     public PortfolioHoldingDto createHolding(Long portfolioId, CreatePortfolioHoldingRequest request) {
         Portfolio portfolio = findPortfolio(portfolioId);
         String instrumentCode = normalizeInstrumentCode(request.getInstrumentCode());
@@ -49,6 +51,7 @@ public class PortfolioHoldingService {
         return toDto(portfolioHoldingRepository.save(holding));
     }
 
+    @Transactional
     public PortfolioHoldingDto updateHolding(Long portfolioId, Long holdingId, UpdatePortfolioHoldingRequest request) {
         PortfolioHolding holding = getHoldingEntity(portfolioId, holdingId);
         holding.setQuantity(request.getQuantity());
@@ -57,11 +60,13 @@ public class PortfolioHoldingService {
         return toDto(portfolioHoldingRepository.save(holding));
     }
 
+    @Transactional
     public void deleteHolding(Long portfolioId, Long holdingId) {
         PortfolioHolding holding = getHoldingEntity(portfolioId, holdingId);
         portfolioHoldingRepository.delete(holding);
     }
 
+    @Transactional(readOnly = true)
     public List<PortfolioHoldingDto> getHoldingsByPortfolioId(Long portfolioId) {
         ensurePortfolioExists(portfolioId);
         return portfolioHoldingRepository.findByPortfolioId(portfolioId)
@@ -70,9 +75,18 @@ public class PortfolioHoldingService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public PortfolioSummaryResponse getPortfolioSummary(Long portfolioId) {
-        List<PortfolioHoldingDto> holdings = getHoldingsByPortfolioId(portfolioId);
+        return getPortfolioValuation(portfolioId).summary();
+    }
 
+    @Transactional(readOnly = true)
+    public PortfolioValuationResult getPortfolioValuation(Long portfolioId) {
+        List<PortfolioHoldingDto> holdings = getHoldingsByPortfolioId(portfolioId);
+        return new PortfolioValuationResult(holdings, buildSummary(holdings));
+    }
+
+    private PortfolioSummaryResponse buildSummary(List<PortfolioHoldingDto> holdings) {
         BigDecimal totalCost = BigDecimal.ZERO;
         BigDecimal currentValue = BigDecimal.ZERO;
         BigDecimal profitLoss = BigDecimal.ZERO;
@@ -194,6 +208,4 @@ public class PortfolioHoldingService {
         return SummaryStatus.PARTIAL;
     }
 }
-
-
 

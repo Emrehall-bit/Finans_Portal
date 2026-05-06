@@ -9,6 +9,7 @@ import com.emrehalli.financeportal.market.provider.ProviderFetchResult;
 import com.emrehalli.financeportal.market.provider.binance.client.BinanceClient;
 import com.emrehalli.financeportal.market.provider.binance.config.BinanceProviderProperties;
 import com.emrehalli.financeportal.market.provider.binance.mapper.BinanceMapper;
+import com.emrehalli.financeportal.market.service.InstrumentRegistryService;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import org.slf4j.Logger;
@@ -29,15 +30,18 @@ public class BinanceMarketDataProvider implements MarketDataProvider {
     private final BinanceProviderProperties properties;
     private final BinanceMapper mapper;
     private final SymbolNormalizer symbolNormalizer;
+    private final InstrumentRegistryService instrumentRegistryService;
 
     public BinanceMarketDataProvider(BinanceClient binanceClient,
                                      BinanceProviderProperties properties,
                                      BinanceMapper mapper,
-                                     SymbolNormalizer symbolNormalizer) {
+                                     SymbolNormalizer symbolNormalizer,
+                                     InstrumentRegistryService instrumentRegistryService) {
         this.binanceClient = binanceClient;
         this.properties = properties;
         this.mapper = mapper;
         this.symbolNormalizer = symbolNormalizer;
+        this.instrumentRegistryService = instrumentRegistryService;
     }
 
     @Override
@@ -93,10 +97,24 @@ public class BinanceMarketDataProvider implements MarketDataProvider {
 
     private List<MarketHistoryRecord> fetchHistoryForSymbol(String symbol, ProviderFetchRequest request) {
         try {
-            return mapper.toHistoryRecords(
+            log.info(
+                    "Binance history request started: symbol={}, startDate={}, endDate={}",
+                    symbol,
+                    request == null ? null : request.from(),
+                    request == null ? null : request.to()
+            );
+            List<MarketHistoryRecord> historyRecords = mapper.toHistoryRecords(
                     symbol,
                     binanceClient.fetchDailyKlines(symbol, request == null ? null : request.from(), request == null ? null : request.to())
             );
+            log.info(
+                    "Binance history request completed: symbol={}, startDate={}, endDate={}, historyRecordCount={}",
+                    symbol,
+                    request == null ? null : request.from(),
+                    request == null ? null : request.to(),
+                    historyRecords.size()
+            );
+            return historyRecords;
         } catch (Exception ex) {
             log.warn("Binance provider history fetch failed: symbol={}, error={}", symbol, ex.getMessage(), ex);
             return List.of();
@@ -112,10 +130,19 @@ public class BinanceMarketDataProvider implements MarketDataProvider {
     }
 
     private List<String> resolveSymbols(ProviderFetchRequest request) {
-        List<String> configuredSymbols = properties.getSymbols().stream()
+        InstrumentRegistryService.Resolution resolution = instrumentRegistryService.resolveMappings(DataSource.BINANCE);
+        List<String> configuredSymbols = resolution.mappings().stream()
+                .map(InstrumentRegistryService.ResolvedMapping::providerSymbol)
                 .flatMap(symbol -> symbolNormalizer.normalize(symbol).stream())
-                .distinct()
                 .toList();
+
+        log.info(
+                "Market provider registry resolved: providerSource={}, registryMappingCount={}, resolvedSymbols={}, fallbackToYaml={}",
+                DataSource.BINANCE,
+                resolution.mappings().size(),
+                configuredSymbols,
+                resolution.fallbackToYaml()
+        );
 
         if (request == null || !request.hasSymbolFilter()) {
             return configuredSymbols;

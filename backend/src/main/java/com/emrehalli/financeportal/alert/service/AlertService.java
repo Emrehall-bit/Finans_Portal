@@ -8,8 +8,11 @@ import com.emrehalli.financeportal.alert.repository.AlertRepository;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
+import com.emrehalli.financeportal.market.service.MarketQueryService;
+import com.emrehalli.financeportal.market.service.model.CurrentPriceSnapshot;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.repository.UserRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,11 +25,14 @@ public class AlertService {
 
     private final AlertRepository alertRepository;
     private final UserRepository userRepository;
+    private final MarketQueryService marketQueryService;
 
     public AlertService(AlertRepository alertRepository,
-                        UserRepository userRepository) {
+                        UserRepository userRepository,
+                        MarketQueryService marketQueryService) {
         this.alertRepository = alertRepository;
         this.userRepository = userRepository;
+        this.marketQueryService = marketQueryService;
     }
 
     @Transactional
@@ -59,6 +65,11 @@ public class AlertService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = "user_alerts",
+            key = "#userId",
+            unless = "#result.isEmpty()"
+    )
     public List<AlertResponseDto> getUserAlerts(Long userId) {
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User not found with id: " + userId);
@@ -100,6 +111,7 @@ public class AlertService {
     }
 
     private AlertResponseDto toResponse(Alert alert) {
+        CurrentPriceSnapshot snapshot = marketQueryService.resolveCurrentPrice(alert.getInstrumentCode());
         return AlertResponseDto.builder()
                 .id(alert.getId())
                 .userId(alert.getUser().getId())
@@ -109,12 +121,11 @@ public class AlertService {
                 .status(alert.getStatus())
                 .triggeredAt(alert.getTriggeredAt())
                 .createdAt(alert.getCreatedAt())
-                .currentPrice(null)
-                .source(null)
-                .lastUpdated(null)
+                .currentPrice(snapshot.price())
+                .source(snapshot.source() == null ? null : snapshot.source().name())
+                .lastUpdated(snapshot.lastUpdatedAt() == null ? null : snapshot.lastUpdatedAt().toString())
                 .build();
     }
 }
-
 
 

@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.news.controller;
 
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
@@ -23,9 +24,11 @@ import java.util.List;
 public class NewsController {
 
     private final NewsService newsService;
+    private final AppMessageSource appMessageSource;
 
-    public NewsController(NewsService newsService) {
+    public NewsController(NewsService newsService, AppMessageSource appMessageSource) {
         this.newsService = newsService;
+        this.appMessageSource = appMessageSource;
     }
 
     @GetMapping
@@ -59,7 +62,7 @@ public class NewsController {
         return ApiResponse.<Page<NewsResponseDto>>builder()
                 .success(true)
                 .data(response)
-                .message("News listed successfully")
+                .message(appMessageSource.get("news.listed"))
                 .build();
     }
 
@@ -70,7 +73,7 @@ public class NewsController {
         return ApiResponse.<NewsResponseDto>builder()
                 .success(true)
                 .data(response)
-                .message("News detail fetched successfully")
+                .message(appMessageSource.get("news.detail.fetched"))
                 .build();
     }
 
@@ -81,7 +84,7 @@ public class NewsController {
         return ApiResponse.<List<NewsResponseDto>>builder()
                 .success(true)
                 .data(response)
-                .message("Top news fetched successfully")
+                .message(appMessageSource.get("news.top.fetched"))
                 .build();
     }
 
@@ -92,7 +95,7 @@ public class NewsController {
         return ApiResponse.<NewsImportanceRecalculationResponseDto>builder()
                 .success(true)
                 .data(response)
-                .message("Importance scores recalculated successfully")
+                .message(appMessageSource.get("news.importance.recalculated"))
                 .build();
     }
 
@@ -113,7 +116,7 @@ public class NewsController {
         return ApiResponse.<NewsSyncResponseDto>builder()
                 .success(true)
                 .data(response)
-                .message("News sync completed")
+                .message(appMessageSource.get("news.sync.completed"))
                 .build();
     }
 }

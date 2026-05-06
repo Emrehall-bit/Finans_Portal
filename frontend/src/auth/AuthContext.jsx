@@ -1,15 +1,31 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentUserProfile, updateCurrentUserProfile } from "../api/userApi";
-import keycloak, { initKeycloak, isAuthenticated as hasAuthenticatedSession, isCallbackUrl, login, logout } from "./keycloak";
+import keycloak, {
+  getAuthSnapshot,
+  initKeycloak,
+  isAuthenticated as hasAuthenticatedSession,
+  login,
+  logout,
+  register,
+  subscribeToAuthEvents,
+} from "./keycloak";
 
 const AuthContext = createContext(null);
 
+function resolveIsAdmin() {
+  const realmRoles = keycloak.tokenParsed?.realm_access?.roles ?? [];
+  const clientRoles = Object.values(keycloak.tokenParsed?.resource_access ?? {}).flatMap((entry) => entry?.roles ?? []);
+  const roles = [...realmRoles, ...clientRoles].map((role) => String(role).toUpperCase());
+  return roles.includes("ADMIN") || roles.includes("ROLE_ADMIN");
+}
+
 export function AuthProvider({ children }) {
-  const [initialized, setInitialized] = useState(true);
-  const [authLoading, setAuthLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [authError, setAuthError] = useState("");
+  const [authSnapshot, setAuthSnapshot] = useState(() => getAuthSnapshot());
   const bootstrapRef = useRef(null);
 
   const loadUserProfile = useCallback(async () => {
@@ -24,57 +40,126 @@ export function AuthProvider({ children }) {
     return profile;
   }, []);
 
-  const ensureAuthenticated = useCallback(async () => {
+  const bootstrapAuth = useCallback(async () => {
     if (bootstrapRef.current) {
       return bootstrapRef.current;
     }
 
-    const bootstrap = async () => {
-      setInitialized(false);
+    bootstrapRef.current = (async () => {
       setAuthLoading(true);
       setAuthError("");
 
       try {
-        const authenticated = await initKeycloak({
-          onLoad: "login-required",
-        });
+        await initKeycloak();
+        const snapshot = getAuthSnapshot();
+        setAuthSnapshot(snapshot);
+        setIsAuthenticated(snapshot.authenticated);
 
-        setIsAuthenticated(Boolean(authenticated));
-
-        if (authenticated) {
-          await loadUserProfile();
+        if (snapshot.authenticated) {
+          try {
+            await loadUserProfile();
+          } catch (error) {
+            setUserProfile(null);
+            setAuthError(error?.message || "Authenticated, but the user profile could not be loaded.");
+          }
         } else {
           setUserProfile(null);
         }
 
-        return Boolean(authenticated);
+        return snapshot.authenticated;
       } catch (error) {
         setIsAuthenticated(false);
         setUserProfile(null);
         setAuthError(error?.message || "Authentication could not be initialized.");
-        throw error;
+        return false;
       } finally {
         setInitialized(true);
         setAuthLoading(false);
         bootstrapRef.current = null;
       }
-    };
+    })();
 
-    bootstrapRef.current = bootstrap();
     return bootstrapRef.current;
   }, [loadUserProfile]);
 
+  useEffect(() => {
+    bootstrapAuth();
+  }, [bootstrapAuth]);
+
+  useEffect(() => {
+    return subscribeToAuthEvents(async (snapshot, event) => {
+      setAuthSnapshot(snapshot);
+      setIsAuthenticated(snapshot.authenticated);
+
+      if (event === "auth-logout") {
+        setUserProfile(null);
+        setAuthError("");
+        setInitialized(true);
+        setAuthLoading(false);
+        return;
+      }
+
+      if (event === "token-expired") {
+        try {
+          await keycloak.updateToken(30);
+          const refreshedSnapshot = getAuthSnapshot();
+          setAuthSnapshot(refreshedSnapshot);
+          setIsAuthenticated(refreshedSnapshot.authenticated);
+        } catch {
+          setIsAuthenticated(false);
+          setUserProfile(null);
+          setAuthError("");
+          await logout();
+        }
+        return;
+      }
+
+      if (!snapshot.authenticated) {
+        setUserProfile(null);
+        return;
+      }
+
+      setAuthError("");
+
+      try {
+        await loadUserProfile();
+      } catch (error) {
+        setUserProfile(null);
+        setAuthError(error?.message || "Authenticated, but the user profile could not be loaded.");
+      } finally {
+        setInitialized(true);
+        setAuthLoading(false);
+      }
+    });
+  }, [loadUserProfile]);
+
+  const ensureAuthenticated = useCallback(
+    async (options = {}) => {
+      const authenticated = initialized ? isAuthenticated : await bootstrapAuth();
+      if (authenticated) {
+        return true;
+      }
+
+      setAuthLoading(true);
+      setAuthError("");
+      await login(options);
+      return false;
+    },
+    [bootstrapAuth, initialized, isAuthenticated],
+  );
+
   const handleLogin = useCallback(async () => {
     setAuthError("");
+    return ensureAuthenticated();
+  }, [ensureAuthenticated]);
 
-    if (!keycloak.authenticated) {
-      await initKeycloak({
-        onLoad: "check-sso",
-      });
-    }
-
-    return login();
+  const handleRegister = useCallback(() => {
+    setAuthError("");
+    return register({
+      redirectUri: window.location.origin,
+    });
   }, []);
+
   const handleLogout = useCallback(async () => {
     setIsAuthenticated(false);
     setUserProfile(null);
@@ -82,77 +167,42 @@ export function AuthProvider({ children }) {
     await logout();
   }, []);
 
-  useEffect(() => {
-    let active = true;
-
-    async function restoreSessionFromCallback() {
-      if (!isCallbackUrl()) {
-        return;
-      }
-
-      try {
-        setInitialized(false);
-        setAuthLoading(true);
-        setAuthError("");
-
-        const authenticated = await initKeycloak({
-          onLoad: "login-required",
-        });
-
-        if (!active) {
-          return;
-        }
-
-        setIsAuthenticated(Boolean(authenticated));
-
-        if (authenticated) {
-          const profile = await getCurrentUserProfile();
-          if (!active) {
-            return;
-          }
-          setUserProfile(profile);
-        } else {
-          setUserProfile(null);
-        }
-      } catch (error) {
-        if (!active) {
-          return;
-        }
-        setIsAuthenticated(false);
-        setUserProfile(null);
-        setAuthError(error?.message || "Authentication could not be initialized.");
-      } finally {
-        if (active) {
-          setInitialized(true);
-          setAuthLoading(false);
-        }
-      }
-    }
-
-    restoreSessionFromCallback();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const value = {
-    initialized,
-    authLoading,
-    isAuthenticated,
-    authError,
-    keycloak,
-    token: keycloak.token ?? null,
-    login: handleLogin,
-    logout: handleLogout,
-    ensureAuthenticated,
-    refreshUserProfile: loadUserProfile,
-    updateUserProfile: saveUserProfile,
-    userProfile,
-    user: userProfile?.user ?? null,
-    userId: userProfile?.user?.id ?? null,
-    hasAuthenticatedSession: isAuthenticated || hasAuthenticatedSession(),
-  };
+  const value = useMemo(
+    () => ({
+      initialized,
+      authLoading,
+      isAuthenticated,
+      authError,
+      keycloak,
+      token: authSnapshot.token,
+      idToken: authSnapshot.idToken,
+      login: handleLogin,
+      logout: handleLogout,
+      register: handleRegister,
+      ensureAuthenticated,
+      refreshUserProfile: loadUserProfile,
+      updateUserProfile: saveUserProfile,
+      userProfile,
+      user: userProfile?.user ?? authSnapshot.user ?? null,
+      userId: userProfile?.user?.id ?? null,
+      isAdmin: resolveIsAdmin(),
+      hasAuthenticatedSession: isAuthenticated || hasAuthenticatedSession(),
+    }),
+    [
+      initialized,
+      authLoading,
+      isAuthenticated,
+      authError,
+      authSnapshot,
+      handleLogin,
+      handleLogout,
+      handleRegister,
+      ensureAuthenticated,
+      loadUserProfile,
+      saveUserProfile,
+      userProfile,
+    ],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

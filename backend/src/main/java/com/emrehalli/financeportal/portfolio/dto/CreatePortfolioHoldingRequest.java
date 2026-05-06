@@ -8,15 +8,15 @@ import java.math.BigDecimal;
 
 public class CreatePortfolioHoldingRequest {
 
-    @NotBlank(message = "Instrument code is required")
+    @NotBlank(message = "{validation.instrumentCode.blank}")
     private String instrumentCode;
 
-    @NotNull(message = "Quantity is required")
-    @DecimalMin(value = "0.0001", message = "Quantity must be greater than 0")
+    @NotNull(message = "{validation.quantity.required}")
+    @DecimalMin(value = "0.0001", message = "{validation.quantity.positive}")
     private BigDecimal quantity;
 
-    @NotNull(message = "Buy price is required")
-    @DecimalMin(value = "0.0001", message = "Buy price must be greater than 0")
+    @NotNull(message = "{validation.buyPrice.required}")
+    @DecimalMin(value = "0.0001", message = "{validation.buyPrice.positive}")
     private BigDecimal buyPrice;
 
     public String getInstrumentCode() {

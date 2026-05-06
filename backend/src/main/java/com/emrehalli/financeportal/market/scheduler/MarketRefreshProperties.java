@@ -45,15 +45,7 @@ public class MarketRefreshProperties {
 
         String sourceKey = source.name().toLowerCase(Locale.ROOT);
         ProviderPolicy directMatch = providers.get(sourceKey);
-        if (directMatch != null) {
-            return Optional.of(directMatch);
-        }
-
-        if (source == DataSource.KAP) {
-            return Optional.ofNullable(providers.get("cap"));
-        }
-
-        return Optional.empty();
+        return Optional.ofNullable(directMatch);
     }
 
     public static class ProviderPolicy {

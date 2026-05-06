@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import {
   buildNewsPlaceholderLabel,
+  formatNewsCategoryLabel,
   formatNewsPublishedAt,
+  getNewsFallbackLogoUrl,
   getNewsLanguageLabel,
   getNewsProviderLabel,
   getNewsSummaryText,
@@ -11,30 +14,54 @@ function resolveThumbnail(item) {
 }
 
 function resolveAccentLabel(item) {
-  return item?.category || getNewsProviderLabel(item?.provider) || "Haber";
+  return formatNewsCategoryLabel(item?.category) || getNewsProviderLabel(item?.provider) || "Haber";
 }
 
 export default function NewsCard({ item, onClick }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
   const thumbnail = resolveThumbnail(item);
+  const hasImage = Boolean(thumbnail) && !imageFailed;
   const accentLabel = resolveAccentLabel(item);
   const providerLabel = getNewsProviderLabel(item?.provider);
+  const logoUrl = getNewsFallbackLogoUrl(item);
   const languageLabel = getNewsLanguageLabel(item?.language);
   const publishedAtLabel = formatNewsPublishedAt(item?.publishedAt);
   const summaryText = getNewsSummaryText(item?.summary);
 
+  useEffect(() => {
+    setImageFailed(false);
+    setLogoFailed(false);
+  }, [thumbnail, item?.provider, item?.url]);
+
   return (
     <button className="news-card news-card-shell" onClick={() => onClick(item)} type="button">
       <div className="news-card-media">
-        {thumbnail ? (
+        {hasImage ? (
           <img
             className="news-card-image"
             src={thumbnail}
             alt={item?.title || "Haber gorseli"}
             loading="lazy"
+            onError={() => setImageFailed(true)}
           />
         ) : (
           <div className="news-card-placeholder" aria-hidden="true">
-            <span>{buildNewsPlaceholderLabel(item)}</span>
+            <div className="news-card-placeholder-inner">
+              {logoUrl && !logoFailed ? (
+                <img
+                  className="news-card-placeholder-logo"
+                  src={logoUrl}
+                  alt={providerLabel}
+                  loading="lazy"
+                  onError={() => setLogoFailed(true)}
+                />
+              ) : (
+                <span className="news-card-placeholder-mark">{buildNewsPlaceholderLabel(item)}</span>
+              )}
+              <strong className="news-card-placeholder-provider">{providerLabel}</strong>
+              <small className="news-card-placeholder-note">Kaynak logosu</small>
+            </div>
           </div>
         )}
         <div className="news-card-overlay" />
@@ -53,14 +80,11 @@ export default function NewsCard({ item, onClick }) {
           <time dateTime={item?.publishedAt || ""}>{publishedAtLabel}</time>
         </div>
 
-        <h3 className="news-card-title">{item?.title || "Başlık bulunmuyor"}</h3>
-
-        <p className={`news-card-summary${item?.summary ? "" : " is-fallback"}`}>
-          {summaryText}
-        </p>
+        <h3 className="news-card-title">{item?.title || "Baslik bulunmuyor"}</h3>
+        <p className={`news-card-summary${item?.summary ? "" : " is-fallback"}`}>{summaryText}</p>
 
         <div className="news-card-footer">
-          <span className="news-card-link">Detayı görüntüle</span>
+          <span className="news-card-link">Haberi ac</span>
         </div>
       </div>
     </button>

@@ -14,6 +14,8 @@ public record TechnicalAnalysisResult(
         LocalDate from,
         LocalDate to,
         BigDecimal latestPrice,
+        String analysisStatus,
+        String message,
         TrendDirection trendDirection,
         List<TechnicalSignal> signals,
         Map<IndicatorType, BigDecimal> indicatorValues,

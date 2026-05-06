@@ -1,29 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { getMarketQuotes } from "../../api/marketApi";
+import { useTheme } from "../../theme/ThemeContext";
 import { formatNumber } from "../../utils/formatters";
-
-const navGroups = [
-  {
-    label: "Genel Bakis",
-    items: [
-      { to: "/", label: "Ana Sayfa", badge: "Live" },
-      { to: "/markets", label: "Piyasa Verileri", badge: "Feed" },
-      { to: "/dashboard", label: "Dashboard", badge: "Pro" },
-      { to: "/news", label: "Haber Akisi" },
-    ],
-  },
-  {
-    label: "Portfoy",
-    items: [
-      { to: "/profile", label: "Profilim", requiresAuth: true },
-      { to: "/portfolio", label: "Portfoy", requiresAuth: true },
-      { to: "/watchlist", label: "Watchlist", requiresAuth: true },
-      { to: "/alerts", label: "Alerts", requiresAuth: true },
-    ],
-  },
-];
 
 const PRIORITY_SYMBOLS = [
   "XU100",
@@ -51,11 +32,36 @@ function getInitials(user) {
 }
 
 export default function AppLayout() {
-  const { isAuthenticated, login, logout, user } = useAuth();
+  const { i18n, t } = useTranslation();
+  const { isAdmin, isAuthenticated, login, logout, register, user } = useAuth();
+  const { setThemePreference, themePreference } = useTheme();
+  const navigate = useNavigate();
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [tickerQuotes, setTickerQuotes] = useState([]);
-  const displayName = user?.fullName || user?.email || "Misafir";
-  const profileLabel = isAuthenticated ? "Bagli hesap" : "Acik erisim";
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+  const displayName = user?.fullName || user?.email || t("layout.guest");
+  const profileLabel = isAuthenticated ? t("layout.connectedAccount") : t("layout.openAccess");
+
+  const navGroups = useMemo(
+    () => [
+      {
+        label: t("nav.mainMenu"),
+        items: [
+          { to: "/dashboard", label: t("nav.dashboard") },
+          { to: "/markets", label: t("nav.markets") },
+          { to: "/portfolio", label: t("nav.portfolio"), requiresAuth: true },
+          { to: "/analysis", label: t("nav.analysis"), requiresAuth: true },
+          { to: "/news", label: t("nav.news") },
+          { to: "/alerts", label: t("nav.alerts"), requiresAuth: true },
+          { to: "/simulation", label: t("nav.simulation"), requiresAuth: true },
+          { to: "/reports", label: t("nav.reports"), requiresAuth: true },
+          { to: "/profile", label: t("nav.profile"), requiresAuth: true },
+        ],
+      },
+    ],
+    [t],
+  );
 
   useEffect(() => {
     let active = true;
@@ -109,6 +115,41 @@ export default function AppLayout() {
     return unique.slice(0, 10);
   }, [tickerQuotes]);
 
+  const resolvedNavGroups = useMemo(() => {
+    if (!isAdmin) {
+      return navGroups;
+    }
+
+    return [
+      {
+        ...navGroups[0],
+        items: [...navGroups[0].items, { to: "/admin", label: t("nav.admin"), requiresAuth: true }],
+      },
+    ];
+  }, [isAdmin, navGroups, t]);
+
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!userMenuRef.current?.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setUserMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
   function handleProtectedNavigation(event, item) {
     if (!item.requiresAuth || isAuthenticated) {
       return;
@@ -123,10 +164,21 @@ export default function AppLayout() {
     await login();
   }
 
+  function handleAccountPrimaryAction() {
+    if (isAuthenticated) {
+      navigate("/profile");
+      setUserMenuOpen(false);
+      return;
+    }
+
+    setUserMenuOpen(false);
+    handleLoginClick();
+  }
+
   return (
     <>
       {tapeItems.length > 0 ? (
-        <div className="market-tape-shell" aria-label="Canli piyasa bandi">
+        <div className="market-tape-shell" aria-label={t("layout.liveTape")}>
           <div className="market-tape-track">
             {[...tapeItems, ...tapeItems].map((item, index) => (
               <div key={`${item.symbol}-${index}`} className="market-tape-item">
@@ -146,7 +198,7 @@ export default function AppLayout() {
           <div className="brand-block">
             <div className="brand-mark">F</div>
             <div>
-              <p className="eyebrow">Market Terminal</p>
+              <p className="eyebrow">{t("layout.brandEyebrow")}</p>
               <h2>Finans Portal</h2>
             </div>
           </div>
@@ -160,14 +212,25 @@ export default function AppLayout() {
           </div>
 
           <div className="sidebar-action-card">
-            <p>{isAuthenticated ? "Verileriniz ve kisisel listeleriniz eszamanli." : "Acik modda market ve haber ekranlari hazir."}</p>
-            <button type="button" className="ghost-button light" onClick={isAuthenticated ? logout : handleLoginClick}>
-              {isAuthenticated ? "Cikis Yap" : "Giris Yap"}
-            </button>
+            <p>{isAuthenticated ? t("layout.syncedData") : t("layout.openMode")}</p>
+            {isAuthenticated ? (
+              <button type="button" className="ghost-button light" onClick={logout}>
+                {t("layout.logout")}
+              </button>
+            ) : (
+              <div className="auth-button-group">
+                <button type="button" className="ghost-button light" onClick={login}>
+                  {t("layout.login")}
+                </button>
+                <button type="button" onClick={register}>
+                  {t("layout.register")}
+                </button>
+              </div>
+            )}
           </div>
 
           <nav className="sidebar-nav">
-            {navGroups.map((group) => (
+            {resolvedNavGroups.map((group) => (
               <div key={group.label} className="nav-group">
                 <p className="nav-group-title">{group.label}</p>
                 {group.items.map((item) => (
@@ -179,7 +242,7 @@ export default function AppLayout() {
                     className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
                   >
                     <span>{item.label}</span>
-                    {item.requiresAuth && !isAuthenticated ? <small>Auth</small> : null}
+                    {item.requiresAuth && !isAuthenticated ? <small>{t("nav.authBadge")}</small> : null}
                     {item.badge ? <small>{item.badge}</small> : null}
                   </NavLink>
                 ))}
@@ -189,31 +252,138 @@ export default function AppLayout() {
 
           <div className="sidebar-footnote">
             <span className="live-dot" />
-            <p>Piyasa, haber ve teknik analiz ayni shell icinde.</p>
+            <p>{t("layout.footnote")}</p>
           </div>
         </aside>
 
         <div className="app-main">
           <header className="topbar">
-            <div className="topbar-search">
-              <span className="search-icon">+</span>
-              <input placeholder="Enstruman, haber veya sembol ara..." />
-            </div>
-
             <div className="topbar-actions">
               <div className="topbar-status-pill">
                 <span className="live-dot" />
-                <strong>Canli feed</strong>
+                <strong>{t("layout.liveFeed")}</strong>
               </div>
-              <button type="button" className="icon-button" aria-label="Notifications">
+
+              <div className="theme-switcher theme-switcher-inline" role="group" aria-label={t("common.language")}>
+                <div className="theme-switcher-options">
+                  {[
+                    { value: "tr", label: t("common.turkish") },
+                    { value: "en", label: t("common.english") },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`theme-switcher-button${i18n.resolvedLanguage === option.value ? " active" : ""}`}
+                      onClick={() => i18n.changeLanguage(option.value)}
+                      aria-pressed={i18n.resolvedLanguage === option.value}
+                      title={option.label}
+                    >
+                      {option.value.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button type="button" className="icon-button" aria-label={t("layout.notifications")}>
                 1
               </button>
-              <div className="topbar-user">
-                <div className="topbar-user-copy">
-                  <strong>{displayName}</strong>
-                  <span>{isAuthenticated ? "Analist modu" : "Misafir modu"}</span>
-                </div>
-                <div className="profile-avatar small">{getInitials(user)}</div>
+
+              <div className="topbar-user-shell" ref={userMenuRef}>
+                <button
+                  type="button"
+                  className="topbar-user topbar-user-button"
+                  onClick={() => setUserMenuOpen((current) => !current)}
+                  aria-haspopup="menu"
+                  aria-expanded={userMenuOpen}
+                >
+                  <div className="topbar-user-copy">
+                    <strong>{displayName}</strong>
+                    <span>{isAuthenticated ? t("layout.analystMode") : t("layout.guestMode")}</span>
+                  </div>
+                  <div className="profile-avatar small">{getInitials(user)}</div>
+                </button>
+
+                {userMenuOpen ? (
+                  <div className="topbar-user-menu" role="menu" aria-label={t("layout.userMenu")}>
+                    {isAuthenticated ? (
+                      <>
+                        <button type="button" className="topbar-user-menu-item" onClick={handleAccountPrimaryAction}>
+                          {t("layout.myProfile")}
+                        </button>
+                        <button
+                          type="button"
+                          className="topbar-user-menu-item"
+                          onClick={() => {
+                            navigate("/reports");
+                            setUserMenuOpen(false);
+                          }}
+                        >
+                          {t("nav.reports")}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="topbar-user-menu-item"
+                          onClick={() => {
+                            login();
+                            setUserMenuOpen(false);
+                          }}
+                        >
+                          {t("layout.login")}
+                        </button>
+                        <button
+                          type="button"
+                          className="topbar-user-menu-item"
+                          onClick={() => {
+                            register();
+                            setUserMenuOpen(false);
+                          }}
+                        >
+                          {t("layout.register")}
+                        </button>
+                      </>
+                    )}
+
+                    <div className="topbar-user-menu-section">
+                      <span className="topbar-user-menu-label">{t("layout.theme")}</span>
+                      <div className="theme-switcher theme-switcher-in-menu" role="group" aria-label={t("layout.themeSelection")}>
+                        <div className="theme-switcher-options">
+                          {[
+                            { value: "light", label: t("layout.themeLight") },
+                            { value: "dark", label: t("layout.themeDark") },
+                            { value: "system", label: t("layout.themeSystem") },
+                          ].map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className={`theme-switcher-button${themePreference === option.value ? " active" : ""}`}
+                              onClick={() => setThemePreference(option.value)}
+                              aria-pressed={themePreference === option.value}
+                              title={option.label}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {isAuthenticated ? (
+                      <button
+                        type="button"
+                        className="topbar-user-menu-item danger"
+                        onClick={() => {
+                          logout();
+                          setUserMenuOpen(false);
+                        }}
+                      >
+                        {t("layout.logout")}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           </header>
@@ -233,17 +403,15 @@ export default function AppLayout() {
             aria-labelledby="auth-required-title"
             onClick={(event) => event.stopPropagation()}
           >
-            <p className="eyebrow">Yetki Gerekiyor</p>
-            <h3 id="auth-required-title">Goruntuleyebilmek icin giris yapmaniz gerekmektedir.</h3>
-            <p className="auth-modal-copy">
-              Bu bolum kullaniciya ozel veriler icerir. Devam etmek icin once hesabiniza giris yapin.
-            </p>
+            <p className="eyebrow">{t("layout.authRequired")}</p>
+            <h3 id="auth-required-title">{t("layout.authRequiredTitle")}</h3>
+            <p className="auth-modal-copy">{t("layout.authRequiredDescription")}</p>
             <div className="actions-row">
               <button type="button" className="secondary-button" onClick={() => setAuthPromptOpen(false)}>
-                Vazgec
+                {t("common.cancel")}
               </button>
               <button type="button" onClick={handleLoginClick}>
-                Giris Yap
+                {t("layout.login")}
               </button>
             </div>
           </div>

@@ -1,7 +1,9 @@
 package com.emrehalli.financeportal.market.provider.bist.client;
 
 import com.emrehalli.financeportal.market.provider.bist.config.BistProviderProperties;
+import com.emrehalli.financeportal.market.provider.bist.dto.BistHistoryPoint;
 import com.emrehalli.financeportal.market.provider.bist.dto.BistQuoteResponse;
+import com.emrehalli.financeportal.market.provider.bist.dto.YahooChartResponse;
 import com.emrehalli.financeportal.market.provider.bist.dto.YahooQuoteResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,6 +22,8 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -60,6 +64,46 @@ public class YahooClient {
         }
 
         return executeQuoteRequest(symbols, false);
+    }
+
+    public List<BistHistoryPoint> fetchDailyHistory(String symbol, LocalDate from, LocalDate to) {
+        if (symbol == null || symbol.isBlank()) {
+            return List.of();
+        }
+
+        if (!ensureCredentials()) {
+            return List.of();
+        }
+
+        URI uri = buildChartUri(symbol.trim(), from, to, crumb);
+        log.info("BIST Yahoo history request started: symbol={}, startDate={}, endDate={}", symbol, from, to);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    uri,
+                    HttpMethod.GET,
+                    new HttpEntity<>(quoteHeaders(cookieHeader)),
+                    String.class
+            );
+            String rawBody = response.getBody();
+            if (rawBody == null || rawBody.isBlank()) {
+                return List.of();
+            }
+
+            YahooChartResponse body = objectMapper.readValue(rawBody, YahooChartResponse.class);
+            List<BistHistoryPoint> points = extractHistoryPoints(symbol.trim(), body);
+            log.info(
+                    "BIST Yahoo history request completed: symbol={}, startDate={}, endDate={}, historyRecordCount={}",
+                    symbol,
+                    from,
+                    to,
+                    points.size()
+            );
+            return points;
+        } catch (Exception ex) {
+            log.warn("BIST Yahoo history request failed: symbol={}, error={}", symbol, ex.getMessage(), ex);
+            return List.of();
+        }
     }
 
     private FetchResult executeQuoteRequest(List<String> symbols, boolean retriedAfterRefresh) {
@@ -116,6 +160,65 @@ public class YahooClient {
                 .queryParam("crumb", crumbValue)
                 .build(true)
                 .toUri();
+    }
+
+    URI buildChartUri(String symbol, LocalDate from, LocalDate to, String crumbValue) {
+        LocalDate endDate = to == null ? LocalDate.now(ZoneOffset.UTC) : to;
+        LocalDate startDate = from == null ? endDate.minusDays(365) : from;
+        long period1 = startDate.atStartOfDay().toEpochSecond(ZoneOffset.UTC);
+        long period2 = endDate.plusDays(1).atStartOfDay().toEpochSecond(ZoneOffset.UTC);
+        return UriComponentsBuilder.fromHttpUrl(normalizeBaseUrl(properties.getYahoo().getBaseUrl()))
+                .path("/v8/finance/chart/{symbol}")
+                .queryParam("period1", period1)
+                .queryParam("period2", period2)
+                .queryParam("interval", "1d")
+                .queryParam("includePrePost", false)
+                .queryParam("events", "div|split|capitalGains")
+                .queryParam("crumb", crumbValue)
+                .buildAndExpand(symbol)
+                .encode()
+                .toUri();
+    }
+
+    private List<BistHistoryPoint> extractHistoryPoints(String requestedSymbol, YahooChartResponse body) {
+        if (body == null || body.chart() == null || body.chart().result() == null || body.chart().result().isEmpty()) {
+            return List.of();
+        }
+
+        YahooChartResponse.Result result = body.chart().result().getFirst();
+        List<Long> timestamps = result.timestamp() == null ? List.of() : result.timestamp();
+        List<java.math.BigDecimal> closes = result.indicators() == null
+                || result.indicators().quote() == null
+                || result.indicators().quote().isEmpty()
+                || result.indicators().quote().getFirst() == null
+                || result.indicators().quote().getFirst().close() == null
+                ? List.of()
+                : result.indicators().quote().getFirst().close();
+
+        int size = Math.min(timestamps.size(), closes.size());
+        if (size == 0) {
+            return List.of();
+        }
+
+        String providerSymbol = result.meta() != null && result.meta().symbol() != null && !result.meta().symbol().isBlank()
+                ? result.meta().symbol()
+                : requestedSymbol;
+
+        List<BistHistoryPoint> points = new ArrayList<>(size);
+        for (int index = 0; index < size; index++) {
+            Long timestamp = timestamps.get(index);
+            java.math.BigDecimal close = closes.get(index);
+            if (timestamp == null || close == null) {
+                continue;
+            }
+            points.add(new BistHistoryPoint(
+                    providerSymbol,
+                    providerSymbol,
+                    Instant.ofEpochSecond(timestamp).atZone(ZoneOffset.UTC).toLocalDate(),
+                    close
+            ));
+        }
+        return List.copyOf(points);
     }
 
     private synchronized boolean ensureCredentials() {

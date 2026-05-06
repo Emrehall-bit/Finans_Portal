@@ -37,6 +37,15 @@ import java.util.Set;
 @Service
 public class NewsService {
 
+    /*
+     * Future translation design:
+     * - Add news_translations table keyed by news_id + language.
+     * - Persist original provider article once, then generate translated variants asynchronously.
+     * - Run translation in a background job so provider sync latency and translation latency stay isolated.
+     * - Cache translated list/detail DTOs per news id + language.
+     * - Fallback order should be: requested translation -> original language item -> explicit untranslated marker.
+     */
+
     private static final Logger logger = LogManager.getLogger(NewsService.class);
 
     private final NewsRepository newsRepository;
@@ -293,10 +302,35 @@ public class NewsService {
             if (existingExternalIds.contains(externalId)) {
                 existingCount++;
                 News existingNews = existingNewsByExternalId.get(externalId);
-                if (existingNews != null && shouldRefreshImportanceScore(existingNews)) {
-                    int recalculatedScore = newsImportanceScoringService.calculateScore(existingNews);
-                    if (!java.util.Objects.equals(existingNews.getImportanceScore(), recalculatedScore)) {
-                        existingNews.setImportanceScore(recalculatedScore);
+                if (existingNews != null) {
+                    boolean needsUpdate = false;
+                    if (hasLowValueLogoImage(existingNews.getImageUrl())) {
+                        if (hasText(item.getImageUrl())) {
+                            existingNews.setImageUrl(item.getImageUrl().trim());
+                        } else {
+                            existingNews.setImageUrl(null);
+                        }
+                        needsUpdate = true;
+                    } else if (!hasText(existingNews.getImageUrl()) && hasText(item.getImageUrl())) {
+                        existingNews.setImageUrl(item.getImageUrl().trim());
+                        needsUpdate = true;
+                    }
+                    if (!hasText(existingNews.getSummary()) && hasText(item.getSummary())) {
+                        existingNews.setSummary(item.getSummary().trim());
+                        needsUpdate = true;
+                    }
+                    if (existingNews.getPublishedAt() == null && item.getPublishedAt() != null) {
+                        existingNews.setPublishedAt(item.getPublishedAt());
+                        needsUpdate = true;
+                    }
+                    if (shouldRefreshImportanceScore(existingNews)) {
+                        int recalculatedScore = newsImportanceScoringService.calculateScore(existingNews);
+                        if (!java.util.Objects.equals(existingNews.getImportanceScore(), recalculatedScore)) {
+                            existingNews.setImportanceScore(recalculatedScore);
+                            needsUpdate = true;
+                        }
+                    }
+                    if (needsUpdate) {
                         existingToUpdate.add(existingNews);
                     }
                 }
@@ -314,6 +348,7 @@ public class NewsService {
                     .category(item.getCategory())
                     .relatedSymbol(item.getRelatedSymbol())
                     .url(item.getUrl())
+                    .imageUrl(item.getImageUrl())
                     .publishedAt(item.getPublishedAt())
                     .importanceScore(0)
                     .build());
@@ -608,6 +643,19 @@ public class NewsService {
         return news.getImportanceScore() == null || news.getImportanceScore() <= 0;
     }
 
+    private boolean hasLowValueLogoImage(String imageUrl) {
+        if (!hasText(imageUrl)) {
+            return false;
+        }
+        String normalized = imageUrl.trim().toLowerCase(Locale.ROOT);
+        return normalized.contains("/logo/")
+                || normalized.contains("_logo.")
+                || normalized.endsWith("logo.jpeg")
+                || normalized.endsWith("logo.jpg")
+                || normalized.endsWith("logo.png")
+                || normalized.endsWith("logo.webp");
+    }
+
     private NewsResponseDto toResponse(News news) {
         return NewsResponseDto.builder()
                 .id(news.getId())
@@ -621,6 +669,7 @@ public class NewsService {
                 .category(news.getCategory())
                 .relatedSymbol(news.getRelatedSymbol())
                 .url(news.getUrl())
+                .imageUrl(news.getImageUrl())
                 .publishedAt(news.getPublishedAt())
                 .importanceScore(news.getImportanceScore())
                 .build();

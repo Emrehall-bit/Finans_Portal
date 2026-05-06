@@ -20,6 +20,7 @@ public class NewsResponseDto {
     private String category;
     private String relatedSymbol;
     private String url;
+    private String imageUrl;
     private LocalDateTime publishedAt;
     private Integer importanceScore;
 }

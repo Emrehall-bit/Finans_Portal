@@ -71,8 +71,8 @@ public class BinanceClient {
         }
 
         int limit = resolveKlineLimit(from, to);
-        URI uri = buildKlinesUri(symbol.trim(), limit);
-        log.info("Binance client kline request started: symbol={}, limit={}, uri={}", symbol, limit, uri);
+        URI uri = buildKlinesUri(symbol.trim(), from, to, limit);
+        log.info("Binance client kline request started: symbol={}, startDate={}, endDate={}, limit={}, uri={}", symbol, from, to, limit, uri);
 
         ResponseEntity<Object[][]> response = restTemplate.getForEntity(uri, Object[][].class);
         Object[][] body = response.getBody();
@@ -102,14 +102,21 @@ public class BinanceClient {
                 .toUri();
     }
 
-    URI buildKlinesUri(String symbol, int limit) {
-        return UriComponentsBuilder.fromHttpUrl(normalizeBaseUrl(properties.getBaseUrl()))
+    URI buildKlinesUri(String symbol, LocalDate from, LocalDate to, int limit) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(normalizeBaseUrl(properties.getBaseUrl()))
                 .path("/api/v3/klines")
                 .queryParam("symbol", symbol)
                 .queryParam("interval", "1d")
-                .queryParam("limit", limit)
-                .build(true)
-                .toUri();
+                .queryParam("limit", limit);
+
+        if (from != null) {
+            builder.queryParam("startTime", from.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli());
+        }
+        if (to != null) {
+            builder.queryParam("endTime", to.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli() - 1L);
+        }
+
+        return builder.build(true).toUri();
     }
 
     private int resolveKlineLimit(LocalDate from, LocalDate to) {

@@ -32,3 +32,15 @@ test("builds importance score request with active filters", () => {
     }
   );
 });
+
+test("omits language when all languages are selected", () => {
+  assert.deepEqual(
+    buildNewsQueryParams({ keyword: "", category: "", provider: "", language: "" }, 1),
+    {
+      page: 1,
+      size: 20,
+      sortBy: "publishedAt",
+      sortDirection: "desc",
+    }
+  );
+});

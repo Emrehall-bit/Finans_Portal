@@ -27,6 +27,8 @@ public class TechnicalAnalysisMapper {
                 result.from(),
                 result.to(),
                 result.latestPrice(),
+                result.analysisStatus(),
+                result.message(),
                 result.trendDirection().name(),
                 result.signals().stream().map(Enum::name).toList(),
                 toIndicatorDtos(result.indicatorValues()),

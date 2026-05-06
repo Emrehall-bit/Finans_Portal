@@ -9,6 +9,7 @@ import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -50,17 +51,25 @@ public class EvdsMarketDataMapper {
     private Optional<MarketQuote> toMarketQuote(List<EvdsItem> items,
                                                 EvdsProperties.SeriesConfig seriesConfig,
                                                 Instant fetchedAt) {
-        return extractValidValues(items, seriesConfig).stream()
-                .max(Comparator.comparing(ValidEvdsValue::priceDate))
-                .map(value -> new MarketQuote(
+        List<ValidEvdsValue> validValues = extractValidValues(items, seriesConfig);
+        if (validValues.isEmpty()) {
+            return Optional.empty();
+        }
+
+        ValidEvdsValue latestValue = validValues.get(validValues.size() - 1);
+        BigDecimal changeRate = validValues.size() > 1
+                ? calculateChangeRate(validValues.get(validValues.size() - 2).price(), latestValue.price()).orElse(null)
+                : null;
+
+        return Optional.of(new MarketQuote(
                         seriesConfig.getSymbol(),
                         seriesConfig.getName(),
                         seriesConfig.getInstrumentType(),
-                        value.price(),
-                        null,
+                        latestValue.price(),
+                        changeRate,
                         seriesConfig.getCurrency(),
                         DataSource.EVDS,
-                        value.priceTime(),
+                        latestValue.priceTime(),
                         fetchedAt
                 ));
     }
@@ -119,7 +128,7 @@ public class EvdsMarketDataMapper {
             return null;
         }
 
-        for (String candidateKey : List.of(seriesConfig.getEvdsKey(), seriesConfig.getApiCode())) {
+        for (String candidateKey : candidateKeys(seriesConfig)) {
             if (candidateKey == null || candidateKey.isBlank()) {
                 continue;
             }
@@ -142,6 +151,34 @@ public class EvdsMarketDataMapper {
         return null;
     }
 
+    private List<String> candidateKeys(EvdsProperties.SeriesConfig seriesConfig) {
+        return List.of(
+                        seriesConfig.getEvdsKey(),
+                        seriesConfig.getApiCode(),
+                        normalizeEvdsKey(seriesConfig.getEvdsKey()),
+                        normalizeEvdsKey(seriesConfig.getApiCode()),
+                        denormalizeEvdsKey(seriesConfig.getEvdsKey()),
+                        denormalizeEvdsKey(seriesConfig.getApiCode())
+                ).stream()
+                .filter(key -> key != null && !key.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    private String normalizeEvdsKey(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.replace('.', '_');
+    }
+
+    private String denormalizeEvdsKey(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.replace('_', '.');
+    }
+
     private Optional<BigDecimal> parseDecimal(String rawValue) {
         if (rawValue == null || rawValue.isBlank()) {
             return Optional.empty();
@@ -152,6 +189,18 @@ public class EvdsMarketDataMapper {
         } catch (NumberFormatException ex) {
             return Optional.empty();
         }
+    }
+
+    private Optional<BigDecimal> calculateChangeRate(BigDecimal previousPrice, BigDecimal latestPrice) {
+        if (previousPrice == null || latestPrice == null || previousPrice.compareTo(BigDecimal.ZERO) == 0) {
+            return Optional.empty();
+        }
+
+        return Optional.of(
+                latestPrice.subtract(previousPrice)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(previousPrice, 4, RoundingMode.HALF_UP)
+        );
     }
 
     private Optional<LocalDate> parseDate(String rawDate) {

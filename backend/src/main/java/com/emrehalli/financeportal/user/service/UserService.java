@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.config.security.CurrentUser;
 import com.emrehalli.financeportal.config.security.CurrentUserResolver;
+import com.emrehalli.financeportal.user.dto.AdminUpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
 import com.emrehalli.financeportal.user.dto.UpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.UserProfileResponseDto;
@@ -13,7 +14,14 @@ import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.entity.UserRole;
 import com.emrehalli.financeportal.user.mapper.UserMapper;
 import com.emrehalli.financeportal.user.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,6 +42,7 @@ public class UserService {
         this.currentUserResolver = currentUserResolver;
     }
 
+    @Transactional
     public UserResponseDto createUser(CreateUserRequest request) {
         String normalizedEmail = normalizeEmail(request.getEmail());
         validateUniqueUser(request.getKeycloakId(), normalizedEmail);
@@ -45,16 +54,25 @@ public class UserService {
         return userMapper.toResponse(userRepository.save(user));
     }
 
-    public List<UserResponseDto> getAllUsers() {
-        return userRepository.findAll().stream()
-                .map(userMapper::toResponse)
-                .toList();
+    @Transactional(readOnly = true)
+    public Page<UserResponseDto> getAllUsers(int page, int size, String search) {
+        validatePaging(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        String normalizedSearch = normalizeSearch(search);
+
+        Page<User> users = normalizedSearch == null
+                ? userRepository.findAll(pageable)
+                : userRepository.search(normalizedSearch, pageable);
+
+        return users.map(userMapper::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public UserResponseDto getUserById(Long userId) {
         return userMapper.toResponse(getUserEntityById(userId));
     }
 
+    @Transactional
     public UserProfileResponseDto getCurrentUserProfile() {
         CurrentUser currentUser = currentUserResolver.resolve();
         User persistedUser = findOrCreateCurrentUser(currentUser);
@@ -62,6 +80,7 @@ public class UserService {
         return toUserProfileResponse(persistedUser, currentUser);
     }
 
+    @Transactional
     public UserProfileResponseDto updateCurrentUserProfile(UpdateUserRequest request) {
         CurrentUser currentUser = currentUserResolver.resolve();
         User persistedUser = findOrCreateCurrentUser(currentUser);
@@ -72,6 +91,27 @@ public class UserService {
         return toUserProfileResponse(updatedUser, currentUser);
     }
 
+    @Transactional
+    public UserResponseDto updateUserAsAdmin(Long userId, AdminUpdateUserRequest request) {
+        User user = getUserEntityById(userId);
+        applyAdminUpdate(user, request);
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserResponseDto deactivateUser(Long userId) {
+        User user = getUserEntityById(userId);
+        user.setActive(false);
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserResponseDto activateUser(Long userId) {
+        User user = getUserEntityById(userId);
+        user.setActive(true);
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
     private UserProfileResponseDto toUserProfileResponse(User user, CurrentUser currentUser) {
         return UserProfileResponseDto.builder()
                 .user(userMapper.toResponse(user))
@@ -80,6 +120,7 @@ public class UserService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public User getUserEntityById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
@@ -89,8 +130,13 @@ public class UserService {
         Optional<User> existingUser = findExistingUser(currentUser);
         if (existingUser.isPresent()) {
             User user = existingUser.get();
+            ensureUserIsActive(user);
             boolean updated = applyCurrentUserData(user, currentUser);
-            return updated ? userRepository.save(user) : user;
+            if (updated) {
+                user.setLastLoginAt(LocalDateTime.now());
+                return userRepository.save(user);
+            }
+            return user;
         }
 
         if (currentUser.email() == null || currentUser.email().isBlank()) {
@@ -103,9 +149,18 @@ public class UserService {
                 .fullName(resolveFullName(currentUser))
                 .role(currentUser.role() != null ? currentUser.role() : UserRole.USER)
                 .createdAt(LocalDateTime.now())
+                .lastLoginAt(LocalDateTime.now())
                 .build();
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        ensureUserIsActive(savedUser);
+        return savedUser;
+    }
+
+    private void ensureUserIsActive(User user) {
+        if (!user.isActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is deactivated");
+        }
     }
 
     private Optional<User> findExistingUser(CurrentUser currentUser) {
@@ -164,19 +219,24 @@ public class UserService {
 
     private void applyProfileUpdate(User user, UpdateUserRequest request) {
         String resolvedFullName = normalizeFullName(request.getFullName());
-        if (resolvedFullName != null && !resolvedFullName.equals(user.getFullName())) {
-            user.setFullName(resolvedFullName);
-        }
+        UpdateUserRequest normalizedRequest = UpdateUserRequest.builder()
+                .fullName(resolvedFullName != null ? resolvedFullName : user.getFullName())
+                .preferredLanguage(request.getPreferredLanguage())
+                .themePreference(request.getThemePreference())
+                .build();
+        userMapper.applyProfileUpdate(user, normalizedRequest);
+    }
 
-        String preferredLanguage = normalizeOptionalSetting(request.getPreferredLanguage());
-        if (!java.util.Objects.equals(preferredLanguage, user.getPreferredLanguage())) {
-            user.setPreferredLanguage(preferredLanguage);
-        }
-
-        String themePreference = normalizeOptionalSetting(request.getThemePreference());
-        if (!java.util.Objects.equals(themePreference, user.getThemePreference())) {
-            user.setThemePreference(themePreference);
-        }
+    private void applyAdminUpdate(User user, AdminUpdateUserRequest request) {
+        String resolvedFullName = normalizeFullName(request.getFullName());
+        AdminUpdateUserRequest normalizedRequest = AdminUpdateUserRequest.builder()
+                .fullName(resolvedFullName != null ? resolvedFullName : user.getFullName())
+                .role(request.getRole())
+                .preferredLanguage(request.getPreferredLanguage())
+                .themePreference(request.getThemePreference())
+                .active(request.getActive())
+                .build();
+        userMapper.applyProfileUpdate(user, normalizedRequest);
     }
 
     private void validateUniqueUser(String keycloakId, String email) {
@@ -218,13 +278,22 @@ public class UserService {
         return trimmed;
     }
 
-    private String normalizeOptionalSetting(String value) {
+    private String normalizeSearch(String value) {
         if (value == null) {
             return null;
         }
 
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void validatePaging(int page, int size) {
+        if (page < 0) {
+            throw new BadRequestException("page must be greater than or equal to 0");
+        }
+        if (size < 1 || size > 100) {
+            throw new BadRequestException("size must be between 1 and 100");
+        }
     }
 }
 

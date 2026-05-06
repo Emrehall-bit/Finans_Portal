@@ -18,11 +18,13 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import SummaryCard from "../components/common/SummaryCard";
 import useToast from "../hooks/useToast";
+import { useTheme } from "../theme/ThemeContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
 
 const CHART_COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4f46e5"];
 
 export default function PortfolioDetailPage() {
+  const { chartTheme } = useTheme();
   const { portfolioId } = useParams();
   const [portfolioInfo, setPortfolioInfo] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -530,7 +532,12 @@ export default function PortfolioDetailPage() {
                             <Cell key={entry.instrumentCode} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                        <Tooltip
+                          formatter={(value) => formatCurrency(value)}
+                          contentStyle={chartTheme.tooltipContentStyle}
+                          itemStyle={chartTheme.tooltipItemStyle}
+                          labelStyle={chartTheme.tooltipLabelStyle}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>

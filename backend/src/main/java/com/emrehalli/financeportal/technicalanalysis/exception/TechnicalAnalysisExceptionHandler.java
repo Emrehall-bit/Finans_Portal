@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.technicalanalysis.exception;
 
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +18,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class TechnicalAnalysisExceptionHandler {
 
     private static final Logger logger = LogManager.getLogger(TechnicalAnalysisExceptionHandler.class);
+    private final AppMessageSource appMessageSource;
+
+    public TechnicalAnalysisExceptionHandler(AppMessageSource appMessageSource) {
+        this.appMessageSource = appMessageSource;
+    }
 
     @ExceptionHandler(TechnicalAnalysisException.class)
     public ProblemDetail handleTechnicalAnalysisException(TechnicalAnalysisException ex, HttpServletRequest request) {
@@ -79,7 +85,7 @@ public class TechnicalAnalysisExceptionHandler {
         }
 
         ProblemDetail problemDetail = ProblemDetail.forStatus(400);
-        problemDetail.setTitle("Technical analysis validation error");
+        problemDetail.setTitle(appMessageSource.get("technical.analysis.validation.title"));
         problemDetail.setDetail(ex.getMessage());
         problemDetail.setProperty("requestId", LoggingContext.get(LoggingConstants.REQUEST_ID_KEY));
         return problemDetail;
@@ -87,13 +93,13 @@ public class TechnicalAnalysisExceptionHandler {
 
     private String resolveTitle(TechnicalAnalysisException ex) {
         if (ex instanceof TechnicalAnalysisValidationException) {
-            return "Technical analysis validation error";
+            return appMessageSource.get("technical.analysis.validation.title");
         }
 
         if (ex instanceof TechnicalAnalysisNotFoundException) {
-            return "Technical analysis data not found";
+            return appMessageSource.get("technical.analysis.notFound.title");
         }
 
-        return "Technical analysis error";
+        return appMessageSource.get("technical.analysis.error.title");
     }
 }

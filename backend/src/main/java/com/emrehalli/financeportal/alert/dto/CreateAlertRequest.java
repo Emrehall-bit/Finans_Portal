@@ -13,14 +13,14 @@ import java.math.BigDecimal;
 @Setter
 public class CreateAlertRequest {
 
-    @NotBlank(message = "instrumentCode cannot be blank")
+    @NotBlank(message = "{validation.instrumentCode.blank}")
     private String instrumentCode;
 
-    @NotNull(message = "conditionType cannot be null")
+    @NotNull(message = "{validation.conditionType.required}")
     private ConditionType conditionType;
 
-    @NotNull(message = "targetPrice cannot be null")
-    @DecimalMin(value = "0.0001", message = "targetPrice must be greater than zero")
+    @NotNull(message = "{validation.targetPrice.required}")
+    @DecimalMin(value = "0.0001", message = "{validation.targetPrice.positive}")
     private BigDecimal targetPrice;
 }
 

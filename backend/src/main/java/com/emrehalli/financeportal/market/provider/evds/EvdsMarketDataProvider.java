@@ -7,6 +7,7 @@ import com.emrehalli.financeportal.market.provider.ProviderFetchResult;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
 import com.emrehalli.financeportal.market.provider.evds.dto.EvdsResponse;
+import com.emrehalli.financeportal.market.service.InstrumentRegistryService;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -25,15 +26,18 @@ public class EvdsMarketDataProvider implements MarketDataProvider {
     private final EvdsProperties properties;
     private final EvdsMarketDataMapper evdsMarketDataMapper;
     private final SymbolNormalizer symbolNormalizer;
+    private final InstrumentRegistryService instrumentRegistryService;
 
     public EvdsMarketDataProvider(EvdsClient evdsClient,
                                   EvdsProperties properties,
                                   EvdsMarketDataMapper evdsMarketDataMapper,
-                                  SymbolNormalizer symbolNormalizer) {
+                                  SymbolNormalizer symbolNormalizer,
+                                  InstrumentRegistryService instrumentRegistryService) {
         this.evdsClient = evdsClient;
         this.properties = properties;
         this.evdsMarketDataMapper = evdsMarketDataMapper;
         this.symbolNormalizer = symbolNormalizer;
+        this.instrumentRegistryService = instrumentRegistryService;
     }
 
     @PostConstruct
@@ -104,18 +108,42 @@ public class EvdsMarketDataProvider implements MarketDataProvider {
     }
 
     private List<EvdsProperties.SeriesConfig> resolveSeries(ProviderFetchRequest request) {
+        InstrumentRegistryService.Resolution resolution = instrumentRegistryService.resolveMappings(DataSource.EVDS);
+        List<EvdsProperties.SeriesConfig> configuredSeries = resolution.mappings().stream()
+                .map(this::toSeriesConfig)
+                .toList();
+
+        log.info(
+                "Market provider registry resolved: providerSource={}, registryMappingCount={}, resolvedSymbols={}, fallbackToYaml={}",
+                DataSource.EVDS,
+                resolution.mappings().size(),
+                configuredSeries.stream().map(EvdsProperties.SeriesConfig::getApiCode).toList(),
+                resolution.fallbackToYaml()
+        );
+
         if (request == null || !request.hasSymbolFilter()) {
-            return properties.getSeries();
+            return configuredSeries;
         }
 
         Set<String> requestedSymbols = request.symbols().stream()
                 .flatMap(symbol -> symbolNormalizer.normalize(symbol).stream())
                 .collect(java.util.stream.Collectors.toSet());
 
-        return properties.getSeries().stream()
+        return configuredSeries.stream()
                 .filter(series -> symbolNormalizer.normalize(series.getSymbol())
                         .map(requestedSymbols::contains)
                         .orElse(false))
                 .toList();
+    }
+
+    private EvdsProperties.SeriesConfig toSeriesConfig(InstrumentRegistryService.ResolvedMapping mapping) {
+        EvdsProperties.SeriesConfig seriesConfig = new EvdsProperties.SeriesConfig();
+        seriesConfig.setEvdsKey(mapping.providerSymbol());
+        seriesConfig.setApiCode(mapping.providerSymbol());
+        seriesConfig.setSymbol(mapping.symbol());
+        seriesConfig.setName(mapping.displayName());
+        seriesConfig.setInstrumentType(mapping.instrumentType());
+        seriesConfig.setCurrency(mapping.currency());
+        return seriesConfig;
     }
 }

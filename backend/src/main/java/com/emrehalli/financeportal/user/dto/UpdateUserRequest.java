@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.user.dto;
 
+import com.emrehalli.financeportal.user.entity.PreferredLanguage;
+import com.emrehalli.financeportal.user.entity.ThemePreference;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,11 +17,9 @@ public class UpdateUserRequest {
     @Size(max = 255, message = "Full name must be 255 characters or fewer")
     private String fullName;
 
-    @Size(max = 50, message = "Preferred language must be 50 characters or fewer")
-    private String preferredLanguage;
+    private PreferredLanguage preferredLanguage;
 
-    @Size(max = 50, message = "Theme preference must be 50 characters or fewer")
-    private String themePreference;
+    private ThemePreference themePreference;
 }
 
 

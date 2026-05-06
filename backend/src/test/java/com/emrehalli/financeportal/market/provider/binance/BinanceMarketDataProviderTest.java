@@ -7,6 +7,7 @@ import com.emrehalli.financeportal.market.provider.binance.dto.BinanceKlineRespo
 import com.emrehalli.financeportal.market.provider.binance.config.BinanceProviderProperties;
 import com.emrehalli.financeportal.market.provider.binance.dto.BinanceTickerResponse;
 import com.emrehalli.financeportal.market.provider.binance.mapper.BinanceMapper;
+import com.emrehalli.financeportal.market.service.InstrumentRegistryService;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,7 +35,8 @@ class BinanceMarketDataProviderTest {
                 binanceClient,
                 properties(),
                 new BinanceMapper(),
-                new SymbolNormalizer()
+                new SymbolNormalizer(),
+                registryService()
         );
         when(binanceClient.fetchTickers(any())).thenReturn(List.of(
                 new BinanceTickerResponse("BTCUSDT", "93500.10", "4.20", 1713900000000L)
@@ -53,7 +55,8 @@ class BinanceMarketDataProviderTest {
                 binanceClient,
                 properties(),
                 new BinanceMapper(),
-                new SymbolNormalizer()
+                new SymbolNormalizer(),
+                registryService()
         );
         when(binanceClient.fetchTickers(any())).thenThrow(new IllegalStateException("Binance unavailable"));
 
@@ -68,7 +71,8 @@ class BinanceMarketDataProviderTest {
                 binanceClient,
                 properties(),
                 new BinanceMapper(),
-                new SymbolNormalizer()
+                new SymbolNormalizer(),
+                registryService()
         );
         when(binanceClient.fetchDailyKlines(any(), any(), any())).thenReturn(List.of(
                 new BinanceKlineResponse(1713830400000L, "92000.00", "94000.00", "91000.00", "93500.10", "1000.00", 1713916799999L)
@@ -96,5 +100,31 @@ class BinanceMarketDataProviderTest {
         properties.setBaseUrl("https://api.binance.com");
         properties.setSymbols(List.of("BTCUSDT", "ETHUSDT", "DOGEUSDT"));
         return properties;
+    }
+
+    private InstrumentRegistryService registryService() {
+        return InstrumentRegistryService.seeded(new SymbolNormalizer(), List.of(
+                new InstrumentRegistryService.InstrumentDefinition(
+                        "BTCUSDT",
+                        "Bitcoin",
+                        com.emrehalli.financeportal.market.domain.enums.InstrumentType.CRYPTO,
+                        "USDT",
+                        java.util.Map.of(DataSource.BINANCE, "BTCUSDT")
+                ),
+                new InstrumentRegistryService.InstrumentDefinition(
+                        "ETHUSDT",
+                        "Ethereum",
+                        com.emrehalli.financeportal.market.domain.enums.InstrumentType.CRYPTO,
+                        "USDT",
+                        java.util.Map.of(DataSource.BINANCE, "ETHUSDT")
+                ),
+                new InstrumentRegistryService.InstrumentDefinition(
+                        "DOGEUSDT",
+                        "Dogecoin",
+                        com.emrehalli.financeportal.market.domain.enums.InstrumentType.CRYPTO,
+                        "USDT",
+                        java.util.Map.of(DataSource.BINANCE, "DOGEUSDT")
+                )
+        ));
     }
 }

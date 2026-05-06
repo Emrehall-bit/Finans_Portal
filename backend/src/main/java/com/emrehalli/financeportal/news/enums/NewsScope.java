@@ -5,9 +5,9 @@ import com.emrehalli.financeportal.common.exception.BadRequestException;
 import java.util.Set;
 
 public enum NewsScope {
-    LOCAL(Set.of(NewsProviderType.BLOOMBERG_HT, NewsProviderType.AA_RSS)),
-    GLOBAL(Set.of(NewsProviderType.FINNHUB)),
-    ALL(Set.of(NewsProviderType.FINNHUB, NewsProviderType.BLOOMBERG_HT, NewsProviderType.AA_RSS));
+    LOCAL(Set.of(NewsProviderType.AA_RSS, NewsProviderType.KAP)),
+    GLOBAL(Set.of(NewsProviderType.FINNHUB, NewsProviderType.INVESTING_RSS)),
+    ALL(Set.of(NewsProviderType.FINNHUB, NewsProviderType.AA_RSS, NewsProviderType.INVESTING_RSS, NewsProviderType.KAP));
 
     private final Set<NewsProviderType> providers;
 

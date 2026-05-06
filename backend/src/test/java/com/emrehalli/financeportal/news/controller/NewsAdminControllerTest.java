@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.news.controller;
 
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.config.security.KeycloakJwtRoleConverter;
 import com.emrehalli.financeportal.config.security.ResourceAccessManager;
 import com.emrehalli.financeportal.config.security.SecurityConfig;
@@ -31,6 +32,9 @@ class NewsAdminControllerTest {
 
     @MockBean
     private ResourceAccessManager resourceAccessManager;
+
+    @MockBean
+    private AppMessageSource appMessageSource;
 
     @Test
     void adminCanRecalculateImportanceScores() throws Exception {

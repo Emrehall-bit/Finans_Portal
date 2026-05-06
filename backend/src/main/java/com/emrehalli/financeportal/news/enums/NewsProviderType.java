@@ -4,8 +4,9 @@ import com.emrehalli.financeportal.common.exception.BadRequestException;
 
 public enum NewsProviderType {
     FINNHUB,
-    BLOOMBERG_HT,
-    AA_RSS;
+    AA_RSS,
+    INVESTING_RSS,
+    KAP;
 
     public static NewsProviderType from(String value) {
         if (value == null || value.isBlank()) {
@@ -15,7 +16,7 @@ public enum NewsProviderType {
         try {
             return NewsProviderType.valueOf(value.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid provider. Allowed values: FINNHUB, BLOOMBERG_HT, AA_RSS");
+            throw new BadRequestException("Invalid provider. Allowed values: FINNHUB, AA_RSS, INVESTING_RSS, KAP");
         }
     }
 }

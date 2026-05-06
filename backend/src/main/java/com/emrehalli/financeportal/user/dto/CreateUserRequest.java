@@ -1,6 +1,8 @@
 package com.emrehalli.financeportal.user.dto;
 
 import com.emrehalli.financeportal.user.entity.UserRole;
+import com.emrehalli.financeportal.user.entity.PreferredLanguage;
+import com.emrehalli.financeportal.user.entity.ThemePreference;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -26,8 +28,8 @@ public class CreateUserRequest {
     @Builder.Default
     private UserRole role = UserRole.USER;
 
-    private String preferredLanguage;
-    private String themePreference;
+    private PreferredLanguage preferredLanguage;
+    private ThemePreference themePreference;
 }
 
 

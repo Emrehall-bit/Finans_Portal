@@ -8,7 +8,7 @@ import lombok.Setter;
 @Setter
 public class AddWatchlistRequest {
 
-    @NotBlank(message = "instrumentCode cannot be blank")
+    @NotBlank(message = "{validation.instrumentCode.blank}")
     private String instrumentCode;
 }
 

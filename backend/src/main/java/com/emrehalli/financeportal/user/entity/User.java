@@ -34,14 +34,40 @@ public class User {
     @Builder.Default
     private UserRole role = UserRole.USER;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "preferred_language")
-    private String preferredLanguage;
+    private PreferredLanguage preferredLanguage;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "theme_preference")
-    private String themePreference;
+    private ThemePreference themePreference;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean active = true;
+
+    @PrePersist
+    public void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
 
 

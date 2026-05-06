@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.news.controller;
 
 import com.emrehalli.financeportal.common.exception.GlobalExceptionHandler;
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.config.ObservabilityFilterConfig;
 import com.emrehalli.financeportal.config.security.KeycloakJwtRoleConverter;
 import com.emrehalli.financeportal.config.security.ResourceAccessManager;
@@ -41,6 +42,9 @@ class NewsControllerObservabilityTest {
 
     @MockBean
     private ResourceAccessManager resourceAccessManager;
+
+    @MockBean
+    private AppMessageSource appMessageSource;
 
     @Test
     void getNewsReturnsRequestIdHeader() throws Exception {

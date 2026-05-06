@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getMarketQuotes } from "../api/marketApi";
 import { getNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -9,7 +10,12 @@ import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
 import { formatDateTime } from "../utils/formatters";
 
+function ensureArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 export default function HomePage() {
+  const { t } = useTranslation();
   const [news, setNews] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,13 +35,13 @@ export default function HomePage() {
           return;
         }
 
-        setNews((newsData.content ?? []).slice(0, 4));
-        setQuotes((quoteData ?? []).slice(0, 5));
+        setNews(ensureArray(newsData?.content).slice(0, 4));
+        setQuotes(ensureArray(quoteData).slice(0, 5));
       } catch (err) {
         if (!active) {
           return;
         }
-        setError(extractErrorMessage(err, "Ana sayfa verileri yüklenemedi."));
+        setError(extractErrorMessage(err, t("home.loadError")));
       } finally {
         if (active) {
           setLoading(false);
@@ -48,19 +54,19 @@ export default function HomePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
-  const featuredNews = news.slice(0, 5);
+  const featuredNews = ensureArray(news).slice(0, 5);
 
   return (
     <div className="dashboard-stack">
       <PageHeader
-        eyebrow="Public Landing"
-        title="Finans Portalı"
-        description="Haber akışı ve finansal özet herkese açık ilk ekranda."
+        eyebrow={t("home.eyebrow")}
+        title={t("home.title")}
+        description={t("home.description")}
       />
 
-      {loading ? <LoadingSpinner label="Ana sayfa yükleniyor..." /> : null}
+      {loading ? <LoadingSpinner label={t("home.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {!loading && !error ? (
@@ -68,16 +74,14 @@ export default function HomePage() {
           <section className="hero-grid">
             <div className="hero-card panel-surface">
               <div className="hero-copy">
-                <p className="eyebrow">Haber Odağı</p>
-                <h2>Tek ekranda haberler ve finansal ritim.</h2>
-                <p className="page-description">
-                  Açık ziyaretçiler haberleri izler, üyeler dashboard ve portföy modüllerine devam eder.
-                </p>
+                <p className="eyebrow">{t("home.heroEyebrow")}</p>
+                <h2>{t("home.heroTitle")}</h2>
+                <p className="page-description">{t("home.heroDescription")}</p>
               </div>
 
               <div className="hero-chart">
                 {quotes.length === 0 ? (
-                  <EmptyState title="Piyasa grafiği yok" description="Canlı fiyat modülü şu anda veri döndürmüyor." />
+                  <EmptyState title={t("home.marketChartEmptyTitle")} description={t("home.marketChartEmptyDescription")} />
                 ) : (
                   <div className="market-board compact">
                     {quotes.map((item) => (
@@ -102,21 +106,21 @@ export default function HomePage() {
             <div className="news-rail panel-surface">
               <div className="panel-head">
                 <div>
-                  <p className="eyebrow">Haber Akışı</p>
-                  <h3>Öne Çıkan Başlıklar</h3>
+                  <p className="eyebrow">{t("home.newsEyebrow")}</p>
+                  <h3>{t("home.newsTitle")}</h3>
                 </div>
-                <span className="pill">Live</span>
+                <span className="pill">{t("common.live")}</span>
               </div>
 
               {news.length === 0 ? (
-                <EmptyState title="Haber bulunamadı" description="Backend şu anda haber döndürmedi." />
+                <EmptyState title={t("home.newsEmptyTitle")} description={t("home.newsEmptyDescription")} />
               ) : (
                 <div className="news-rail-list">
                   {news.map((item) => (
                     <article key={item.id} className="news-rail-item">
                       <div className="news-rail-badge">{(item.provider || item.source || "N").slice(0, 1)}</div>
                       <div>
-                        <strong>{item.title || "Başlıksız haber"}</strong>
+                        <strong>{item.title || t("home.untitledNews")}</strong>
                         <p>{item.provider || item.source || "-"}</p>
                         <span>{formatDateTime(item.publishedAt)}</span>
                       </div>
@@ -140,13 +144,13 @@ export default function HomePage() {
                 />
               ))
             ) : featuredNews.length === 0 ? (
-              <EmptyState title="Özet yok" description="Şu anda öne çıkan haber bulunamadı." />
+              <EmptyState title={t("home.summaryEmptyTitle")} description={t("home.summaryEmptyDescription")} />
             ) : (
               featuredNews.map((item, idx) => (
                 <SummaryCard
                   key={`${item.id}-${idx}`}
-                  title={(item.title || "Haber").slice(0, 48)}
-                  value="News"
+                  title={(item.title || t("home.newsValue")).slice(0, 48)}
+                  value={t("home.newsValue")}
                   subtitle={[item.provider, item.source].filter(Boolean).join(" | ") || "-"}
                   trend={formatDateTime(item.publishedAt)}
                   tone={idx % 2 === 0 ? "cool" : "warm"}

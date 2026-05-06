@@ -18,13 +18,10 @@ function SkeletonCard({ featured = false, index }) {
 
 export default function NewsFeedSkeleton() {
   return (
-    <section className="news-skeleton-stack" aria-hidden="true">
-      <SkeletonCard featured index="featured" />
-      <div className="news-grid news-grid-portal">
-        {Array.from({ length: 6 }, (_, index) => (
-          <SkeletonCard index={index} key={index} />
-        ))}
-      </div>
+    <section className="news-grid news-grid-portal" aria-hidden="true">
+      {Array.from({ length: 8 }, (_, index) => (
+        <SkeletonCard index={index} key={index} />
+      ))}
     </section>
   );
 }

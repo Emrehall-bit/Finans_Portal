@@ -54,7 +54,6 @@ class MarketCacheServiceTest {
         lenient().when(ttlPolicy.symbolQuoteTtl()).thenReturn(Duration.ofHours(1));
         lenient().when(ttlPolicy.ttlFor(DataSource.EVDS)).thenReturn(Duration.ofHours(6));
         lenient().when(ttlPolicy.ttlFor(DataSource.BINANCE)).thenReturn(Duration.ofMinutes(2));
-        lenient().when(ttlPolicy.ttlFor(DataSource.TEFAS)).thenReturn(Duration.ofDays(1));
         lenient().when(ttlPolicy.ttlFor(DataSource.BIST)).thenReturn(Duration.ofDays(1));
         lenient().doAnswer(invocation -> {
             redisStore.put(invocation.getArgument(0), invocation.getArgument(1));
@@ -62,7 +61,12 @@ class MarketCacheServiceTest {
         }).when(valueOperations).set(anyString(), any(), any(Duration.class));
         lenient().when(valueOperations.get(anyString())).thenAnswer(invocation -> redisStore.get(invocation.getArgument(0)));
 
-        marketCacheService = new MarketCacheService(redisTemplate, ttlPolicy, new SymbolNormalizer(), objectMapper);
+        marketCacheService = new MarketCacheService(
+                redisTemplate,
+                ttlPolicy,
+                new SymbolNormalizer(),
+                objectMapper
+        );
     }
 
     @Test

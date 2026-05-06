@@ -12,6 +12,8 @@ public record MarketQuoteResponse(
         String currency,
         String source,
         Instant priceTime,
-        Instant fetchedAt
+        Instant fetchedAt,
+        String priceStatus,
+        Instant lastUpdatedAt
 ) {
 }

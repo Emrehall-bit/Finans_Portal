@@ -15,6 +15,7 @@ public class FinnhubNewsResponse {
     private String source;
     private String summary;
     private String url;
+    private String image;
 }
 
 

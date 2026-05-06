@@ -1,0 +1,542 @@
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { getMarketHistory, getMarketBySymbol, getTechnicalAnalysis } from "../../api/marketApi";
+import { getNews } from "../../api/newsApi";
+import { extractErrorMessage } from "../../api/responseUtils";
+import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../../api/watchlistApi";
+import { useAuth } from "../../auth/AuthContext";
+import EmptyState from "../common/EmptyState";
+import ErrorMessage from "../common/ErrorMessage";
+import LoadingSpinner from "../common/LoadingSpinner";
+import useToast from "../../hooks/useToast";
+import AddToPortfolioModal from "./AddToPortfolioModal";
+import CreateAlertModal from "./CreateAlertModal";
+import InstrumentChartPanel from "./InstrumentChartPanel";
+import InstrumentHeader from "./InstrumentHeader";
+import InstrumentNewsList from "./InstrumentNewsList";
+import InstrumentStatsPanel from "./InstrumentStatsPanel";
+import InstrumentTabs from "./InstrumentTabs";
+import {
+  buildChartData,
+  buildPresetRange,
+  buildStats,
+  DEFAULT_INDICATORS,
+  formatSignalLabel,
+  formatTrendLabel,
+} from "./marketDetailUtils";
+
+export default function InstrumentDetailPage() {
+  const { symbol = "" } = useParams();
+  const normalizedSymbol = decodeURIComponent(symbol);
+  const { userId, login } = useAuth();
+  const { toast, showToast } = useToast();
+
+  const [quote, setQuote] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
+  const [annualHistory, setAnnualHistory] = useState([]);
+  const [newsItems, setNewsItems] = useState([]);
+  const [watchlistItems, setWatchlistItems] = useState([]);
+  const [quoteLoading, setQuoteLoading] = useState(true);
+  const [analysisLoading, setAnalysisLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [quoteError, setQuoteError] = useState("");
+  const [analysisError, setAnalysisError] = useState("");
+  const [newsError, setNewsError] = useState("");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [activeRange, setActiveRange] = useState("3M");
+  const [dateRange, setDateRange] = useState(() => buildPresetRange(90));
+  const [selectedIndicators, setSelectedIndicators] = useState(() => new Set(DEFAULT_INDICATORS));
+  const [isPortfolioModalOpen, setPortfolioModalOpen] = useState(false);
+  const [isAlertModalOpen, setAlertModalOpen] = useState(false);
+
+  const isDateRangeInvalid = Boolean(
+    dateRange.from && dateRange.to && new Date(dateRange.from).getTime() > new Date(dateRange.to).getTime(),
+  );
+
+  useEffect(() => {
+    if (!normalizedSymbol) {
+      setQuote(null);
+      setQuoteError("Gecerli bir enstruman secilmedi.");
+      setQuoteLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    async function loadQuote() {
+      try {
+        setQuoteLoading(true);
+        setQuoteError("");
+        const data = await getMarketBySymbol(normalizedSymbol);
+        if (active) {
+          setQuote(data ?? null);
+        }
+      } catch (err) {
+        if (active) {
+          setQuote(null);
+          setQuoteError(extractErrorMessage(err, "Enstruman bilgisi yuklenemedi."));
+        }
+      } finally {
+        if (active) {
+          setQuoteLoading(false);
+        }
+      }
+    }
+
+    loadQuote();
+    return () => {
+      active = false;
+    };
+  }, [normalizedSymbol]);
+
+  useEffect(() => {
+    if (!normalizedSymbol) {
+      setAnnualHistory([]);
+      setHistoryLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    async function loadAnnualHistory() {
+      try {
+        setHistoryLoading(true);
+        const nextHistory = await getMarketHistory(normalizedSymbol, buildHistoryRequest(activeRange, dateRange, quote?.source));
+        if (active) {
+          setAnnualHistory(Array.isArray(nextHistory) ? nextHistory : []);
+        }
+      } catch {
+        if (active) {
+          setAnnualHistory([]);
+        }
+      } finally {
+        if (active) {
+          setHistoryLoading(false);
+        }
+      }
+    }
+
+    loadAnnualHistory();
+    return () => {
+      active = false;
+    };
+  }, [normalizedSymbol, activeRange, dateRange, quote?.source]);
+
+  useEffect(() => {
+    if (!normalizedSymbol || !dateRange.from || !dateRange.to || isDateRangeInvalid) {
+      setAnalysis(null);
+      setAnalysisError(isDateRangeInvalid ? "Baslangic tarihi bitis tarihinden sonra olamaz." : "");
+      setAnalysisLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    async function loadAnalysis() {
+      try {
+        setAnalysisLoading(true);
+        setAnalysisError("");
+        const data = await getTechnicalAnalysis(
+          normalizedSymbol,
+          dateRange.from,
+          dateRange.to,
+          Array.from(selectedIndicators).join(","),
+        );
+        if (active) {
+          setAnalysis(data ?? null);
+        }
+      } catch (err) {
+        if (active) {
+          setAnalysis(null);
+          setAnalysisError(extractErrorMessage(err, "Teknik analiz yuklenemedi."));
+        }
+      } finally {
+        if (active) {
+          setAnalysisLoading(false);
+        }
+      }
+    }
+
+    loadAnalysis();
+    return () => {
+      active = false;
+    };
+  }, [normalizedSymbol, dateRange, selectedIndicators, isDateRangeInvalid]);
+
+  useEffect(() => {
+    if (activeTab !== "news" || !normalizedSymbol) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadNews() {
+      try {
+        setNewsLoading(true);
+        setNewsError("");
+        const page = await getNews({ symbol: normalizedSymbol, size: 8 });
+        if (active) {
+          setNewsItems(page.content ?? []);
+        }
+      } catch (err) {
+        if (active) {
+          setNewsItems([]);
+          setNewsError(extractErrorMessage(err, "Haberler yuklenemedi."));
+        }
+      } finally {
+        if (active) {
+          setNewsLoading(false);
+        }
+      }
+    }
+
+    loadNews();
+    return () => {
+      active = false;
+    };
+  }, [activeTab, normalizedSymbol]);
+
+  useEffect(() => {
+    if (!userId || !normalizedSymbol) {
+      setWatchlistItems([]);
+      return;
+    }
+
+    let active = true;
+
+    async function loadWatchlist() {
+      try {
+        const rows = await getUserWatchlist(userId);
+        if (active) {
+          setWatchlistItems(rows);
+        }
+      } catch {
+        if (active) {
+          setWatchlistItems([]);
+        }
+      }
+    }
+
+    loadWatchlist();
+    return () => {
+      active = false;
+    };
+  }, [userId, normalizedSymbol]);
+
+  const chartData = useMemo(
+    () => buildChartData(Array.isArray(analysis?.points) ? analysis.points : [], annualHistory),
+    [analysis, annualHistory],
+  );
+  const stats = useMemo(() => buildStats(quote, annualHistory), [quote, annualHistory]);
+  const latestPrice = analysis?.latestPrice ?? quote?.price ?? null;
+  const quoteUnavailable = !quoteLoading && !quoteError && (!quote || quote.price == null);
+  const isFavorite = useMemo(
+    () => watchlistItems.some((item) => normalizeCode(item.instrumentCode) === normalizeCode(normalizedSymbol)),
+    [watchlistItems, normalizedSymbol],
+  );
+  const favoriteItemId = useMemo(
+    () => watchlistItems.find((item) => normalizeCode(item.instrumentCode) === normalizeCode(normalizedSymbol))?.id,
+    [watchlistItems, normalizedSymbol],
+  );
+
+  async function ensureSignedIn() {
+    if (userId) {
+      return true;
+    }
+
+    await login();
+    return false;
+  }
+
+  async function handleFavoriteToggle() {
+    const ready = await ensureSignedIn();
+    if (!ready) {
+      return;
+    }
+
+    try {
+      setFavoriteBusy(true);
+      if (isFavorite && favoriteItemId) {
+        await removeWatchlistItem(favoriteItemId);
+        showToast("success", "Favorilerden cikarildi.");
+      } else {
+        await addWatchlistItem(userId, { instrumentCode: normalizedSymbol });
+        showToast("success", "Favorilere eklendi.");
+      }
+
+      setWatchlistItems(await getUserWatchlist(userId));
+    } catch (err) {
+      setQuoteError(extractErrorMessage(err, "Favori islemi tamamlanamadi."));
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
+
+  async function handleOpenPortfolioModal() {
+    const ready = await ensureSignedIn();
+    if (ready) {
+      setPortfolioModalOpen(true);
+    }
+  }
+
+  async function handleOpenAlertModal() {
+    const ready = await ensureSignedIn();
+    if (ready) {
+      setAlertModalOpen(true);
+    }
+  }
+
+  function toggleIndicator(indicator) {
+    setSelectedIndicators((current) => {
+      const next = new Set(current);
+      if (next.has(indicator) && next.size > 1) {
+        next.delete(indicator);
+        return next;
+      }
+
+      next.add(indicator);
+      return next;
+    });
+  }
+
+  function handleRangeChange(preset) {
+    setActiveRange(preset.key);
+    setDateRange(buildPresetRange(preset.days));
+  }
+
+  function handleDateRangeChange(field, value) {
+    setActiveRange("CUSTOM");
+    setDateRange((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleActionSuccess(message) {
+    showToast("success", message);
+  }
+
+  return (
+    <div className="dashboard-stack market-detail-page instrument-detail-page-shell">
+      {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
+
+      <InstrumentHeader
+        symbol={normalizedSymbol}
+        displayName={quote?.displayName}
+        price={latestPrice}
+        changeRate={quote?.changeRate}
+        currency={quote?.currency}
+        source={quote?.source}
+        instrumentType={quote?.instrumentType}
+        isFavorite={isFavorite}
+        favoriteBusy={favoriteBusy}
+        onFavoriteToggle={handleFavoriteToggle}
+        onOpenAlert={handleOpenAlertModal}
+        onOpenPortfolio={handleOpenPortfolioModal}
+      />
+
+      <InstrumentTabs activeTab={activeTab} onChange={setActiveTab} />
+
+      {quoteLoading ? <LoadingSpinner label="Enstruman verisi yukleniyor..." /> : null}
+      {quoteError ? <ErrorMessage message={quoteError} /> : null}
+
+      {!quoteLoading && !quoteError && quoteUnavailable ? (
+        <section className="panel-surface">
+          <EmptyState title="Veri bulunamadi" description="Bu sembol icin guncel fiyat verisi donmedi." />
+        </section>
+      ) : null}
+
+      {!quoteLoading && !quoteError && !quoteUnavailable ? (
+        <section className="instrument-detail-grid">
+          <div className="instrument-detail-main-column">
+            {activeTab === "overview" ? (
+              <section className="instrument-overview-stack">
+                <section className="panel-surface instrument-overview-card">
+                  <div className="panel-head">
+                    <div>
+                      <p className="eyebrow">Genel Bakis</p>
+                      <h3>Trend ve sinyal ozeti</h3>
+                    </div>
+                  </div>
+
+                  {analysisLoading ? <LoadingSpinner label="Analiz ozetleri yukleniyor..." /> : null}
+                  {!analysisLoading && analysisError ? <ErrorMessage message={analysisError} /> : null}
+                  {!analysisLoading && !analysisError && !analysis ? (
+                    <EmptyState title="Analiz verisi bulunamadi" description="Bu enstruman icin teknik ozet olusmadi." />
+                  ) : null}
+
+                  {!analysisLoading && !analysisError && analysis ? (
+                    <>
+                      <div className="instrument-overview-summary">
+                        <div className="instrument-overview-metric">
+                          <span>Trend</span>
+                          <strong>{formatTrendLabel(analysis.trendDirection)}</strong>
+                        </div>
+                        <div className="instrument-overview-metric">
+                          <span>Son fiyat</span>
+                          <strong>{latestPrice ?? "-"}</strong>
+                        </div>
+                        <div className="instrument-overview-metric">
+                          <span>Veri noktasi</span>
+                          <strong>{chartData.length}</strong>
+                        </div>
+                      </div>
+
+                      <div className="signal-chip-row">
+                        {(analysis.signals ?? []).length > 0 ? (
+                          analysis.signals.map((signal) => (
+                            <span key={signal} className="signal-pill">
+                              {formatSignalLabel(signal)}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="signal-pill neutral">Belirgin sinyal yok</span>
+                        )}
+                      </div>
+
+                      <div className="indicator-value-grid terminal-indicator-grid">
+                        {(analysis.indicatorValues ?? []).length > 0 ? (
+                          analysis.indicatorValues.map((item) => (
+                            <div key={item.indicator} className="indicator-value-card">
+                              <span>{item.indicator}</span>
+                              <strong>{item.value ?? "-"}</strong>
+                            </div>
+                          ))
+                        ) : (
+                          <EmptyState
+                            title="Indikator bulunamadi"
+                            description="Secili aralik icin son indikator degerleri olusmadi."
+                          />
+                        )}
+                      </div>
+                    </>
+                  ) : null}
+                </section>
+
+                <InstrumentChartPanel
+                  activeRange={activeRange}
+                  onRangeChange={handleRangeChange}
+                  dateRange={dateRange}
+                  onDateRangeChange={handleDateRangeChange}
+                  selectedIndicators={selectedIndicators}
+                  onToggleIndicator={toggleIndicator}
+                  loading={analysisLoading}
+                  error={analysisError}
+                  chartData={chartData}
+                />
+              </section>
+            ) : null}
+
+            {activeTab === "chart" ? (
+              <InstrumentChartPanel
+                activeRange={activeRange}
+                onRangeChange={handleRangeChange}
+                dateRange={dateRange}
+                onDateRangeChange={handleDateRangeChange}
+                selectedIndicators={selectedIndicators}
+                onToggleIndicator={toggleIndicator}
+                loading={analysisLoading}
+                error={analysisError}
+                chartData={chartData}
+              />
+            ) : null}
+
+            {activeTab === "news" ? (
+              <InstrumentNewsList loading={newsLoading} error={newsError} items={newsItems} />
+            ) : null}
+
+            {activeTab === "financials" ? (
+              <section className="panel-surface instrument-financials-panel">
+                <div className="panel-head">
+                  <div>
+                    <p className="eyebrow">Finansallar</p>
+                    <h3>Sirket finansallari</h3>
+                  </div>
+                </div>
+                {/* TODO: replace this fallback with a backend financial statements endpoint when available. */}
+                <EmptyState
+                  title="Bu enstruman icin finansal veri bulunmuyor"
+                  description="Backend tarafinda finansal tablo endpointi tanimlandiginda bu alan doldurulacak."
+                />
+              </section>
+            ) : null}
+          </div>
+
+          <div className="instrument-detail-side-column">
+            <InstrumentStatsPanel stats={stats} />
+
+            {!historyLoading && annualHistory.length > 0 ? (
+              <section className="panel-surface instrument-context-card">
+                <div className="panel-head">
+                  <div>
+                    <p className="eyebrow">Baglam</p>
+                    <h3>Gecmis veri ozeti</h3>
+                  </div>
+                </div>
+                <div className="instrument-stats-list">
+                  <div className="instrument-stats-row">
+                    <span>Gecmis veri noktasi</span>
+                    <strong>{annualHistory.length}</strong>
+                  </div>
+                  <div className="instrument-stats-row">
+                    <span>Analiz araligi</span>
+                    <strong>
+                      {dateRange.from} / {dateRange.to}
+                    </strong>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      <AddToPortfolioModal
+        isOpen={isPortfolioModalOpen}
+        onClose={() => setPortfolioModalOpen(false)}
+        symbol={normalizedSymbol}
+        currentPrice={latestPrice}
+        userId={userId}
+        onSuccess={() => handleActionSuccess("Enstruman portfoye eklendi.")}
+      />
+
+      <CreateAlertModal
+        isOpen={isAlertModalOpen}
+        onClose={() => setAlertModalOpen(false)}
+        symbol={normalizedSymbol}
+        currentPrice={latestPrice}
+        userId={userId}
+        onSuccess={() => handleActionSuccess("Alarm olusturuldu.")}
+      />
+    </div>
+  );
+}
+
+function buildHistoryRequest(activeRange, dateRange, source) {
+  const request = source ? { source } : {};
+
+  if (activeRange === "1W") {
+    return { ...request, range: "7d" };
+  }
+
+  if (activeRange === "1M") {
+    return { ...request, range: "1m" };
+  }
+
+  if (activeRange === "3M") {
+    return { ...request, range: "3m" };
+  }
+
+  if (activeRange === "1Y") {
+    return { ...request, range: "1y" };
+  }
+
+  return {
+    ...request,
+    from: dateRange?.from,
+    to: dateRange?.to,
+  };
+}
+
+function normalizeCode(value) {
+  return value == null ? "" : String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}

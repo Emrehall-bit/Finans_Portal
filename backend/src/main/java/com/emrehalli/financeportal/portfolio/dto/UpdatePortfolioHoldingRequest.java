@@ -7,12 +7,12 @@ import java.math.BigDecimal;
 
 public class UpdatePortfolioHoldingRequest {
 
-    @NotNull(message = "Quantity is required")
-    @DecimalMin(value = "0.0001", message = "Quantity must be greater than 0")
+    @NotNull(message = "{validation.quantity.required}")
+    @DecimalMin(value = "0.0001", message = "{validation.quantity.positive}")
     private BigDecimal quantity;
 
-    @NotNull(message = "Buy price is required")
-    @DecimalMin(value = "0.0001", message = "Buy price must be greater than 0")
+    @NotNull(message = "{validation.buyPrice.required}")
+    @DecimalMin(value = "0.0001", message = "{validation.buyPrice.positive}")
     private BigDecimal buyPrice;
 
     public BigDecimal getQuantity() {

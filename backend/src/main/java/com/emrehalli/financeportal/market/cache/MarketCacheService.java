@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ public class MarketCacheService {
     private final SymbolNormalizer symbolNormalizer;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public MarketCacheService(@Qualifier("marketCacheRedisTemplate") RedisTemplate<String, String> redisTemplate,
                               MarketCacheTtlPolicy ttlPolicy,
                               SymbolNormalizer symbolNormalizer,

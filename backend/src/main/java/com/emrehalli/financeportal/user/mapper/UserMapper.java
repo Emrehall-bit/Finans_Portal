@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.user.mapper;
 
+import com.emrehalli.financeportal.user.dto.AdminUpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
 import com.emrehalli.financeportal.user.dto.UpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.UserResponseDto;
@@ -31,26 +32,36 @@ public class UserMapper {
                 .preferredLanguage(user.getPreferredLanguage())
                 .themePreference(user.getThemePreference())
                 .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .lastLoginAt(user.getLastLoginAt())
+                .active(user.isActive())
                 .build();
     }
 
     public void applyProfileUpdate(User user, UpdateUserRequest request) {
         user.setFullName(request.getFullName());
-        user.setPreferredLanguage(normalizeNullable(request.getPreferredLanguage()));
-        user.setThemePreference(normalizeNullable(request.getThemePreference()));
+        user.setPreferredLanguage(request.getPreferredLanguage());
+        user.setThemePreference(request.getThemePreference());
+    }
+
+    public void applyProfileUpdate(User user, AdminUpdateUserRequest request) {
+        user.setFullName(request.getFullName());
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
+        }
+        if (request.getPreferredLanguage() != null) {
+            user.setPreferredLanguage(request.getPreferredLanguage());
+        }
+        if (request.getThemePreference() != null) {
+            user.setThemePreference(request.getThemePreference());
+        }
+        if (request.getActive() != null) {
+            user.setActive(request.getActive());
+        }
     }
 
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
-    }
-
-    private String normalizeNullable(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 }
 

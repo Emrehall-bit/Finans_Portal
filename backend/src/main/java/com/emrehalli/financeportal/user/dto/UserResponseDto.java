@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.user.dto;
 
+import com.emrehalli.financeportal.user.entity.PreferredLanguage;
+import com.emrehalli.financeportal.user.entity.ThemePreference;
 import com.emrehalli.financeportal.user.entity.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,9 +21,12 @@ public class UserResponseDto {
     private String fullName;
     private String email;
     private UserRole role;
-    private String preferredLanguage;
-    private String themePreference;
+    private PreferredLanguage preferredLanguage;
+    private ThemePreference themePreference;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private LocalDateTime lastLoginAt;
+    private boolean active;
 }
 
 

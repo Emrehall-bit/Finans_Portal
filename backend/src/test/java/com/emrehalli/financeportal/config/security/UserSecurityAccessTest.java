@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.config.security;
 
+import com.emrehalli.financeportal.common.exception.GlobalExceptionHandler;
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.user.controller.UserController;
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
 import com.emrehalli.financeportal.user.dto.UserResponseDto;
@@ -10,10 +12,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserController.class)
-@Import({SecurityConfig.class, KeycloakJwtRoleConverter.class})
+@Import({SecurityConfig.class, KeycloakJwtRoleConverter.class, GlobalExceptionHandler.class})
 class UserSecurityAccessTest {
 
     @Autowired
@@ -39,6 +43,9 @@ class UserSecurityAccessTest {
 
     @MockBean
     private ResourceAccessManager resourceAccessManager;
+
+    @MockBean
+    private AppMessageSource appMessageSource;
 
     @Test
     void userWithoutAdminRole_cannotAccessAdminEndpoints() throws Exception {
@@ -67,7 +74,7 @@ class UserSecurityAccessTest {
                 .role(UserRole.ADMIN)
                 .build();
 
-        when(userService.getAllUsers()).thenReturn(List.of(
+        when(userService.getAllUsers(0, 20, null)).thenReturn(new PageImpl<>(List.of(
                 UserResponseDto.builder()
                         .id(1L)
                         .keycloakId("kc-admin-1")
@@ -76,7 +83,7 @@ class UserSecurityAccessTest {
                         .role(UserRole.ADMIN)
                         .createdAt(LocalDateTime.now())
                         .build()
-        ));
+        )));
         when(userService.createUser(any(CreateUserRequest.class))).thenReturn(
                 UserResponseDto.builder()
                         .id(2L)
@@ -97,6 +104,16 @@ class UserSecurityAccessTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void deactivatedUser_getCurrentProfile_returnsForbidden() throws Exception {
+        when(userService.getCurrentUserProfile())
+                .thenThrow(new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Account is deactivated"));
+
+        mockMvc.perform(get("/api/v1/users/me")
+                        .with(SecurityMockMvcRequestPostProcessors.jwt().authorities(() -> "ROLE_USER")))
+                .andExpect(status().isForbidden());
     }
 }
 

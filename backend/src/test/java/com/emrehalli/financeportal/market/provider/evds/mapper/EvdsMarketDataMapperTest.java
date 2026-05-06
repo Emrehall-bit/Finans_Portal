@@ -31,9 +31,25 @@ class EvdsMarketDataMapperTest {
 
         assertThat(quotes).singleElement().satisfies(quote -> {
             assertThat(quote.price()).isEqualByComparingTo(new BigDecimal("38.75"));
+            assertThat(quote.changeRate()).isEqualByComparingTo(new BigDecimal("1.4398"));
             assertThat(quote.priceTime()).isEqualTo(LocalDate.of(2026, 4, 23)
                     .atStartOfDay()
                     .toInstant(ZoneOffset.UTC));
+        });
+    }
+
+    @Test
+    void leavesChangeRateEmptyWhenNoPreviousValidValueExists() {
+        EvdsResponse response = new EvdsResponse(List.of(
+                item("23-04-2026", "38,75"),
+                item("22-04-2026", "")
+        ));
+
+        var quotes = mapper.toMarketQuotes(response, List.of(usdTry));
+
+        assertThat(quotes).singleElement().satisfies(quote -> {
+            assertThat(quote.price()).isEqualByComparingTo(new BigDecimal("38.75"));
+            assertThat(quote.changeRate()).isNull();
         });
     }
 
@@ -77,6 +93,30 @@ class EvdsMarketDataMapperTest {
         assertThat(historyRecords).hasSize(2);
         assertThat(historyRecords).extracting(record -> record.priceDate().toString())
                 .containsExactly("2026-04-21", "2026-04-22");
+    }
+
+    @Test
+    void resolvesUnderscoreResponseKeysWhenRegistryUsesDottedProviderSymbol() {
+        EvdsProperties.SeriesConfig dottedSeries = new EvdsProperties.SeriesConfig();
+        dottedSeries.setEvdsKey("TP.DK.USD.A");
+        dottedSeries.setApiCode("TP.DK.USD.A");
+        dottedSeries.setSymbol("USDTRY");
+        dottedSeries.setName("USD/TRY");
+        dottedSeries.setInstrumentType(InstrumentType.FX);
+        dottedSeries.setCurrency("TRY");
+
+        EvdsResponse response = new EvdsResponse(List.of(
+                item("21-04-2026", "37.10"),
+                item("22-04-2026", "38.20")
+        ));
+
+        var quotes = mapper.toMarketQuotes(response, List.of(dottedSeries));
+        var historyRecords = mapper.toHistoryRecords(response, List.of(dottedSeries));
+
+        assertThat(quotes).singleElement().satisfies(quote ->
+                assertThat(quote.price()).isEqualByComparingTo(new BigDecimal("38.20"))
+        );
+        assertThat(historyRecords).hasSize(2);
     }
 
     private static EvdsItem item(String date, String value) {

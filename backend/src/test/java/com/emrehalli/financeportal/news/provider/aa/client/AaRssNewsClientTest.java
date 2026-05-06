@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.news.provider.aa.client;
 
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
+import com.emrehalli.financeportal.news.provider.rss.RssFeedSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -16,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AaRssNewsClientTest {
 
-    private final AaRssNewsClient client = new AaRssNewsClient(new RestTemplate(), properties());
+    private final AaRssNewsClient client = new AaRssNewsClient(new RestTemplate(), properties(), new RssFeedSupport());
 
     @Test
     void parsesRssItemsIntoNewsDtos() {
@@ -40,7 +41,7 @@ class AaRssNewsClientTest {
             assertThat(item.getTitle()).isEqualTo("TCMB faiz kararini acikladi");
             assertThat(item.getUrl()).isEqualTo("https://www.aa.com.tr/tr/ekonomi/tcmb-faiz-karari/123");
             assertThat(item.getSummary()).isEqualTo("Merkez Bankasi yeni karari duyurdu.");
-            assertThat(item.getSource()).isEqualTo("Anadolu Ajansı");
+            assertThat(item.getSource()).isEqualTo("Anadolu Ajans\u0131");
             assertThat(item.getProvider()).isEqualTo("AA_RSS");
             assertThat(item.getCategory()).isEqualTo("ECONOMY");
             assertThat(item.getLanguage()).isEqualTo("tr");
@@ -56,10 +57,10 @@ class AaRssNewsClientTest {
                 <rss version="2.0">
                   <channel>
                     <item>
-                      <title>Bakan Bolat: Transit ticaret ve yurt dışı alım-satım kazançlarındaki vergi indirimini yüzde 100'e çıkarıyoruz</title>
+                      <title>Bakan Bolat: Transit ticaret ve yurt d\u0131\u015f\u0131 al\u0131m-sat\u0131m kazan\u00e7lar\u0131ndaki vergi indirimini y\u00fczde 100'e \u00e7\u0131kar\u0131yoruz</title>
                       <link>https://www.aa.com.tr/tr/ekonomi/vergi-indirimi/123</link>
                       <guid>aa-guid-tr-123</guid>
-                      <description>Yurt dışı alım-satım ve kazançlarındaki düzenleme yüzde olarak artırılıyor.</description>
+                      <description>Yurt d\u0131\u015f\u0131 al\u0131m-sat\u0131m ve kazan\u00e7lar\u0131ndaki d\u00fczenleme y\u00fczde olarak art\u0131r\u0131l\u0131yor.</description>
                       <pubDate>Sat, 25 Apr 2026 10:30:00 GMT</pubDate>
                     </item>
                   </channel>
@@ -73,8 +74,8 @@ class AaRssNewsClientTest {
         List<NewsItemDto> items = client.parse(decoded);
 
         assertThat(items).singleElement().satisfies(item -> {
-            assertThat(item.getTitle()).contains("dışı", "alım-satım", "kazançlarındaki", "yüzde", "çıkarıyoruz");
-            assertThat(item.getSummary()).contains("dışı", "alım-satım");
+            assertThat(item.getTitle()).contains("d\u0131\u015f\u0131", "al\u0131m-sat\u0131m", "kazan\u00e7lar\u0131ndaki", "y\u00fczde", "\u00e7\u0131kar\u0131yoruz");
+            assertThat(item.getSummary()).contains("d\u0131\u015f\u0131", "al\u0131m-sat\u0131m", "d\u00fczenleme");
         });
     }
 
@@ -85,10 +86,10 @@ class AaRssNewsClientTest {
                 <rss version="2.0">
                   <channel>
                     <item>
-                      <title>Ekonomi büyümesi üçüncü çeyrekte hızlandı</title>
+                      <title>Ekonomi b\u00fcy\u00fcmesi \u00fc\u00e7\u00fcnc\u00fc \u00e7eyrekte h\u0131zland\u0131</title>
                       <link>https://www.aa.com.tr/tr/ekonomi/buyume/456</link>
                       <guid>aa-guid-tr-456</guid>
-                      <description>Şirketlerin kârlılığı ve ihracatı güçlendi.</description>
+                      <description>\u015eirketlerin k\u00e2rl\u0131l\u0131\u011f\u0131 ve ihracat\u0131 g\u00fc\u00e7lendi.</description>
                     </item>
                   </channel>
                 </rss>
@@ -99,8 +100,8 @@ class AaRssNewsClientTest {
         List<NewsItemDto> items = client.parse(decoded);
 
         assertThat(items).singleElement().satisfies(item -> {
-            assertThat(item.getTitle()).contains("üçüncü", "çeyrekte");
-            assertThat(item.getSummary()).contains("Şirketlerin", "kârlılığı", "güçlendi");
+            assertThat(item.getTitle()).contains("\u00fc\u00e7\u00fcnc\u00fc", "\u00e7eyrekte");
+            assertThat(item.getSummary()).contains("\u015eirketlerin", "k\u00e2rl\u0131l\u0131\u011f\u0131", "g\u00fc\u00e7lendi");
         });
     }
 
@@ -121,6 +122,89 @@ class AaRssNewsClientTest {
 
         assertThat(items).singleElement().satisfies(item ->
                 assertThat(item.getExternalId()).startsWith("AA_RSS-")
+        );
+    }
+
+    @Test
+    void prefersMediaContentImageUrlWhenPresent() {
+        List<NewsItemDto> items = client.parse("""
+                <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+                  <channel>
+                    <item>
+                      <title>Merkez Bankasi karari</title>
+                      <link>https://www.aa.com.tr/tr/ekonomi/karar/123</link>
+                      <guid>aa-image-1</guid>
+                      <media:content url="https://cdn.example.com/media.jpg" type="image/jpeg" />
+                      <enclosure url="https://cdn.example.com/enclosure.jpg" type="image/jpeg" />
+                      <description><![CDATA[<img src="https://cdn.example.com/description.jpg" />Ozet]]></description>
+                    </item>
+                  </channel>
+                </rss>
+                """);
+
+        assertThat(items).singleElement().satisfies(item ->
+                assertThat(item.getImageUrl()).isEqualTo("https://cdn.example.com/media.jpg")
+        );
+    }
+
+    @Test
+    void fallsBackToEnclosureImageUrlWhenMediaContentIsMissing() {
+        List<NewsItemDto> items = client.parse("""
+                <rss version="2.0">
+                  <channel>
+                    <item>
+                      <title>Ihracat verileri</title>
+                      <link>https://www.aa.com.tr/tr/ekonomi/ihracat/124</link>
+                      <guid>aa-image-2</guid>
+                      <enclosure url="https://cdn.example.com/enclosure.jpg" type="image/jpeg" />
+                    </item>
+                  </channel>
+                </rss>
+                """);
+
+        assertThat(items).singleElement().satisfies(item ->
+                assertThat(item.getImageUrl()).isEqualTo("https://cdn.example.com/enclosure.jpg")
+        );
+    }
+
+    @Test
+    void fallsBackToDescriptionImageWhenFeedImageFieldsAreMissing() {
+        List<NewsItemDto> items = client.parse("""
+                <rss version="2.0">
+                  <channel>
+                    <item>
+                      <title>Kur gelismeleri</title>
+                      <link>https://www.aa.com.tr/tr/ekonomi/kur/125</link>
+                      <guid>aa-image-3</guid>
+                      <description><![CDATA[<p><img src="https://cdn.example.com/description.jpg" /></p><p>Ozet</p>]]></description>
+                    </item>
+                  </channel>
+                </rss>
+                """);
+
+        assertThat(items).singleElement().satisfies(item -> {
+            assertThat(item.getImageUrl()).isEqualTo("https://cdn.example.com/description.jpg");
+            assertThat(item.getSummary()).isEqualTo("Ozet");
+        });
+    }
+
+    @Test
+    void enrichesImageUrlFromArticlePageWhenFeedDoesNotContainImageMetadata() {
+        List<NewsItemDto> items = client.parse("""
+                <rss version="2.0">
+                  <channel>
+                    <item>
+                      <title>Sanayi uretimi</title>
+                      <link>https://www.aa.com.tr/tr/ekonomi/sanayi/126</link>
+                      <guid>aa-image-4</guid>
+                      <description>Metin ozet</description>
+                    </item>
+                  </channel>
+                </rss>
+                """);
+
+        assertThat(items).singleElement().satisfies(item ->
+                assertThat(item.getImageUrl()).isEqualTo("https://www.aa.com.tr/images/meta-photo.png")
         );
     }
 
@@ -163,7 +247,7 @@ class AaRssNewsClientTest {
             assertThat(item.getExternalId()).startsWith("AA_RSS-");
             assertThat(item.getTitle()).isEqualTo("Ihracat verileri guclu seyrini korudu");
             assertThat(item.getUrl()).isEqualTo("https://www.aa.com.tr/tr/ekonomi/ihracat-verileri/999");
-            assertThat(item.getSource()).isEqualTo("Anadolu Ajansı");
+            assertThat(item.getSource()).isEqualTo("Anadolu Ajans\u0131");
             assertThat(item.getPublishedAt()).isNull();
         });
     }

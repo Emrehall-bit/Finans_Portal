@@ -19,9 +19,9 @@ class NewsImportanceScoringServiceTest {
     @Test
     void tcmbAndFaizNewsGetsHighScore() {
         News news = News.builder()
-                .title("TCMB faiz kararı sonrası dolar ve borsa hareketlendi")
-                .summary("Merkez bankası adımı piyasa üzerinde etkili oldu.")
-                .provider("BLOOMBERG_HT")
+                .title("TCMB faiz karari sonrasi dolar ve borsa hareketlendi")
+                .summary("Merkez bankasi adimi piyasa uzerinde etkili oldu.")
+                .provider("AA_RSS")
                 .language("tr")
                 .regionScope("TR")
                 .url("https://example.com/news-1")
@@ -36,7 +36,7 @@ class NewsImportanceScoringServiceTest {
     @Test
     void nullPublishedAtDoesNotGetRecencyScoreButStillGetsKeywordScore() {
         News news = News.builder()
-                .title("Enflasyon ve kredi piyasası görünümü")
+                .title("Enflasyon ve kredi piyasasi gorunumu")
                 .summary(null)
                 .provider("FINNHUB")
                 .language("en")
@@ -54,7 +54,7 @@ class NewsImportanceScoringServiceTest {
     @Test
     void summaryPresenceIncreasesQualityScore() {
         News withoutSummary = News.builder()
-                .title("Bilanço dönemi başladı")
+                .title("Bilanco donemi basladi")
                 .provider("AA_RSS")
                 .regionScope("TR")
                 .language("tr")
@@ -62,8 +62,8 @@ class NewsImportanceScoringServiceTest {
                 .publishedAt(LocalDateTime.of(2026, 4, 25, 9, 0))
                 .build();
         News withSummary = News.builder()
-                .title("Bilanço dönemi başladı")
-                .summary("Şirket sonuçları yatırımcıların odağında.")
+                .title("Bilanco donemi basladi")
+                .summary("Sirket sonuclari yatirimcilarin odaginda.")
                 .provider("AA_RSS")
                 .regionScope("TR")
                 .language("tr")

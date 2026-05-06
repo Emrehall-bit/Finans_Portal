@@ -1,49 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 
 export default function ProtectedRoute() {
-  const { authError, authLoading, ensureAuthenticated, initialized, isAuthenticated, userId } = useAuth();
-  const [requested, setRequested] = useState(false);
+  const { authError, authLoading, ensureAuthenticated, initialized, isAuthenticated } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
-    if (isAuthenticated && userId) {
+    if (!initialized || authLoading || isAuthenticated) {
       return;
     }
 
-    let active = true;
+    ensureAuthenticated({
+      redirectUri: window.location.origin + location.pathname + location.search + location.hash,
+    }).catch(() => {});
+  }, [authLoading, ensureAuthenticated, initialized, isAuthenticated, location.hash, location.pathname, location.search]);
 
-    async function activateProtection() {
-      try {
-        await ensureAuthenticated();
-      } catch {
-        // Keycloak redirects on unauthenticated access.
-      } finally {
-        if (active) {
-          setRequested(true);
-        }
-      }
-    }
+  if (!initialized || authLoading) {
+    return <div className="page-shell">Yükleniyor...</div>;
+  }
 
-    activateProtection();
-
-    return () => {
-      active = false;
-    };
-  }, [ensureAuthenticated, isAuthenticated, location.pathname, userId]);
-
-  if (isAuthenticated && userId) {
+  if (isAuthenticated) {
     return <Outlet />;
   }
 
-  if (!initialized || authLoading || !requested) {
-    return <div className="page-shell">Authenticating...</div>;
-  }
-
   if (authError) {
-    return <div className="page-shell">{authError}</div>;
+    return <div className="page-shell">Bu hizmeti görüntüleyebilmek için giriş yapmanız gerekmektedir.</div>;
   }
 
-  return <div className="page-shell">Redirecting to login...</div>;
+  return <div className="page-shell">Bu hizmeti görüntüleyebilmek için giriş yapmanız gerekmektedir.</div>;
 }

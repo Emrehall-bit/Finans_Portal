@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.common.exception;
 
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;
 import com.emrehalli.financeportal.common.response.ApiResponse;
@@ -8,18 +9,25 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LogManager.getLogger(GlobalExceptionHandler.class);
+    private final AppMessageSource appMessageSource;
+
+    public GlobalExceptionHandler(AppMessageSource appMessageSource) {
+        this.appMessageSource = appMessageSource;
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
@@ -76,7 +84,7 @@ public class GlobalExceptionHandler {
         return ApiResponse.builder()
                 .success(false)
                 .data(null)
-                .message("Resource not found")
+                .message(appMessageSource.get("common.resourceNotFound"))
                 .requestId(currentRequestId())
                 .build();
     }
@@ -89,7 +97,7 @@ public class GlobalExceptionHandler {
         return ApiResponse.builder()
                 .success(false)
                 .data(null)
-                .message("Internal Server Error")
+                .message(appMessageSource.get("common.internalServerError"))
                 .requestId(currentRequestId())
                 .build();
     }
@@ -112,7 +120,7 @@ public class GlobalExceptionHandler {
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(FieldError::getDefaultMessage)
-                .orElse("Validation failed");
+                .orElse(appMessageSource.get("common.validationFailed"));
         logException("Validation failed", ex, request, false);
 
         return ResponseEntity.badRequest()
@@ -133,6 +141,37 @@ public class GlobalExceptionHandler {
                         .success(false)
                         .data(null)
                         .message(ex.getMessage())
+                        .requestId(currentRequestId())
+                        .build());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex,
+                                                                                     HttpServletRequest request) {
+        String message = ex.getMostSpecificCause() != null && ex.getMostSpecificCause().getMessage() != null
+                ? ex.getMostSpecificCause().getMessage()
+                : appMessageSource.get("common.malformedRequestBody");
+        logException("Request body could not be parsed", ex, request, false);
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.builder()
+                        .success(false)
+                        .data(null)
+                        .message(message)
+                        .requestId(currentRequestId())
+                        .build());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Object>> handleResponseStatusException(ResponseStatusException ex,
+                                                                             HttpServletRequest request) {
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        String message = ex.getReason() != null ? ex.getReason() : status.getReasonPhrase();
+        logException("Response status exception", ex, request, false);
+        return ResponseEntity.status(status)
+                .body(ApiResponse.builder()
+                        .success(false)
+                        .data(null)
+                        .message(message)
                         .requestId(currentRequestId())
                         .build());
     }
@@ -186,5 +225,3 @@ public class GlobalExceptionHandler {
         return LoggingContext.get(LoggingConstants.REQUEST_ID_KEY);
     }
 }
-
-

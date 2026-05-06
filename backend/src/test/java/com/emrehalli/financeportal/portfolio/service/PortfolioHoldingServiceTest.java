@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -141,6 +142,90 @@ class PortfolioHoldingServiceTest {
     }
 
     @Test
+    void getPortfolioSummary_whenAllPricesAvailable_calculatesTotalsAndProfitMetrics() {
+        PortfolioHolding firstHolding = holding(1L, "ASSET-A", "10", "100");
+        PortfolioHolding secondHolding = holding(2L, "ASSET-B", "4", "50");
+
+        when(portfolioRepository.existsById(10L)).thenReturn(true);
+        when(portfolioHoldingRepository.findByPortfolioId(10L)).thenReturn(List.of(firstHolding, secondHolding));
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-A"), eq(new BigDecimal("100")), any(LocalDateTime.class)))
+                .thenReturn(PriceResolutionResult.available(new BigDecimal("120"), PriceStatus.CACHED, LocalDateTime.of(2026, 4, 22, 11, 0)));
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-B"), eq(new BigDecimal("50")), any(LocalDateTime.class)))
+                .thenReturn(PriceResolutionResult.available(new BigDecimal("45"), PriceStatus.CACHED, LocalDateTime.of(2026, 4, 22, 11, 0)));
+
+        PortfolioSummaryResponse result = portfolioHoldingService.getPortfolioSummary(10L);
+
+        assertEquals(new BigDecimal("1200"), result.getTotalCost());
+        assertEquals(new BigDecimal("1380"), result.getCurrentValue());
+        assertEquals(new BigDecimal("180"), result.getProfitLoss());
+        assertEquals(new BigDecimal("15.0000"), result.getProfitLossPercent());
+        assertEquals(SummaryStatus.COMPLETE, result.getSummaryStatus());
+        assertEquals(0, result.getMissingPriceCount());
+    }
+
+    @Test
+    void getHoldingsByPortfolioId_whenMarketPriceResolved_calculatesHoldingValuation() {
+        PortfolioHolding holding = holding(1L, "ASSET-A", "10", "100");
+
+        when(portfolioRepository.existsById(10L)).thenReturn(true);
+        when(portfolioHoldingRepository.findByPortfolioId(10L)).thenReturn(List.of(holding));
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-A"), eq(new BigDecimal("100")), any(LocalDateTime.class)))
+                .thenReturn(PriceResolutionResult.available(new BigDecimal("125"), PriceStatus.CACHED, LocalDateTime.of(2026, 4, 22, 11, 0)));
+
+        PortfolioHoldingDto result = portfolioHoldingService.getHoldingsByPortfolioId(10L).get(0);
+
+        assertEquals(new BigDecimal("125"), result.getCurrentPrice());
+        assertEquals(new BigDecimal("1250"), result.getCurrentValue());
+        assertEquals(new BigDecimal("250"), result.getProfitLoss());
+        assertEquals(new BigDecimal("25.0000"), result.getProfitLossPercent());
+        assertEquals(PriceStatus.CACHED, result.getPriceStatus());
+    }
+
+    @Test
+    void getHoldingsByPortfolioId_whenMarketPriceMissing_usesPurchasePriceFallbackAsStaleValuation() {
+        PortfolioHolding holding = holding(1L, "ASSET-A", "3", "200");
+
+        when(portfolioRepository.existsById(10L)).thenReturn(true);
+        when(portfolioHoldingRepository.findByPortfolioId(10L)).thenReturn(List.of(holding));
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-A"), eq(new BigDecimal("200")), any(LocalDateTime.class)))
+                .thenReturn(PriceResolutionResult.available(new BigDecimal("200"), PriceStatus.STALE, LocalDateTime.of(2026, 4, 20, 10, 0)));
+
+        PortfolioHoldingDto result = portfolioHoldingService.getHoldingsByPortfolioId(10L).get(0);
+
+        assertTrue(result.isValuationAvailable());
+        assertEquals(new BigDecimal("200"), result.getCurrentPrice());
+        assertEquals(new BigDecimal("600"), result.getCurrentValue());
+        assertEquals(BigDecimal.ZERO, result.getProfitLoss());
+        assertEquals(new BigDecimal("0.0000"), result.getProfitLossPercent());
+        assertEquals(PriceStatus.STALE, result.getPriceStatus());
+    }
+
+    @Test
+    void getPortfolioValuation_readsAndValuesHoldingsOnceForSummaryAndDetails() {
+        PortfolioHolding firstHolding = holding(1L, "ASSET-A", "10", "100");
+        PortfolioHolding secondHolding = holding(2L, "ASSET-B", "4", "50");
+
+        when(portfolioRepository.existsById(10L)).thenReturn(true);
+        when(portfolioHoldingRepository.findByPortfolioId(10L)).thenReturn(List.of(firstHolding, secondHolding));
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-A"), eq(new BigDecimal("100")), any(LocalDateTime.class)))
+                .thenReturn(PriceResolutionResult.available(new BigDecimal("120"), PriceStatus.CACHED, LocalDateTime.of(2026, 4, 22, 11, 0)));
+        when(portfolioPriceResolver.resolveCurrentPriceWithFallback(eq("ASSET-B"), eq(new BigDecimal("50")), any(LocalDateTime.class)))
+                .thenReturn(PriceResolutionResult.available(new BigDecimal("55"), PriceStatus.CACHED, LocalDateTime.of(2026, 4, 22, 11, 0)));
+
+        PortfolioValuationResult result = portfolioHoldingService.getPortfolioValuation(10L);
+
+        assertEquals(2, result.holdings().size());
+        assertEquals(new BigDecimal("1420"), result.summary().getCurrentValue());
+        assertEquals(new BigDecimal("220"), result.summary().getProfitLoss());
+        assertEquals(SummaryStatus.COMPLETE, result.summary().getSummaryStatus());
+        verify(portfolioHoldingRepository, times(1)).findByPortfolioId(10L);
+        verify(portfolioPriceResolver, times(1))
+                .resolveCurrentPriceWithFallback(eq("ASSET-A"), eq(new BigDecimal("100")), any(LocalDateTime.class));
+        verify(portfolioPriceResolver, times(1))
+                .resolveCurrentPriceWithFallback(eq("ASSET-B"), eq(new BigDecimal("50")), any(LocalDateTime.class));
+    }
+
+    @Test
     void getHoldingsByPortfolioId_mapsValuationAvailability() {
         PortfolioHolding holding = holding(1L, "ASSET-A", "2", "100");
 
@@ -194,6 +279,4 @@ class PortfolioHoldingServiceTest {
                 .build();
     }
 }
-
-
 

@@ -1,7 +1,8 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
+import com.emrehalli.financeportal.market.service.MarketHistoryBackfillProperties;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
-import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisNotFoundException;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisValidationException;
 import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonResult;
 import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisPoint;
@@ -29,17 +30,23 @@ public class TechnicalAnalysisService {
     private final RsiService rsiService;
     private final TrendAnalysisService trendAnalysisService;
     private final InstrumentComparisonService instrumentComparisonService;
+    private final MarketHistoryBackfillProperties backfillProperties;
+    private final AppMessageSource appMessageSource;
 
     public TechnicalAnalysisService(HistoricalPriceReader historicalPriceReader,
                                     MovingAverageService movingAverageService,
                                     RsiService rsiService,
                                     TrendAnalysisService trendAnalysisService,
-                                    InstrumentComparisonService instrumentComparisonService) {
+                                    InstrumentComparisonService instrumentComparisonService,
+                                    MarketHistoryBackfillProperties backfillProperties,
+                                    AppMessageSource appMessageSource) {
         this.historicalPriceReader = historicalPriceReader;
         this.movingAverageService = movingAverageService;
         this.rsiService = rsiService;
         this.trendAnalysisService = trendAnalysisService;
         this.instrumentComparisonService = instrumentComparisonService;
+        this.backfillProperties = backfillProperties;
+        this.appMessageSource = appMessageSource;
     }
 
     public TechnicalAnalysisResult analyze(String symbol, LocalDate from, LocalDate to, String indicators) {
@@ -49,9 +56,22 @@ public class TechnicalAnalysisService {
 
         Set<IndicatorType> requestedIndicators = resolveIndicators(indicators);
         List<HistoricalPricePoint> history = historicalPriceReader.read(symbol, from, to);
-        if (history.isEmpty()) {
-            logger.warn("Technical analysis has no history: symbol={}, from={}, to={}", symbol, from, to);
-            throw new TechnicalAnalysisNotFoundException("Historical price data not found for symbol: " + symbol);
+        int requiredPointCount = Math.max(backfillProperties.getRequiredHistoryPointCount(), 1);
+        if (history.size() < requiredPointCount) {
+            logger.warn("Technical analysis has insufficient history: symbol={}, from={}, to={}, pointCount={}, requiredPointCount={}",
+                    symbol, from, to, history.size(), requiredPointCount);
+            return new TechnicalAnalysisResult(
+                    symbol,
+                    from,
+                    to,
+                    history.isEmpty() ? null : history.getLast().close(),
+                    "INSUFFICIENT_HISTORY",
+                    appMessageSource.get("technical.analysis.insufficientHistory"),
+                    com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection.SIDEWAYS,
+                    List.of(),
+                    Map.of(),
+                    List.of()
+            );
         }
 
         List<BigDecimal> closes = history.stream()
@@ -65,7 +85,10 @@ public class TechnicalAnalysisService {
 
         Map<IndicatorType, BigDecimal> latestIndicatorValues = new EnumMap<>(IndicatorType.class);
         for (IndicatorType indicatorType : requestedIndicators) {
-            latestIndicatorValues.put(indicatorType, indicatorValue(points, indicatorType));
+            BigDecimal indicatorValue = indicatorValue(points, indicatorType);
+            if (indicatorValue != null) {
+                latestIndicatorValues.put(indicatorType, indicatorValue);
+            }
         }
 
         logger.info(
@@ -82,9 +105,11 @@ public class TechnicalAnalysisService {
                 from,
                 to,
                 latestPoint.close(),
+                "AVAILABLE",
+                null,
                 trendAnalysisService.determineTrend(previousPoint, latestPoint),
                 trendAnalysisService.determineSignals(latestPoint),
-                Map.copyOf(latestIndicatorValues),
+                latestIndicatorValues.isEmpty() ? Map.of() : Map.copyOf(latestIndicatorValues),
                 points
         );
     }

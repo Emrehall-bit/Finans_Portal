@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.watchlist.controller;
 
+import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.watchlist.dto.AddWatchlistRequest;
 import com.emrehalli.financeportal.watchlist.dto.WatchlistResponseDto;
@@ -14,9 +15,11 @@ import java.util.List;
 public class WatchlistController {
 
     private final WatchlistService watchlistService;
+    private final AppMessageSource appMessageSource;
 
-    public WatchlistController(WatchlistService watchlistService) {
+    public WatchlistController(WatchlistService watchlistService, AppMessageSource appMessageSource) {
         this.watchlistService = watchlistService;
+        this.appMessageSource = appMessageSource;
     }
 
     @PostMapping("/{userId}")
@@ -27,7 +30,7 @@ public class WatchlistController {
         return ApiResponse.<WatchlistResponseDto>builder()
                 .success(true)
                 .data(response)
-                .message("Watchlist item added successfully")
+                .message(appMessageSource.get("watchlist.added"))
                 .build();
     }
 
@@ -38,7 +41,7 @@ public class WatchlistController {
         return ApiResponse.<List<WatchlistResponseDto>>builder()
                 .success(true)
                 .data(response)
-                .message("User watchlist fetched successfully")
+                .message(appMessageSource.get("watchlist.list.fetched"))
                 .build();
     }
 
@@ -49,7 +52,7 @@ public class WatchlistController {
         return ApiResponse.<Void>builder()
                 .success(true)
                 .data(null)
-                .message("Watchlist item deleted successfully")
+                .message(appMessageSource.get("watchlist.deleted"))
                 .build();
     }
 }

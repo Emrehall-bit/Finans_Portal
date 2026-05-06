@@ -74,6 +74,9 @@ public class News {
     @Column(nullable = false, length = 1200)
     private String url;
 
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
