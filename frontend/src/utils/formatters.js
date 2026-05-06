@@ -5,6 +5,8 @@ export function formatDateTime(value) {
   return date.toLocaleString();
 }
 
+const ISO_CURRENCY_CODES = new Set(["TRY", "USD", "EUR", "GBP"]);
+
 export function formatNumber(value, maxFractionDigits = 4) {
   if (value === null || value === undefined || value === "") return "-";
   const numeric = Number(value);
@@ -23,5 +25,16 @@ export function formatCurrency(value, currency = "TRY") {
   if (value === null || value === undefined || value === "") return "-";
   const numeric = Number(value);
   if (Number.isNaN(numeric)) return String(value);
-  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(numeric);
+
+  const normalizedCurrency = typeof currency === "string" ? currency.trim().toUpperCase() : "";
+  if (!ISO_CURRENCY_CODES.has(normalizedCurrency)) {
+    const formattedNumber = numeric.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    return normalizedCurrency ? `${formattedNumber} ${normalizedCurrency}` : formattedNumber;
+  }
+
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: normalizedCurrency }).format(numeric);
+  } catch {
+    return `${numeric.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${normalizedCurrency}`;
+  }
 }

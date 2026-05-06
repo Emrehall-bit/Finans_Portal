@@ -84,7 +84,7 @@
       DB_PASSWORD: postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/finance-portal
+      KEYCLOAK_ISSUER_URI: http://localhost:8081/realms/finance-portal
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/finance-portal/protocol/openid-connect/certs
       LOG_PATH: /logs
     ports:
