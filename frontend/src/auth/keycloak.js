@@ -82,6 +82,10 @@ function cleanupBrowserCallbackUrl() {
   }
 }
 
+export function clearBrowserCallbackParams() {
+  cleanupBrowserCallbackUrl();
+}
+
 function buildUserFromToken() {
   const claims = keycloak.idTokenParsed ?? keycloak.tokenParsed ?? {};
   const fullName =
@@ -233,8 +237,12 @@ export function register(options = {}) {
 
 export function logout(options = {}) {
   cleanupCallbackStorage();
+  cleanupBrowserCallbackUrl();
   return keycloak.logout({
-    redirectUri: resolveAppRedirectUri(options.redirectUri || keycloakConfig.appUrl),
+    redirectUri:
+      typeof window !== "undefined"
+        ? window.location.origin
+        : resolveAppRedirectUri(options.redirectUri || keycloakConfig.appUrl),
     ...options,
   });
 }

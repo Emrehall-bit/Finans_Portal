@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentUserProfile, updateCurrentUserProfile } from "../api/userApi";
 import keycloak, {
+  clearBrowserCallbackParams,
   getAuthSnapshot,
   initKeycloak,
   isAuthenticated as hasAuthenticatedSession,
@@ -92,10 +93,13 @@ export function AuthProvider({ children }) {
       setIsAuthenticated(snapshot.authenticated);
 
       if (event === "auth-logout") {
+        clearBrowserCallbackParams();
+        setAuthSnapshot(getAuthSnapshot());
         setUserProfile(null);
         setAuthError("");
         setInitialized(true);
         setAuthLoading(false);
+        setIsAuthenticated(false);
         return;
       }
 
@@ -116,6 +120,9 @@ export function AuthProvider({ children }) {
 
       if (!snapshot.authenticated) {
         setUserProfile(null);
+        setAuthSnapshot(snapshot);
+        clearBrowserCallbackParams();
+        setAuthLoading(false);
         return;
       }
 
@@ -161,10 +168,27 @@ export function AuthProvider({ children }) {
   }, []);
 
   const handleLogout = useCallback(async () => {
+    clearBrowserCallbackParams();
+    setAuthLoading(false);
+    setInitialized(true);
     setIsAuthenticated(false);
     setUserProfile(null);
     setAuthError("");
-    await logout();
+    setAuthSnapshot({
+      ...getAuthSnapshot(),
+      authenticated: false,
+      token: null,
+      idToken: null,
+      user: null,
+    });
+
+    try {
+      await logout({
+        redirectUri: window.location.origin,
+      });
+    } catch {
+      setAuthLoading(false);
+    }
   }, []);
 
   const value = useMemo(
@@ -183,7 +207,7 @@ export function AuthProvider({ children }) {
       refreshUserProfile: loadUserProfile,
       updateUserProfile: saveUserProfile,
       userProfile,
-      user: userProfile?.user ?? authSnapshot.user ?? null,
+      user: isAuthenticated ? userProfile?.user ?? authSnapshot.user ?? null : null,
       userId: userProfile?.user?.id ?? null,
       isAdmin: resolveIsAdmin(),
       hasAuthenticatedSession: isAuthenticated || hasAuthenticatedSession(),
