@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.market.service;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
+import com.emrehalli.financeportal.market.provider.tefas.config.TefasProperties;
 import com.emrehalli.financeportal.market.service.model.BackfillRunStatus;
 import com.emrehalli.financeportal.market.service.model.MarketBackfillJobResult;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryPersistenceResult;
@@ -32,6 +33,7 @@ public class MarketHistoryBackfillService {
     private final InstrumentRegistryService instrumentRegistryService;
     private final MarketHistoryService marketHistoryService;
     private final EvdsProperties evdsProperties;
+    private final TefasProperties tefasProperties;
     private final MarketHistoryBackfillProperties properties;
     private final MarketBackfillStatusService marketBackfillStatusService;
     private final Clock clock;
@@ -43,6 +45,7 @@ public class MarketHistoryBackfillService {
                                         InstrumentRegistryService instrumentRegistryService,
                                         MarketHistoryService marketHistoryService,
                                         EvdsProperties evdsProperties,
+                                        TefasProperties tefasProperties,
                                         MarketHistoryBackfillProperties properties,
                                         MarketBackfillStatusService marketBackfillStatusService,
                                         Clock clock) {
@@ -50,6 +53,7 @@ public class MarketHistoryBackfillService {
         this.instrumentRegistryService = instrumentRegistryService;
         this.marketHistoryService = marketHistoryService;
         this.evdsProperties = evdsProperties;
+        this.tefasProperties = tefasProperties;
         this.properties = properties;
         this.marketBackfillStatusService = marketBackfillStatusService;
         this.clock = clock;
@@ -241,6 +245,10 @@ public class MarketHistoryBackfillService {
 
         if (source == DataSource.EVDS) {
             return Math.max(evdsProperties.getHistory().getBackfillDefaultDays(), 1);
+        }
+
+        if (source == DataSource.TEFAS) {
+            return Math.max(tefasProperties.getHistory().getBackfillDefaultDays(), 1);
         }
 
         return 365;

@@ -12,7 +12,11 @@ import java.util.concurrent.atomic.AtomicReference;
 @Component
 public class BistRoundRobinState {
 
+    // Cursor tracks which slice of the configured BIST symbol list should be served next
+    // when the provider is operating in non-explicit round-robin mode.
     private final AtomicInteger cursor = new AtomicInteger(0);
+
+    // Rate-limit state is shared across requests so Yahoo cooldown survives between scheduler ticks.
     private final AtomicReference<Instant> rateLimitedUntil = new AtomicReference<>(Instant.EPOCH);
 
     public BatchSelection nextBatch(List<String> symbols, int batchSize) {
@@ -20,6 +24,7 @@ public class BistRoundRobinState {
             return new BatchSelection(0, List.of());
         }
 
+        // Batch size is clamped to at least one symbol to avoid a stalled cursor.
         int safeBatchSize = Math.max(batchSize, 1);
         int startIndex = Math.floorMod(cursor.get(), symbols.size());
         int endIndex = Math.min(startIndex + safeBatchSize, symbols.size());
@@ -32,6 +37,7 @@ public class BistRoundRobinState {
             return;
         }
 
+        // On success the cursor advances by the batch size; wrapping to zero restarts the cycle.
         int safeBatchSize = Math.max(batchSize, 1);
         cursor.updateAndGet(current -> current + safeBatchSize >= symbols.size() ? 0 : current + safeBatchSize);
     }
@@ -47,6 +53,7 @@ public class BistRoundRobinState {
     }
 
     public void markRateLimited(Duration cooldown, Clock clock) {
+        // Cooldown expiration is calculated once so later calls can cheaply check blocking state.
         Duration safeCooldown = cooldown == null || cooldown.isNegative() ? Duration.ZERO : cooldown;
         rateLimitedUntil.set(clock.instant().plus(safeCooldown));
     }

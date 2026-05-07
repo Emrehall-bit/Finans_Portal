@@ -37,7 +37,17 @@ public class MarketQueryService implements MarketPriceReader {
     }
 
     public List<MarketQuote> getAllQuotes() {
-        return marketCacheService.getAllQuotes();
+        List<MarketQuote> cachedQuotes = marketCacheService.getAllQuotes().stream()
+                .filter(this::hasUsablePrice)
+                .toList();
+        if (!cachedQuotes.isEmpty()) {
+            return cachedQuotes;
+        }
+
+        return marketHistoryRepository.findLatestBySymbol().stream()
+                .filter(this::hasUsablePrice)
+                .map(this::toDbFallbackQuote)
+                .toList();
     }
 
     public Optional<MarketQuote> findCurrentBySymbol(String symbol) {

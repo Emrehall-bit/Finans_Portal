@@ -37,6 +37,18 @@ public interface MarketHistoryRepository extends JpaRepository<MarketHistoryEnti
 
     Optional<MarketHistoryEntity> findTopBySymbolOrderByPriceDateDescIdDesc(String symbol);
 
+    @Query(
+            value = """
+                    select distinct on (symbol) *
+                    from market_history
+                    where close_price is not null
+                      and close_price > 0
+                    order by symbol, price_date desc, id desc
+                    """,
+            nativeQuery = true
+    )
+    List<MarketHistoryEntity> findLatestBySymbol();
+
     @Query("select min(m.priceDate) from MarketHistoryEntity m where m.symbol = :symbol and m.source = :source")
     LocalDate findMinPriceDateBySymbolAndSource(@Param("symbol") String symbol, @Param("source") DataSource source);
 

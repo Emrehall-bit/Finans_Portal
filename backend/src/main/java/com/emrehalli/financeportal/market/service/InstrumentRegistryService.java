@@ -633,7 +633,7 @@ public class InstrumentRegistryService {
     }
 
     private String inferCurrency(String symbol, InstrumentType type, DataSource source) {
-        if (source == DataSource.BIST || source == DataSource.EVDS || type == InstrumentType.FOREX) {
+        if (source == DataSource.BIST || source == DataSource.EVDS || source == DataSource.TEFAS || type == InstrumentType.FOREX) {
             return "TRY";
         }
         if (symbol != null && symbol.endsWith("USDT")) {
@@ -727,7 +727,9 @@ public class InstrumentRegistryService {
         }
 
         private InstrumentDefinition build() {
-            String currency = providerCodes.containsKey(DataSource.BIST) || providerCodes.containsKey(DataSource.EVDS)
+            String currency = providerCodes.containsKey(DataSource.BIST)
+                    || providerCodes.containsKey(DataSource.EVDS)
+                    || providerCodes.containsKey(DataSource.TEFAS)
                     || instrumentType == InstrumentType.FOREX
                     ? "TRY"
                     : symbol.endsWith("USDT") ? "USDT" : null;

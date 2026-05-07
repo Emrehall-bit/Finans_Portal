@@ -72,7 +72,22 @@ class MarketDataSeederTest {
                         "TCMBISSIZLIK",
                         "TCMBFAIZ",
                         "TCMBMEVFAIZ",
-                        "BISTBILESIK"
+                        "BISTBILESIK",
+                        "AFT",
+                        "AFA",
+                        "MAC",
+                        "IPB",
+                        "IIH",
+                        "NNF",
+                        "YAS",
+                        "DVT",
+                        "GMR",
+                        "KPH",
+                        "CPU",
+                        "SAS",
+                        "GSP",
+                        "TCD",
+                        "YKT"
                 )
                 .doesNotContain("XAUTRY", "XAGTRY", "XPTTRY", "TCMBUSDKURU", "TCMBEURKURU", "TCMBCARIACIK", "TCMBBIST100");
 
@@ -101,5 +116,29 @@ class MarketDataSeederTest {
                         || entry.startsWith("TCMBCARIACIK=")
                         || entry.equals("TCMBTUFE=TP.TUKFIY2025.GENEL-1")
                         || entry.equals("TCMBUFE=TP.TUKFIY2025.GENEL-3"));
+
+        List<String> tefasMappings = mappingCaptor.getValue().stream()
+                .filter(mapping -> mapping.getSource() == DataSource.TEFAS)
+                .map(mapping -> mapping.getInstrument().getSymbol() + "=" + mapping.getExternalSymbol())
+                .toList();
+
+        assertThat(tefasMappings)
+                .contains(
+                        "AFT=AFT",
+                        "AFA=AFA",
+                        "MAC=MAC",
+                        "IPB=IPB",
+                        "IIH=IIH",
+                        "NNF=NNF",
+                        "YAS=YAS",
+                        "DVT=DVT",
+                        "GMR=GMR",
+                        "KPH=KPH",
+                        "CPU=CPU",
+                        "SAS=SAS",
+                        "GSP=GSP",
+                        "TCD=TCD",
+                        "YKT=YKT"
+                );
     }
 }

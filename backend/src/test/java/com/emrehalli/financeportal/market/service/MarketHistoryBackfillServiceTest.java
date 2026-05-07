@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.market.service;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
+import com.emrehalli.financeportal.market.provider.tefas.config.TefasProperties;
 import com.emrehalli.financeportal.market.service.model.BackfillRunStatus;
 import com.emrehalli.financeportal.market.service.model.MarketBackfillJobResult;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryPersistenceResult;
@@ -77,6 +78,7 @@ class MarketHistoryBackfillServiceTest {
                 instrumentRegistryService,
                 marketHistoryService,
                 evdsProperties,
+                new TefasProperties(),
                 properties,
                 marketBackfillStatusService,
                 clock
@@ -100,6 +102,7 @@ class MarketHistoryBackfillServiceTest {
                 instrumentRegistryService,
                 marketHistoryService,
                 new EvdsProperties(),
+                new TefasProperties(),
                 properties,
                 marketBackfillStatusService,
                 clock
@@ -123,6 +126,7 @@ class MarketHistoryBackfillServiceTest {
                 instrumentRegistryService,
                 marketHistoryService,
                 new EvdsProperties(),
+                new TefasProperties(),
                 properties,
                 marketBackfillStatusService,
                 clock
@@ -176,6 +180,35 @@ class MarketHistoryBackfillServiceTest {
         verify(service, times(2)).backfill(eq(DataSource.BINANCE), eq(List.of("BTCUSDT")), startCaptor.capture(), endCaptor.capture());
         assertThat(startCaptor.getAllValues()).containsExactly(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 4, 1));
         assertThat(endCaptor.getAllValues()).containsExactly(LocalDate.of(2026, 3, 31), LocalDate.of(2026, 5, 4));
+    }
+
+    @Test
+    void usesTefasDefaultBackfillDaysWhenRequestDoesNotProvideOne() {
+        TefasProperties tefasProperties = new TefasProperties();
+        TefasProperties.History history = new TefasProperties.History();
+        history.setBackfillDefaultDays(540);
+        tefasProperties.setHistory(history);
+
+        MarketHistoryBackfillService service = new MarketHistoryBackfillService(
+                providerOrchestrationService,
+                instrumentRegistryService,
+                marketHistoryService,
+                new EvdsProperties(),
+                tefasProperties,
+                properties,
+                marketBackfillStatusService,
+                clock
+        );
+        when(providerOrchestrationService.fetchQuoteResults(any()))
+                .thenReturn(List.of(MarketRefreshResult.success(DataSource.TEFAS, List.of())));
+        when(marketHistoryService.persistHistory(any(), any()))
+                .thenReturn(new MarketHistoryPersistenceResult(DataSource.TEFAS, 0, 0, 0));
+
+        List<MarketHistoryPersistenceResult> results = service.backfill(DataSource.TEFAS, null);
+
+        assertThat(service.resolveLookbackDays(DataSource.TEFAS, null)).isEqualTo(540);
+        assertThat(results).singleElement().satisfies(result -> assertThat(result.source()).isEqualTo(DataSource.TEFAS));
+        verify(providerOrchestrationService).fetchQuoteResults(any());
     }
 
     @Test
@@ -289,6 +322,7 @@ class MarketHistoryBackfillServiceTest {
                 instrumentRegistryService,
                 marketHistoryService,
                 new EvdsProperties(),
+                new TefasProperties(),
                 properties,
                 marketBackfillStatusService,
                 clock

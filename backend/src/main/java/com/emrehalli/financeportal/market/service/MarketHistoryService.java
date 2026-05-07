@@ -8,15 +8,21 @@ import com.emrehalli.financeportal.market.persistence.repository.MarketHistoryRe
 import com.emrehalli.financeportal.market.service.model.MarketHistoryPersistenceResult;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.sql.Timestamp;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,17 +41,29 @@ public class MarketHistoryService implements MarketHistoryReader {
     private final CacheManager cacheManager;
     private final ObjectMapper objectMapper;
     private final SymbolNormalizer symbolNormalizer;
+    private final JdbcTemplate jdbcTemplate;
 
+    @Autowired
     public MarketHistoryService(MarketHistoryRepository marketHistoryRepository,
                                 MarketHistoryPersistenceMapper marketHistoryPersistenceMapper,
                                 CacheManager cacheManager,
                                 ObjectMapper objectMapper,
-                                SymbolNormalizer symbolNormalizer) {
+                                SymbolNormalizer symbolNormalizer,
+                                JdbcTemplate jdbcTemplate) {
         this.marketHistoryRepository = marketHistoryRepository;
         this.marketHistoryPersistenceMapper = marketHistoryPersistenceMapper;
         this.cacheManager = cacheManager;
         this.objectMapper = objectMapper.copy().findAndRegisterModules();
         this.symbolNormalizer = symbolNormalizer;
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    MarketHistoryService(MarketHistoryRepository marketHistoryRepository,
+                         MarketHistoryPersistenceMapper marketHistoryPersistenceMapper,
+                         CacheManager cacheManager,
+                         ObjectMapper objectMapper,
+                         SymbolNormalizer symbolNormalizer) {
+        this(marketHistoryRepository, marketHistoryPersistenceMapper, cacheManager, objectMapper, symbolNormalizer, null);
     }
 
     public MarketHistoryPersistenceResult persistHistory(DataSource source, List<MarketHistoryRecord> records) {
@@ -59,20 +77,26 @@ public class MarketHistoryService implements MarketHistoryReader {
                 validatedRecords.size(),
                 deduplicatedRecords.size()
         );
-        ExistingHistoryWindow existingHistoryWindow = preloadExistingHistory(source, deduplicatedRecords);
-
-        List<MarketHistoryEntity> newEntities = deduplicatedRecords.stream()
-                .filter(record -> !existingHistoryWindow.contains(record))
-                .map(marketHistoryPersistenceMapper::toEntity)
-                .toList();
-        log.info("Market history persistence pre-insert: source={}, candidateCount={}, insertableCount={}", source, deduplicatedRecords.size(), newEntities.size());
-
-        if (!newEntities.isEmpty()) {
-            marketHistoryRepository.saveAll(newEntities);
+        int savedCount;
+        if (jdbcTemplate == null) {
+            ExistingHistoryWindow existingHistoryWindow = preloadExistingHistory(source, deduplicatedRecords);
+            List<MarketHistoryEntity> newEntities = deduplicatedRecords.stream()
+                    .filter(record -> !existingHistoryWindow.contains(record))
+                    .map(marketHistoryPersistenceMapper::toEntity)
+                    .toList();
+            log.info("Market history persistence pre-insert: source={}, candidateCount={}, insertableCount={}", source, deduplicatedRecords.size(), newEntities.size());
+            savedCount = insertIgnoringConflicts(newEntities);
+        } else {
+            List<MarketHistoryEntity> candidateEntities = deduplicatedRecords.stream()
+                    .map(marketHistoryPersistenceMapper::toEntity)
+                    .toList();
+            log.info("Market history persistence pre-insert: source={}, candidateCount={}", source, candidateEntities.size());
+            savedCount = insertIgnoringConflicts(candidateEntities);
+        }
+        if (savedCount > 0) {
             clearHistoryCache();
         }
 
-        int savedCount = newEntities.size();
         int skippedDuplicateCount = safeRecords.size() - savedCount;
         log.info(
                 "Market history persistence completed: source={}, received={}, saved={}, skippedDuplicate={}",
@@ -206,6 +230,10 @@ public class MarketHistoryService implements MarketHistoryReader {
         return List.copyOf(filtered);
     }
 
+    private String historyKey(String symbol, DataSource source, LocalDate priceDate) {
+        return symbol + "|" + source + "|" + priceDate;
+    }
+
     private ExistingHistoryWindow preloadExistingHistory(DataSource source, List<MarketHistoryRecord> records) {
         if (source == null || records.isEmpty()) {
             return ExistingHistoryWindow.empty();
@@ -234,8 +262,49 @@ public class MarketHistoryService implements MarketHistoryReader {
         return new ExistingHistoryWindow(existingKeys);
     }
 
-    private String historyKey(String symbol, DataSource source, LocalDate priceDate) {
-        return symbol + "|" + source + "|" + priceDate;
+    private int insertIgnoringConflicts(List<MarketHistoryEntity> entities) {
+        if (entities.isEmpty()) {
+            return 0;
+        }
+
+        if (jdbcTemplate == null) {
+            marketHistoryRepository.saveAll(entities);
+            return entities.size();
+        }
+
+        int[] results = jdbcTemplate.batchUpdate("""
+                insert into market_history
+                    (symbol, display_name, instrument_type, source, price_date, close_price, currency, created_at)
+                values
+                    (?, ?, ?, ?, ?, ?, ?, ?)
+                on conflict do nothing
+                """, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                MarketHistoryEntity entity = entities.get(i);
+                ps.setString(1, entity.getSymbol());
+                ps.setString(2, entity.getDisplayName());
+                ps.setString(3, entity.getInstrumentType().name());
+                ps.setString(4, entity.getSource().name());
+                ps.setObject(5, entity.getPriceDate());
+                ps.setBigDecimal(6, entity.getClosePrice());
+                ps.setString(7, entity.getCurrency());
+                ps.setTimestamp(8, entity.getCreatedAt() == null ? null : Timestamp.from(entity.getCreatedAt()));
+            }
+
+            @Override
+            public int getBatchSize() {
+                return entities.size();
+            }
+        });
+
+        int insertedCount = 0;
+        for (int result : results) {
+            if (result > 0) {
+                insertedCount += result;
+            }
+        }
+        return insertedCount;
     }
 
     private List<MarketHistoryEntity> findHistoryEntities(String canonicalSymbol,
@@ -383,4 +452,5 @@ public class MarketHistoryService implements MarketHistoryReader {
             return existingKeys.contains(record.symbol() + "|" + record.source() + "|" + record.priceDate());
         }
     }
+
 }

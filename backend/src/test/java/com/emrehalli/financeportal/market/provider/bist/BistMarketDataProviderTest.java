@@ -19,10 +19,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -126,6 +126,38 @@ class BistMarketDataProviderTest {
         provider.fetchQuotes(ProviderFetchRequest.forSymbols(List.of("thy ao")));
 
         verify(yahooClient).fetchQuotes(List.of("THYAO.IS"));
+    }
+
+    @Test
+    void explicitSymbolRequestsAreSplitIntoConfiguredChunks() {
+        BistMarketDataProvider provider = provider(properties(), new BistRoundRobinState(), registryService());
+        when(yahooClient.fetchQuotes(any()))
+                .thenAnswer(invocation -> {
+                    List<String> symbols = invocation.getArgument(0);
+                    List<BistQuoteResponse> responses = new ArrayList<>();
+                    for (String symbol : symbols) {
+                        responses.add(new BistQuoteResponse(symbol, symbol, null, new BigDecimal("100.00"), null, 1777032000L));
+                    }
+                    return YahooClient.FetchResult.success(responses);
+                });
+
+        var result = provider.fetch(new ProviderFetchRequest(
+                DataSource.BIST,
+                List.of("THYAO", "ASELS", "GARAN", "AKBNK"),
+                java.util.Set.of(),
+                null,
+                null,
+                java.util.Map.of()
+        ));
+
+        ArgumentCaptor<List<String>> symbolsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(yahooClient, org.mockito.Mockito.times(2)).fetchQuotes(symbolsCaptor.capture());
+        assertThat(symbolsCaptor.getAllValues()).containsExactly(
+                List.of("THYAO.IS", "ASELS.IS"),
+                List.of("GARAN.IS", "AKBNK.IS")
+        );
+        assertThat(result.quotes()).hasSize(4);
+        assertThat(result.historyRecords()).hasSize(4);
     }
 
     @Test

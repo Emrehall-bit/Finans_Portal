@@ -399,6 +399,23 @@ public class MarketDataSeeder implements ApplicationRunner {
                 seed("AEDTRY", "AED / TRY", InstrumentType.FOREX, map(DataSource.EVDS, "TP.DK.AED.A")),
                 seed("ROBTRY", "RON / TRY", InstrumentType.FOREX, map(DataSource.EVDS, "TP.DK.RON.A")),
 
+                // TEFAS mutual funds
+                seed("AFT", "Ak Portfoy Yeni Teknolojiler Yabanci Hisse Senedi Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "AFT")),
+                seed("AFA", "Ak Portfoy Amerika Yabanci Hisse Senedi Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "AFA")),
+                seed("MAC", "Istanbul Portfoy Birinci Degisken Fon", InstrumentType.FUND, map(DataSource.TEFAS, "MAC")),
+                seed("IPB", "Is Portfoy Birinci Degisken Fon", InstrumentType.FUND, map(DataSource.TEFAS, "IPB")),
+                seed("IIH", "Is Portfoy BIST 100 Disi Sirketler Hisse Senedi Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "IIH")),
+                seed("NNF", "Neo Portfoy Birinci Degisken Fon", InstrumentType.FUND, map(DataSource.TEFAS, "NNF")),
+                seed("YAS", "Yapi Kredi Portfoy Koctas Ikinci Degisken Fon", InstrumentType.FUND, map(DataSource.TEFAS, "YAS")),
+                seed("DVT", "Deniz Portfoy Onuncu Serbest Fon", InstrumentType.FUND, map(DataSource.TEFAS, "DVT")),
+                seed("GMR", "Garanti Portfoy Birinci Para Piyasasi Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "GMR")),
+                seed("KPH", "Kuveyt Turk Portfoy Para Piyasasi Katilim Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "KPH")),
+                seed("CPU", "Citius Portfoy Serbest Fon", InstrumentType.FUND, map(DataSource.TEFAS, "CPU")),
+                seed("SAS", "Strateji Portfoy Birinci Fon Sepeti Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "SAS")),
+                seed("GSP", "Garanti Portfoy Altin Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "GSP")),
+                seed("TCD", "Tacirler Portfoy Degisken Fon", InstrumentType.FUND, map(DataSource.TEFAS, "TCD")),
+                seed("YKT", "Yapi Kredi Portfoy Altin Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "YKT")),
+
                 // ─────────────────────────────────────────────────────────────────
                 // COMMODITY — Precious metals
                 // Source: EVDS (TP.MK.* = Istanbul Gold Exchange)

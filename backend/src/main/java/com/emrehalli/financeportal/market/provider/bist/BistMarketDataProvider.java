@@ -99,9 +99,7 @@ public class BistMarketDataProvider implements MarketDataProvider {
             return new ProviderFetchResult(List.of(), historyRecords);
         }
 
-        int batchSize = request != null && request.hasSymbolFilter()
-                ? symbols.size()
-                : resolveBatchSize(symbols.size());
+        int batchSize = resolveBatchSize(symbols.size());
         BatchSelection batchSelection = selectBatch(symbols, batchSize, request != null && request.hasSymbolFilter());
         List<String> batchSymbols = batchSelection.symbols();
 
@@ -121,13 +119,10 @@ public class BistMarketDataProvider implements MarketDataProvider {
             return mapFallbackResult(batchSymbols);
         }
 
-        List<BistQuoteResponse> responses = fetchYahoo(batchSymbols);
+        List<BistQuoteResponse> responses = fetchQuotesChunked(batchSymbols, batchSize);
         if (responses.isEmpty()) {
-            responses = fetchFallback(batchSymbols);
-            if (responses.isEmpty()) {
-                roundRobinState.markFailed();
-                return new ProviderFetchResult(List.of(), List.of());
-            }
+            roundRobinState.markFailed();
+            return new ProviderFetchResult(List.of(), List.of());
         }
 
         List<MarketQuote> quotes = mapper.toMarketQuotes(responses);
@@ -196,6 +191,35 @@ public class BistMarketDataProvider implements MarketDataProvider {
             log.warn("BIST Yahoo fetch failed: error={}", ex.getMessage(), ex);
             return List.of();
         }
+    }
+
+    private List<BistQuoteResponse> fetchQuotesChunked(List<String> symbols, int maxBatchSize) {
+        if (symbols == null || symbols.isEmpty()) {
+            return List.of();
+        }
+
+        int effectiveBatchSize = Math.max(Math.min(maxBatchSize, symbols.size()), 1);
+        List<BistQuoteResponse> mergedResponses = new ArrayList<>();
+
+        for (int index = 0; index < symbols.size(); index += effectiveBatchSize) {
+            List<String> chunkSymbols = List.copyOf(symbols.subList(index, Math.min(index + effectiveBatchSize, symbols.size())));
+            List<BistQuoteResponse> chunkResponses = fetchYahoo(chunkSymbols);
+            if (chunkResponses.isEmpty()) {
+                chunkResponses = fetchFallback(chunkSymbols);
+                if (chunkResponses.isEmpty()) {
+                    log.warn(
+                            "BIST provider chunk returned no data: chunkStart={}, chunkSize={}, symbols={}",
+                            index,
+                            chunkSymbols.size(),
+                            chunkSymbols
+                    );
+                    continue;
+                }
+            }
+            mergedResponses.addAll(chunkResponses);
+        }
+
+        return List.copyOf(mergedResponses);
     }
 
     private List<BistQuoteResponse> fetchFallback(List<String> batchSymbols) {

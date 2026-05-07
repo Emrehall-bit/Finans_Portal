@@ -29,14 +29,14 @@ public class ProviderCircuitBreakerService {
                                          MarketProviderCircuitBreakerProperties properties,
                                          Clock clock) {
         this.clock = clock;
-        this.circuitBreakerRegistry = CircuitBreakerRegistry.of(buildConfig(properties));
+        this.circuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults();
         this.circuitBreakers = new EnumMap<>(DataSource.class);
 
         providers.stream()
                 .map(MarketDataProvider::source)
                 .distinct()
                 .sorted(Comparator.comparing(Enum::name))
-                .forEach(this::register);
+                .forEach(source -> register(source, properties));
     }
 
     public <T> T execute(DataSource source, Supplier<T> supplier) {
@@ -57,8 +57,11 @@ public class ProviderCircuitBreakerService {
                 .toList();
     }
 
-    private void register(DataSource source) {
-        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker(source.name().toLowerCase());
+    private void register(DataSource source, MarketProviderCircuitBreakerProperties properties) {
+        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker(
+                source.name().toLowerCase(),
+                buildConfig(properties.resolvedFor(source.name()))
+        );
         circuitBreaker.getEventPublisher().onStateTransition(event -> {
             if (event.getStateTransition().getToState() == CircuitBreaker.State.OPEN) {
                 openSinceBySource.put(source, clock.instant());
@@ -77,14 +80,14 @@ public class ProviderCircuitBreakerService {
         return circuitBreaker;
     }
 
-    private CircuitBreakerConfig buildConfig(MarketProviderCircuitBreakerProperties properties) {
+    private CircuitBreakerConfig buildConfig(MarketProviderCircuitBreakerProperties.ResolvedProperties properties) {
         return CircuitBreakerConfig.custom()
                 .slidingWindowType(CircuitBreakerConfig.SlidingWindowType.COUNT_BASED)
-                .slidingWindowSize(Math.max(properties.getSlidingWindowSize(), 1))
-                .minimumNumberOfCalls(Math.max(properties.getSlidingWindowSize(), 1))
-                .failureRateThreshold(properties.getFailureRateThreshold())
-                .waitDurationInOpenState(Duration.ofSeconds(Math.max(properties.getWaitDurationOpenStateSeconds(), 1L)))
-                .permittedNumberOfCallsInHalfOpenState(Math.max(properties.getPermittedCallsInHalfOpenState(), 1))
+                .slidingWindowSize(Math.max(properties.slidingWindowSize(), 1))
+                .minimumNumberOfCalls(Math.max(properties.slidingWindowSize(), 1))
+                .failureRateThreshold(properties.failureRateThreshold())
+                .waitDurationInOpenState(Duration.ofSeconds(Math.max(properties.waitDurationOpenStateSeconds(), 1L)))
+                .permittedNumberOfCallsInHalfOpenState(Math.max(properties.permittedCallsInHalfOpenState(), 1))
                 .build();
     }
 }

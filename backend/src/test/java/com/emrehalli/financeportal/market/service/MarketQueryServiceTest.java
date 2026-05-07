@@ -20,6 +20,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class MarketQueryServiceTest {
@@ -67,6 +69,32 @@ class MarketQueryServiceTest {
 
         assertThat(result.price()).isEqualByComparingTo("93500.100000");
         assertThat(result.priceStatus()).isEqualTo(MarketPriceStatus.LIVE);
+    }
+
+    @Test
+    void getAllQuotesFallsBackToLatestDbHistoryWhenAggregateCacheIsEmpty() {
+        MarketQueryService service = new MarketQueryService(marketCacheService, marketHistoryRepository, new SymbolNormalizer());
+        when(marketCacheService.getAllQuotes()).thenReturn(java.util.List.of());
+        when(marketHistoryRepository.findLatestBySymbol()).thenReturn(java.util.List.of(historyEntity()));
+
+        var result = service.getAllQuotes();
+
+        assertThat(result).singleElement().satisfies(quote -> {
+            assertThat(quote.symbol()).isEqualTo("THYAO");
+            assertThat(quote.source()).isEqualTo(DataSource.DB_FALLBACK);
+            assertThat(quote.changeRate()).isNull();
+        });
+    }
+
+    @Test
+    void getAllQuotesDoesNotHitDbWhenAggregateCacheHasLiveQuotes() {
+        MarketQueryService service = new MarketQueryService(marketCacheService, marketHistoryRepository, new SymbolNormalizer());
+        when(marketCacheService.getAllQuotes()).thenReturn(java.util.List.of(liveQuote()));
+
+        var result = service.getAllQuotes();
+
+        assertThat(result).singleElement().satisfies(quote -> assertThat(quote.source()).isEqualTo(DataSource.BINANCE));
+        verify(marketHistoryRepository, never()).findLatestBySymbol();
     }
 
     @Test
