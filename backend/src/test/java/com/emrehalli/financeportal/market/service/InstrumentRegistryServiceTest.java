@@ -93,6 +93,27 @@ class InstrumentRegistryServiceTest {
     }
 
     @Test
+    void listsDueMappingsForSourceUsingStringBackedNativeQueryParameter() {
+        Instant now = Instant.parse("2026-05-06T00:00:00Z");
+        when(marketProviderMappingRepository.findDueMappingsBySource("EVDS", now))
+                .thenReturn(List.of(mapping(
+                        DataSource.EVDS,
+                        "TP.DK.USD.A",
+                        instrument("USDTRY", "USD / TRY", InstrumentType.FOREX, true)
+                )));
+
+        InstrumentRegistryService service = service();
+
+        assertThat(service.getDueMappings(DataSource.EVDS, now))
+                .singleElement()
+                .satisfies(mapping -> {
+                    assertThat(mapping.symbol()).isEqualTo("USDTRY");
+                    assertThat(mapping.providerSymbol()).isEqualTo("TP.DK.USD.A");
+                });
+        verify(marketProviderMappingRepository).findDueMappingsBySource("EVDS", now);
+    }
+
+    @Test
     void marksRefreshSuccessOnPreferredMapping() {
         MarketProviderMappingEntity entity = mapping(
                 DataSource.BINANCE,

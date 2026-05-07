@@ -404,9 +404,6 @@ public class MarketDataSeeder implements ApplicationRunner {
                 // Source: EVDS (TP.MK.* = Istanbul Gold Exchange)
                 // ─────────────────────────────────────────────────────────────────
 
-                seed("XAUTRY", "Altin / TRY (gram)",     InstrumentType.COMMODITY, map(DataSource.EVDS, "TP.MK.ALTIN.GRM")),
-                seed("XAGTRY", "Gumus / TRY (gram)",     InstrumentType.COMMODITY, map(DataSource.EVDS, "TP.MK.GUMUS.GRM")),
-                seed("XPTTRY", "Platin / TRY (gram)",    InstrumentType.COMMODITY, map(DataSource.EVDS, "TP.MK.PLATIN.GRM")),
 
                 // ─────────────────────────────────────────────────────────────────
                 // MACRO INDICATORS — EVDS economic series
@@ -416,21 +413,22 @@ public class MarketDataSeeder implements ApplicationRunner {
                 // ─────────────────────────────────────────────────────────────────
 
                 // Policy interest rate (TCMB 1-week repo rate)
-                seed("TCMB_FAIZ",       "TCMB Politika Faizi",            InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TF.BIST.VB")),
                 // Consumer price index (CPI/TUFE monthly)
-                seed("TCMB_TUFE",       "TUFE (Tuketici Fiyat Endeksi)",  InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.FG.J0")),
                 // Producer price index (PPI/ÜFE monthly)
-                seed("TCMB_UFE",        "UFE (Uretici Fiyat Endeksi)",    InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.FG.J01")),
                 // USD/TRY buying rate — central bank official (daily, complements forex module)
-                seed("TCMB_USD_KURU",   "TCMB USD Alis Kuru",             InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.DK.USD.A.YTL")),
                 // EUR/TRY buying rate — central bank official (daily)
-                seed("TCMB_EUR_KURU",   "TCMB EUR Alis Kuru",             InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.DK.EUR.A.YTL")),
                 // BIST-100 index level (daily)
-                seed("TCMB_BIST100",    "BIST 100 Endeksi (TCMB)",        InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.MK.F.BIST100")),
                 // Current account balance (monthly, USD)
-                seed("TCMB_CARIACIK",   "Cari Acik (USD, Aylik)",         InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.OB.AB01")),
                 // Unemployment rate (quarterly, %)
-                seed("TCMB_ISSIZLIK",   "Issizlik Orani (%)",             InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TIG.TIG01"))
+                seed("TCMBTUFE_AYLIK",  "TUFE Aylik Degisim (%)",         InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TUKFIY2025.GENEL-1")),
+                seed("TCMBTUFE_YILLIK", "TUFE Yillik Degisim (%)",        InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TUKFIY2025.GENEL-3")),
+                seed("TCMBUFE_AYLIK",   "UFE Aylik Degisim (%)",          InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TUFE1YI.T1-1")),
+                seed("TCMBUFE_YILLIK",  "UFE Yillik Degisim (%)",         InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TUFE1YI.T1-3")),
+                seed("TCMBISSIZLIK",    "Issizlik Orani (%)",             InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TIG08")),
+                seed("TCMBISSIZLIK_D",  "Issizlik Degisim (%)",           InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TIG08-1")),
+                seed("TCMBFAIZ",        "TCMB Politika Faizi (%)",        InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.BISPOLFAIZ.TUR")),
+                seed("TCMBMEVFAIZ",     "TL Mevduat Faizi (%)",           InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TRY.MT06")),
+                seed("BIST_BILESIK",    "BIST Bilesik Endeks",            InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.MK.F.BILESIK"))
         );
     }
 

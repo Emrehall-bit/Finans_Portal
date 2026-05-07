@@ -119,7 +119,7 @@ public interface MarketProviderMappingRepository extends JpaRepository<MarketPro
                     join market_instruments instrument on instrument.id = mapping.instrument_id
                     where mapping.enabled = true
                       and instrument.enabled = true
-                      and mapping.source = cast(:source as varchar)
+                      and mapping.source = :source
                       and (
                             mapping.last_refreshed_at is null
                             or mapping.last_refreshed_at + make_interval(mins => mapping.refresh_interval_minutes) <= :now
@@ -128,5 +128,5 @@ public interface MarketProviderMappingRepository extends JpaRepository<MarketPro
                     """,
             nativeQuery = true
     )
-    List<MarketProviderMappingEntity> findDueMappingsBySource(@Param("source") DataSource source, @Param("now") Instant now);
+    List<MarketProviderMappingEntity> findDueMappingsBySource(@Param("source") String source, @Param("now") Instant now);
 }

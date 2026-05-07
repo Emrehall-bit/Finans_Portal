@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.market.provider.evds;
 
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
+import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
 import com.emrehalli.financeportal.market.provider.evds.dto.EvdsResponse;
@@ -28,10 +29,20 @@ class EvdsMarketDataProviderTest {
     @Mock
     private EvdsMarketDataMapper mapper;
 
+    @Mock
+    private InstrumentRegistryService instrumentRegistryService;
+
     @Test
     void convertsMultipleSymbolsToSingleEvdsClientCall() {
         EvdsProperties properties = evdsProperties();
-        EvdsMarketDataProvider provider = new EvdsMarketDataProvider(evdsClient, properties, mapper, new SymbolNormalizer(), registryService());
+        EvdsMarketDataProvider provider = new EvdsMarketDataProvider(evdsClient, properties, mapper, new SymbolNormalizer(), instrumentRegistryService);
+        when(instrumentRegistryService.resolveMappings(DataSource.EVDS)).thenReturn(new InstrumentRegistryService.Resolution(
+                DataSource.EVDS,
+                List.of(
+                        mapping("USDTRY", "USD/TRY", InstrumentType.FOREX, "TRY", "TP.DK.USD.A"),
+                        mapping("EURTRY", "EUR/TRY", InstrumentType.FOREX, "TRY", "TP.DK.EUR.A")
+                )
+        ));
         when(evdsClient.fetchSeries(any(), any(), any())).thenReturn(new EvdsResponse(List.of()));
         when(mapper.toMarketQuotes(any(), any())).thenReturn(List.of());
 
@@ -46,11 +57,61 @@ class EvdsMarketDataProviderTest {
     @Test
     void supportsOnlyEvdsOrUnfilteredRequests() {
         EvdsProperties properties = evdsProperties();
-        EvdsMarketDataProvider provider = new EvdsMarketDataProvider(evdsClient, properties, mapper, new SymbolNormalizer(), registryService());
+        EvdsMarketDataProvider provider = new EvdsMarketDataProvider(evdsClient, properties, mapper, new SymbolNormalizer(), instrumentRegistryService);
 
         assertThat(provider.supports(ProviderFetchRequest.all())).isTrue();
         assertThat(provider.supports(ProviderFetchRequest.forSource(DataSource.EVDS))).isTrue();
         assertThat(provider.supports(ProviderFetchRequest.forSource(DataSource.BINANCE))).isFalse();
+    }
+
+    @Test
+    void buildsCommoditySeriesConfigFromRegistryMapping() {
+        EvdsProperties properties = evdsProperties();
+        EvdsMarketDataProvider provider = new EvdsMarketDataProvider(evdsClient, properties, mapper, new SymbolNormalizer(), instrumentRegistryService);
+        when(instrumentRegistryService.resolveMappings(DataSource.EVDS)).thenReturn(new InstrumentRegistryService.Resolution(
+                DataSource.EVDS,
+                List.of(mapping("XAUTRY", "Gram Altin", InstrumentType.COMMODITY, "TRY", "TP.MK.ALTIN.GRM"))
+        ));
+        when(evdsClient.fetchSeries(any(), any(), any())).thenReturn(new EvdsResponse(List.of()));
+        when(mapper.toMarketQuotes(any(), any())).thenReturn(List.of());
+        when(mapper.toHistoryRecords(any(), any())).thenReturn(List.of());
+
+        provider.fetch(ProviderFetchRequest.forSymbols(List.of("XAUTRY")));
+
+        ArgumentCaptor<List<EvdsProperties.SeriesConfig>> seriesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(mapper).toMarketQuotes(any(), seriesCaptor.capture());
+        assertThat(seriesCaptor.getValue()).singleElement().satisfies(series -> {
+            assertThat(series.getSymbol()).isEqualTo("XAUTRY");
+            assertThat(series.getInstrumentType()).isEqualTo(InstrumentType.COMMODITY);
+            assertThat(series.getApiCode()).isEqualTo("TP.MK.ALTIN.GRM");
+            assertThat(series.getEvdsKey()).isEqualTo("TP.MK.ALTIN.GRM");
+            assertThat(series.getCurrency()).isEqualTo("TRY");
+        });
+    }
+
+    @Test
+    void buildsMacroIndicatorSeriesConfigFromRegistryMapping() {
+        EvdsProperties properties = evdsProperties();
+        EvdsMarketDataProvider provider = new EvdsMarketDataProvider(evdsClient, properties, mapper, new SymbolNormalizer(), instrumentRegistryService);
+        when(instrumentRegistryService.resolveMappings(DataSource.EVDS)).thenReturn(new InstrumentRegistryService.Resolution(
+                DataSource.EVDS,
+                List.of(mapping("TCMBTUFE", "TCMB TUFE", InstrumentType.MACRO_INDICATOR, "TRY", "TP.FG.J0"))
+        ));
+        when(evdsClient.fetchSeries(any(), any(), any())).thenReturn(new EvdsResponse(List.of()));
+        when(mapper.toMarketQuotes(any(), any())).thenReturn(List.of());
+        when(mapper.toHistoryRecords(any(), any())).thenReturn(List.of());
+
+        provider.fetch(ProviderFetchRequest.forSymbols(List.of("TCMB_TUFE")));
+
+        ArgumentCaptor<List<EvdsProperties.SeriesConfig>> seriesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(mapper).toMarketQuotes(any(), seriesCaptor.capture());
+        assertThat(seriesCaptor.getValue()).singleElement().satisfies(series -> {
+            assertThat(series.getSymbol()).isEqualTo("TCMBTUFE");
+            assertThat(series.getInstrumentType()).isEqualTo(InstrumentType.MACRO_INDICATOR);
+            assertThat(series.getApiCode()).isEqualTo("TP.FG.J0");
+            assertThat(series.getEvdsKey()).isEqualTo("TP.FG.J0");
+            assertThat(series.getCurrency()).isEqualTo("TRY");
+        });
     }
 
     private EvdsProperties evdsProperties() {
@@ -70,22 +131,26 @@ class EvdsMarketDataProviderTest {
         return properties;
     }
 
-    private InstrumentRegistryService registryService() {
-        return InstrumentRegistryService.seeded(new SymbolNormalizer(), List.of(
-                new InstrumentRegistryService.InstrumentDefinition(
-                        "USDTRY",
-                        "USD/TRY",
-                        com.emrehalli.financeportal.market.domain.enums.InstrumentType.FX,
-                        "TRY",
-                        java.util.Map.of(DataSource.EVDS, "TP.DK.USD.A")
-                ),
-                new InstrumentRegistryService.InstrumentDefinition(
-                        "EURTRY",
-                        "EUR/TRY",
-                        com.emrehalli.financeportal.market.domain.enums.InstrumentType.FX,
-                        "TRY",
-                        java.util.Map.of(DataSource.EVDS, "TP.DK.EUR.A")
-                )
-        ));
+    private InstrumentRegistryService.ResolvedMapping mapping(String symbol,
+                                                              String displayName,
+                                                              InstrumentType instrumentType,
+                                                              String currency,
+                                                              String providerSymbol) {
+        return new InstrumentRegistryService.ResolvedMapping(
+                java.util.UUID.randomUUID(),
+                DataSource.EVDS,
+                symbol,
+                displayName,
+                instrumentType,
+                currency,
+                providerSymbol,
+                1,
+                5,
+                null,
+                null,
+                com.emrehalli.financeportal.market.domain.enums.MappingRefreshStatus.PENDING,
+                null,
+                null
+        );
     }
 }

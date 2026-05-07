@@ -84,6 +84,9 @@ public class EvdsClient {
             );
         }
 
+        // Geçici debug log — sonra sil
+        log.debug("EVDS raw response body: {}", abbreviate(rawBody));
+
         EvdsResponse body = readResponse(rawBody);
         log.info("EVDS client request completed: recordCount={}", body.items().size());
         return body;

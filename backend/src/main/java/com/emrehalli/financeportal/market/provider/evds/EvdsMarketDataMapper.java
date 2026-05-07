@@ -6,12 +6,15 @@ import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
 import com.emrehalli.financeportal.market.provider.evds.dto.EvdsItem;
 import com.emrehalli.financeportal.market.provider.evds.dto.EvdsResponse;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -24,7 +27,11 @@ import java.util.Optional;
 @Component
 public class EvdsMarketDataMapper {
 
-    private static final DateTimeFormatter EVDS_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    private static final Logger log = LoggerFactory.getLogger(EvdsMarketDataMapper.class);
+    private static final DateTimeFormatter EVDS_DAILY_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    private static final DateTimeFormatter ISO_DAILY_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter YEAR_MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
+    private static final DateTimeFormatter YEAR_MONTH_SHORT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-M");
 
     public List<MarketQuote> toMarketQuotes(EvdsResponse response, List<EvdsProperties.SeriesConfig> seriesConfigs) {
         if (response == null || response.items().isEmpty() || seriesConfigs == null || seriesConfigs.isEmpty()) {
@@ -157,6 +164,8 @@ public class EvdsMarketDataMapper {
                         seriesConfig.getApiCode(),
                         normalizeEvdsKey(seriesConfig.getEvdsKey()),
                         normalizeEvdsKey(seriesConfig.getApiCode()),
+                        normalizeMixedEvdsKey(seriesConfig.getEvdsKey()),
+                        normalizeMixedEvdsKey(seriesConfig.getApiCode()),
                         denormalizeEvdsKey(seriesConfig.getEvdsKey()),
                         denormalizeEvdsKey(seriesConfig.getApiCode())
                 ).stream()
@@ -170,6 +179,14 @@ public class EvdsMarketDataMapper {
             return null;
         }
         return value.replace('.', '_');
+    }
+
+    private String normalizeMixedEvdsKey(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.replace('.', '_')
+                .replace('-', '_');
     }
 
     private String denormalizeEvdsKey(String value) {
@@ -208,11 +225,58 @@ public class EvdsMarketDataMapper {
             return Optional.empty();
         }
 
+        String normalizedDate = rawDate.trim();
+
         try {
-            return Optional.of(LocalDate.parse(rawDate.trim(), EVDS_DATE_FORMATTER));
+            return Optional.of(LocalDate.parse(normalizedDate, EVDS_DAILY_FORMATTER));
         } catch (DateTimeParseException ex) {
-            return Optional.empty();
         }
+
+        try {
+            return Optional.of(LocalDate.parse(normalizedDate, ISO_DAILY_FORMATTER));
+        } catch (DateTimeParseException ex) {
+        }
+
+        try {
+            return Optional.of(YearMonth.parse(normalizedDate, YEAR_MONTH_FORMATTER).atDay(1));
+        } catch (DateTimeParseException ex) {
+        }
+
+        try {
+            return Optional.of(YearMonth.parse(normalizedDate, YEAR_MONTH_SHORT_FORMATTER).atDay(1));
+        } catch (DateTimeParseException ex) {
+        }
+
+        Optional<LocalDate> quarterlyDate = parseQuarterlyDate(normalizedDate);
+        if (quarterlyDate.isPresent()) {
+            return quarterlyDate;
+        }
+
+        log.warn("EVDS date parse failed for unsupported format: rawDate={}", normalizedDate);
+        return Optional.empty();
+    }
+
+    private Optional<LocalDate> parseQuarterlyDate(String rawDate) {
+        java.util.regex.Matcher quarterMatcher = java.util.regex.Pattern
+                .compile("^(\\d{4})-Q([1-4])$")
+                .matcher(rawDate);
+        if (quarterMatcher.matches()) {
+            int year = Integer.parseInt(quarterMatcher.group(1));
+            int quarter = Integer.parseInt(quarterMatcher.group(2));
+            return Optional.of(LocalDate.of(year, firstMonthOfQuarter(quarter), 1));
+        }
+
+        return Optional.empty();
+    }
+
+    private int firstMonthOfQuarter(int quarter) {
+        return switch (quarter) {
+            case 1 -> 1;
+            case 2 -> 4;
+            case 3 -> 7;
+            case 4 -> 10;
+            default -> throw new IllegalArgumentException("Unsupported quarter: " + quarter);
+        };
     }
 
     private record ValidEvdsValue(

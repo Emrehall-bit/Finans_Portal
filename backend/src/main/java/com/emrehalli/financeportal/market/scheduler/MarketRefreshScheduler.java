@@ -52,7 +52,7 @@ public class MarketRefreshScheduler {
     public void refreshMarketQuotes() {
         try {
             log.info("Market refresh scheduler tick started");
-            marketHistoryBackfillService.runIfDue();
+            // marketHistoryBackfillService.runIfDue();
             refreshDueProviders();
         } catch (Exception ex) {
             log.error("Scheduled market refresh failed unexpectedly", ex);

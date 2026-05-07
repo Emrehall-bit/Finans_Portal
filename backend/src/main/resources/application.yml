@@ -289,10 +289,10 @@ market:
         refresh-minutes: 30
       binance:
         enabled: true
-        refresh-minutes: 1
+        refresh-minutes: 2
       evds:
         enabled: true
-        refresh-minutes: 15
+        refresh-minutes: 1
 
 
 finnhub:

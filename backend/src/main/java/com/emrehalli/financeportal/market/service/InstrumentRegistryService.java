@@ -389,7 +389,7 @@ public class InstrumentRegistryService {
         if (marketProviderMappingRepository == null) {
             return List.of();
         }
-        return marketProviderMappingRepository.findDueMappingsBySource(source, now).stream()
+        return marketProviderMappingRepository.findDueMappingsBySource(source.name(), now).stream()
                 .map(this::toResolvedMapping)
                 .toList();
     }
