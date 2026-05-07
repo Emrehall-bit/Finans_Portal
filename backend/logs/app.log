@@ -2220,3 +2220,45 @@ Caused by: org.postgresql.util.PSQLException: ERROR: there is no unique or exclu
 2026-05-08 00:59:56.566 INFO  [main] MarketQueryService requestId= userId= method= uri= status= durationMs= - Market price fallback used: symbol=THYAO, layer=DB, priceStatus=STALE
 2026-05-08 00:59:56.571 INFO  [main] MarketQueryService requestId= userId= method= uri= status= durationMs= - Market price fallback used: symbol=THYAO, layer=NONE, priceStatus=UNAVAILABLE
 2026-05-08 00:59:56.574 INFO  [main] MarketQueryService requestId= userId= method= uri= status= durationMs= - Market price fallback used: symbol=BTCUSDT, layer=REDIS, priceStatus=LIVE
+2026-05-08 02:28:47.200 INFO  [background-preinit] Version requestId= userId= method= uri= status= durationMs= - HV000001: Hibernate Validator 8.0.3.Final
+2026-05-08 02:28:47.233 INFO  [main] MarketControllerTest requestId= userId= method= uri= status= durationMs= - Starting MarketControllerTest using Java 25.0.2 with PID 17188 (started by ehall in C:\Users\ehall\Desktop\Finans-Portal\backend)
+2026-05-08 02:28:47.239 DEBUG [main] MarketControllerTest requestId= userId= method= uri= status= durationMs= - Running with Spring Boot v3.5.13, Spring v6.2.17
+2026-05-08 02:28:47.240 INFO  [main] MarketControllerTest requestId= userId= method= uri= status= durationMs= - No active profile set, falling back to 1 default profile: "local"
+2026-05-08 02:28:49.383 DEBUG [main] AuthenticationConfiguration$DefaultPasswordEncoderAuthenticationManagerBuilder requestId= userId= method= uri= status= durationMs= - No authenticationProviders and no parentAuthenticationManager defined. Returning null.
+2026-05-08 02:28:49.931 DEBUG [main] DefaultSecurityFilterChain requestId= userId= method= uri= status= durationMs= - Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, BearerTokenAuthenticationFilter, AuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
+2026-05-08 02:28:50.261 INFO  [main] SpringBootMockServletContext requestId= userId= method= uri= status= durationMs= - Initializing Spring TestDispatcherServlet ''
+2026-05-08 02:28:50.262 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Initializing Servlet ''
+2026-05-08 02:28:50.263 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Completed initialization in 1 ms
+2026-05-08 02:28:50.300 INFO  [main] MarketControllerTest requestId= userId= method= uri= status= durationMs= - Started MarketControllerTest in 3.547 seconds (process running for 4.669)
+2026-05-08 02:28:50.409 DEBUG [main] FilterChainProxy requestId=6c56b48e-67f7-4483-9827-cf5782ece76c userId= method= uri= status= durationMs= - Securing GET /api/v1/markets/type/currency
+2026-05-08 02:28:50.420 DEBUG [main] AnonymousAuthenticationFilter requestId=6c56b48e-67f7-4483-9827-cf5782ece76c userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
+2026-05-08 02:28:50.425 DEBUG [main] FilterChainProxy requestId=6c56b48e-67f7-4483-9827-cf5782ece76c userId= method= uri= status= durationMs= - Secured GET /api/v1/markets/type/currency
+2026-05-08 02:28:50.531 INFO  [main] HttpRequestLoggingFilter requestId=6c56b48e-67f7-4483-9827-cf5782ece76c userId= method=GET uri=/api/v1/markets/type/currency status=200 durationMs=138 - HTTP request completed
+2026-05-08 02:28:50.603 DEBUG [main] FilterChainProxy requestId=0dc8d520-8b19-4b41-8f97-f62df4127286 userId= method= uri= status= durationMs= - Securing GET /api/v1/markets
+2026-05-08 02:28:50.603 DEBUG [main] AnonymousAuthenticationFilter requestId=0dc8d520-8b19-4b41-8f97-f62df4127286 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
+2026-05-08 02:28:50.604 DEBUG [main] FilterChainProxy requestId=0dc8d520-8b19-4b41-8f97-f62df4127286 userId= method= uri= status= durationMs= - Secured GET /api/v1/markets
+2026-05-08 02:28:50.607 INFO  [main] HttpRequestLoggingFilter requestId=0dc8d520-8b19-4b41-8f97-f62df4127286 userId= method=GET uri=/api/v1/markets status=200 durationMs=5 - HTTP request completed
+2026-05-08 02:28:50.625 DEBUG [main] FilterChainProxy requestId=57f7a247-dee8-491a-8008-dbf5f8232b5d userId= method= uri= status= durationMs= - Securing GET /api/v1/markets/TCD
+2026-05-08 02:28:50.625 DEBUG [main] AnonymousAuthenticationFilter requestId=57f7a247-dee8-491a-8008-dbf5f8232b5d userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
+2026-05-08 02:28:50.626 DEBUG [main] FilterChainProxy requestId=57f7a247-dee8-491a-8008-dbf5f8232b5d userId= method= uri= status= durationMs= - Secured GET /api/v1/markets/TCD
+2026-05-08 02:28:50.632 WARN  [main] GlobalExceptionHandler requestId=57f7a247-dee8-491a-8008-dbf5f8232b5d userId= method=GET uri= status= durationMs= - Resource not found: exceptionClass=NoResourceFoundException, message=No static resource api/v1/markets/TCD., method=GET, path=/api/v1/markets/TCD, requestId=57f7a247-dee8-491a-8008-dbf5f8232b5d
+2026-05-08 02:28:50.634 INFO  [main] HttpRequestLoggingFilter requestId=57f7a247-dee8-491a-8008-dbf5f8232b5d userId= method=GET uri=/api/v1/markets/TCD status=404 durationMs=11 - HTTP request completed
+2026-05-08 02:28:50.640 DEBUG [main] FilterChainProxy requestId=market-request-123 userId= method= uri= status= durationMs= - Securing GET /api/v1/markets/type/crypto
+2026-05-08 02:28:50.640 DEBUG [main] AnonymousAuthenticationFilter requestId=market-request-123 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
+2026-05-08 02:28:50.641 DEBUG [main] FilterChainProxy requestId=market-request-123 userId= method= uri= status= durationMs= - Secured GET /api/v1/markets/type/crypto
+2026-05-08 02:28:50.642 INFO  [main] HttpRequestLoggingFilter requestId=market-request-123 userId= method=GET uri=/api/v1/markets/type/crypto status=200 durationMs=2 - HTTP request completed
+2026-05-08 02:28:50.651 DEBUG [main] FilterChainProxy requestId=e0ef6b81-f0f5-4828-9d66-e11bbe534345 userId= method= uri= status= durationMs= - Securing GET /api/v1/markets/symbol/TCD
+2026-05-08 02:28:50.651 DEBUG [main] AnonymousAuthenticationFilter requestId=e0ef6b81-f0f5-4828-9d66-e11bbe534345 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
+2026-05-08 02:28:50.652 DEBUG [main] FilterChainProxy requestId=e0ef6b81-f0f5-4828-9d66-e11bbe534345 userId= method= uri= status= durationMs= - Secured GET /api/v1/markets/symbol/TCD
+2026-05-08 02:28:50.655 INFO  [main] HttpRequestLoggingFilter requestId=e0ef6b81-f0f5-4828-9d66-e11bbe534345 userId= method=GET uri=/api/v1/markets/symbol/TCD status=200 durationMs=4 - HTTP request completed
+2026-05-08 02:28:50.674 DEBUG [main] FilterChainProxy requestId=873317ac-758f-4a7e-9c1c-3b3691587c94 userId= method= uri= status= durationMs= - Securing GET /api/v1/markets/symbol/BTCUSDT
+2026-05-08 02:28:50.675 DEBUG [main] AnonymousAuthenticationFilter requestId=873317ac-758f-4a7e-9c1c-3b3691587c94 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
+2026-05-08 02:28:50.676 DEBUG [main] FilterChainProxy requestId=873317ac-758f-4a7e-9c1c-3b3691587c94 userId= method= uri= status= durationMs= - Secured GET /api/v1/markets/symbol/BTCUSDT
+2026-05-08 02:28:50.677 INFO  [main] HttpRequestLoggingFilter requestId=873317ac-758f-4a7e-9c1c-3b3691587c94 userId= method=GET uri=/api/v1/markets/symbol/BTCUSDT status=200 durationMs=2 - HTTP request completed
+2026-05-08 02:28:50.684 DEBUG [main] FilterChainProxy requestId=0e81e37b-2c30-453b-b581-ddfe55a871e8 userId= method= uri= status= durationMs= - Securing GET /api/v1/markets
+2026-05-08 02:28:50.685 DEBUG [main] AnonymousAuthenticationFilter requestId=0e81e37b-2c30-453b-b581-ddfe55a871e8 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
+2026-05-08 02:28:50.685 DEBUG [main] FilterChainProxy requestId=0e81e37b-2c30-453b-b581-ddfe55a871e8 userId= method= uri= status= durationMs= - Secured GET /api/v1/markets
+2026-05-08 02:28:50.688 INFO  [main] HttpRequestLoggingFilter requestId=0e81e37b-2c30-453b-b581-ddfe55a871e8 userId= method=GET uri=/api/v1/markets status=200 durationMs=4 - HTTP request completed
+2026-05-08 02:28:50.959 INFO  [main] MarketQueryService requestId= userId= method= uri= status= durationMs= - Market price fallback used: symbol=THYAO, layer=DB, priceStatus=STALE
+2026-05-08 02:28:50.963 INFO  [main] MarketQueryService requestId= userId= method= uri= status= durationMs= - Market price fallback used: symbol=THYAO, layer=NONE, priceStatus=UNAVAILABLE
+2026-05-08 02:28:50.966 INFO  [main] MarketQueryService requestId= userId= method= uri= status= durationMs= - Market price fallback used: symbol=BTCUSDT, layer=REDIS, priceStatus=LIVE

@@ -83,6 +83,7 @@ public class MarketDataSeeder implements ApplicationRunner {
         long instrumentCount = marketInstrumentRepository.count();
         long mappingCount = marketProviderMappingRepository.count();
         if (instrumentCount > 0L || mappingCount > 0L) {
+            syncRefreshIntervalsFromConfig();
             log.info(
                     "Market registry seed skipped: instrumentCount={}, mappingCount={}",
                     instrumentCount,
@@ -111,6 +112,25 @@ public class MarketDataSeeder implements ApplicationRunner {
                 "Market registry seeded: instrumentCount={}, mappingCount={}",
                 savedInstruments.size(),
                 mappings.size()
+        );
+    }
+
+    private void syncRefreshIntervalsFromConfig() {
+        List<MarketProviderMappingEntity> mappings = marketProviderMappingRepository.findAll();
+        List<MarketProviderMappingEntity> changedMappings = mappings.stream()
+                .filter(mapping -> mapping.getSource() != null)
+                .filter(mapping -> mapping.getRefreshIntervalMinutes() != resolveRefreshInterval(mapping.getSource()))
+                .peek(mapping -> mapping.setRefreshIntervalMinutes(resolveRefreshInterval(mapping.getSource())))
+                .toList();
+
+        if (changedMappings.isEmpty()) {
+            return;
+        }
+
+        marketProviderMappingRepository.saveAll(changedMappings);
+        log.info(
+                "Market registry refresh intervals synced from config: updatedMappingCount={}",
+                changedMappings.size()
         );
     }
 

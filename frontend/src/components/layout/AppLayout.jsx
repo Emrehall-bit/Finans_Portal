@@ -196,33 +196,27 @@ export default function AppLayout() {
       <div className="app-shell">
         <aside className="app-sidebar">
           <div className="brand-block">
-            <div className="brand-mark">F</div>
+            <img className="brand-mark brand-logo-image" src="/finans-portali-logo.png" alt="Finans Portali" />
             <div>
-              <p className="eyebrow">{t("layout.brandEyebrow")}</p>
               <h2>Finans Portal</h2>
             </div>
           </div>
 
           <div className="sidebar-profile">
-            <div className="profile-avatar">{getInitials(user)}</div>
-            <div>
+            <div className="sidebar-profile-copy">
               <strong>{displayName}</strong>
               <p>{profileLabel}</p>
             </div>
-          </div>
-
-          <div className="sidebar-action-card">
-            <p>{isAuthenticated ? t("layout.syncedData") : t("layout.openMode")}</p>
             {isAuthenticated ? (
-              <button type="button" className="ghost-button light" onClick={logout}>
+              <button type="button" className="ghost-button light sidebar-login-button" onClick={logout}>
                 {t("layout.logout")}
               </button>
             ) : (
               <div className="auth-button-group">
-                <button type="button" className="ghost-button light" onClick={login}>
+                <button type="button" className="ghost-button light sidebar-login-button" onClick={login}>
                   {t("layout.login")}
                 </button>
-                <button type="button" onClick={register}>
+                <button type="button" className="sidebar-register-button" onClick={register}>
                   {t("layout.register")}
                 </button>
               </div>
@@ -242,7 +236,15 @@ export default function AppLayout() {
                     className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
                   >
                     <span>{item.label}</span>
-                    {item.requiresAuth && !isAuthenticated ? <small>{t("nav.authBadge")}</small> : null}
+                    {item.requiresAuth && !isAuthenticated ? (
+                      <small
+                        className="nav-auth-indicator"
+                        title={t("layout.authRequiredTitle")}
+                        aria-label={t("layout.authRequiredTitle")}
+                      >
+                        🔒
+                      </small>
+                    ) : null}
                     {item.badge ? <small>{item.badge}</small> : null}
                   </NavLink>
                 ))}

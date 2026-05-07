@@ -90,11 +90,32 @@ class MarketQueryServiceTest {
     void getAllQuotesDoesNotHitDbWhenAggregateCacheHasLiveQuotes() {
         MarketQueryService service = new MarketQueryService(marketCacheService, marketHistoryRepository, new SymbolNormalizer());
         when(marketCacheService.getAllQuotes()).thenReturn(java.util.List.of(liveQuote()));
+        when(marketHistoryRepository.findLatestBySymbol()).thenReturn(java.util.List.of());
 
         var result = service.getAllQuotes();
 
         assertThat(result).singleElement().satisfies(quote -> assertThat(quote.source()).isEqualTo(DataSource.BINANCE));
-        verify(marketHistoryRepository, never()).findLatestBySymbol();
+        verify(marketHistoryRepository).findLatestBySymbol();
+    }
+
+    @Test
+    void getAllQuotesMergesDbFallbackForSymbolsMissingFromAggregateCache() {
+        MarketQueryService service = new MarketQueryService(marketCacheService, marketHistoryRepository, new SymbolNormalizer());
+        when(marketCacheService.getAllQuotes()).thenReturn(java.util.List.of(liveQuote()));
+        when(marketHistoryRepository.findLatestBySymbol()).thenReturn(java.util.List.of(historyEntity()));
+
+        var result = service.getAllQuotes();
+
+        assertThat(result).hasSize(2);
+        assertThat(result).anySatisfy(quote -> {
+            assertThat(quote.symbol()).isEqualTo("BTCUSDT");
+            assertThat(quote.source()).isEqualTo(DataSource.BINANCE);
+        });
+        assertThat(result).anySatisfy(quote -> {
+            assertThat(quote.symbol()).isEqualTo("THYAO");
+            assertThat(quote.source()).isEqualTo(DataSource.DB_FALLBACK);
+            assertThat(quote.changeRate()).isNull();
+        });
     }
 
     @Test

@@ -16,10 +16,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -140,5 +144,44 @@ class MarketDataSeederTest {
                         "TCD=TCD",
                         "YKT=YKT"
                 );
+    }
+
+    @Test
+    void syncsExistingMappingRefreshIntervalsFromConfigWhenRegistryAlreadyExists() throws Exception {
+        when(marketInstrumentRepository.count()).thenReturn(1L);
+        when(marketProviderMappingRepository.count()).thenReturn(1L);
+
+        MarketProviderMappingEntity bistMapping = new MarketProviderMappingEntity();
+        bistMapping.setId(UUID.randomUUID());
+        bistMapping.setSource(DataSource.BIST);
+        bistMapping.setRefreshIntervalMinutes(30);
+        bistMapping.setEnabled(true);
+
+        when(marketProviderMappingRepository.findAll()).thenReturn(List.of(bistMapping));
+        when(marketProviderMappingRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MarketRefreshProperties properties = new MarketRefreshProperties();
+        MarketRefreshProperties.ProviderPolicy bistPolicy = new MarketRefreshProperties.ProviderPolicy();
+        bistPolicy.setEnabled(true);
+        bistPolicy.setRefreshMinutes(15);
+        properties.setProviders(java.util.Map.of("bist", bistPolicy));
+
+        MarketDataSeeder seeder = new MarketDataSeeder(
+                marketInstrumentRepository,
+                marketProviderMappingRepository,
+                properties,
+                new SymbolNormalizer(),
+                Clock.fixed(Instant.parse("2026-05-07T00:00:00Z"), ZoneOffset.UTC)
+        );
+
+        seeder.run(new org.springframework.boot.DefaultApplicationArguments(new String[0]));
+
+        org.mockito.Mockito.verify(marketProviderMappingRepository).saveAll(argThat(mappings -> {
+            List<MarketProviderMappingEntity> capturedMappings = new ArrayList<>();
+            mappings.forEach(capturedMappings::add);
+            return capturedMappings.size() == 1
+                    && capturedMappings.getFirst().getRefreshIntervalMinutes() == 15;
+        }));
+        org.mockito.Mockito.verify(marketInstrumentRepository, never()).saveAll(anyList());
     }
 }

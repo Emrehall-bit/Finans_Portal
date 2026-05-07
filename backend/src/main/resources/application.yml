@@ -95,11 +95,11 @@ market:
     fund-cron: "0 0 18 * * *"
   cache:
     ttl:
-      BINANCE: 5m
+      BINANCE: 20m
       BIST: 30m
       EVDS: 12h
       TEFAS: 2h
-      ALL: 5m
+      ALL: 10m
 
 
   provider-clients:
@@ -166,7 +166,7 @@ market:
         refresh-minutes: 15
       binance:
         enabled: true
-        refresh-minutes: 2
+        refresh-minutes: 10
       evds:
         enabled: true
         refresh-minutes: 360

@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -40,14 +42,16 @@ public class MarketQueryService implements MarketPriceReader {
         List<MarketQuote> cachedQuotes = marketCacheService.getAllQuotes().stream()
                 .filter(this::hasUsablePrice)
                 .toList();
-        if (!cachedQuotes.isEmpty()) {
-            return cachedQuotes;
-        }
 
-        return marketHistoryRepository.findLatestBySymbol().stream()
+        Map<String, MarketQuote> mergedQuotes = new LinkedHashMap<>();
+        cachedQuotes.forEach(quote -> mergedQuotes.putIfAbsent(quote.symbol(), quote));
+
+        marketHistoryRepository.findLatestBySymbol().stream()
                 .filter(this::hasUsablePrice)
                 .map(this::toDbFallbackQuote)
-                .toList();
+                .forEach(quote -> mergedQuotes.putIfAbsent(quote.symbol(), quote));
+
+        return List.copyOf(mergedQuotes.values());
     }
 
     public Optional<MarketQuote> findCurrentBySymbol(String symbol) {

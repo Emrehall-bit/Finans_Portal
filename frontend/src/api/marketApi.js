@@ -50,8 +50,8 @@ function buildDefaultAnalysisRange() {
   };
 }
 
-export async function getMarkets() {
-  const { data } = await axiosClient.get(API_CONFIG.ENDPOINTS.markets);
+export async function getMarkets(params = {}) {
+  const { data } = await axiosClient.get(API_CONFIG.ENDPOINTS.markets, { params });
   return normalizeArrayPayload(data);
 }
 
@@ -91,6 +91,14 @@ export async function getMarketHistory(symbol, paramsOrRange) {
   const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}/history`, {
     params,
   });
+  return normalizeArrayPayload(data);
+}
+
+export async function getMacroHistory(symbol, params = {}) {
+  const { data } = await axiosClient.get(
+    `${API_CONFIG.ENDPOINTS.markets}/history/${encodeURIComponent(symbol)}`,
+    { params },
+  );
   return normalizeArrayPayload(data);
 }
 
