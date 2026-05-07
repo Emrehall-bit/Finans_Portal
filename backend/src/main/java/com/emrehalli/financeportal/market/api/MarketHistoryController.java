@@ -46,6 +46,12 @@ public class MarketHistoryController {
         this.appMessageSource = appMessageSource;
     }
 
+    /**
+     * Returns market history using the existing AVAILABLE or INSUFFICIENT_HISTORY envelope.
+     *
+     * Role: public endpoint.
+     * Return type: {@link MarketHistoryEnvelopeResponse}.
+     */
     @GetMapping("/{symbol}/history")
     public MarketHistoryEnvelopeResponse getHistory(
             @PathVariable String symbol,
@@ -86,6 +92,12 @@ public class MarketHistoryController {
         );
     }
 
+    /**
+     * Returns debug metadata for market history retrieval.
+     *
+     * Role: public endpoint.
+     * Return type: {@link MarketHistoryDebugResponse}.
+     */
     @GetMapping("/{symbol}/history/debug")
     public MarketHistoryDebugResponse getHistoryDebug(
             @PathVariable String symbol,

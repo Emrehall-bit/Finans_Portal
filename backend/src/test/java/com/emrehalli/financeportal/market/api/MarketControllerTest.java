@@ -13,6 +13,7 @@ import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import com.emrehalli.financeportal.market.exception.MarketExceptionHandler;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
+import com.emrehalli.financeportal.market.support.InstrumentTypeAliasResolver;
 import com.emrehalli.financeportal.market.service.model.CurrentPriceSnapshot;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +40,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         ObservabilityFilterConfig.class,
         GlobalExceptionHandler.class,
         MarketExceptionHandler.class,
-        MarketApiMapper.class
+        MarketApiMapper.class,
+        MarketApiResponseFactory.class,
+        InstrumentTypeAliasResolver.class
 })
 class MarketControllerTest {
 

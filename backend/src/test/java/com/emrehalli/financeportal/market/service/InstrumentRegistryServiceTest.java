@@ -2,21 +2,27 @@ package com.emrehalli.financeportal.market.service;
 
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.MappingRefreshStatus;
 import com.emrehalli.financeportal.market.persistence.entity.MarketInstrumentEntity;
 import com.emrehalli.financeportal.market.persistence.entity.MarketProviderMappingEntity;
+import com.emrehalli.financeportal.market.persistence.repository.MarketInstrumentRepository;
 import com.emrehalli.financeportal.market.persistence.repository.MarketProviderMappingRepository;
-import com.emrehalli.financeportal.market.provider.binance.config.BinanceProviderProperties;
-import com.emrehalli.financeportal.market.provider.bist.config.BistProviderProperties;
-import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,148 +30,125 @@ import static org.mockito.Mockito.when;
 class InstrumentRegistryServiceTest {
 
     @Mock
+    private MarketInstrumentRepository marketInstrumentRepository;
+
+    @Mock
     private MarketProviderMappingRepository marketProviderMappingRepository;
 
     @Test
-    void usesDbMappingsWhenEnabledMappingsExist() {
-        when(marketProviderMappingRepository.findByProviderSourceAndEnabledTrueAndInstrument_ActiveTrueOrderByPriorityAscIdAsc(DataSource.BINANCE))
+    void resolvesDbMappingsForSource() {
+        when(marketProviderMappingRepository.findBySourceAndEnabledTrueAndInstrument_EnabledTrueOrderByPriorityAscIdAsc(DataSource.BINANCE))
                 .thenReturn(List.of(mapping(
                         DataSource.BINANCE,
                         "XRPUSDT",
-                        true,
-                        instrument("XRPUSDT", "Ripple", InstrumentType.CRYPTO, "USDT", true)
+                        instrument("XRPUSDT", "Ripple", InstrumentType.CRYPTO, true)
                 )));
 
-        InstrumentRegistryService service = service(binanceProperties(List.of("BTCUSDT")));
+        InstrumentRegistryService service = service();
 
         InstrumentRegistryService.Resolution resolution = service.resolveMappings(DataSource.BINANCE);
 
-        assertThat(resolution.fallbackToYaml()).isFalse();
         assertThat(resolution.mappings()).singleElement().satisfies(mapping -> {
             assertThat(mapping.symbol()).isEqualTo("XRPUSDT");
             assertThat(mapping.providerSymbol()).isEqualTo("XRPUSDT");
+            assertThat(mapping.refreshIntervalMinutes()).isEqualTo(5);
         });
     }
 
     @Test
-    void fallsBackToYamlWhenDbMappingsDoNotExist() {
-        when(marketProviderMappingRepository.findByProviderSourceAndEnabledTrueAndInstrument_ActiveTrueOrderByPriorityAscIdAsc(DataSource.BINANCE))
-                .thenReturn(List.of());
+    void exposesProviderSpecificLookup() {
+        MarketProviderMappingEntity mapping = mapping(
+                DataSource.EVDS,
+                "TP.DK.USD.A",
+                instrument("USDTRY", "USD/TRY", InstrumentType.FOREX, true)
+        );
+        when(marketProviderMappingRepository.findBySourceAndEnabledTrueAndInstrument_EnabledTrueOrderByPriorityAscIdAsc(DataSource.EVDS))
+                .thenReturn(List.of(mapping));
+        when(marketProviderMappingRepository.findByEnabledTrueAndInstrument_EnabledTrueOrderBySourceAscPriorityAscIdAsc())
+                .thenReturn(List.of(mapping));
 
-        InstrumentRegistryService service = service(binanceProperties(List.of("BTCUSDT", "ETHUSDT")));
+        InstrumentRegistryService service = service();
 
-        InstrumentRegistryService.Resolution resolution = service.resolveMappings(DataSource.BINANCE);
-
-        assertThat(resolution.fallbackToYaml()).isTrue();
-        assertThat(resolution.mappings())
-                .extracting(InstrumentRegistryService.ResolvedMapping::providerSymbol)
-                .containsExactly("BTCUSDT", "ETHUSDT");
-    }
-
-    @Test
-    void ignoresDisabledMappingsReturnedFromRepository() {
-        when(marketProviderMappingRepository.findByProviderSourceAndEnabledTrueAndInstrument_ActiveTrueOrderByPriorityAscIdAsc(DataSource.BIST))
-                .thenReturn(List.of(
-                        mapping(
-                                DataSource.BIST,
-                                "THYAO.IS",
-                                true,
-                                instrument("THYAO", "THYAO", InstrumentType.STOCK, "TRY", true)
-                        ),
-                        mapping(
-                                DataSource.BIST,
-                                "ASELS.IS",
-                                false,
-                                instrument("ASELS", "ASELS", InstrumentType.STOCK, "TRY", true)
-                        )
-                ));
-
-        InstrumentRegistryService service = service(binanceProperties(List.of()));
-
-        InstrumentRegistryService.Resolution resolution = service.resolveMappings(DataSource.BIST);
-
-        assertThat(resolution.fallbackToYaml()).isFalse();
-        assertThat(resolution.mappings())
-                .extracting(InstrumentRegistryService.ResolvedMapping::providerSymbol)
-                .containsExactly("THYAO.IS");
-    }
-
-    @Test
-    void exposesProviderSpecificMappingLookup() {
-        when(marketProviderMappingRepository.findByProviderSourceAndEnabledTrueAndInstrument_ActiveTrueOrderByPriorityAscIdAsc(DataSource.EVDS))
-                .thenReturn(List.of(mapping(
-                        DataSource.EVDS,
-                        "TP.DK.USD.A",
-                        true,
-                        instrument("USDTRY", "USD/TRY", InstrumentType.FX, "TRY", true)
-                )));
-        when(marketProviderMappingRepository.findByProviderSourceAndEnabledTrueAndInstrument_ActiveTrueOrderByPriorityAscIdAsc(DataSource.BINANCE))
-                .thenReturn(List.of());
-        when(marketProviderMappingRepository.findByProviderSourceAndEnabledTrueAndInstrument_ActiveTrueOrderByPriorityAscIdAsc(DataSource.BIST))
-                .thenReturn(List.of());
-        InstrumentRegistryService service = service(binanceProperties(List.of()));
-
-        assertThat(service.getByProviderCode(DataSource.EVDS, " tp.dk.usd.a "))
+        assertThat(service.getByProviderCode(DataSource.EVDS, "tp.dk.usd.a"))
                 .isPresent()
                 .get()
                 .extracting(InstrumentRegistryService.InstrumentDefinition::symbol)
                 .isEqualTo("USDTRY");
-        verify(marketProviderMappingRepository).findByProviderSourceAndEnabledTrueAndInstrument_ActiveTrueOrderByPriorityAscIdAsc(DataSource.EVDS);
     }
 
-    private InstrumentRegistryService service(BinanceProviderProperties binanceProviderProperties) {
-        BistProviderProperties bistProviderProperties = new BistProviderProperties();
-        bistProviderProperties.setSymbols(List.of("THYAO.IS"));
+    @Test
+    void listsDueMappingsFromRepository() {
+        when(marketProviderMappingRepository.findDueMappings(any()))
+                .thenReturn(List.of(mapping(
+                        DataSource.BIST,
+                        "THYAO.IS",
+                        instrument("THYAO", "Turk Hava Yollari", InstrumentType.STOCK, true)
+                )));
 
-        EvdsProperties evdsProperties = new EvdsProperties();
-        EvdsProperties.SeriesConfig usd = new EvdsProperties.SeriesConfig();
-        usd.setApiCode("TP.DK.USD.A");
-        usd.setEvdsKey("TP_DK_USD_A");
-        usd.setSymbol("USDTRY");
-        usd.setName("USD/TRY");
-        usd.setInstrumentType(InstrumentType.FX);
-        usd.setCurrency("TRY");
-        evdsProperties.setSeries(List.of(usd));
+        InstrumentRegistryService service = service();
 
+        assertThat(service.getDueMappings(Instant.parse("2026-05-06T00:00:00Z")))
+                .singleElement()
+                .satisfies(mapping -> assertThat(mapping.symbol()).isEqualTo("THYAO"));
+    }
+
+    @Test
+    void marksRefreshSuccessOnPreferredMapping() {
+        MarketProviderMappingEntity entity = mapping(
+                DataSource.BINANCE,
+                "BTCUSDT",
+                instrument("BTCUSDT", "Bitcoin", InstrumentType.CRYPTO, true)
+        );
+        when(marketProviderMappingRepository.findFirstByInstrument_SymbolAndSourceAndEnabledTrueAndInstrument_EnabledTrueOrderByPriorityAscIdAsc(
+                "BTCUSDT",
+                DataSource.BINANCE
+        )).thenReturn(Optional.of(entity));
+
+        InstrumentRegistryService service = service();
+        Instant refreshedAt = Instant.parse("2026-05-06T00:00:00Z");
+
+        service.markRefreshSuccess(DataSource.BINANCE, java.util.Set.of("BTCUSDT"), refreshedAt);
+
+        assertThat(entity.getLastRefreshStatus()).isEqualTo(MappingRefreshStatus.SUCCESS);
+        assertThat(entity.getLastRefreshedAt()).isEqualTo(refreshedAt);
+        verify(marketProviderMappingRepository).save(entity);
+    }
+
+    private InstrumentRegistryService service() {
         return new InstrumentRegistryService(
                 new SymbolNormalizer(),
+                marketInstrumentRepository,
                 marketProviderMappingRepository,
-                binanceProviderProperties,
-                bistProviderProperties,
-                evdsProperties
+                Clock.fixed(Instant.parse("2026-05-06T00:00:00Z"), ZoneOffset.UTC)
         );
     }
 
-    private BinanceProviderProperties binanceProperties(List<String> symbols) {
-        BinanceProviderProperties properties = new BinanceProviderProperties();
-        properties.setSymbols(symbols);
-        return properties;
-    }
-
     private MarketProviderMappingEntity mapping(DataSource source,
-                                                String providerSymbol,
-                                                boolean enabled,
+                                                String externalSymbol,
                                                 MarketInstrumentEntity instrument) {
         MarketProviderMappingEntity entity = new MarketProviderMappingEntity();
-        entity.setProviderSource(source);
-        entity.setProviderSymbol(providerSymbol);
-        entity.setEnabled(enabled);
-        entity.setPriority(0);
+        entity.setId(UUID.randomUUID());
+        entity.setSource(source);
+        entity.setExternalSymbol(externalSymbol);
+        entity.setEnabled(true);
+        entity.setPriority(1);
+        entity.setRefreshIntervalMinutes(5);
+        entity.setHistoryStartDate(LocalDate.of(2020, 1, 1));
+        entity.setLastRefreshStatus(MappingRefreshStatus.PENDING);
         entity.setInstrument(instrument);
         return entity;
     }
 
     private MarketInstrumentEntity instrument(String symbol,
-                                              String name,
-                                              InstrumentType instrumentType,
-                                              String currency,
-                                              boolean active) {
+                                              String displayName,
+                                              InstrumentType type,
+                                              boolean enabled) {
         MarketInstrumentEntity entity = new MarketInstrumentEntity();
+        entity.setId(UUID.randomUUID());
         entity.setSymbol(symbol);
-        entity.setName(name);
-        entity.setInstrumentType(instrumentType);
-        entity.setCurrency(currency);
-        entity.setActive(active);
+        entity.setDisplayName(displayName);
+        entity.setType(type);
+        entity.setEnabled(enabled);
         return entity;
     }
 }

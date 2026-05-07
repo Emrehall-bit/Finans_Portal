@@ -73,7 +73,7 @@ class BinanceClientTest {
         verify(restTemplate).getForEntity(uriCaptor.capture(), eq(Object[][].class));
 
         assertThat(uriCaptor.getValue().toString())
-                .isEqualTo("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=365")
+                .isEqualTo("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=365&startTime=1745539200000&endTime=1777075199999")
                 .doesNotContain("%25");
     }
 

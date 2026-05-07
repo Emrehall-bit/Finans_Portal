@@ -56,7 +56,7 @@ public class MarketOverviewService {
         }
 
         return switch (type) {
-            case CURRENCY, FX -> List.of(DataSource.EVDS);
+            case FOREX, CURRENCY, FX -> List.of(DataSource.EVDS);
             case STOCK -> List.of(DataSource.BIST);
             case CRYPTO -> List.of(DataSource.BINANCE);
             default -> List.of();
@@ -76,7 +76,7 @@ public class MarketOverviewService {
 
     private Set<InstrumentType> compatibleTypes(InstrumentType requestedType) {
         return switch (requestedType) {
-            case CURRENCY, FX -> EnumSet.of(InstrumentType.CURRENCY, InstrumentType.FX);
+            case FOREX, CURRENCY, FX -> EnumSet.of(InstrumentType.FOREX, InstrumentType.CURRENCY, InstrumentType.FX);
             case COMMODITY, GOLD -> EnumSet.of(InstrumentType.COMMODITY, InstrumentType.GOLD);
             default -> EnumSet.of(requestedType);
         };

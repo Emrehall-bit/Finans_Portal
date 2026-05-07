@@ -1,9 +1,18 @@
 package com.emrehalli.financeportal.market.domain.enums;
 
+/**
+ * Represents supported market instrument categories.
+ */
 public enum InstrumentType {
+    FOREX,
+    BOND,
+    /**
+     * @deprecated Legacy alias for forex pairs. Use {@link #FOREX}.
+     */
+    @Deprecated(since = "2026-05", forRemoval = false)
     CURRENCY,
     /**
-     * @deprecated Legacy alias for currency pairs. Use {@link #CURRENCY}.
+     * @deprecated Legacy alias for forex pairs. Use {@link #FOREX}.
      */
     @Deprecated(since = "2026-05", forRemoval = false)
     FX,
@@ -27,5 +36,11 @@ public enum InstrumentType {
     @Deprecated(since = "2026-05", forRemoval = false)
     INDEX,
     COMMODITY,
+    /**
+     * Macroeconomic indicator series such as interest rates and inflation indices.
+     * These are typically low-frequency (weekly/monthly) EVDS/TCMB data series
+     * rather than real-time tradeable prices.
+     */
+    MACRO_INDICATOR,
     UNKNOWN
 }

@@ -96,47 +96,157 @@ market:
   cache:
     ttl:
       BINANCE: 2m
-      BIST: 24h
+      BIST: 15m
       EVDS: 6h
       ALL: 30m
-  providers:
+  # providers:
+  #   bist:
+  #     enabled: true
+  #     provider-mode: YAHOO_LOW_FREQUENCY
+  #     batch-size: 10
+  #     request-delay-ms: 1500
+  #     cooldown-minutes-on-rate-limit: 60
+  #     symbols:
+  #       - THYAO.IS
+  #       - ASELS.IS
+  #       - GARAN.IS
+  #       - AKBNK.IS
+  #       - BIMAS.IS
+  #       - KCHOL.IS
+  #       - SAHOL.IS
+  #       - EREGL.IS
+  #       - TUPRS.IS
+  #       - FROTO.IS
+  #       - SISE.IS
+  #       - PETKM.IS
+  #       - PGSUS.IS
+  #       - TTKOM.IS
+  #       - KOZAL.IS
+  #       - ISCTR.IS
+  #       - YKBNK.IS
+  #       - HALKB.IS
+  #       - VAKBN.IS
+  #       - TCELL.IS
+  #       - ARCLK.IS
+  #       - TOASO.IS
+  #       - DOHOL.IS
+  #       - ENKAI.IS
+  #       - MGROS.IS
+  #       - GUBRF.IS
+  #       - HEKTS.IS
+  #       - KRDMD.IS
+  #       - SASA.IS
+  #       - ULKER.IS
+  #     yahoo:
+  #       enabled: true
+  #       base-url: https://query1.finance.yahoo.com
+  #     delayed:
+  #       enabled: false
+  #   binance:
+  #     enabled: true
+  #     base-url: https://api.binance.com
+  #     symbols:
+  #       - BTCUSDT
+  #       - ETHUSDT
+  #       - BNBUSDT
+  #       - SOLUSDT
+  #       - XRPUSDT
+  #       - ADAUSDT
+  #       - AVAXUSDT
+  #       - DOGEUSDT
+  #   evds:
+  #     enabled: true
+  #     api:
+  #       key: Rb7ROmhyOC
+  #       url: https://evds3.tcmb.gov.tr/igmevdsms-dis
+  #     history:
+  #       scheduler-lookback-days: 7
+  #       backfill-default-days: 365
+  #     series:
+  #       - evdsKey: TP_DK_USD_A
+  #         apiCode: TP.DK.USD.A
+  #         symbol: USDTRY
+  #         name: USD / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+  #
+  #       - evdsKey: TP_DK_EUR_A
+  #         apiCode: TP.DK.EUR.A
+  #         symbol: EURTRY
+  #         name: EUR / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+  #
+  #       - evdsKey: TP_DK_GBP_A
+  #         apiCode: TP.DK.GBP.A
+  #         symbol: GBPTRY
+  #         name: GBP / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+  #
+  #       - evdsKey: TP_DK_CHF_A
+  #         apiCode: TP.DK.CHF.A
+  #         symbol: CHFTRY
+  #         name: CHF / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+  #
+  #       - evdsKey: TP_DK_JPY_A
+  #         apiCode: TP.DK.JPY.A
+  #         symbol: JPYTRY
+  #         name: JPY / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+  #
+  #       - evdsKey: TP_DK_AUD_A
+  #         apiCode: TP.DK.AUD.A
+  #         symbol: AUDTRY
+  #         name: AUD / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+  #
+  #       - evdsKey: TP_DK_CNY_A_YTL
+  #         apiCode: TP.DK.CNY.A.YTL
+  #         symbol: CNYTRY
+  #         name: CNY / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+  #
+  #       - evdsKey: TP_DK_NOK_A
+  #         apiCode: TP.DK.NOK.A
+  #         symbol: NOKTRY
+  #         name: NOK / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+  #
+  #       - evdsKey: TP_DK_SEK_A
+  #         apiCode: TP.DK.SEK.A
+  #         symbol: SEKTRY
+  #         name: SEK / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+  #
+  #       - evdsKey: TP_DK_DKK_A
+  #         apiCode: TP.DK.DKK.A
+  #         symbol: DKKTRY
+  #         name: DKK / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+  #
+  #       - evdsKey: TP_DK_SAR_A
+  #         apiCode: TP.DK.SAR.A
+  #         symbol: SARTRY
+  #         name: SAR / TRY
+  #         instrumentType: FX
+  #         currency: TRY
+
+  provider-clients:
     bist:
-      enabled: true # KRİTİK: Supports metodunun true dönmesi için eklendi
-      provider-mode: YAHOO_LOW_FREQUENCY # KRİTİK: fetchYahoo metodunun çalışması için eklendi
+      enabled: true
+      provider-mode: YAHOO_LOW_FREQUENCY
       batch-size: 10
       request-delay-ms: 1500
       cooldown-minutes-on-rate-limit: 60
-      symbols:
-        - THYAO.IS
-        - ASELS.IS
-        - GARAN.IS
-        - AKBNK.IS
-        - BIMAS.IS
-        - KCHOL.IS
-        - SAHOL.IS
-        - EREGL.IS
-        - TUPRS.IS
-        - FROTO.IS
-        - SISE.IS
-        - PETKM.IS
-        - PGSUS.IS
-        - TTKOM.IS
-        - KOZAL.IS
-        - ISCTR.IS
-        - YKBNK.IS
-        - HALKB.IS
-        - VAKBN.IS
-        - TCELL.IS
-        - ARCLK.IS
-        - TOASO.IS
-        - DOHOL.IS
-        - ENKAI.IS
-        - MGROS.IS
-        - GUBRF.IS
-        - HEKTS.IS
-        - KRDMD.IS
-        - SASA.IS
-        - ULKER.IS
       yahoo:
         enabled: true
         base-url: https://query1.finance.yahoo.com
@@ -145,15 +255,6 @@ market:
     binance:
       enabled: true
       base-url: https://api.binance.com
-      symbols:
-        - BTCUSDT
-        - ETHUSDT
-        - BNBUSDT
-        - SOLUSDT
-        - XRPUSDT
-        - ADAUSDT
-        - AVAXUSDT
-        - DOGEUSDT
     evds:
       enabled: true
       api:
@@ -163,83 +264,12 @@ market:
         scheduler-lookback-days: 7
         backfill-default-days: 365
 
-      series:
-        - evdsKey: TP_DK_USD_A
-          apiCode: TP.DK.USD.A
-          symbol: USDTRY
-          name: USD / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_EUR_A
-          apiCode: TP.DK.EUR.A
-          symbol: EURTRY
-          name: EUR / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_GBP_A
-          apiCode: TP.DK.GBP.A
-          symbol: GBPTRY
-          name: GBP / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_CHF_A
-          apiCode: TP.DK.CHF.A
-          symbol: CHFTRY
-          name: CHF / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_JPY_A
-          apiCode: TP.DK.JPY.A
-          symbol: JPYTRY
-          name: JPY / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_AUD_A
-          apiCode: TP.DK.AUD.A
-          symbol: AUDTRY
-          name: AUD / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_CNY_A_YTL
-          apiCode: TP.DK.CNY.A.YTL
-          symbol: CNYTRY
-          name: CNY / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_NOK_A
-          apiCode: TP.DK.NOK.A
-          symbol: NOKTRY
-          name: NOK / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_SEK_A
-          apiCode: TP.DK.SEK.A
-          symbol: SEKTRY
-          name: SEK / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_DKK_A
-          apiCode: TP.DK.DKK.A
-          symbol: DKKTRY
-          name: DKK / TRY
-          instrumentType: FX
-          currency: TRY
-
-        - evdsKey: TP_DK_SAR_A
-          apiCode: TP.DK.SAR.A
-          symbol: SARTRY
-          name: SAR / TRY
-          instrumentType: FX
-          currency: TRY
+  providers:
+    circuit-breaker:
+      sliding-window-size: 5
+      failure-rate-threshold: 60
+      wait-duration-open-state-seconds: 30
+      permitted-calls-in-half-open-state: 2
 
   history:
     backfill:

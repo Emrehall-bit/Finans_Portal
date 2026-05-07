@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class MarketQueryService {
+public class MarketQueryService implements MarketPriceReader {
 
     private static final Logger log = LoggerFactory.getLogger(MarketQueryService.class);
 
@@ -44,6 +44,7 @@ public class MarketQueryService {
                 .flatMap(marketCacheService::getQuoteBySymbol);
     }
 
+    @Override
     public CurrentPriceSnapshot resolveCurrentPrice(String symbol) {
         String canonicalSymbol = symbolNormalizer.normalize(symbol).orElse(symbol);
         if (canonicalSymbol == null || canonicalSymbol.isBlank()) {

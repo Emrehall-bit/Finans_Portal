@@ -15,7 +15,7 @@ class MarketCacheTtlPolicyTest {
     void resolvesSourceSpecificTtls() {
         assertThat(policy.ttlFor(DataSource.EVDS)).isEqualTo(Duration.ofHours(6));
         assertThat(policy.ttlFor(DataSource.BINANCE)).isEqualTo(Duration.ofMinutes(2));
-        assertThat(policy.ttlFor(DataSource.BIST)).isEqualTo(Duration.ofDays(1));
+        assertThat(policy.ttlFor(DataSource.BIST)).isEqualTo(Duration.ofMinutes(15));
         assertThat(policy.ttlFor(DataSource.UNKNOWN)).isEqualTo(Duration.ofMinutes(30));
     }
 
@@ -30,7 +30,7 @@ class MarketCacheTtlPolicyTest {
         properties.setTtl(java.util.Map.of(
                 "EVDS", Duration.ofHours(6),
                 "BINANCE", Duration.ofMinutes(2),
-                "BIST", Duration.ofDays(1),
+                "BIST", Duration.ofMinutes(15),
                 "ALL", Duration.ofMinutes(30)
         ));
         return new MarketCacheTtlPolicy(properties);

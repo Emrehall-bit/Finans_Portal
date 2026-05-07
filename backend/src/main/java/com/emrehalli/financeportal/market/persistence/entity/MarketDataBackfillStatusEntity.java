@@ -49,6 +49,15 @@ public class MarketDataBackfillStatusEntity {
     @Column(name = "retry_count", nullable = false)
     private Integer retryCount;
 
+    @Column(name = "total_chunks")
+    private Integer totalChunks;
+
+    @Column(name = "completed_chunks")
+    private Integer completedChunks;
+
+    @Column(name = "last_processed_date")
+    private LocalDate lastProcessedDate;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -93,4 +102,10 @@ public class MarketDataBackfillStatusEntity {
     public void setMaxDate(LocalDate maxDate) { this.maxDate = maxDate; }
     public Integer getRetryCount() { return retryCount; }
     public void setRetryCount(Integer retryCount) { this.retryCount = retryCount; }
+    public Integer getTotalChunks() { return totalChunks; }
+    public void setTotalChunks(Integer totalChunks) { this.totalChunks = totalChunks; }
+    public Integer getCompletedChunks() { return completedChunks; }
+    public void setCompletedChunks(Integer completedChunks) { this.completedChunks = completedChunks; }
+    public LocalDate getLastProcessedDate() { return lastProcessedDate; }
+    public void setLastProcessedDate(LocalDate lastProcessedDate) { this.lastProcessedDate = lastProcessedDate; }
 }

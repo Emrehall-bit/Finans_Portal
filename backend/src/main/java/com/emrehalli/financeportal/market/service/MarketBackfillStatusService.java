@@ -55,12 +55,36 @@ public class MarketBackfillStatusService {
     }
 
     public void markRunning(DataSource source, String symbol) {
+        markRunning(source, symbol, 0);
+    }
+
+    public void markRunning(DataSource source, String symbol, int totalChunks) {
         MarketDataBackfillStatusEntity entity = repository.findByProviderSourceAndSymbol(source, symbol)
                 .orElseGet(MarketDataBackfillStatusEntity::new);
         entity.setProviderSource(source);
         entity.setSymbol(symbol);
         entity.setStatus(BackfillRunStatus.RUNNING.name());
         entity.setLastAttemptAt(clock.instant());
+        entity.setTotalChunks(Math.max(totalChunks, 0));
+        entity.setCompletedChunks(0);
+        entity.setLastProcessedDate(null);
+        entity.setLastErrorMessage(null);
+        repository.save(entity);
+    }
+
+    public void updateProgress(DataSource source,
+                               String symbol,
+                               int totalChunks,
+                               int completedChunks,
+                               LocalDate lastProcessedDate) {
+        MarketDataBackfillStatusEntity entity = repository.findByProviderSourceAndSymbol(source, symbol)
+                .orElseGet(MarketDataBackfillStatusEntity::new);
+        entity.setProviderSource(source);
+        entity.setSymbol(symbol);
+        entity.setStatus(BackfillRunStatus.RUNNING.name());
+        entity.setTotalChunks(Math.max(totalChunks, 0));
+        entity.setCompletedChunks(Math.max(completedChunks, 0));
+        entity.setLastProcessedDate(lastProcessedDate);
         repository.save(entity);
     }
 
@@ -83,6 +107,12 @@ public class MarketBackfillStatusService {
         entity.setMinDate(minDate);
         entity.setMaxDate(maxDate);
         entity.setLastErrorMessage(message);
+        if (entity.getTotalChunks() == null) {
+            entity.setTotalChunks(0);
+        }
+        if (entity.getCompletedChunks() == null) {
+            entity.setCompletedChunks(0);
+        }
         if (status == BackfillRunStatus.SUCCESS) {
             entity.setLastSuccessAt(clock.instant());
             entity.setRetryCount(0);

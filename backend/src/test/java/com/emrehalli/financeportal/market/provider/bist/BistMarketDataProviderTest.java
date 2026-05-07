@@ -103,13 +103,14 @@ class BistMarketDataProviderTest {
     }
 
     @Test
-    void unauthorizedYahooKeepsExistingCacheByReturningEmpty() {
+    void unauthorizedYahooFallsBackToDelayedClientAndReturnsEmptyWhenFallbackHasNoCache() {
         BistMarketDataProvider provider = provider(properties(), new BistRoundRobinState());
         when(yahooClient.fetchQuotes(any())).thenReturn(YahooClient.FetchResult.unauthorized(401));
+        when(delayedClient.fetchQuotes(any())).thenReturn(List.of());
 
         var result = provider.fetch(ProviderFetchRequest.forSource(DataSource.BIST));
 
-        verify(delayedClient, never()).fetchQuotes(any());
+        verify(delayedClient).fetchQuotes(List.of("THYAO.IS", "ASELS.IS"));
         assertThat(result.quotes()).isEmpty();
     }
 

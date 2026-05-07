@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.util.ArrayList;
 import java.util.List;
 
-@ConfigurationProperties(prefix = "market.providers.binance")
+@ConfigurationProperties(prefix = "market.provider-clients.binance")
 public class BinanceProviderProperties {
 
     private boolean enabled;

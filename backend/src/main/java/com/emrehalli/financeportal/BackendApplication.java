@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.market.provider.binance.config.BinanceProvide
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
 import com.emrehalli.financeportal.market.scheduler.MarketRefreshProperties;
 import com.emrehalli.financeportal.market.service.MarketHistoryBackfillProperties;
+import com.emrehalli.financeportal.market.service.MarketProviderCircuitBreakerProperties;
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
 import com.emrehalli.financeportal.news.provider.finnhub.FinnhubProperties;
 import com.emrehalli.financeportal.news.provider.investing.InvestingNewsProperties;
@@ -24,6 +25,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         KapNewsProperties.class,
         MarketRefreshProperties.class,
         MarketHistoryBackfillProperties.class,
+        MarketProviderCircuitBreakerProperties.class,
         EvdsProperties.class,
         BinanceProviderProperties.class
 })

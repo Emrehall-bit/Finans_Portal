@@ -9,7 +9,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class MarketRefreshService {
@@ -19,13 +24,16 @@ public class MarketRefreshService {
     private final ProviderOrchestrationService providerOrchestrationService;
     private final MarketCacheService marketCacheService;
     private final MarketHistoryService marketHistoryService;
+    private final InstrumentRegistryService instrumentRegistryService;
 
     public MarketRefreshService(ProviderOrchestrationService providerOrchestrationService,
                                 MarketCacheService marketCacheService,
-                                MarketHistoryService marketHistoryService) {
+                                MarketHistoryService marketHistoryService,
+                                InstrumentRegistryService instrumentRegistryService) {
         this.providerOrchestrationService = providerOrchestrationService;
         this.marketCacheService = marketCacheService;
         this.marketHistoryService = marketHistoryService;
+        this.instrumentRegistryService = instrumentRegistryService;
     }
 
     public List<MarketQuote> refreshAll() {
@@ -55,6 +63,14 @@ public class MarketRefreshService {
                 .filter(MarketRefreshResult::success)
                 .forEach(result -> marketHistoryService.persistHistory(result.source(), result.historyRecords()));
 
+        results.stream()
+                .filter(MarketRefreshResult::success)
+                .forEach(result -> updateRegistryStatusForSuccess(result, resolveAttemptedMappings(request, result.source())));
+
+        results.stream()
+                .filter(result -> !result.success())
+                .forEach(result -> markAttemptedMappingsFailed(resolveAttemptedMappings(request, result.source()), result.errorMessage()));
+
         List<MarketQuote> aggregateQuotes = marketCacheService.rebuildAllQuotes(
                 providerOrchestrationService.availableSources()
         );
@@ -82,6 +98,54 @@ public class MarketRefreshService {
         );
 
         return results;
+    }
+
+    private List<InstrumentRegistryService.ResolvedMapping> resolveAttemptedMappings(ProviderFetchRequest request, DataSource source) {
+        List<InstrumentRegistryService.ResolvedMapping> mappings = instrumentRegistryService.resolveMappings(source).mappings();
+        if (request == null || !request.hasSymbolFilter()) {
+            return mappings;
+        }
+
+        Set<String> filteredSymbols = new LinkedHashSet<>(request.symbols());
+        return mappings.stream()
+                .filter(mapping -> filteredSymbols.contains(mapping.symbol()))
+                .toList();
+    }
+
+    private void updateRegistryStatusForSuccess(MarketRefreshResult result,
+                                                List<InstrumentRegistryService.ResolvedMapping> attemptedMappings) {
+        Set<String> refreshedSymbols = new LinkedHashSet<>();
+        result.quotes().stream()
+                .map(MarketQuote::symbol)
+                .forEach(refreshedSymbols::add);
+        result.historyRecords().stream()
+                .map(com.emrehalli.financeportal.market.service.model.MarketHistoryRecord::symbol)
+                .forEach(refreshedSymbols::add);
+
+        Map<String, InstrumentRegistryService.ResolvedMapping> mappingBySymbol = new LinkedHashMap<>();
+        attemptedMappings.forEach(mapping -> mappingBySymbol.putIfAbsent(mapping.symbol(), mapping));
+
+        for (InstrumentRegistryService.ResolvedMapping mapping : mappingBySymbol.values()) {
+            if (refreshedSymbols.contains(mapping.symbol())) {
+                instrumentRegistryService.markRefreshSuccess(
+                        mapping.mappingId(),
+                        result.refreshedAt() == null ? Instant.now() : result.refreshedAt()
+                );
+            } else {
+                instrumentRegistryService.markRefreshFailed(mapping.mappingId(), "No data returned during refresh");
+            }
+        }
+    }
+
+    private void markAttemptedMappingsFailed(List<InstrumentRegistryService.ResolvedMapping> attemptedMappings, String reason) {
+        if (attemptedMappings == null || attemptedMappings.isEmpty()) {
+            return;
+        }
+        String failureReason = reason == null || reason.isBlank() ? "Refresh failed" : reason;
+        attemptedMappings.stream()
+                .map(InstrumentRegistryService.ResolvedMapping::mappingId)
+                .distinct()
+                .forEach(mappingId -> instrumentRegistryService.markRefreshFailed(mappingId, failureReason));
     }
 
     private List<MarketQuote> successfulQuotes(List<MarketRefreshResult> results) {

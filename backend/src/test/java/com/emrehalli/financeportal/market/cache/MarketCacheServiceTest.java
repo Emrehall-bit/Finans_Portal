@@ -54,7 +54,7 @@ class MarketCacheServiceTest {
         lenient().when(ttlPolicy.symbolQuoteTtl()).thenReturn(Duration.ofHours(1));
         lenient().when(ttlPolicy.ttlFor(DataSource.EVDS)).thenReturn(Duration.ofHours(6));
         lenient().when(ttlPolicy.ttlFor(DataSource.BINANCE)).thenReturn(Duration.ofMinutes(2));
-        lenient().when(ttlPolicy.ttlFor(DataSource.BIST)).thenReturn(Duration.ofDays(1));
+        lenient().when(ttlPolicy.ttlFor(DataSource.BIST)).thenReturn(Duration.ofMinutes(15));
         lenient().doAnswer(invocation -> {
             redisStore.put(invocation.getArgument(0), invocation.getArgument(1));
             return null;
@@ -129,7 +129,7 @@ class MarketCacheServiceTest {
     }
 
     @Test
-    void mergesBistSourceCacheAcrossPartialRefreshes() throws Exception {
+    void replacesBistSourceCacheAcrossPartialRefreshes() throws Exception {
         MarketQuote thyao = quote("THYAO", DataSource.BIST);
         MarketQuote asels = quote("ASELS", DataSource.BIST);
 
@@ -141,10 +141,11 @@ class MarketCacheServiceTest {
                 objectMapper.getTypeFactory().constructCollectionType(List.class, MarketQuote.class)
         );
 
-        assertThat(sourceQuotes).extracting(MarketQuote::symbol).containsExactly("THYAO", "ASELS");
+        assertThat(sourceQuotes).extracting(MarketQuote::symbol).containsExactly("ASELS");
         assertThat(marketCacheService.getQuoteBySymbol("THYAO")).isPresent();
         assertThat(marketCacheService.getQuoteBySymbol("ASELS")).isPresent();
-        verify(valueOperations, times(2)).set(eq("market:quotes:source:BIST"), anyString(), eq(Duration.ofDays(1)));
+        verify(redisTemplate, times(2)).delete("market:quotes:source:BIST");
+        verify(valueOperations, times(2)).set(eq("market:quotes:source:BIST"), anyString(), eq(Duration.ofMinutes(15)));
     }
 
     @Test

@@ -1,18 +1,14 @@
 package com.emrehalli.financeportal.market.api;
 
-import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.market.api.dto.MarketQuoteResponse;
 import com.emrehalli.financeportal.market.api.mapper.MarketApiMapper;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
-import org.springframework.http.ResponseEntity;
+import com.emrehalli.financeportal.market.support.InstrumentTypeAliasResolver;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/markets")
@@ -20,66 +16,58 @@ public class MarketController {
 
     private final MarketQueryService marketQueryService;
     private final MarketApiMapper marketApiMapper;
-    private final AppMessageSource appMessageSource;
+    private final MarketApiResponseFactory responseFactory;
+    private final InstrumentTypeAliasResolver instrumentTypeAliasResolver;
 
     public MarketController(MarketQueryService marketQueryService,
                             MarketApiMapper marketApiMapper,
-                            AppMessageSource appMessageSource) {
+                            MarketApiResponseFactory responseFactory,
+                            InstrumentTypeAliasResolver instrumentTypeAliasResolver) {
         this.marketQueryService = marketQueryService;
         this.marketApiMapper = marketApiMapper;
-        this.appMessageSource = appMessageSource;
+        this.responseFactory = responseFactory;
+        this.instrumentTypeAliasResolver = instrumentTypeAliasResolver;
     }
 
+    /**
+     * Returns all cached market quotes.
+     *
+     * Role: public endpoint.
+     * Return type: wrapped quote list.
+     */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<MarketQuoteResponse>>> getMarkets() {
+    public ApiResponse<List<MarketQuoteResponse>> getMarkets() {
         List<MarketQuoteResponse> quotes = marketQueryService.getAllQuotes().stream()
                 .map(marketApiMapper::toResponse)
                 .toList();
-
-        return ResponseEntity.ok(
-                ApiResponse.<List<MarketQuoteResponse>>builder()
-                        .success(true)
-                        .message(appMessageSource.get("market.dataFetched"))
-                        .data(quotes)
-                        .build()
-        );
+        return responseFactory.success(quotes, "market.dataFetched");
     }
 
+    /**
+     * Returns market quotes filtered by instrument type aliases.
+     *
+     * Role: public endpoint.
+     * Return type: wrapped quote list.
+     */
     @GetMapping("/type/{type}")
-    public ResponseEntity<ApiResponse<List<MarketQuoteResponse>>> getByType(@PathVariable String type) {
-        InstrumentType instrumentType = InstrumentType.valueOf(type.toUpperCase(Locale.ROOT));
+    public ApiResponse<List<MarketQuoteResponse>> getByType(@PathVariable String type) {
+        InstrumentType instrumentType = instrumentTypeAliasResolver.resolve(type);
         List<MarketQuoteResponse> prices = marketQueryService.getAllQuotes().stream()
-                .filter(quote -> quote != null && compatibleTypes(instrumentType).contains(quote.instrumentType()))
+                .filter(quote -> quote != null && instrumentTypeAliasResolver.compatibleTypes(instrumentType).contains(quote.instrumentType()))
                 .map(marketApiMapper::toResponse)
                 .toList();
-
-        return ResponseEntity.ok(
-                ApiResponse.<List<MarketQuoteResponse>>builder()
-                        .success(true)
-                        .message(appMessageSource.get("market.dataFetched"))
-                        .data(prices)
-                        .build()
-        );
+        return responseFactory.success(prices, "market.dataFetched");
     }
 
+    /**
+     * Returns the current price snapshot for a symbol.
+     *
+     * Role: public endpoint.
+     * Return type: wrapped current price response.
+     */
     @GetMapping("/symbol/{symbol}")
-    public ResponseEntity<ApiResponse<MarketQuoteResponse>> getBySymbol(@PathVariable String symbol) {
+    public ApiResponse<MarketQuoteResponse> getBySymbol(@PathVariable String symbol) {
         MarketQuoteResponse quote = marketApiMapper.toResponse(marketQueryService.resolveCurrentPrice(symbol));
-
-        return ResponseEntity.ok(
-                ApiResponse.<MarketQuoteResponse>builder()
-                        .success(true)
-                        .message(appMessageSource.get("market.dataFetched"))
-                        .data(quote)
-                        .build()
-        );
-    }
-
-    private Set<InstrumentType> compatibleTypes(InstrumentType requestedType) {
-        return switch (requestedType) {
-            case CURRENCY, FX -> EnumSet.of(InstrumentType.CURRENCY, InstrumentType.FX);
-            case COMMODITY, GOLD -> EnumSet.of(InstrumentType.COMMODITY, InstrumentType.GOLD);
-            default -> EnumSet.of(requestedType);
-        };
+        return responseFactory.success(quote, "market.dataFetched");
     }
 }

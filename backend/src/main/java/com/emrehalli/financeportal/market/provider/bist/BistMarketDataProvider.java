@@ -33,39 +33,6 @@ public class BistMarketDataProvider implements MarketDataProvider {
     private static final Logger log = LoggerFactory.getLogger(BistMarketDataProvider.class);
     private static final String YAHOO_LOW_FREQUENCY = "YAHOO_LOW_FREQUENCY";
     private static final int DEFAULT_BATCH_SIZE = 5;
-    private static final List<String> DEFAULT_BIST_SYMBOLS = List.of(
-            "THYAO.IS",
-            "ASELS.IS",
-            "GARAN.IS",
-            "AKBNK.IS",
-            "BIMAS.IS",
-            "KCHOL.IS",
-            "SAHOL.IS",
-            "EREGL.IS",
-            "TUPRS.IS",
-            "FROTO.IS",
-            "YKBNK.IS",
-            "ISCTR.IS",
-            "SISE.IS",
-            "PGSUS.IS",
-            "PETKM.IS",
-            "KOZAL.IS",
-            "KOZAA.IS",
-            "ENKAI.IS",
-            "ASTOR.IS",
-            "HEKTS.IS",
-            "GUBRF.IS",
-            "ALARK.IS",
-            "TOASO.IS",
-            "BRSAN.IS",
-            "CCOLA.IS",
-            "CIMSA.IS",
-            "DOHOL.IS",
-            "ODAS.IS",
-            "OYAKC.IS",
-            "VESTL.IS"
-    );
-
     private final YahooClient yahooClient;
     private final BistDelayedClient delayedClient;
     private final BistProviderProperties properties;
@@ -232,11 +199,6 @@ public class BistMarketDataProvider implements MarketDataProvider {
     }
 
     private List<BistQuoteResponse> fetchFallback(List<String> batchSymbols) {
-        if (!properties.getDelayed().isEnabled()) {
-            log.info("BIST fallback skipped: fallbackSource={}, enabled=false", properties.getFallbackSource());
-            return List.of();
-        }
-
         log.info("BIST fallback used: fallbackSource={}", properties.getFallbackSource());
         return delayedClient.fetchQuotes(batchSymbols);
     }
@@ -284,24 +246,11 @@ public class BistMarketDataProvider implements MarketDataProvider {
                 .distinct()
                 .toList();
 
-        if (configuredSymbols.isEmpty()) {
-            List<String> rawSymbols = properties.getSymbols() == null || properties.getSymbols().isEmpty()
-                    ? DEFAULT_BIST_SYMBOLS
-                    : properties.getSymbols();
-            configuredSymbols = rawSymbols.stream()
-                    .map(this::canonicalSymbol)
-                    .filter(symbol -> !symbol.isBlank())
-                    .map(symbol -> new ConfiguredSymbol(symbol, requestSymbolKey(symbol)))
-                    .distinct()
-                    .toList();
-        }
-
         log.info(
-                "Market provider registry resolved: providerSource={}, registryMappingCount={}, resolvedSymbols={}, fallbackToYaml={}",
+                "Market provider registry resolved: providerSource={}, registryMappingCount={}, resolvedSymbols={}",
                 DataSource.BIST,
                 resolution.mappings().size(),
-                configuredSymbols.stream().map(ConfiguredSymbol::providerSymbol).toList(),
-                resolution.fallbackToYaml()
+                configuredSymbols.stream().map(ConfiguredSymbol::providerSymbol).toList()
         );
         return configuredSymbols;
     }

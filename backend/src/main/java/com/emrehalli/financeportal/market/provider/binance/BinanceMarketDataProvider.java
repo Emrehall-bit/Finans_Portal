@@ -137,11 +137,10 @@ public class BinanceMarketDataProvider implements MarketDataProvider {
                 .toList();
 
         log.info(
-                "Market provider registry resolved: providerSource={}, registryMappingCount={}, resolvedSymbols={}, fallbackToYaml={}",
+                "Market provider registry resolved: providerSource={}, registryMappingCount={}, resolvedSymbols={}",
                 DataSource.BINANCE,
                 resolution.mappings().size(),
-                configuredSymbols,
-                resolution.fallbackToYaml()
+                configuredSymbols
         );
 
         if (request == null || !request.hasSymbolFilter()) {

@@ -25,7 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
-public class MarketHistoryService {
+public class MarketHistoryService implements MarketHistoryReader {
 
     private static final Logger log = LoggerFactory.getLogger(MarketHistoryService.class);
     private static final String MARKET_HISTORY_CACHE = "market_history";
@@ -84,10 +84,12 @@ public class MarketHistoryService {
         return new MarketHistoryPersistenceResult(source, safeRecords.size(), savedCount, skippedDuplicateCount);
     }
 
+    @Override
     public List<MarketHistoryRecord> getHistory(String symbol, LocalDate startDate, LocalDate endDate) {
         return getHistory(symbol, null, startDate, endDate);
     }
 
+    @Override
     public List<MarketHistoryRecord> getHistory(String symbol, DataSource source, LocalDate startDate, LocalDate endDate) {
         String canonicalSymbol = symbolNormalizer.normalize(symbol).orElse(symbol);
         String cacheKey = getCacheKey(canonicalSymbol, source, startDate, endDate);

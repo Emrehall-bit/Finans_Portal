@@ -8,6 +8,7 @@ import com.emrehalli.financeportal.market.provider.MarketDataProvider;
 import com.emrehalli.financeportal.market.provider.ProviderFetchResult;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.service.model.MarketRefreshResult;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -20,9 +21,12 @@ public class ProviderOrchestrationService {
     private static final Logger log = LoggerFactory.getLogger(ProviderOrchestrationService.class);
 
     private final List<MarketDataProvider> providers;
+    private final ProviderCircuitBreakerService providerCircuitBreakerService;
 
-    public ProviderOrchestrationService(List<MarketDataProvider> providers) {
+    public ProviderOrchestrationService(List<MarketDataProvider> providers,
+                                        ProviderCircuitBreakerService providerCircuitBreakerService) {
         this.providers = providers;
+        this.providerCircuitBreakerService = providerCircuitBreakerService;
     }
 
     public List<MarketQuote> fetchQuotes(ProviderFetchRequest request) {
@@ -61,7 +65,16 @@ public class ProviderOrchestrationService {
 
         LoggingContext.put(LoggingConstants.SOURCE_KEY, source.name());
         try {
-            ProviderFetchResult providerResult = provider.fetch(request);
+            if (providerCircuitBreakerService.state(source) == io.github.resilience4j.circuitbreaker.CircuitBreaker.State.OPEN) {
+                log.warn(
+                        "Market provider refresh skipped because circuit breaker is open: source={}, openSince={}",
+                        source,
+                        providerCircuitBreakerService.openSince(source).orElse(null)
+                );
+                return MarketRefreshResult.failure(source, "Circuit breaker is OPEN");
+            }
+
+            ProviderFetchResult providerResult = providerCircuitBreakerService.execute(source, () -> provider.fetch(request));
             MarketRefreshResult result = MarketRefreshResult.success(source, providerResult);
             long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
             LoggingContext.put(LoggingConstants.SUCCESS_KEY, Boolean.TRUE.toString());
@@ -76,6 +89,17 @@ public class ProviderOrchestrationService {
                     durationMs
             );
             return result;
+        } catch (CallNotPermittedException ex) {
+            long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
+            LoggingContext.put(LoggingConstants.SUCCESS_KEY, Boolean.FALSE.toString());
+            LoggingContext.put(LoggingConstants.DURATION_MS_KEY, String.valueOf(durationMs));
+            log.warn(
+                    "Market provider refresh skipped because circuit breaker is open: source={}, openSince={}, durationMs={}",
+                    source,
+                    providerCircuitBreakerService.openSince(source).orElse(null),
+                    durationMs
+            );
+            return MarketRefreshResult.failure(source, "Circuit breaker is OPEN");
         } catch (Exception ex) {
             long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
             LoggingContext.put(LoggingConstants.SUCCESS_KEY, Boolean.FALSE.toString());

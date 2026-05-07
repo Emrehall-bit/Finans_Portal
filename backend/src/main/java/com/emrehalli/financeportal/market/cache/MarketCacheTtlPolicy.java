@@ -43,7 +43,7 @@ public class MarketCacheTtlPolicy {
         return switch (source) {
             case EVDS -> Duration.ofHours(6);
             case BINANCE -> Duration.ofMinutes(2);
-            case BIST -> Duration.ofDays(1);
+            case BIST -> Duration.ofMinutes(15);
             default -> Duration.ofMinutes(30);
         };
     }

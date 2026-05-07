@@ -8,7 +8,9 @@ import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,7 +21,7 @@ class ProviderOrchestrationServiceTest {
     void callsOnlyProvidersThatSupportRequest() {
         TestProvider supported = new TestProvider(DataSource.EVDS, true, List.of(quote("USDTRY")));
         TestProvider unsupported = new TestProvider(DataSource.BINANCE, false, List.of(quote("BTCUSDT")));
-        ProviderOrchestrationService service = new ProviderOrchestrationService(List.of(supported, unsupported));
+        ProviderOrchestrationService service = service(List.of(supported, unsupported));
 
         var results = service.fetchQuoteResults(ProviderFetchRequest.forSource(DataSource.EVDS));
 
@@ -34,7 +36,7 @@ class ProviderOrchestrationServiceTest {
         TestProvider failing = new TestProvider(DataSource.EVDS, true, null);
         failing.failure = new IllegalStateException("EVDS down");
         TestProvider successful = new TestProvider(DataSource.BINANCE, true, List.of(quote("BTCUSDT")));
-        ProviderOrchestrationService service = new ProviderOrchestrationService(List.of(failing, successful));
+        ProviderOrchestrationService service = service(List.of(failing, successful));
 
         var results = service.fetchQuoteResults(ProviderFetchRequest.all());
 
@@ -54,7 +56,7 @@ class ProviderOrchestrationServiceTest {
     @Test
     void treatsNullProviderResponseAsEmptySuccessfulResult() {
         TestProvider provider = new TestProvider(DataSource.EVDS, true, null);
-        ProviderOrchestrationService service = new ProviderOrchestrationService(List.of(provider));
+        ProviderOrchestrationService service = service(List.of(provider));
 
         var results = service.fetchQuoteResults(ProviderFetchRequest.all());
 
@@ -63,6 +65,39 @@ class ProviderOrchestrationServiceTest {
             assertThat(result.quotes()).isEmpty();
             assertThat(result.quoteCount()).isZero();
         });
+    }
+
+    @Test
+    void skipsProviderWhenCircuitBreakerIsOpen() {
+        TestProvider provider = new TestProvider(DataSource.EVDS, true, List.of(quote("USDTRY")));
+        ProviderOrchestrationService service = service(List.of(provider));
+
+        for (int index = 0; index < 5; index++) {
+            provider.failure = new IllegalStateException("EVDS down");
+            service.fetchQuoteResults(ProviderFetchRequest.all());
+        }
+        provider.failure = null;
+
+        var results = service.fetchQuoteResults(ProviderFetchRequest.all());
+
+        assertThat(results).singleElement().satisfies(result -> {
+            assertThat(result.success()).isFalse();
+            assertThat(result.errorMessage()).contains("Circuit breaker is OPEN");
+        });
+        assertThat(provider.fetchCount).isEqualTo(5);
+    }
+
+    private ProviderOrchestrationService service(List<TestProvider> providers) {
+        List<MarketDataProvider> marketDataProviders = providers.stream()
+                .map(provider -> (MarketDataProvider) provider)
+                .toList();
+        MarketProviderCircuitBreakerProperties properties = new MarketProviderCircuitBreakerProperties();
+        ProviderCircuitBreakerService circuitBreakerService = new ProviderCircuitBreakerService(
+                marketDataProviders,
+                properties,
+                Clock.fixed(Instant.parse("2026-05-06T00:00:00Z"), ZoneOffset.UTC)
+        );
+        return new ProviderOrchestrationService(marketDataProviders, circuitBreakerService);
     }
 
     private static MarketQuote quote(String symbol) {

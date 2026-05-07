@@ -114,11 +114,10 @@ public class EvdsMarketDataProvider implements MarketDataProvider {
                 .toList();
 
         log.info(
-                "Market provider registry resolved: providerSource={}, registryMappingCount={}, resolvedSymbols={}, fallbackToYaml={}",
+                "Market provider registry resolved: providerSource={}, registryMappingCount={}, resolvedSymbols={}",
                 DataSource.EVDS,
                 resolution.mappings().size(),
-                configuredSeries.stream().map(EvdsProperties.SeriesConfig::getApiCode).toList(),
-                resolution.fallbackToYaml()
+                configuredSeries.stream().map(EvdsProperties.SeriesConfig::getApiCode).toList()
         );
 
         if (request == null || !request.hasSymbolFilter()) {

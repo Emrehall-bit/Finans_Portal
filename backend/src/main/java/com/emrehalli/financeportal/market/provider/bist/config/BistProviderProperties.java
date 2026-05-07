@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-@ConfigurationProperties(prefix = "market.providers.bist")
+@ConfigurationProperties(prefix = "market.provider-clients.bist")
 public class BistProviderProperties {
 
     private boolean enabled;

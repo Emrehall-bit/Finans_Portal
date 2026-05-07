@@ -4,6 +4,8 @@ import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
+import com.emrehalli.financeportal.market.service.model.CurrentPriceSnapshot;
+import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import com.emrehalli.financeportal.portfolio.enums.PriceStatus;
 import org.junit.jupiter.api.Test;
 
@@ -38,7 +40,20 @@ class PortfolioPriceResolverTest {
                 Instant.parse("2026-04-27T10:16:00Z")
         );
 
-        when(marketQueryService.findCurrentBySymbol("BTCUSDT")).thenReturn(Optional.of(quote));
+        when(marketQueryService.resolveCurrentPrice("BTCUSDT")).thenReturn(new CurrentPriceSnapshot(
+                quote.symbol(),
+                quote.displayName(),
+                quote.instrumentType(),
+                quote.price(),
+                quote.changeRate(),
+                quote.currency(),
+                quote.source(),
+                quote.priceTime(),
+                quote.fetchedAt(),
+                MarketPriceStatus.LIVE,
+                quote.priceTime(),
+                true
+        ));
 
         PriceResolutionResult result = resolver.resolveCurrentPriceWithFallback(
                 "BTCUSDT",
@@ -48,13 +63,13 @@ class PortfolioPriceResolverTest {
 
         assertTrue(result.valuationAvailable());
         assertEquals(new BigDecimal("64000.50"), result.price());
-        assertEquals(PriceStatus.CACHED, result.priceStatus());
+        assertEquals(PriceStatus.LIVE, result.priceStatus());
         assertEquals(LocalDateTime.of(2026, 4, 27, 10, 15), result.lastPriceUpdateTime());
     }
 
     @Test
     void resolveCurrentPriceWithFallback_whenMarketQuoteMissing_fallsBackToPurchasePrice() {
-        when(marketQueryService.findCurrentBySymbol("THYAO")).thenReturn(Optional.empty());
+        when(marketQueryService.resolveCurrentPrice("THYAO")).thenReturn(CurrentPriceSnapshot.unavailable("THYAO"));
 
         PriceResolutionResult result = resolver.resolveCurrentPriceWithFallback(
                 "THYAO",
@@ -82,7 +97,20 @@ class PortfolioPriceResolverTest {
                 Instant.parse("2026-04-27T10:16:00Z")
         );
 
-        when(marketQueryService.findCurrentBySymbol("THYAO")).thenReturn(Optional.of(quote));
+        when(marketQueryService.resolveCurrentPrice("THYAO")).thenReturn(new CurrentPriceSnapshot(
+                quote.symbol(),
+                quote.displayName(),
+                quote.instrumentType(),
+                quote.price(),
+                quote.changeRate(),
+                quote.currency(),
+                quote.source(),
+                quote.priceTime(),
+                quote.fetchedAt(),
+                MarketPriceStatus.STALE,
+                quote.priceTime(),
+                false
+        ));
 
         PriceResolutionResult result = resolver.resolveCurrentPriceWithFallback(
                 "THYAO",
@@ -97,7 +125,7 @@ class PortfolioPriceResolverTest {
 
     @Test
     void resolveCurrentPriceWithFallback_whenMarketLookupFails_fallsBackToPurchasePrice() {
-        when(marketQueryService.findCurrentBySymbol("THYAO")).thenThrow(new IllegalStateException("cache down"));
+        when(marketQueryService.resolveCurrentPrice("THYAO")).thenThrow(new IllegalStateException("cache down"));
 
         PriceResolutionResult result = resolver.resolveCurrentPriceWithFallback(
                 "THYAO",

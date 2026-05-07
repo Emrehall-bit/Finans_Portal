@@ -1,6 +1,6 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
-import com.emrehalli.financeportal.market.service.MarketHistoryService;
+import com.emrehalli.financeportal.market.service.MarketHistoryReader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Component;
@@ -13,9 +13,9 @@ public class MarketHistoricalPriceReader implements HistoricalPriceReader {
 
     private static final Logger logger = LogManager.getLogger(MarketHistoricalPriceReader.class);
 
-    private final MarketHistoryService marketHistoryService;
+    private final MarketHistoryReader marketHistoryService;
 
-    public MarketHistoricalPriceReader(MarketHistoryService marketHistoryService) {
+    public MarketHistoricalPriceReader(MarketHistoryReader marketHistoryService) {
         this.marketHistoryService = marketHistoryService;
     }
 

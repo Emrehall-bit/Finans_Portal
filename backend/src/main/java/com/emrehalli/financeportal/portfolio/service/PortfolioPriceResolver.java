@@ -1,8 +1,8 @@
 package com.emrehalli.financeportal.portfolio.service;
 
 import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
+import com.emrehalli.financeportal.market.service.MarketPriceReader;
 import com.emrehalli.financeportal.market.service.model.CurrentPriceSnapshot;
-import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.portfolio.enums.PriceStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,9 +18,9 @@ public class PortfolioPriceResolver {
 
     private static final Logger logger = LogManager.getLogger(PortfolioPriceResolver.class);
 
-    private final MarketQueryService marketQueryService;
+    private final MarketPriceReader marketQueryService;
 
-    public PortfolioPriceResolver(MarketQueryService marketQueryService) {
+    public PortfolioPriceResolver(MarketPriceReader marketQueryService) {
         this.marketQueryService = marketQueryService;
     }
 

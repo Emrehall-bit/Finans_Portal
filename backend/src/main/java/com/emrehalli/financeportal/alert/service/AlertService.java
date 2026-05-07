@@ -8,7 +8,7 @@ import com.emrehalli.financeportal.alert.repository.AlertRepository;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
-import com.emrehalli.financeportal.market.service.MarketQueryService;
+import com.emrehalli.financeportal.market.service.MarketPriceReader;
 import com.emrehalli.financeportal.market.service.model.CurrentPriceSnapshot;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.repository.UserRepository;
@@ -25,11 +25,11 @@ public class AlertService {
 
     private final AlertRepository alertRepository;
     private final UserRepository userRepository;
-    private final MarketQueryService marketQueryService;
+    private final MarketPriceReader marketQueryService;
 
     public AlertService(AlertRepository alertRepository,
                         UserRepository userRepository,
-                        MarketQueryService marketQueryService) {
+                        MarketPriceReader marketQueryService) {
         this.alertRepository = alertRepository;
         this.userRepository = userRepository;
         this.marketQueryService = marketQueryService;
@@ -127,5 +127,4 @@ public class AlertService {
                 .build();
     }
 }
-
 
