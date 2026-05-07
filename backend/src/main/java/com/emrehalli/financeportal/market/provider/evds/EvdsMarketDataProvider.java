@@ -6,7 +6,6 @@ import com.emrehalli.financeportal.market.provider.MarketDataProvider;
 import com.emrehalli.financeportal.market.provider.ProviderFetchResult;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
-import com.emrehalli.financeportal.market.provider.evds.dto.EvdsResponse;
 import com.emrehalli.financeportal.market.service.InstrumentRegistryService;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import jakarta.annotation.PostConstruct;
@@ -22,22 +21,25 @@ public class EvdsMarketDataProvider implements MarketDataProvider {
 
     private static final Logger log = LoggerFactory.getLogger(EvdsMarketDataProvider.class);
 
-    private final EvdsClient evdsClient;
     private final EvdsProperties properties;
     private final EvdsMarketDataMapper evdsMarketDataMapper;
     private final SymbolNormalizer symbolNormalizer;
     private final InstrumentRegistryService instrumentRegistryService;
+    private final EvdsRequestBuilder requestBuilder;
+    private final EvdsBatchExecutor batchExecutor;
 
-    public EvdsMarketDataProvider(EvdsClient evdsClient,
-                                  EvdsProperties properties,
+    public EvdsMarketDataProvider(EvdsProperties properties,
                                   EvdsMarketDataMapper evdsMarketDataMapper,
                                   SymbolNormalizer symbolNormalizer,
-                                  InstrumentRegistryService instrumentRegistryService) {
-        this.evdsClient = evdsClient;
+                                  InstrumentRegistryService instrumentRegistryService,
+                                  EvdsRequestBuilder requestBuilder,
+                                  EvdsBatchExecutor batchExecutor) {
         this.properties = properties;
         this.evdsMarketDataMapper = evdsMarketDataMapper;
         this.symbolNormalizer = symbolNormalizer;
         this.instrumentRegistryService = instrumentRegistryService;
+        this.requestBuilder = requestBuilder;
+        this.batchExecutor = batchExecutor;
     }
 
     @PostConstruct
@@ -76,27 +78,58 @@ public class EvdsMarketDataProvider implements MarketDataProvider {
             return new ProviderFetchResult(List.of(), List.of());
         }
 
-        List<String> seriesCodes = targetSeries.stream()
-                .map(EvdsProperties.SeriesConfig::getApiCode)
-                .toList();
+        EvdsRequestBuilder.BuildResult buildResult = requestBuilder.build(targetSeries);
+        if (buildResult.validRequests().isEmpty()) {
+            log.warn(
+                    "EVDS provider fetch skipped: requestedSeriesCount={}, normalizedSeriesCount={}, invalidSeriesCodes={}",
+                    buildResult.requestedSeriesCount(),
+                    buildResult.normalizedSeriesCount(),
+                    buildResult.invalidSeriesCodes()
+            );
+            return new ProviderFetchResult(List.of(), List.of());
+        }
 
         log.info(
-                "EVDS provider fetch started: symbolCount={}, seriesCodes={}",
-                targetSeries.size(),
-                seriesCodes
+                "EVDS provider fetch started: requestedSeriesCount={}, normalizedSeriesCount={}, invalidSeriesCodes={}",
+                buildResult.requestedSeriesCount(),
+                buildResult.normalizedSeriesCount(),
+                buildResult.invalidSeriesCodes()
         );
 
-        EvdsResponse response = evdsClient.fetchSeries(
-                seriesCodes,
+        EvdsBatchExecutor.ExecutionResult executionResult = batchExecutor.execute(
+                buildResult.validRequests(),
                 request == null ? null : request.from(),
                 request == null ? null : request.to()
         );
 
-        List<MarketQuote> quotes = evdsMarketDataMapper.toMarketQuotes(response, targetSeries);
-        var historyRecords = evdsMarketDataMapper.toHistoryRecords(response, targetSeries);
+        List<MarketQuote> quotes = executionResult.successfulPayloads().stream()
+                .flatMap(payload -> evdsMarketDataMapper.toMarketQuotes(payload.response(), payload.seriesConfigs()).stream())
+                .toList();
+        var historyRecords = executionResult.successfulPayloads().stream()
+                .flatMap(payload -> evdsMarketDataMapper.toHistoryRecords(payload.response(), payload.seriesConfigs()).stream())
+                .toList();
+
+        int failedSeriesCount = executionResult.failedSeriesCodes().size();
+        int skippedSeriesCount = buildResult.invalidSeriesCodes().size() + failedSeriesCount;
+        if (!buildResult.invalidSeriesCodes().isEmpty() || failedSeriesCount > 0) {
+            log.warn(
+                    "EVDS batch partially failed. invalidSeries={}, failedSeries={}, fallbackRetryCount={}",
+                    buildResult.invalidSeriesCodes(),
+                    executionResult.failedSeriesCodes(),
+                    executionResult.fallbackRetryCount()
+            );
+        }
         log.info(
-                "EVDS provider fetch completed: quoteCount={}, historyRecordCount={}",
+                "EVDS provider fetch completed: source={}, requestedSeriesCount={}, normalizedSeriesCount={}, invalidSeriesCodes={}, batchSize={}, savedQuoteCount={}, skippedSeriesCount={}, failedSeriesCount={}, fallbackRetryCount={}, historyRecordCount={}",
+                DataSource.EVDS,
+                buildResult.requestedSeriesCount(),
+                buildResult.normalizedSeriesCount(),
+                buildResult.invalidSeriesCodes(),
+                executionResult.batchSize(),
                 quotes.size(),
+                skippedSeriesCount,
+                failedSeriesCount,
+                executionResult.fallbackRetryCount(),
                 historyRecords.size()
         );
         return new ProviderFetchResult(quotes, historyRecords);

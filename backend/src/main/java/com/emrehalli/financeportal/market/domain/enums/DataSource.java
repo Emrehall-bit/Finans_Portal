@@ -4,5 +4,6 @@ public enum DataSource {
     EVDS,
     BINANCE,
     BIST,
+    DB_FALLBACK,
     UNKNOWN
 }

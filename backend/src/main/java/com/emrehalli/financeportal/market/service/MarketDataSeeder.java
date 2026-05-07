@@ -425,7 +425,6 @@ public class MarketDataSeeder implements ApplicationRunner {
                 seed("TCMBUFE_AYLIK",   "UFE Aylik Degisim (%)",          InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TUFE1YI.T1-1")),
                 seed("TCMBUFE_YILLIK",  "UFE Yillik Degisim (%)",         InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TUFE1YI.T1-3")),
                 seed("TCMBISSIZLIK",    "Issizlik Orani (%)",             InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TIG08")),
-                seed("TCMBISSIZLIK_D",  "Issizlik Degisim (%)",           InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TIG08-1")),
                 seed("TCMBFAIZ",        "TCMB Politika Faizi (%)",        InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.BISPOLFAIZ.TUR")),
                 seed("TCMBMEVFAIZ",     "TL Mevduat Faizi (%)",           InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TRY.MT06")),
                 seed("BIST_BILESIK",    "BIST Bilesik Endeks",            InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.MK.F.BILESIK"))

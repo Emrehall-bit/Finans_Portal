@@ -1,11 +1,14 @@
 package com.emrehalli.financeportal.market.provider.evds;
 
+import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
+import com.emrehalli.financeportal.market.provider.ProviderFetchResult;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
 import com.emrehalli.financeportal.market.provider.evds.dto.EvdsResponse;
 import com.emrehalli.financeportal.market.service.InstrumentRegistryService;
+import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +16,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,110 +30,134 @@ import static org.mockito.Mockito.when;
 class EvdsMarketDataProviderTest {
 
     @Mock
-    private EvdsClient evdsClient;
-
-    @Mock
     private EvdsMarketDataMapper mapper;
 
     @Mock
     private InstrumentRegistryService instrumentRegistryService;
 
+    @Mock
+    private EvdsBatchExecutor batchExecutor;
+
     @Test
-    void convertsMultipleSymbolsToSingleEvdsClientCall() {
-        EvdsProperties properties = evdsProperties();
-        EvdsMarketDataProvider provider = new EvdsMarketDataProvider(evdsClient, properties, mapper, new SymbolNormalizer(), instrumentRegistryService);
+    void preservesProviderSeriesCodesInBatchRequests() {
+        EvdsMarketDataProvider provider = provider();
         when(instrumentRegistryService.resolveMappings(DataSource.EVDS)).thenReturn(new InstrumentRegistryService.Resolution(
                 DataSource.EVDS,
                 List.of(
-                        mapping("USDTRY", "USD/TRY", InstrumentType.FOREX, "TRY", "TP.DK.USD.A"),
-                        mapping("EURTRY", "EUR/TRY", InstrumentType.FOREX, "TRY", "TP.DK.EUR.A")
+                        mapping("TCMBTUFEAYLIK", "TUFE Aylik Degisim (%)", InstrumentType.MACRO_INDICATOR, "TRY", "TP.TUKFIY2025.GENEL-1"),
+                        mapping("TCMBTUFEYILLIK", "TUFE Yillik Degisim (%)", InstrumentType.MACRO_INDICATOR, "TRY", "TP.TUKFIY2025.GENEL-3")
                 )
         ));
-        when(evdsClient.fetchSeries(any(), any(), any())).thenReturn(new EvdsResponse(List.of()));
-        when(mapper.toMarketQuotes(any(), any())).thenReturn(List.of());
+        when(batchExecutor.execute(any(), any(), any())).thenReturn(new EvdsBatchExecutor.ExecutionResult(List.of(), List.of(), 5, 0));
 
-        provider.fetchQuotes(ProviderFetchRequest.forSymbols(List.of("usdtry", "EUR/TRY")));
+        provider.fetchQuotes(ProviderFetchRequest.forSymbols(List.of("TCMBTUFE_AYLIK", "TCMBTUFE_YILLIK")));
 
-        ArgumentCaptor<List<String>> seriesCodesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(evdsClient).fetchSeries(seriesCodesCaptor.capture(), any(), any());
-        assertThat(seriesCodesCaptor.getValue())
-                .containsExactlyInAnyOrder("TP.DK.USD.A", "TP.DK.EUR.A");
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<EvdsRequestBuilder.EvdsSeriesRequest>> requestCaptor = ArgumentCaptor.forClass(List.class);
+        verify(batchExecutor).execute(requestCaptor.capture(), any(), any());
+        assertThat(requestCaptor.getValue())
+                .extracting(EvdsRequestBuilder.EvdsSeriesRequest::requestSeriesCode)
+                .containsExactly("TP.TUKFIY2025.GENEL-1", "TP.TUKFIY2025.GENEL-3");
+    }
+
+    @Test
+    void skipsInvalidSeriesWithoutFailingWholeRefresh() {
+        EvdsMarketDataProvider provider = provider();
+        when(instrumentRegistryService.resolveMappings(DataSource.EVDS)).thenReturn(new InstrumentRegistryService.Resolution(
+                DataSource.EVDS,
+                List.of(
+                        mapping("VALID", "Valid", InstrumentType.MACRO_INDICATOR, "TRY", "TP.TIG08"),
+                        mapping("INVALID", "Invalid", InstrumentType.MACRO_INDICATOR, "TRY", "   ")
+                )
+        ));
+        when(batchExecutor.execute(any(), any(), any())).thenReturn(new EvdsBatchExecutor.ExecutionResult(List.of(), List.of(), 5, 0));
+
+        ProviderFetchResult result = provider.fetch(ProviderFetchRequest.all());
+
+        assertThat(result.quotes()).isEmpty();
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<EvdsRequestBuilder.EvdsSeriesRequest>> requestCaptor = ArgumentCaptor.forClass(List.class);
+        verify(batchExecutor).execute(requestCaptor.capture(), any(), any());
+        assertThat(requestCaptor.getValue()).singleElement().satisfies(request ->
+                assertThat(request.originalSeriesCode()).isEqualTo("TP.TIG08")
+        );
+    }
+
+    @Test
+    void mapsPartialSuccessPayloadsWithoutFailingWholeRefresh() {
+        EvdsMarketDataProvider provider = provider();
+        when(instrumentRegistryService.resolveMappings(DataSource.EVDS)).thenReturn(new InstrumentRegistryService.Resolution(
+                DataSource.EVDS,
+                List.of(
+                        mapping("TCMBISSIZLIK", "Issizlik Orani (%)", InstrumentType.MACRO_INDICATOR, "TRY", "TP.TIG08"),
+                        mapping("TCMBISSIZLIKD", "Issizlik Degisim (%)", InstrumentType.MACRO_INDICATOR, "TRY", "TP.TIG08-1")
+                )
+        ));
+        EvdsProperties.SeriesConfig seriesConfig = new EvdsProperties.SeriesConfig();
+        seriesConfig.setSymbol("TCMBISSIZLIK");
+        seriesConfig.setName("Issizlik Orani (%)");
+        seriesConfig.setInstrumentType(InstrumentType.MACRO_INDICATOR);
+        seriesConfig.setCurrency("TRY");
+        seriesConfig.setApiCode("TP.TIG08");
+        seriesConfig.setEvdsKey("TP.TIG08");
+
+        when(batchExecutor.execute(any(), any(), any())).thenReturn(new EvdsBatchExecutor.ExecutionResult(
+                List.of(new EvdsBatchExecutor.SuccessfulPayload(new EvdsResponse(List.of()), List.of(seriesConfig), List.of("TP.TIG08"))),
+                List.of("TP.TIG08-1"),
+                5,
+                1
+        ));
+        when(mapper.toMarketQuotes(any(), any())).thenReturn(List.of(new MarketQuote(
+                "TCMBISSIZLIK",
+                "Issizlik Orani (%)",
+                InstrumentType.MACRO_INDICATOR,
+                BigDecimal.ONE,
+                null,
+                "TRY",
+                DataSource.EVDS,
+                Instant.parse("2026-05-07T00:00:00Z"),
+                Instant.parse("2026-05-07T00:00:00Z")
+        )));
+        when(mapper.toHistoryRecords(any(), any())).thenReturn(List.of(new MarketHistoryRecord(
+                "TCMBISSIZLIK",
+                "Issizlik Orani (%)",
+                InstrumentType.MACRO_INDICATOR,
+                DataSource.EVDS,
+                LocalDate.of(2026, 5, 7),
+                BigDecimal.ONE,
+                "TRY"
+        )));
+
+        ProviderFetchResult result = provider.fetch(ProviderFetchRequest.all());
+
+        assertThat(result.quotes()).hasSize(1);
+        verify(mapper).toMarketQuotes(any(), any());
+        verify(mapper).toHistoryRecords(any(), any());
     }
 
     @Test
     void supportsOnlyEvdsOrUnfilteredRequests() {
-        EvdsProperties properties = evdsProperties();
-        EvdsMarketDataProvider provider = new EvdsMarketDataProvider(evdsClient, properties, mapper, new SymbolNormalizer(), instrumentRegistryService);
+        EvdsMarketDataProvider provider = provider();
 
         assertThat(provider.supports(ProviderFetchRequest.all())).isTrue();
         assertThat(provider.supports(ProviderFetchRequest.forSource(DataSource.EVDS))).isTrue();
         assertThat(provider.supports(ProviderFetchRequest.forSource(DataSource.BINANCE))).isFalse();
     }
 
-    @Test
-    void buildsCommoditySeriesConfigFromRegistryMapping() {
-        EvdsProperties properties = evdsProperties();
-        EvdsMarketDataProvider provider = new EvdsMarketDataProvider(evdsClient, properties, mapper, new SymbolNormalizer(), instrumentRegistryService);
-        when(instrumentRegistryService.resolveMappings(DataSource.EVDS)).thenReturn(new InstrumentRegistryService.Resolution(
-                DataSource.EVDS,
-                List.of(mapping("XAUTRY", "Gram Altin", InstrumentType.COMMODITY, "TRY", "TP.MK.ALTIN.GRM"))
-        ));
-        when(evdsClient.fetchSeries(any(), any(), any())).thenReturn(new EvdsResponse(List.of()));
-        when(mapper.toMarketQuotes(any(), any())).thenReturn(List.of());
-        when(mapper.toHistoryRecords(any(), any())).thenReturn(List.of());
-
-        provider.fetch(ProviderFetchRequest.forSymbols(List.of("XAUTRY")));
-
-        ArgumentCaptor<List<EvdsProperties.SeriesConfig>> seriesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(mapper).toMarketQuotes(any(), seriesCaptor.capture());
-        assertThat(seriesCaptor.getValue()).singleElement().satisfies(series -> {
-            assertThat(series.getSymbol()).isEqualTo("XAUTRY");
-            assertThat(series.getInstrumentType()).isEqualTo(InstrumentType.COMMODITY);
-            assertThat(series.getApiCode()).isEqualTo("TP.MK.ALTIN.GRM");
-            assertThat(series.getEvdsKey()).isEqualTo("TP.MK.ALTIN.GRM");
-            assertThat(series.getCurrency()).isEqualTo("TRY");
-        });
-    }
-
-    @Test
-    void buildsMacroIndicatorSeriesConfigFromRegistryMapping() {
-        EvdsProperties properties = evdsProperties();
-        EvdsMarketDataProvider provider = new EvdsMarketDataProvider(evdsClient, properties, mapper, new SymbolNormalizer(), instrumentRegistryService);
-        when(instrumentRegistryService.resolveMappings(DataSource.EVDS)).thenReturn(new InstrumentRegistryService.Resolution(
-                DataSource.EVDS,
-                List.of(mapping("TCMBTUFE", "TCMB TUFE", InstrumentType.MACRO_INDICATOR, "TRY", "TP.FG.J0"))
-        ));
-        when(evdsClient.fetchSeries(any(), any(), any())).thenReturn(new EvdsResponse(List.of()));
-        when(mapper.toMarketQuotes(any(), any())).thenReturn(List.of());
-        when(mapper.toHistoryRecords(any(), any())).thenReturn(List.of());
-
-        provider.fetch(ProviderFetchRequest.forSymbols(List.of("TCMB_TUFE")));
-
-        ArgumentCaptor<List<EvdsProperties.SeriesConfig>> seriesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(mapper).toMarketQuotes(any(), seriesCaptor.capture());
-        assertThat(seriesCaptor.getValue()).singleElement().satisfies(series -> {
-            assertThat(series.getSymbol()).isEqualTo("TCMBTUFE");
-            assertThat(series.getInstrumentType()).isEqualTo(InstrumentType.MACRO_INDICATOR);
-            assertThat(series.getApiCode()).isEqualTo("TP.FG.J0");
-            assertThat(series.getEvdsKey()).isEqualTo("TP.FG.J0");
-            assertThat(series.getCurrency()).isEqualTo("TRY");
-        });
+    private EvdsMarketDataProvider provider() {
+        return new EvdsMarketDataProvider(
+                evdsProperties(),
+                mapper,
+                new SymbolNormalizer(),
+                instrumentRegistryService,
+                new EvdsRequestBuilder(new EvdsSeriesValidator(new EvdsSeriesNormalizer())),
+                batchExecutor
+        );
     }
 
     private EvdsProperties evdsProperties() {
         EvdsProperties properties = new EvdsProperties();
-        EvdsProperties.SeriesConfig usd = new EvdsProperties.SeriesConfig();
-        usd.setEvdsKey("TP_DK_USD_A");
-        usd.setApiCode("TP.DK.USD.A");
-        usd.setSymbol("USDTRY");
-
-        EvdsProperties.SeriesConfig eur = new EvdsProperties.SeriesConfig();
-        eur.setEvdsKey("TP_DK_EUR_A");
-        eur.setApiCode("TP.DK.EUR.A");
-        eur.setSymbol("EURTRY");
-
         properties.setEnabled(true);
-        properties.setSeries(List.of(usd, eur));
         return properties;
     }
 

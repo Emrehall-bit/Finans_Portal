@@ -69,6 +69,33 @@ class MarketQueryServiceTest {
         assertThat(result.priceStatus()).isEqualTo(MarketPriceStatus.LIVE);
     }
 
+    @Test
+    void getQuoteBySymbolFallsBackToLatestDbHistoryWhenRedisQuoteIsMissing() {
+        MarketQueryService service = new MarketQueryService(marketCacheService, marketHistoryRepository, new SymbolNormalizer());
+        when(marketCacheService.getQuoteBySymbol("THYAO")).thenReturn(Optional.empty());
+        when(marketHistoryRepository.findTopBySymbolOrderByPriceDateDescIdDesc("THYAO")).thenReturn(Optional.of(historyEntity()));
+
+        MarketQuote result = service.getQuoteBySymbol("THYAO");
+
+        assertThat(result.symbol()).isEqualTo("THYAO");
+        assertThat(result.price()).isEqualByComparingTo("320.400000");
+        assertThat(result.changeRate()).isNull();
+        assertThat(result.source()).isEqualTo(DataSource.DB_FALLBACK);
+    }
+
+    @Test
+    void findCurrentBySymbolFallsBackToLatestDbHistoryWhenRedisQuoteIsMissing() {
+        MarketQueryService service = new MarketQueryService(marketCacheService, marketHistoryRepository, new SymbolNormalizer());
+        when(marketCacheService.getQuoteBySymbol("THYAO")).thenReturn(Optional.empty());
+        when(marketHistoryRepository.findTopBySymbolOrderByPriceDateDescIdDesc("THYAO")).thenReturn(Optional.of(historyEntity()));
+
+        Optional<MarketQuote> result = service.findCurrentBySymbol("THYAO");
+
+        assertThat(result).isPresent();
+        assertThat(result.orElseThrow().source()).isEqualTo(DataSource.DB_FALLBACK);
+        assertThat(result.orElseThrow().changeRate()).isNull();
+    }
+
     private MarketQuote liveQuote() {
         Instant now = Instant.parse("2026-05-04T00:00:00Z");
         return new MarketQuote(

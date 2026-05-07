@@ -76,6 +76,18 @@ class MarketControllerTest {
     }
 
     @Test
+    void getMarketsSupportsTypeQueryParam() throws Exception {
+        when(marketQueryService.getAllQuotes()).thenReturn(List.of(currencyQuote(), stockQuote(), macroQuote()));
+
+        mockMvc.perform(get("/api/v1/markets").param("type", "MACRO_INDICATOR"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].symbol").value("TCMBFAIZ"))
+                .andExpect(jsonPath("$.data[0].instrumentType").value("MACRO_INDICATOR"));
+    }
+
+    @Test
     void getBySymbolReturnsSingleQuote() throws Exception {
         when(marketQueryService.resolveCurrentPrice("BTCUSDT")).thenReturn(currentPriceSnapshot());
 
@@ -185,6 +197,20 @@ class MarketControllerTest {
                 MarketPriceStatus.LIVE,
                 Instant.parse("2026-05-03T12:00:00Z"),
                 true
+        );
+    }
+
+    private MarketQuote macroQuote() {
+        return new MarketQuote(
+                "TCMBFAIZ",
+                "TCMB Politika Faizi (%)",
+                InstrumentType.MACRO_INDICATOR,
+                new BigDecimal("46.000000"),
+                new BigDecimal("0.5000"),
+                "TRY",
+                DataSource.EVDS,
+                Instant.parse("2026-05-03T12:00:00Z"),
+                Instant.parse("2026-05-03T12:00:00Z")
         );
     }
 }

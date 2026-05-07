@@ -239,7 +239,7 @@ public class InstrumentRegistryService {
                                                      boolean enabled) {
         MarketInstrumentEntity instrument = getInstrument(instrumentId);
         String normalizedExternalSymbol = normalizeExternalSymbol(externalSymbol);
-        ensureExternalSymbolAvailable(source, normalizedExternalSymbol, null);
+        ensureExternalSymbolAvailable(instrument.getId(), source, normalizedExternalSymbol, null);
 
         MarketProviderMappingEntity entity = new MarketProviderMappingEntity();
         entity.setInstrument(instrument);
@@ -282,7 +282,7 @@ public class InstrumentRegistryService {
         }
 
         String normalizedExternalSymbol = normalizeExternalSymbol(externalSymbol);
-        ensureExternalSymbolAvailable(source, normalizedExternalSymbol, mappingId);
+        ensureExternalSymbolAvailable(instrument.getId(), source, normalizedExternalSymbol, mappingId);
 
         entity.setInstrument(instrument);
         entity.setSource(source);
@@ -595,7 +595,22 @@ public class InstrumentRegistryService {
                 });
     }
 
-    private void ensureExternalSymbolAvailable(DataSource source, String externalSymbol, UUID currentId) {
+    private void ensureExternalSymbolAvailable(UUID instrumentId, DataSource source, String externalSymbol, UUID currentId) {
+        if (source == DataSource.EVDS) {
+            marketProviderMappingRepository.findFirstByInstrument_IdAndSourceAndExternalSymbolAndEnabledTrueAndInstrument_EnabledTrue(
+                            instrumentId,
+                            source,
+                            externalSymbol
+                    )
+                    .filter(existing -> currentId == null || !existing.getId().equals(currentId))
+                    .ifPresent(existing -> {
+                        throw new DuplicateResourceException(
+                                "Provider mapping already exists for source " + source + ", instrument " + instrumentId + " and symbol " + externalSymbol
+                        );
+                    });
+            return;
+        }
+
         marketProviderMappingRepository.findFirstBySourceAndExternalSymbolAndEnabledTrueAndInstrument_EnabledTrue(source, externalSymbol)
                 .filter(existing -> currentId == null || !existing.getId().equals(currentId))
                 .ifPresent(existing -> {

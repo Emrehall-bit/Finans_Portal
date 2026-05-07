@@ -82,6 +82,13 @@ public interface MarketProviderMappingRepository extends JpaRepository<MarketPro
             String externalSymbol
     );
 
+    @EntityGraph(attributePaths = "instrument")
+    Optional<MarketProviderMappingEntity> findFirstByInstrument_IdAndSourceAndExternalSymbolAndEnabledTrueAndInstrument_EnabledTrue(
+            UUID instrumentId,
+            DataSource source,
+            String externalSymbol
+    );
+
     /**
      * Finds all mappings that are due for refresh.
      *

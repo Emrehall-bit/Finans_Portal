@@ -70,7 +70,6 @@ class MarketDataSeederTest {
                         "TCMBUFEAYLIK",
                         "TCMBUFEYILLIK",
                         "TCMBISSIZLIK",
-                        "TCMBISSIZLIKD",
                         "TCMBFAIZ",
                         "TCMBMEVFAIZ",
                         "BISTBILESIK"
@@ -89,7 +88,6 @@ class MarketDataSeederTest {
                         "TCMBUFEAYLIK=TP.TUFE1YI.T1-1",
                         "TCMBUFEYILLIK=TP.TUFE1YI.T1-3",
                         "TCMBISSIZLIK=TP.TIG08",
-                        "TCMBISSIZLIKD=TP.TIG08-1",
                         "TCMBFAIZ=TP.BISPOLFAIZ.TUR",
                         "TCMBMEVFAIZ=TP.TRY.MT06",
                         "BISTBILESIK=TP.MK.F.BILESIK"

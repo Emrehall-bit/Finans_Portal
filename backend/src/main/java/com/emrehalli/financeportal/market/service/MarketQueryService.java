@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.market.service;
 
 import com.emrehalli.financeportal.market.cache.MarketCacheService;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
+import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import com.emrehalli.financeportal.market.exception.MarketDataNotFoundException;
 import com.emrehalli.financeportal.market.persistence.entity.MarketHistoryEntity;
@@ -41,7 +42,7 @@ public class MarketQueryService implements MarketPriceReader {
 
     public Optional<MarketQuote> findCurrentBySymbol(String symbol) {
         return symbolNormalizer.normalize(symbol)
-                .flatMap(marketCacheService::getQuoteBySymbol);
+                .flatMap(this::findQuoteWithFallback);
     }
 
     @Override
@@ -107,8 +108,38 @@ public class MarketQueryService implements MarketPriceReader {
         String canonicalSymbol = symbolNormalizer.normalize(symbol)
                 .orElseThrow(() -> new MarketDataNotFoundException("Market quote not found for symbol: " + symbol));
 
-        return marketCacheService.getQuoteBySymbol(canonicalSymbol)
+        return findQuoteWithFallback(canonicalSymbol)
                 .orElseThrow(() -> new MarketDataNotFoundException("Market quote not found for symbol: " + canonicalSymbol));
+    }
+
+    private Optional<MarketQuote> findQuoteWithFallback(String canonicalSymbol) {
+        Optional<MarketQuote> liveQuote = marketCacheService.getQuoteBySymbol(canonicalSymbol)
+                .filter(this::hasUsablePrice);
+        if (liveQuote.isPresent()) {
+            return liveQuote;
+        }
+
+        return marketHistoryRepository.findTopBySymbolOrderByPriceDateDescIdDesc(canonicalSymbol)
+                .filter(this::hasUsablePrice)
+                .map(this::toDbFallbackQuote);
+    }
+
+    private MarketQuote toDbFallbackQuote(MarketHistoryEntity entity) {
+        Instant priceTime = entity.getPriceDate() == null
+                ? null
+                : entity.getPriceDate().atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant fetchedAt = entity.getCreatedAt() != null ? entity.getCreatedAt() : priceTime;
+        return new MarketQuote(
+                entity.getSymbol(),
+                entity.getDisplayName(),
+                entity.getInstrumentType(),
+                entity.getClosePrice(),
+                null,
+                entity.getCurrency(),
+                DataSource.DB_FALLBACK,
+                priceTime,
+                fetchedAt
+        );
     }
 
     private boolean hasUsablePrice(MarketQuote quote) {

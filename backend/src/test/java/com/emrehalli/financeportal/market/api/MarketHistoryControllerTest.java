@@ -125,6 +125,37 @@ class MarketHistoryControllerTest {
     }
 
     @Test
+    void getHistorySupportsAliasPathWithFromToParams() throws Exception {
+        when(marketHistoryService.getHistory(
+                "TCMBFAIZ",
+                null,
+                LocalDate.of(2024, 1, 1),
+                LocalDate.of(2026, 5, 7)
+        )).thenReturn(List.of(new MarketHistoryRecord(
+                "TCMBFAIZ",
+                "TCMB Politika Faizi (%)",
+                InstrumentType.MACRO_INDICATOR,
+                DataSource.EVDS,
+                LocalDate.of(2026, 4, 1),
+                new BigDecimal("46.000000"),
+                "TRY"
+        )));
+
+        mockMvc.perform(get("/api/v1/markets/history/TCMBFAIZ")
+                        .param("from", "2024-01-01")
+                        .param("to", "2026-05-07"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.historyStatus").value("INSUFFICIENT_HISTORY"));
+
+        verify(marketHistoryService).getHistory(
+                eq("TCMBFAIZ"),
+                isNull(),
+                eq(LocalDate.of(2024, 1, 1)),
+                eq(LocalDate.of(2026, 5, 7))
+        );
+    }
+
+    @Test
     void getHistoryResolvesRangeWhenProvided() throws Exception {
         mockClock(LocalDate.of(2026, 5, 4));
         when(marketHistoryService.getHistory(

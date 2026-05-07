@@ -7,6 +7,7 @@ import com.emrehalli.financeportal.market.api.dto.admin.InstrumentAdminResponse;
 import com.emrehalli.financeportal.market.api.dto.admin.InstrumentMappingAdminResponse;
 import com.emrehalli.financeportal.market.api.dto.admin.MarketProviderHealthResponse;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
+import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.persistence.entity.MarketInstrumentEntity;
 import com.emrehalli.financeportal.market.persistence.entity.MarketProviderMappingEntity;
 import com.emrehalli.financeportal.market.service.MarketProviderHealthService;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
 public class MarketApiMapper {
 
     public MarketQuoteResponse toResponse(MarketQuote quote) {
+        boolean staleFallback = quote.source() == DataSource.DB_FALLBACK;
         return new MarketQuoteResponse(
                 quote.symbol(),
                 quote.displayName(),
@@ -30,7 +32,7 @@ public class MarketApiMapper {
                 quote.source().name(),
                 quote.priceTime(),
                 quote.fetchedAt(),
-                "LIVE",
+                staleFallback ? "STALE" : "LIVE",
                 quote.fetchedAt() != null ? quote.fetchedAt() : quote.priceTime()
         );
     }

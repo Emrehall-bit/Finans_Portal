@@ -20,6 +20,8 @@ public class InstrumentTypeAliasResolver {
             Map.entry("STOCK", InstrumentType.STOCK),
             Map.entry("FUND", InstrumentType.FUND),
             Map.entry("CRYPTO", InstrumentType.CRYPTO),
+            Map.entry("MACRO", InstrumentType.MACRO_INDICATOR),
+            Map.entry("MACRO_INDICATOR", InstrumentType.MACRO_INDICATOR),
             Map.entry("INDEX", InstrumentType.INDEX),
             Map.entry("BOND", InstrumentType.BOND),
             Map.entry("UNKNOWN", InstrumentType.UNKNOWN)

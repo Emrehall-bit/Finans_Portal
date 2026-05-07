@@ -36,11 +36,15 @@ public class MarketController {
      * Return type: wrapped quote list.
      */
     @GetMapping
-    public ApiResponse<List<MarketQuoteResponse>> getMarkets() {
-        List<MarketQuoteResponse> quotes = marketQueryService.getAllQuotes().stream()
-                .map(marketApiMapper::toResponse)
-                .toList();
-        return responseFactory.success(quotes, "market.dataFetched");
+    public ApiResponse<List<MarketQuoteResponse>> getMarkets(@RequestParam(value = "type", required = false) String type) {
+        if (type == null || type.isBlank()) {
+            List<MarketQuoteResponse> quotes = marketQueryService.getAllQuotes().stream()
+                    .map(marketApiMapper::toResponse)
+                    .toList();
+            return responseFactory.success(quotes, "market.dataFetched");
+        }
+
+        return responseFactory.success(resolveQuotesByType(type), "market.dataFetched");
     }
 
     /**
@@ -51,12 +55,7 @@ public class MarketController {
      */
     @GetMapping("/type/{type}")
     public ApiResponse<List<MarketQuoteResponse>> getByType(@PathVariable String type) {
-        InstrumentType instrumentType = instrumentTypeAliasResolver.resolve(type);
-        List<MarketQuoteResponse> prices = marketQueryService.getAllQuotes().stream()
-                .filter(quote -> quote != null && instrumentTypeAliasResolver.compatibleTypes(instrumentType).contains(quote.instrumentType()))
-                .map(marketApiMapper::toResponse)
-                .toList();
-        return responseFactory.success(prices, "market.dataFetched");
+        return responseFactory.success(resolveQuotesByType(type), "market.dataFetched");
     }
 
     /**
@@ -69,5 +68,13 @@ public class MarketController {
     public ApiResponse<MarketQuoteResponse> getBySymbol(@PathVariable String symbol) {
         MarketQuoteResponse quote = marketApiMapper.toResponse(marketQueryService.resolveCurrentPrice(symbol));
         return responseFactory.success(quote, "market.dataFetched");
+    }
+
+    private List<MarketQuoteResponse> resolveQuotesByType(String type) {
+        InstrumentType instrumentType = instrumentTypeAliasResolver.resolve(type);
+        return marketQueryService.getAllQuotes().stream()
+                .filter(quote -> quote != null && instrumentTypeAliasResolver.compatibleTypes(instrumentType).contains(quote.instrumentType()))
+                .map(marketApiMapper::toResponse)
+                .toList();
     }
 }

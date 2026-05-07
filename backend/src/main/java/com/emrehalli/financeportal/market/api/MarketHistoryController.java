@@ -92,6 +92,16 @@ public class MarketHistoryController {
         );
     }
 
+    @GetMapping("/history/{symbol}")
+    public MarketHistoryEnvelopeResponse getHistoryByDateRangeAlias(
+            @PathVariable String symbol,
+            @RequestParam(required = false) DataSource source,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return getHistory(symbol, source, from, to, null);
+    }
+
     /**
      * Returns debug metadata for market history retrieval.
      *
