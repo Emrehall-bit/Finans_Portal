@@ -1,8 +1,9 @@
 package com.emrehalli.financeportal;
 
 import com.emrehalli.financeportal.market.provider.binance.config.BinanceProviderProperties;
+import com.emrehalli.financeportal.market.provider.evdsmacro.config.EvdsMacroProperties;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
-import com.emrehalli.financeportal.market.provider.tefas.config.TefasProperties;
+
 import com.emrehalli.financeportal.market.scheduler.MarketRefreshProperties;
 import com.emrehalli.financeportal.market.service.MarketHistoryBackfillProperties;
 import com.emrehalli.financeportal.market.service.MarketProviderCircuitBreakerProperties;
@@ -28,8 +29,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         MarketHistoryBackfillProperties.class,
         MarketProviderCircuitBreakerProperties.class,
         EvdsProperties.class,
+        EvdsMacroProperties.class,
         BinanceProviderProperties.class,
-        TefasProperties.class
+
 })
 public class BackendApplication {
 

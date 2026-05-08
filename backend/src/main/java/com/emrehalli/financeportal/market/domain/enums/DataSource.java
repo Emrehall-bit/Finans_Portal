@@ -2,9 +2,10 @@ package com.emrehalli.financeportal.market.domain.enums;
 
 public enum DataSource {
     EVDS,
+    EVDS_MACRO,
     BINANCE,
     BIST,
-    TEFAS,
     DB_FALLBACK,
+    TEFAS,
     UNKNOWN
 }

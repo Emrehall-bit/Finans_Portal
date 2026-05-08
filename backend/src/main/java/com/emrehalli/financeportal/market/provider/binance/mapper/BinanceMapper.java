@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.market.provider.binance.mapper;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import com.emrehalli.financeportal.market.provider.binance.dto.BinanceKlineResponse;
 import com.emrehalli.financeportal.market.provider.binance.dto.BinanceTickerResponse;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
@@ -63,7 +64,8 @@ public class BinanceMapper {
                 "USDT",
                 DataSource.BINANCE,
                 toInstant(response.closeTime()),
-                fetchedAt
+                fetchedAt,
+                MarketPriceStatus.LIVE
         ));
     }
 

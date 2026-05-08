@@ -37,7 +37,8 @@ class PortfolioPriceResolverTest {
                 "USDT",
                 DataSource.BINANCE,
                 priceTime,
-                Instant.parse("2026-04-27T10:16:00Z")
+                Instant.parse("2026-04-27T10:16:00Z"),
+                MarketPriceStatus.LIVE
         );
 
         when(marketQueryService.resolveCurrentPrice("BTCUSDT")).thenReturn(new CurrentPriceSnapshot(
@@ -94,7 +95,8 @@ class PortfolioPriceResolverTest {
                 "TRY",
                 DataSource.BIST,
                 Instant.parse("2026-04-27T10:15:00Z"),
-                Instant.parse("2026-04-27T10:16:00Z")
+                Instant.parse("2026-04-27T10:16:00Z"),
+                MarketPriceStatus.STALE
         );
 
         when(marketQueryService.resolveCurrentPrice("THYAO")).thenReturn(new CurrentPriceSnapshot(

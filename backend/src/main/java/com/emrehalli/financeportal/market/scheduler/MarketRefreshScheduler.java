@@ -7,6 +7,8 @@ import com.emrehalli.financeportal.market.service.MarketHistoryBackfillService;
 import com.emrehalli.financeportal.market.service.MarketRefreshService;
 import com.emrehalli.financeportal.market.service.ProviderOrchestrationService;
 import com.emrehalli.financeportal.market.service.model.MarketRefreshResult;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 public class MarketRefreshScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(MarketRefreshScheduler.class);
+    private static final long STARTUP_PROVIDER_DELAY_MS = 500L;
 
     private final ProviderOrchestrationService providerOrchestrationService;
     private final MarketRefreshService marketRefreshService;
@@ -43,6 +46,53 @@ public class MarketRefreshScheduler {
         this.instrumentRegistryService = instrumentRegistryService;
         this.marketHistoryBackfillService = marketHistoryBackfillService;
         this.clock = clock;
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmUpProvidersOnStartup() {
+        int successfulProviderCount = 0;
+        int failedProviderCount = 0;
+
+        log.info("Market startup warm-up started");
+
+        for (DataSource source : providerOrchestrationService.availableSources()) {
+            MarketRefreshProperties.ProviderPolicy policy = marketRefreshProperties.policyFor(source).orElse(null);
+            if (policy == null || !policy.isEnabled()) {
+                log.info("Market startup warm-up skipped: source={}, reason=disabled-or-missing-policy", source);
+                continue;
+            }
+
+            try {
+                List<MarketRefreshResult> results = marketRefreshService.refreshSourceDetailed(source);
+                boolean success = results != null && results.stream().allMatch(MarketRefreshResult::success);
+                if (success) {
+                    successfulProviderCount++;
+                    log.info("Market startup warm-up completed: source={}", source);
+                } else {
+                    failedProviderCount++;
+                    String errorMessage = results == null || results.isEmpty()
+                            ? "No refresh result returned"
+                            : results.stream()
+                                    .filter(result -> !result.success())
+                                    .map(MarketRefreshResult::errorMessage)
+                                    .filter(message -> message != null && !message.isBlank())
+                                    .findFirst()
+                                    .orElse("Unknown refresh failure");
+                    log.warn("Market startup warm-up failed: source={}, error={}", source, errorMessage);
+                }
+            } catch (Exception ex) {
+                failedProviderCount++;
+                log.warn("Market startup warm-up failed unexpectedly: source={}, error={}", source, ex.getMessage(), ex);
+            }
+
+            pauseBetweenStartupProviders();
+        }
+
+        log.info(
+                "Market startup warm-up completed: successfulProviderCount={}, failedProviderCount={}",
+                successfulProviderCount,
+                failedProviderCount
+        );
     }
 
     @Scheduled(
@@ -119,4 +169,14 @@ public class MarketRefreshScheduler {
             }
         }
     }
+
+    private void pauseBetweenStartupProviders() {
+        try {
+            Thread.sleep(STARTUP_PROVIDER_DELAY_MS);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.warn("Market startup warm-up delay interrupted");
+        }
+    }
+
 }

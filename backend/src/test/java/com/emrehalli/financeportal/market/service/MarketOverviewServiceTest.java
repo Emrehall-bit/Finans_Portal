@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.market.cache.MarketCacheService;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -88,7 +89,8 @@ class MarketOverviewServiceTest {
                 "TRY",
                 source,
                 now,
-                now
+                now,
+                MarketPriceStatus.LIVE
         );
     }
 }

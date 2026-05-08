@@ -38,7 +38,7 @@ public class MarketController {
     @GetMapping
     public ApiResponse<List<MarketQuoteResponse>> getMarkets(@RequestParam(value = "type", required = false) String type) {
         if (type == null || type.isBlank()) {
-            List<MarketQuoteResponse> quotes = marketQueryService.getAllQuotes().stream()
+            List<MarketQuoteResponse> quotes = marketQueryService.getDefaultQuotes().stream()
                     .map(marketApiMapper::toResponse)
                     .toList();
             return responseFactory.success(quotes, "market.dataFetched");

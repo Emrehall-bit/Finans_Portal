@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.market.provider.evds;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.provider.ProviderFetchResult;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
@@ -44,8 +45,8 @@ class EvdsMarketDataProviderTest {
         when(instrumentRegistryService.resolveMappings(DataSource.EVDS)).thenReturn(new InstrumentRegistryService.Resolution(
                 DataSource.EVDS,
                 List.of(
-                        mapping("TCMBTUFEAYLIK", "TUFE Aylik Degisim (%)", InstrumentType.MACRO_INDICATOR, "TRY", "TP.TUKFIY2025.GENEL-1"),
-                        mapping("TCMBTUFEYILLIK", "TUFE Yillik Degisim (%)", InstrumentType.MACRO_INDICATOR, "TRY", "TP.TUKFIY2025.GENEL-3")
+                        mapping("TCMBTUFEAYLIK", "TUFE Aylik Degisim (%)", InstrumentType.MACRO_INDICATOR, "TRY", "TP_TUKFIY2025_GENEL-1"),
+                        mapping("TCMBTUFEYILLIK", "TUFE Yillik Degisim (%)", InstrumentType.MACRO_INDICATOR, "TRY", "TP_TUKFIY2025_GENEL-3")
                 )
         ));
         when(batchExecutor.execute(any(), any(), any())).thenReturn(new EvdsBatchExecutor.ExecutionResult(List.of(), List.of(), 5, 0));
@@ -57,7 +58,7 @@ class EvdsMarketDataProviderTest {
         verify(batchExecutor).execute(requestCaptor.capture(), any(), any());
         assertThat(requestCaptor.getValue())
                 .extracting(EvdsRequestBuilder.EvdsSeriesRequest::requestSeriesCode)
-                .containsExactly("TP.TUKFIY2025.GENEL-1", "TP.TUKFIY2025.GENEL-3");
+                .containsExactly("TP_TUKFIY2025_GENEL-1", "TP_TUKFIY2025_GENEL-3");
     }
 
     @Test
@@ -116,7 +117,8 @@ class EvdsMarketDataProviderTest {
                 "TRY",
                 DataSource.EVDS,
                 Instant.parse("2026-05-07T00:00:00Z"),
-                Instant.parse("2026-05-07T00:00:00Z")
+                Instant.parse("2026-05-07T00:00:00Z"),
+                MarketPriceStatus.LIVE
         )));
         when(mapper.toHistoryRecords(any(), any())).thenReturn(List.of(new MarketHistoryRecord(
                 "TCMBISSIZLIK",

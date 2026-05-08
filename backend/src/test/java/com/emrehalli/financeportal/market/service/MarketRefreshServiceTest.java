@@ -4,8 +4,10 @@ import com.emrehalli.financeportal.market.cache.MarketCacheService;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.service.model.MarketRefreshResult;
+import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -63,7 +65,8 @@ class MarketRefreshServiceTest {
                 providerOrchestrationService,
                 marketCacheService,
                 marketHistoryService,
-                instrumentRegistryService
+                instrumentRegistryService,
+                new SymbolNormalizer()
         );
 
         List<MarketQuote> refreshedQuotes = service.refreshAll();
@@ -94,7 +97,8 @@ class MarketRefreshServiceTest {
                 providerOrchestrationService,
                 marketCacheService,
                 marketHistoryService,
-                instrumentRegistryService
+                instrumentRegistryService,
+                new SymbolNormalizer()
         );
 
         service.refreshSource(DataSource.EVDS);
@@ -128,7 +132,8 @@ class MarketRefreshServiceTest {
                 providerOrchestrationService,
                 marketCacheService,
                 marketHistoryService,
-                instrumentRegistryService
+                instrumentRegistryService,
+                new SymbolNormalizer()
         );
 
         service.refreshSource(DataSource.EVDS);
@@ -172,7 +177,8 @@ class MarketRefreshServiceTest {
                 source == DataSource.BINANCE ? "USDT" : "TRY",
                 source,
                 now,
-                now
+                now,
+                MarketPriceStatus.LIVE
         );
     }
 }

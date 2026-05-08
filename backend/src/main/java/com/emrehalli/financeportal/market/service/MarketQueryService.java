@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.market.cache.MarketCacheService;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
+import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.exception.MarketDataNotFoundException;
 import com.emrehalli.financeportal.market.persistence.entity.MarketHistoryEntity;
 import com.emrehalli.financeportal.market.persistence.repository.MarketHistoryRepository;
@@ -52,6 +53,12 @@ public class MarketQueryService implements MarketPriceReader {
                 .forEach(quote -> mergedQuotes.putIfAbsent(quote.symbol(), quote));
 
         return List.copyOf(mergedQuotes.values());
+    }
+
+    public List<MarketQuote> getDefaultQuotes() {
+        return getAllQuotes().stream()
+                .filter(quote -> quote.instrumentType() != InstrumentType.MACRO_INDICATOR)
+                .toList();
     }
 
     public Optional<MarketQuote> findCurrentBySymbol(String symbol) {
@@ -150,9 +157,10 @@ public class MarketQueryService implements MarketPriceReader {
                 entity.getClosePrice(),
                 null,
                 entity.getCurrency(),
-                DataSource.DB_FALLBACK,
+                entity.getSource(),
                 priceTime,
-                fetchedAt
+                fetchedAt,
+                MarketPriceStatus.STALE
         );
     }
 

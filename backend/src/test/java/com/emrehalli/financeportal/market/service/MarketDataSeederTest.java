@@ -76,22 +76,7 @@ class MarketDataSeederTest {
                         "TCMBISSIZLIK",
                         "TCMBFAIZ",
                         "TCMBMEVFAIZ",
-                        "BISTBILESIK",
-                        "AFT",
-                        "AFA",
-                        "MAC",
-                        "IPB",
-                        "IIH",
-                        "NNF",
-                        "YAS",
-                        "DVT",
-                        "GMR",
-                        "KPH",
-                        "CPU",
-                        "SAS",
-                        "GSP",
-                        "TCD",
-                        "YKT"
+                        "BISTBILESIK"
                 )
                 .doesNotContain("XAUTRY", "XAGTRY", "XPTTRY", "TCMBUSDKURU", "TCMBEURKURU", "TCMBCARIACIK", "TCMBBIST100");
 
@@ -99,11 +84,13 @@ class MarketDataSeederTest {
                 .filter(mapping -> mapping.getSource() == DataSource.EVDS)
                 .map(mapping -> mapping.getInstrument().getSymbol() + "=" + mapping.getExternalSymbol())
                 .toList();
+        List<String> evdsMacroMappings = mappingCaptor.getValue().stream()
+                .filter(mapping -> mapping.getSource() == DataSource.EVDS_MACRO)
+                .map(mapping -> mapping.getInstrument().getSymbol() + "=" + mapping.getExternalSymbol())
+                .toList();
 
         assertThat(evdsMappings)
                 .contains(
-                        "TCMBTUFEAYLIK=TP.TUKFIY2025.GENEL-1",
-                        "TCMBTUFEYILLIK=TP.TUKFIY2025.GENEL-3",
                         "TCMBUFEAYLIK=TP.TUFE1YI.T1-1",
                         "TCMBUFEYILLIK=TP.TUFE1YI.T1-3",
                         "TCMBISSIZLIK=TP.TIG08",
@@ -121,28 +108,10 @@ class MarketDataSeederTest {
                         || entry.equals("TCMBTUFE=TP.TUKFIY2025.GENEL-1")
                         || entry.equals("TCMBUFE=TP.TUKFIY2025.GENEL-3"));
 
-        List<String> tefasMappings = mappingCaptor.getValue().stream()
-                .filter(mapping -> mapping.getSource() == DataSource.TEFAS)
-                .map(mapping -> mapping.getInstrument().getSymbol() + "=" + mapping.getExternalSymbol())
-                .toList();
-
-        assertThat(tefasMappings)
+        assertThat(evdsMacroMappings)
                 .contains(
-                        "AFT=AFT",
-                        "AFA=AFA",
-                        "MAC=MAC",
-                        "IPB=IPB",
-                        "IIH=IIH",
-                        "NNF=NNF",
-                        "YAS=YAS",
-                        "DVT=DVT",
-                        "GMR=GMR",
-                        "KPH=KPH",
-                        "CPU=CPU",
-                        "SAS=SAS",
-                        "GSP=GSP",
-                        "TCD=TCD",
-                        "YKT=YKT"
+                        "TCMBTUFEAYLIK=TP.FE25.OKTG01-1",
+                        "TCMBTUFEYILLIK=TP.FE25.OKTG01-3"
                 );
     }
 

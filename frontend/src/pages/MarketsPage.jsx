@@ -9,7 +9,6 @@ import LoadingSpinner from "../components/common/LoadingSpinner";
 import { formatNumber } from "../utils/formatters";
 
 const CATEGORY_OPTIONS = ["ALL", "CRYPTO", "FX", "STOCK", "FUND"];
-const MACRO_SYMBOLS = ["TCMBFAIZ", "TCMBISSIZLIK", "BISTBILESIK", "TCMBMEVFAIZ"];
 const MACRO_FROM_DATE = "2024-01-01";
 export default function MarketsPage() {
   const { t, i18n } = useTranslation();
@@ -102,13 +101,13 @@ export default function MarketsPage() {
   }, [t]);
 
   const macroInstruments = useMemo(() => {
-    const quotesBySymbol = new Map(
-      macroQuotes
-        .filter((item) => item?.symbol)
-        .map((item) => [normalizeText(item.symbol), item]),
-    );
-
-    return MACRO_SYMBOLS.map((symbol) => quotesBySymbol.get(symbol)).filter(Boolean);
+    return [...macroQuotes]
+      .filter((item) => item?.symbol)
+      .sort((left, right) => {
+        const leftLabel = `${left.displayName || ""} ${left.symbol || ""}`.trim();
+        const rightLabel = `${right.displayName || ""} ${right.symbol || ""}`.trim();
+        return leftLabel.localeCompare(rightLabel, "tr");
+      });
   }, [macroQuotes]);
 
   useEffect(() => {
@@ -463,6 +462,9 @@ export default function MarketsPage() {
 
 function classifyCategory(item) {
   const type = normalizeText(item?.instrumentType);
+  if (type === "FOREX" || type === "CURRENCY") {
+    return "FX";
+  }
   return ["CRYPTO", "FX", "STOCK", "FUND"].includes(type) ? type : "ALL";
 }
 

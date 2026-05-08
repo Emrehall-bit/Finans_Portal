@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -176,7 +177,8 @@ class MarketCacheServiceTest {
                 "TRY",
                 source,
                 now,
-                now
+                now,
+                MarketPriceStatus.LIVE
         );
     }
 }

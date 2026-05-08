@@ -83,6 +83,12 @@ public interface MarketProviderMappingRepository extends JpaRepository<MarketPro
     );
 
     @EntityGraph(attributePaths = "instrument")
+    Optional<MarketProviderMappingEntity> findFirstBySourceAndExternalSymbol(
+            DataSource source,
+            String externalSymbol
+    );
+
+    @EntityGraph(attributePaths = "instrument")
     Optional<MarketProviderMappingEntity> findFirstByInstrument_IdAndSourceAndExternalSymbolAndEnabledTrueAndInstrument_EnabledTrue(
             UUID instrumentId,
             DataSource source,

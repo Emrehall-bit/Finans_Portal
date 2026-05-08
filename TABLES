@@ -1,0 +1,194 @@
+1. alerts (Alarmlar)
+id: bigint (NOT NULL)
+
+user_id: bigint (NOT NULL)
+
+instrument_code: character varying (NOT NULL)
+
+target_price: numeric (NOT NULL)
+
+condition_type: character varying (NOT NULL)
+
+status: character varying (NOT NULL)
+
+created_at: timestamp without time zone (NOT NULL)
+
+triggered_at: timestamp without time zone
+
+2. market_instruments (Piyasa Araçları)
+id: uuid (NOT NULL, Default: gen_random_uuid())
+
+symbol: character varying (NOT NULL)
+
+name: character varying
+
+type: character varying (NOT NULL)
+
+instrument_type: character varying
+
+currency: character varying
+
+display_name: character varying (NOT NULL)
+
+id_legacy: bigint (NOT NULL)
+
+active: boolean (NOT NULL)
+
+enabled: boolean (NOT NULL)
+
+created_at: timestamp with time zone (NOT NULL)
+
+updated_at: timestamp with time zone (NOT NULL)
+
+3. market_history (Fiyat Geçmişi)
+id: bigint (NOT NULL, Default: nextval)
+
+symbol: character varying (NOT NULL)
+
+price_date: date (NOT NULL)
+
+close_price: numeric (NOT NULL)
+
+open_price: numeric
+
+high_price: numeric
+
+low_price: numeric
+
+volume: numeric
+
+source: character varying (NOT NULL)
+
+created_at: timestamp with time zone (Default: now())
+
+4. portfolios (Portföyler)
+id: bigint (NOT NULL)
+
+user_id: bigint (NOT NULL)
+
+portfolio_name: character varying (NOT NULL)
+
+visibility_status: character varying (NOT NULL)
+
+created_at: timestamp without time zone (NOT NULL)
+
+5. portfolio_holdings (Portföy Varlıkları)
+id: bigint (NOT NULL)
+
+portfolio_id: bigint (NOT NULL)
+
+instrument_code: character varying (NOT NULL)
+
+quantity: numeric (NOT NULL)
+
+buy_price: numeric (NOT NULL)
+
+created_at: timestamp without time zone (NOT NULL)
+
+updated_at: timestamp without time zone (NOT NULL)
+
+6. users (Kullanıcılar)
+id: bigint (NOT NULL)
+
+email: character varying (NOT NULL)
+
+full_name: character varying (NOT NULL)
+
+role: character varying (NOT NULL)
+
+keycloak_id: character varying
+
+active: boolean (NOT NULL)
+
+preferred_language: character varying
+
+theme_preference: character varying
+
+created_at: timestamp without time zone (NOT NULL)
+
+updated_at: timestamp without time zone (NOT NULL)
+
+last_login_at: timestamp without time zone
+
+7. news (Haberler)
+id: bigint (NOT NULL)
+
+title: character varying (NOT NULL)
+
+summary: text
+
+url: character varying (NOT NULL)
+
+image_url: text
+
+source: character varying (NOT NULL)
+
+category: character varying
+
+importance_score: integer (NOT NULL)
+
+published_at: timestamp without time zone
+
+created_at: timestamp without time zone (NOT NULL)
+
+8. watchlist (Takip Listesi)
+id: bigint (NOT NULL)
+
+user_id: bigint (NOT NULL)
+
+instrument_code: character varying (NOT NULL)
+
+created_at: timestamp without time zone (NOT NULL)
+
+9. market_provider_mappings (Sağlayıcı Eşleşmeleri)
+id: uuid (NOT NULL, Default: gen_random_uuid())
+
+instrument_id: uuid (NOT NULL)
+
+provider_source: character varying
+
+provider_symbol: character varying
+
+external_symbol: character varying (NOT NULL)
+
+priority: integer
+
+refresh_interval_minutes: integer (NOT NULL)
+
+last_refreshed_at: timestamp with time zone
+
+10. market_data_backfill_status (Veri Tamamlama Durumu)
+id: bigint (NOT NULL)
+
+symbol: character varying (NOT NULL)
+
+status: character varying (NOT NULL)
+
+fetched_count: integer
+
+saved_count: integer
+
+retry_count: integer (NOT NULL)
+
+last_error_message: character varying
+
+11. flyway_schema_history (Veritabanı Göç Geçmişi)
+installed_rank: integer (NOT NULL)
+
+version: character varying
+
+description: character varying (NOT NULL)
+
+type: character varying (NOT NULL)
+
+script: character varying (NOT NULL)
+
+checksum: integer
+
+installed_by: character varying (NOT NULL)
+
+installed_on: timestamp without time zone (NOT NULL, Default: now())
+
+execution_time: integer (NOT NULL)
+
+success: boolean (NOT NULL)

@@ -2,14 +2,15 @@ package com.emrehalli.financeportal.market.service;
 
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
+import com.emrehalli.financeportal.market.provider.evdsmacro.config.EvdsMacroProperties;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
-import com.emrehalli.financeportal.market.provider.tefas.config.TefasProperties;
 import com.emrehalli.financeportal.market.service.model.BackfillRunStatus;
 import com.emrehalli.financeportal.market.service.model.MarketBackfillJobResult;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryPersistenceResult;
 import com.emrehalli.financeportal.market.service.model.MarketRefreshResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -33,7 +34,7 @@ public class MarketHistoryBackfillService {
     private final InstrumentRegistryService instrumentRegistryService;
     private final MarketHistoryService marketHistoryService;
     private final EvdsProperties evdsProperties;
-    private final TefasProperties tefasProperties;
+    private final EvdsMacroProperties evdsMacroProperties;
     private final MarketHistoryBackfillProperties properties;
     private final MarketBackfillStatusService marketBackfillStatusService;
     private final Clock clock;
@@ -41,11 +42,31 @@ public class MarketHistoryBackfillService {
     private volatile boolean runtimeStarted;
     private volatile Instant startupAt;
 
+    MarketHistoryBackfillService(ProviderOrchestrationService providerOrchestrationService,
+                                 InstrumentRegistryService instrumentRegistryService,
+                                 MarketHistoryService marketHistoryService,
+                                 EvdsProperties evdsProperties,
+                                 MarketHistoryBackfillProperties properties,
+                                 MarketBackfillStatusService marketBackfillStatusService,
+                                 Clock clock) {
+        this(
+                providerOrchestrationService,
+                instrumentRegistryService,
+                marketHistoryService,
+                evdsProperties,
+                new EvdsMacroProperties(),
+                properties,
+                marketBackfillStatusService,
+                clock
+        );
+    }
+
+    @Autowired
     public MarketHistoryBackfillService(ProviderOrchestrationService providerOrchestrationService,
                                         InstrumentRegistryService instrumentRegistryService,
                                         MarketHistoryService marketHistoryService,
                                         EvdsProperties evdsProperties,
-                                        TefasProperties tefasProperties,
+                                        EvdsMacroProperties evdsMacroProperties,
                                         MarketHistoryBackfillProperties properties,
                                         MarketBackfillStatusService marketBackfillStatusService,
                                         Clock clock) {
@@ -53,7 +74,7 @@ public class MarketHistoryBackfillService {
         this.instrumentRegistryService = instrumentRegistryService;
         this.marketHistoryService = marketHistoryService;
         this.evdsProperties = evdsProperties;
-        this.tefasProperties = tefasProperties;
+        this.evdsMacroProperties = evdsMacroProperties;
         this.properties = properties;
         this.marketBackfillStatusService = marketBackfillStatusService;
         this.clock = clock;
@@ -247,8 +268,8 @@ public class MarketHistoryBackfillService {
             return Math.max(evdsProperties.getHistory().getBackfillDefaultDays(), 1);
         }
 
-        if (source == DataSource.TEFAS) {
-            return Math.max(tefasProperties.getHistory().getBackfillDefaultDays(), 1);
+        if (source == DataSource.EVDS_MACRO) {
+            return Math.max(evdsMacroProperties.getHistory().getBackfillDefaultDays(), 1);
         }
 
         return 365;

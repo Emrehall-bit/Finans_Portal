@@ -21,7 +21,9 @@ import org.springframework.stereotype.Component;
 public class MarketApiMapper {
 
     public MarketQuoteResponse toResponse(MarketQuote quote) {
-        boolean staleFallback = quote.source() == DataSource.DB_FALLBACK;
+        boolean staleFallback = quote.priceStatus() == null
+                ? quote.source() == DataSource.DB_FALLBACK
+                : quote.priceStatus() == com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus.STALE;
         return new MarketQuoteResponse(
                 quote.symbol(),
                 quote.displayName(),

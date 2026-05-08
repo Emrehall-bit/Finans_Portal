@@ -81,7 +81,8 @@ class MarketQueryServiceTest {
 
         assertThat(result).singleElement().satisfies(quote -> {
             assertThat(quote.symbol()).isEqualTo("THYAO");
-            assertThat(quote.source()).isEqualTo(DataSource.DB_FALLBACK);
+            assertThat(quote.source()).isEqualTo(DataSource.BIST);
+            assertThat(quote.priceStatus()).isEqualTo(MarketPriceStatus.STALE);
             assertThat(quote.changeRate()).isNull();
         });
     }
@@ -113,7 +114,8 @@ class MarketQueryServiceTest {
         });
         assertThat(result).anySatisfy(quote -> {
             assertThat(quote.symbol()).isEqualTo("THYAO");
-            assertThat(quote.source()).isEqualTo(DataSource.DB_FALLBACK);
+            assertThat(quote.source()).isEqualTo(DataSource.BIST);
+            assertThat(quote.priceStatus()).isEqualTo(MarketPriceStatus.STALE);
             assertThat(quote.changeRate()).isNull();
         });
     }
@@ -129,7 +131,8 @@ class MarketQueryServiceTest {
         assertThat(result.symbol()).isEqualTo("THYAO");
         assertThat(result.price()).isEqualByComparingTo("320.400000");
         assertThat(result.changeRate()).isNull();
-        assertThat(result.source()).isEqualTo(DataSource.DB_FALLBACK);
+        assertThat(result.source()).isEqualTo(DataSource.BIST);
+        assertThat(result.priceStatus()).isEqualTo(MarketPriceStatus.STALE);
     }
 
     @Test
@@ -141,8 +144,21 @@ class MarketQueryServiceTest {
         Optional<MarketQuote> result = service.findCurrentBySymbol("THYAO");
 
         assertThat(result).isPresent();
-        assertThat(result.orElseThrow().source()).isEqualTo(DataSource.DB_FALLBACK);
+        assertThat(result.orElseThrow().source()).isEqualTo(DataSource.BIST);
+        assertThat(result.orElseThrow().priceStatus()).isEqualTo(MarketPriceStatus.STALE);
         assertThat(result.orElseThrow().changeRate()).isNull();
+    }
+
+    @Test
+    void getDefaultQuotesExcludesMacroIndicatorEntries() {
+        MarketQueryService service = new MarketQueryService(marketCacheService, marketHistoryRepository, new SymbolNormalizer());
+        when(marketCacheService.getAllQuotes()).thenReturn(java.util.List.of(liveQuote(), macroQuote()));
+        when(marketHistoryRepository.findLatestBySymbol()).thenReturn(java.util.List.of());
+
+        var result = service.getDefaultQuotes();
+
+        assertThat(result).extracting(MarketQuote::symbol)
+                .containsExactly("BTCUSDT");
     }
 
     private MarketQuote liveQuote() {
@@ -156,7 +172,24 @@ class MarketQueryServiceTest {
                 "USDT",
                 DataSource.BINANCE,
                 now,
-                now
+                now,
+                MarketPriceStatus.LIVE
+        );
+    }
+
+    private MarketQuote macroQuote() {
+        Instant now = Instant.parse("2026-05-04T00:00:00Z");
+        return new MarketQuote(
+                "TCMBFAIZ",
+                "TCMB Politika Faizi (%)",
+                InstrumentType.MACRO_INDICATOR,
+                new BigDecimal("46.000000"),
+                new BigDecimal("0.5000"),
+                "TRY",
+                DataSource.EVDS,
+                now,
+                now,
+                MarketPriceStatus.LIVE
         );
     }
 

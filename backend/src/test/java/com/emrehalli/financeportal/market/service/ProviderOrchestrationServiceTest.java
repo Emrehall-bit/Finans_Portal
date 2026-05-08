@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.market.service;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import com.emrehalli.financeportal.market.provider.MarketDataProvider;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import org.junit.jupiter.api.Test;
@@ -111,7 +112,8 @@ class ProviderOrchestrationServiceTest {
                 "TRY",
                 DataSource.EVDS,
                 now,
-                now
+                now,
+                MarketPriceStatus.LIVE
         );
     }
 

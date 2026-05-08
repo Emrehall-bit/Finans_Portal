@@ -42,6 +42,7 @@ public class MarketCacheTtlPolicy {
     private Duration fallbackTtlFor(DataSource source) {
         return switch (source) {
             case EVDS -> Duration.ofHours(6);
+            case EVDS_MACRO -> Duration.ofHours(12);
             case BINANCE -> Duration.ofMinutes(2);
             case BIST -> Duration.ofMinutes(15);
             default -> Duration.ofMinutes(30);

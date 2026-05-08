@@ -65,7 +65,7 @@ class MarketControllerTest {
 
     @Test
     void getMarketsReturnsAggregateQuotesFromReadPipeline() throws Exception {
-        when(marketQueryService.getAllQuotes()).thenReturn(List.of(currencyQuote(), stockQuote()));
+        when(marketQueryService.getDefaultQuotes()).thenReturn(List.of(currencyQuote(), stockQuote()));
 
         mockMvc.perform(get("/api/v1/markets"))
                 .andExpect(status().isOk())
@@ -85,6 +85,16 @@ class MarketControllerTest {
                 .andExpect(jsonPath("$.data.length()").value(1))
                 .andExpect(jsonPath("$.data[0].symbol").value("TCMBFAIZ"))
                 .andExpect(jsonPath("$.data[0].instrumentType").value("MACRO_INDICATOR"));
+    }
+
+    @Test
+    void getMarketsExcludesMacroQuotesFromDefaultListing() throws Exception {
+        when(marketQueryService.getDefaultQuotes()).thenReturn(List.of(currencyQuote(), stockQuote()));
+
+        mockMvc.perform(get("/api/v1/markets"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[*].symbol").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("TCMBFAIZ"))));
     }
 
     @Test
@@ -151,7 +161,8 @@ class MarketControllerTest {
                 "TRY",
                 DataSource.EVDS,
                 Instant.parse("2026-05-03T12:00:00Z"),
-                Instant.parse("2026-05-03T12:00:00Z")
+                Instant.parse("2026-05-03T12:00:00Z"),
+                MarketPriceStatus.LIVE
         );
     }
 
@@ -165,7 +176,8 @@ class MarketControllerTest {
                 "USD",
                 DataSource.BIST,
                 Instant.parse("2026-05-03T12:00:00Z"),
-                Instant.parse("2026-05-03T12:00:00Z")
+                Instant.parse("2026-05-03T12:00:00Z"),
+                MarketPriceStatus.LIVE
         );
     }
 
@@ -179,7 +191,8 @@ class MarketControllerTest {
                 "USDT",
                 DataSource.BINANCE,
                 Instant.parse("2026-05-03T12:00:00Z"),
-                Instant.parse("2026-05-03T12:00:00Z")
+                Instant.parse("2026-05-03T12:00:00Z"),
+                MarketPriceStatus.LIVE
         );
     }
 
@@ -210,7 +223,8 @@ class MarketControllerTest {
                 "TRY",
                 DataSource.EVDS,
                 Instant.parse("2026-05-03T12:00:00Z"),
-                Instant.parse("2026-05-03T12:00:00Z")
+                Instant.parse("2026-05-03T12:00:00Z"),
+                MarketPriceStatus.LIVE
         );
     }
 }

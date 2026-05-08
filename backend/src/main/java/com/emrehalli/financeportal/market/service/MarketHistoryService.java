@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.sql.Timestamp;
@@ -153,6 +154,17 @@ public class MarketHistoryService implements MarketHistoryReader {
     public long countDistinctClosePrices(String symbol, DataSource source) {
         String canonicalSymbol = symbolNormalizer.normalize(symbol).orElse(symbol);
         return source == null ? 0L : marketHistoryRepository.countDistinctClosePriceBySymbolAndSource(canonicalSymbol, source);
+    }
+
+    @Transactional
+    public long purgeHistoryForSymbol(String symbol) {
+        String canonicalSymbol = symbolNormalizer.normalize(symbol).orElse(symbol);
+        long deletedCount = marketHistoryRepository.deleteBySymbol(canonicalSymbol);
+        if (deletedCount > 0) {
+            clearHistoryCache();
+        }
+        log.info("Market history purge completed: symbol={}, deletedCount={}", canonicalSymbol, deletedCount);
+        return deletedCount;
     }
 
     /**

@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.service.model.MarketRefreshResult;
+import com.emrehalli.financeportal.market.support.SymbolNormalizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,15 +26,18 @@ public class MarketRefreshService {
     private final MarketCacheService marketCacheService;
     private final MarketHistoryService marketHistoryService;
     private final InstrumentRegistryService instrumentRegistryService;
+    private final SymbolNormalizer symbolNormalizer;
 
     public MarketRefreshService(ProviderOrchestrationService providerOrchestrationService,
                                 MarketCacheService marketCacheService,
                                 MarketHistoryService marketHistoryService,
-                                InstrumentRegistryService instrumentRegistryService) {
+                                InstrumentRegistryService instrumentRegistryService,
+                                SymbolNormalizer symbolNormalizer) {
         this.providerOrchestrationService = providerOrchestrationService;
         this.marketCacheService = marketCacheService;
         this.marketHistoryService = marketHistoryService;
         this.instrumentRegistryService = instrumentRegistryService;
+        this.symbolNormalizer = symbolNormalizer;
     }
 
     public List<MarketQuote> refreshAll() {
@@ -106,7 +110,10 @@ public class MarketRefreshService {
             return mappings;
         }
 
-        Set<String> filteredSymbols = new LinkedHashSet<>(request.symbols());
+        Set<String> filteredSymbols = request.symbols().stream()
+                .map(symbolNormalizer::normalize)
+                .flatMap(java.util.Optional::stream)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
         return mappings.stream()
                 .filter(mapping -> filteredSymbols.contains(mapping.symbol()))
                 .toList();

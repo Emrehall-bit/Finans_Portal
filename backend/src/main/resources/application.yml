@@ -4,8 +4,6 @@ spring:
   profiles:
     default: local
 
-
-
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/financeportaldb}
     username: ${DB_USERNAME:postgres}
@@ -31,14 +29,11 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
-
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-
-
 
   security:
     oauth2:
@@ -89,18 +84,20 @@ market:
       url: https://newsapi.org/v2
       api-key: ${NEWS_API_KEY:}
       enabled: true
+
   scheduler:
     currency-cron: "0 */10 * * * *"
     stock-cron: "0 */10 * * * *"
     fund-cron: "0 0 18 * * *"
+
   cache:
     ttl:
       BINANCE: 20m
       BIST: 30m
       EVDS: 12h
-      TEFAS: 2h
+      EVDS_MACRO: 12h
+      TEFAS: 6h
       ALL: 10m
-
 
   provider-clients:
     bist:
@@ -114,9 +111,17 @@ market:
         base-url: https://query1.finance.yahoo.com
       delayed:
         enabled: false
+
     binance:
       enabled: true
       base-url: https://api.binance.com
+
+    tefas:
+      enabled: true
+      base-url: https://www.tefas.gov.tr
+      auth-token: "Bearer ST-tefaswebwse3irfmSBj4iRAzGPbAlS94Se"
+      refresh-minutes: 360
+
     evds:
       enabled: true
       api:
@@ -126,23 +131,24 @@ market:
         scheduler-lookback-days: 7
         backfill-default-days: 365
 
-  providers:
-    tefas:
+    evds-macro:
       enabled: true
-      base-url: https://www.tefas.gov.tr
-      current-quote-path: /api/funds/fonGnlBlgSiraliGetir
-      history-path: /api/funds/fonGecmisVerisiGetir
-      currency: TRY
-      rate-limit-per-minute: 6
+      api:
+        key: ${TCMB_EVDS_KEY:Rb7ROmhyOC}
+        base-url: https://evds3.tcmb.gov.tr/igmevdsms-dis
+        macro-path: /fe
       history:
+        scheduler-lookback-days: 31
         backfill-default-days: 365
+
+  providers:
     circuit-breaker:
       sliding-window-size: 5
       failure-rate-threshold: 60
       wait-duration-open-state-seconds: 30
       permitted-calls-in-half-open-state: 2
       instances:
-        tefas:
+        evds_macro:
           sliding-window-size: 5
           failure-rate-threshold: 60
           wait-duration-open-state-seconds: 30
@@ -154,8 +160,6 @@ market:
       min-data-points: 100
       interval-hours: 24
       default-lookback-days: 365
-
-
 
   refresh:
     initial-delay-ms: 0
@@ -170,10 +174,12 @@ market:
       evds:
         enabled: true
         refresh-minutes: 360
+      evds_macro:
+        enabled: true
+        refresh-minutes: 360
       tefas:
         enabled: true
-        refresh-minutes: 60
-
+        refresh-minutes: 360
 
 finnhub:
   enabled: true

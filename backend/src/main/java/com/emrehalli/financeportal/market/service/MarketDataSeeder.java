@@ -19,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Seeds the market registry tables once when the database is empty.
@@ -83,6 +85,7 @@ public class MarketDataSeeder implements ApplicationRunner {
         long instrumentCount = marketInstrumentRepository.count();
         long mappingCount = marketProviderMappingRepository.count();
         if (instrumentCount > 0L || mappingCount > 0L) {
+            repairCriticalEvdsMappings();
             syncRefreshIntervalsFromConfig();
             log.info(
                     "Market registry seed skipped: instrumentCount={}, mappingCount={}",
@@ -132,6 +135,36 @@ public class MarketDataSeeder implements ApplicationRunner {
                 "Market registry refresh intervals synced from config: updatedMappingCount={}",
                 changedMappings.size()
         );
+    }
+
+    private void repairCriticalEvdsMappings() {
+        log.debug("Running provider mapping repair check...");
+        Map<String, SeedMapping> repairs = new LinkedHashMap<>();
+        repairs.put("TCMBTUFEAYLIK", new SeedMapping(DataSource.EVDS_MACRO, "TP.FE25.OKTG01-1"));
+        repairs.put("TCMBTUFEYILLIK", new SeedMapping(DataSource.EVDS_MACRO, "TP.FE25.OKTG01-3"));
+
+        for (Map.Entry<String, SeedMapping> repair : repairs.entrySet()) {
+            marketProviderMappingRepository
+                    .findFirstByInstrument_SymbolAndEnabledTrueAndInstrument_EnabledTrueOrderByPriorityAscIdAsc(repair.getKey())
+                    .ifPresent(mapping -> {
+                        log.debug("Found mapping for {}: external_symbol={}", repair.getKey(), mapping.getExternalSymbol());
+                        repairCriticalEvdsMapping(mapping, repair.getKey(), repair.getValue());
+                    });
+        }
+    }
+
+    private void repairCriticalEvdsMapping(MarketProviderMappingEntity mapping, String symbol, SeedMapping expectedMapping) {
+        boolean shouldRepairSource = mapping.getSource() != expectedMapping.source();
+        boolean shouldRepairSymbol = isBlank(mapping.getExternalSymbol()) || !expectedMapping.externalSymbol().equals(mapping.getExternalSymbol());
+
+        if (!shouldRepairSource && !shouldRepairSymbol) {
+            return;
+        }
+
+        mapping.setSource(expectedMapping.source());
+        mapping.setExternalSymbol(expectedMapping.externalSymbol());
+        marketProviderMappingRepository.save(mapping);
+        log.info("Repaired provider mapping for symbol: {}", symbol);
     }
 
     /**
@@ -419,23 +452,6 @@ public class MarketDataSeeder implements ApplicationRunner {
                 seed("AEDTRY", "AED / TRY", InstrumentType.FOREX, map(DataSource.EVDS, "TP.DK.AED.A")),
                 seed("ROBTRY", "RON / TRY", InstrumentType.FOREX, map(DataSource.EVDS, "TP.DK.RON.A")),
 
-                // TEFAS mutual funds
-                seed("AFT", "Ak Portfoy Yeni Teknolojiler Yabanci Hisse Senedi Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "AFT")),
-                seed("AFA", "Ak Portfoy Amerika Yabanci Hisse Senedi Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "AFA")),
-                seed("MAC", "Istanbul Portfoy Birinci Degisken Fon", InstrumentType.FUND, map(DataSource.TEFAS, "MAC")),
-                seed("IPB", "Is Portfoy Birinci Degisken Fon", InstrumentType.FUND, map(DataSource.TEFAS, "IPB")),
-                seed("IIH", "Is Portfoy BIST 100 Disi Sirketler Hisse Senedi Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "IIH")),
-                seed("NNF", "Neo Portfoy Birinci Degisken Fon", InstrumentType.FUND, map(DataSource.TEFAS, "NNF")),
-                seed("YAS", "Yapi Kredi Portfoy Koctas Ikinci Degisken Fon", InstrumentType.FUND, map(DataSource.TEFAS, "YAS")),
-                seed("DVT", "Deniz Portfoy Onuncu Serbest Fon", InstrumentType.FUND, map(DataSource.TEFAS, "DVT")),
-                seed("GMR", "Garanti Portfoy Birinci Para Piyasasi Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "GMR")),
-                seed("KPH", "Kuveyt Turk Portfoy Para Piyasasi Katilim Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "KPH")),
-                seed("CPU", "Citius Portfoy Serbest Fon", InstrumentType.FUND, map(DataSource.TEFAS, "CPU")),
-                seed("SAS", "Strateji Portfoy Birinci Fon Sepeti Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "SAS")),
-                seed("GSP", "Garanti Portfoy Altin Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "GSP")),
-                seed("TCD", "Tacirler Portfoy Degisken Fon", InstrumentType.FUND, map(DataSource.TEFAS, "TCD")),
-                seed("YKT", "Yapi Kredi Portfoy Altin Fonu", InstrumentType.FUND, map(DataSource.TEFAS, "YKT")),
-
                 // ─────────────────────────────────────────────────────────────────
                 // COMMODITY — Precious metals
                 // Source: EVDS (TP.MK.* = Istanbul Gold Exchange)
@@ -457,8 +473,8 @@ public class MarketDataSeeder implements ApplicationRunner {
                 // BIST-100 index level (daily)
                 // Current account balance (monthly, USD)
                 // Unemployment rate (quarterly, %)
-                seed("TCMBTUFE_AYLIK",  "TUFE Aylik Degisim (%)",         InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TUKFIY2025.GENEL-1")),
-                seed("TCMBTUFE_YILLIK", "TUFE Yillik Degisim (%)",        InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TUKFIY2025.GENEL-3")),
+                seed("TCMBTUFE_AYLIK",  "TUFE Aylik Degisim (%)",         InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS_MACRO, "TP.FE25.OKTG01-1")),
+                seed("TCMBTUFE_YILLIK", "TUFE Yillik Degisim (%)",        InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS_MACRO, "TP.FE25.OKTG01-3")),
                 seed("TCMBUFE_AYLIK",   "UFE Aylik Degisim (%)",          InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TUFE1YI.T1-1")),
                 seed("TCMBUFE_YILLIK",  "UFE Yillik Degisim (%)",         InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TUFE1YI.T1-3")),
                 seed("TCMBISSIZLIK",    "Issizlik Orani (%)",             InstrumentType.MACRO_INDICATOR, map(DataSource.EVDS, "TP.TIG08")),
@@ -490,6 +506,10 @@ public class MarketDataSeeder implements ApplicationRunner {
      */
     private SeedMapping map(DataSource source, String externalSymbol) {
         return new SeedMapping(source, externalSymbol);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     /**

@@ -16,6 +16,8 @@ import java.util.Optional;
 @Service
 public class MarketBackfillStatusService {
 
+    private static final String ONE_TIME_MARKER_PREFIX = "__OT__:";
+
     private final MarketDataBackfillStatusRepository repository;
     private final Clock clock;
 
@@ -122,5 +124,33 @@ public class MarketBackfillStatusService {
         repository.save(entity);
         return new MarketBackfillJobResult(source, symbol, status, fetchedCount, savedCount, minDate, maxDate,
                 entity.getRetryCount() == null ? 0 : entity.getRetryCount(), message);
+    }
+
+    public boolean hasCompletedOneTimeMarker(DataSource source, String markerKey) {
+        return find(source, toOneTimeMarkerSymbol(markerKey))
+                .map(entity -> BackfillRunStatus.SUCCESS.name().equals(entity.getStatus()))
+                .orElse(false);
+    }
+
+    public void markCompletedOneTimeMarker(DataSource source, String markerKey, String message) {
+        MarketDataBackfillStatusEntity entity = repository.findByProviderSourceAndSymbol(source, toOneTimeMarkerSymbol(markerKey))
+                .orElseGet(MarketDataBackfillStatusEntity::new);
+        entity.setProviderSource(source);
+        entity.setSymbol(toOneTimeMarkerSymbol(markerKey));
+        entity.setStatus(BackfillRunStatus.SUCCESS.name());
+        entity.setLastAttemptAt(clock.instant());
+        entity.setLastSuccessAt(clock.instant());
+        entity.setLastErrorMessage(message);
+        entity.setFetchedCount(0);
+        entity.setSavedCount(0);
+        entity.setRetryCount(0);
+        entity.setTotalChunks(0);
+        entity.setCompletedChunks(0);
+        entity.setLastProcessedDate(null);
+        repository.save(entity);
+    }
+
+    private String toOneTimeMarkerSymbol(String markerKey) {
+        return ONE_TIME_MARKER_PREFIX + markerKey;
     }
 }

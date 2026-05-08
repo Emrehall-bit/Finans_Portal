@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.market.provider.bist.mapper;
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import com.emrehalli.financeportal.market.provider.bist.dto.BistHistoryPoint;
 import com.emrehalli.financeportal.market.provider.bist.dto.BistQuoteResponse;
 import com.emrehalli.financeportal.market.service.model.MarketHistoryRecord;
@@ -68,7 +69,8 @@ public class BistMapper {
                 "TRY",
                 DataSource.BIST,
                 priceTime,
-                fetchedAt
+                fetchedAt,
+                MarketPriceStatus.LIVE
         ));
     }
 

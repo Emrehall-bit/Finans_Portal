@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.market.provider.evds;
 
 import com.emrehalli.financeportal.market.domain.MarketQuote;
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
+import com.emrehalli.financeportal.market.domain.enums.MarketPriceStatus;
 import com.emrehalli.financeportal.market.provider.evds.config.EvdsProperties;
 import com.emrehalli.financeportal.market.provider.evds.dto.EvdsItem;
 import com.emrehalli.financeportal.market.provider.evds.dto.EvdsResponse;
@@ -77,7 +78,8 @@ public class EvdsMarketDataMapper {
                         seriesConfig.getCurrency(),
                         DataSource.EVDS,
                         latestValue.priceTime(),
-                        fetchedAt
+                        fetchedAt,
+                        MarketPriceStatus.LIVE
                 ));
     }
 
@@ -162,16 +164,31 @@ public class EvdsMarketDataMapper {
         return List.of(
                         seriesConfig.getEvdsKey(),
                         seriesConfig.getApiCode(),
+                        baseFormulaKey(seriesConfig.getEvdsKey()),
+                        baseFormulaKey(seriesConfig.getApiCode()),
                         normalizeEvdsKey(seriesConfig.getEvdsKey()),
                         normalizeEvdsKey(seriesConfig.getApiCode()),
+                        normalizeEvdsKey(baseFormulaKey(seriesConfig.getEvdsKey())),
+                        normalizeEvdsKey(baseFormulaKey(seriesConfig.getApiCode())),
                         normalizeMixedEvdsKey(seriesConfig.getEvdsKey()),
                         normalizeMixedEvdsKey(seriesConfig.getApiCode()),
+                        normalizeMixedEvdsKey(baseFormulaKey(seriesConfig.getEvdsKey())),
+                        normalizeMixedEvdsKey(baseFormulaKey(seriesConfig.getApiCode())),
                         denormalizeEvdsKey(seriesConfig.getEvdsKey()),
-                        denormalizeEvdsKey(seriesConfig.getApiCode())
+                        denormalizeEvdsKey(seriesConfig.getApiCode()),
+                        denormalizeEvdsKey(baseFormulaKey(seriesConfig.getEvdsKey())),
+                        denormalizeEvdsKey(baseFormulaKey(seriesConfig.getApiCode()))
                 ).stream()
                 .filter(key -> key != null && !key.isBlank())
                 .distinct()
                 .toList();
+    }
+
+    private String baseFormulaKey(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.replaceFirst("[-_]\\d+$", "");
     }
 
     private String normalizeEvdsKey(String value) {

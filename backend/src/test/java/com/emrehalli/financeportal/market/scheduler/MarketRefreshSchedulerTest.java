@@ -1,7 +1,6 @@
 package com.emrehalli.financeportal.market.scheduler;
 
 import com.emrehalli.financeportal.market.domain.enums.DataSource;
-import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.domain.enums.MappingRefreshStatus;
 import com.emrehalli.financeportal.market.provider.ProviderFetchRequest;
 import com.emrehalli.financeportal.market.service.InstrumentRegistryService;
@@ -110,7 +109,7 @@ class MarketRefreshSchedulerTest {
                 source,
                 symbol,
                 symbol,
-                InstrumentType.FOREX,
+                com.emrehalli.financeportal.market.domain.enums.InstrumentType.FOREX,
                 "TRY",
                 providerSymbol,
                 1,
