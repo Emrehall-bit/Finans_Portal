@@ -8,8 +8,7 @@ import com.emrehalli.financeportal.alert.repository.AlertRepository;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
-import com.emrehalli.financeportal.market.service.MarketPriceReader;
-import com.emrehalli.financeportal.market.service.model.CurrentPriceSnapshot;
+import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.repository.UserRepository;
 import org.springframework.cache.annotation.Cacheable;
@@ -25,11 +24,11 @@ public class AlertService {
 
     private final AlertRepository alertRepository;
     private final UserRepository userRepository;
-    private final MarketPriceReader marketQueryService;
+    private final MarketQueryService marketQueryService;
 
     public AlertService(AlertRepository alertRepository,
                         UserRepository userRepository,
-                        MarketPriceReader marketQueryService) {
+                        MarketQueryService marketQueryService) {
         this.alertRepository = alertRepository;
         this.userRepository = userRepository;
         this.marketQueryService = marketQueryService;
@@ -111,7 +110,7 @@ public class AlertService {
     }
 
     private AlertResponseDto toResponse(Alert alert) {
-        CurrentPriceSnapshot snapshot = marketQueryService.resolveCurrentPrice(alert.getInstrumentCode());
+        var snapshot = marketQueryService.findBySymbol(alert.getInstrumentCode()).orElse(null);
         return AlertResponseDto.builder()
                 .id(alert.getId())
                 .userId(alert.getUser().getId())
@@ -121,10 +120,9 @@ public class AlertService {
                 .status(alert.getStatus())
                 .triggeredAt(alert.getTriggeredAt())
                 .createdAt(alert.getCreatedAt())
-                .currentPrice(snapshot.price())
-                .source(snapshot.source() == null ? null : snapshot.source().name())
-                .lastUpdated(snapshot.lastUpdatedAt() == null ? null : snapshot.lastUpdatedAt().toString())
+                .currentPrice(snapshot != null ? snapshot.price() : null)
+                .source(snapshot != null ? snapshot.source() : null)
+                .lastUpdated(snapshot != null && snapshot.fetchedAt() != null ? snapshot.fetchedAt().toString() : null)
                 .build();
     }
 }
-

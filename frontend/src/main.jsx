@@ -7,6 +7,7 @@ import { initKeycloak } from "./auth/keycloak.js";
 import "./i18n";
 import { ThemeProvider } from "./theme/ThemeContext.jsx";
 import "./styles/global.css";
+import "./styles/dashboard-theme.css";
 
 const root = createRoot(document.getElementById("root"));
 

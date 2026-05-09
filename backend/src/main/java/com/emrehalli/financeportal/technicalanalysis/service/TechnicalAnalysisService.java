@@ -1,7 +1,6 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
-import com.emrehalli.financeportal.market.service.MarketHistoryBackfillProperties;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisValidationException;
 import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonResult;
@@ -24,13 +23,13 @@ import java.util.Set;
 public class TechnicalAnalysisService {
 
     private static final Logger logger = LogManager.getLogger(TechnicalAnalysisService.class);
+    private static final int REQUIRED_HISTORY_POINT_COUNT = 60;
 
     private final HistoricalPriceReader historicalPriceReader;
     private final MovingAverageService movingAverageService;
     private final RsiService rsiService;
     private final TrendAnalysisService trendAnalysisService;
     private final InstrumentComparisonService instrumentComparisonService;
-    private final MarketHistoryBackfillProperties backfillProperties;
     private final AppMessageSource appMessageSource;
 
     public TechnicalAnalysisService(HistoricalPriceReader historicalPriceReader,
@@ -38,14 +37,12 @@ public class TechnicalAnalysisService {
                                     RsiService rsiService,
                                     TrendAnalysisService trendAnalysisService,
                                     InstrumentComparisonService instrumentComparisonService,
-                                    MarketHistoryBackfillProperties backfillProperties,
                                     AppMessageSource appMessageSource) {
         this.historicalPriceReader = historicalPriceReader;
         this.movingAverageService = movingAverageService;
         this.rsiService = rsiService;
         this.trendAnalysisService = trendAnalysisService;
         this.instrumentComparisonService = instrumentComparisonService;
-        this.backfillProperties = backfillProperties;
         this.appMessageSource = appMessageSource;
     }
 
@@ -56,7 +53,7 @@ public class TechnicalAnalysisService {
 
         Set<IndicatorType> requestedIndicators = resolveIndicators(indicators);
         List<HistoricalPricePoint> history = historicalPriceReader.read(symbol, from, to);
-        int requiredPointCount = Math.max(backfillProperties.getRequiredHistoryPointCount(), 1);
+        int requiredPointCount = REQUIRED_HISTORY_POINT_COUNT;
         if (history.size() < requiredPointCount) {
             logger.warn("Technical analysis has insufficient history: symbol={}, from={}, to={}, pointCount={}, requiredPointCount={}",
                     symbol, from, to, history.size(), requiredPointCount);

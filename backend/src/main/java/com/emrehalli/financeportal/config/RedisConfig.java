@@ -3,7 +3,6 @@ package com.emrehalli.financeportal.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
@@ -17,8 +16,7 @@ import org.springframework.cache.CacheManager;
 public class RedisConfig {
 
     @Bean
-    @Qualifier("marketCacheRedisTemplate")
-    public RedisTemplate<String, String> marketCacheRedisTemplate(RedisConnectionFactory connectionFactory) {
+    public RedisTemplate<String, String> redisStringTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, String> template = new RedisTemplate<>();
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
 
@@ -27,6 +25,25 @@ public class RedisConfig {
         template.setHashKeySerializer(stringSerializer);
         template.setValueSerializer(stringSerializer);
         template.setHashValueSerializer(stringSerializer);
+
+        template.afterPropertiesSet();
+        return template;
+    }
+
+    @Bean
+    public RedisTemplate<String, Object> redisObjectTemplate(RedisConnectionFactory connectionFactory,
+                                                             ObjectMapper objectMapper) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        StringRedisSerializer keySerializer = new StringRedisSerializer();
+        GenericJackson2JsonRedisSerializer valueSerializer = new GenericJackson2JsonRedisSerializer(
+                objectMapper.copy().findAndRegisterModules()
+        );
+
+        template.setConnectionFactory(connectionFactory);
+        template.setKeySerializer(keySerializer);
+        template.setHashKeySerializer(keySerializer);
+        template.setValueSerializer(valueSerializer);
+        template.setHashValueSerializer(valueSerializer);
 
         template.afterPropertiesSet();
         return template;

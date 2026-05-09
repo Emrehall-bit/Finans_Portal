@@ -231,6 +231,8 @@
                                        "FX":  "Döviz",
                                        "STOCK":  "Hisse",
                                        "FUND":  "Fon",
+                                       "FUTURES":  "Vadeli",
+                                       "BOND":  "Tahvil/Bono",
                                        "MACRO":  "Makro"
                                    },
                     "macro":  {

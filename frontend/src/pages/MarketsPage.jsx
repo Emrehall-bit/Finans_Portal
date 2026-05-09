@@ -1,15 +1,16 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { getMarkets, getMarketsByType, getMacroHistory } from "../api/marketApi";
+import { getMacroHistory, getMarketsByType } from "../api/marketApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { formatNumber } from "../utils/formatters";
 
-const CATEGORY_OPTIONS = ["ALL", "CRYPTO", "FX", "STOCK", "FUND"];
+const CATEGORY_OPTIONS = ["FX", "CRYPTO", "STOCK", "FUND", "FUTURES", "BOND"];
 const MACRO_FROM_DATE = "2024-01-01";
+
 export default function MarketsPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -18,12 +19,10 @@ export default function MarketsPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("ALL");
-  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("FX");
+  const [viewMode, setViewMode] = useState("table");
   const [sortBy, setSortBy] = useState("name");
   const [macroPanelOpen, setMacroPanelOpen] = useState(true);
-  const [macroQuotes, setMacroQuotes] = useState([]);
-  const [macroLoading, setMacroLoading] = useState(true);
-  const [macroError, setMacroError] = useState("");
   const [selectedMacroSymbol, setSelectedMacroSymbol] = useState("");
   const [macroHistory, setMacroHistory] = useState([]);
   const [macroHistoryLoading, setMacroHistoryLoading] = useState(false);
@@ -37,7 +36,7 @@ export default function MarketsPage() {
       try {
         setLoading(true);
         setError("");
-        const data = categoryFilter === "ALL" ? await getMarkets() : await getMarketsByType(categoryFilter);
+        const data = await getMarketsByType(categoryFilter);
         if (!active) {
           return;
         }
@@ -46,7 +45,7 @@ export default function MarketsPage() {
         setQuotes(
           normalizedQuotes
             .filter((item) => item && typeof item === "object")
-            .map((item) => ({ ...item, marketCategory: classifyCategory(item) })),
+            .map((item) => ({ ...item, marketCategory: classifyCategory(item, categoryFilter) })),
         );
       } catch (err) {
         if (!active) {
@@ -67,48 +66,7 @@ export default function MarketsPage() {
     };
   }, [categoryFilter, t]);
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadMacroQuotes() {
-      try {
-        setMacroLoading(true);
-        setMacroError("");
-        const data = await getMarkets({ type: "MACRO_INDICATOR" });
-        if (!active) {
-          return;
-        }
-
-        const normalizedQuotes = Array.isArray(data) ? data : [];
-        setMacroQuotes(normalizedQuotes.filter((item) => item && typeof item === "object"));
-      } catch (err) {
-        if (!active) {
-          return;
-        }
-        setMacroError(extractErrorMessage(err, t("markets.macro.loadError")));
-      } finally {
-        if (active) {
-          setMacroLoading(false);
-        }
-      }
-    }
-
-    loadMacroQuotes();
-
-    return () => {
-      active = false;
-    };
-  }, [t]);
-
-  const macroInstruments = useMemo(() => {
-    return [...macroQuotes]
-      .filter((item) => item?.symbol)
-      .sort((left, right) => {
-        const leftLabel = `${left.displayName || ""} ${left.symbol || ""}`.trim();
-        const rightLabel = `${right.displayName || ""} ${right.symbol || ""}`.trim();
-        return leftLabel.localeCompare(rightLabel, "tr");
-      });
-  }, [macroQuotes]);
+  const macroInstruments = useMemo(() => [], []);
 
   useEffect(() => {
     if (macroInstruments.length === 0) {
@@ -189,16 +147,15 @@ export default function MarketsPage() {
     return [...quotes]
       .filter((item) => {
         const matchesSource = sourceFilter === "ALL" || item.source === sourceFilter;
-        const matchesCategory = categoryFilter === "ALL" || item.marketCategory === categoryFilter;
         const matchesQuery =
           query.length === 0 ||
           item.symbol?.toLowerCase().includes(query) ||
           item.displayName?.toLowerCase().includes(query);
 
-        return matchesSource && matchesCategory && matchesQuery;
+        return matchesSource && matchesQuery;
       })
       .sort((left, right) => sortQuotes(left, right, sortBy));
-  }, [quotes, deferredSearch, sourceFilter, categoryFilter, sortBy]);
+  }, [quotes, deferredSearch, sourceFilter, sortBy]);
 
   const marketPulse = useMemo(() => {
     const positive = filteredQuotes.filter((item) => Number(item.changeRate) >= 0).length;
@@ -216,6 +173,8 @@ export default function MarketsPage() {
     [macroInstruments, selectedMacroSymbol],
   );
 
+  const isFxTable = categoryFilter === "FX";
+
   return (
     <div className="dashboard-stack market-terminal-page">
       <section className="market-terminal-hero panel-surface">
@@ -232,17 +191,6 @@ export default function MarketsPage() {
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t("markets.searchPlaceholder")}
               />
-            </label>
-
-            <label className="market-filter-field">
-              <span>{t("markets.category")}</span>
-              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-                {CATEGORY_OPTIONS.map((category) => (
-                  <option key={category} value={category}>
-                    {formatCategoryLabel(category, t)}
-                  </option>
-                ))}
-              </select>
             </label>
 
             <label className="market-filter-field">
@@ -282,7 +230,6 @@ export default function MarketsPage() {
               <strong>{marketPulse.negative}</strong>
             </div>
           </div>
-
         </div>
       </section>
 
@@ -290,73 +237,146 @@ export default function MarketsPage() {
         <div className="panel-head">
           <div>
             <p className="eyebrow">{t("markets.listEyebrow")}</p>
-            <h3>{t("markets.listTitle")}</h3>
+            <h3>{formatCategoryLabel(categoryFilter, t)}</h3>
           </div>
 
           <div className="markets-view-controls">
             <span className="terminal-badge muted">{t("common.records", { count: filteredQuotes.length })}</span>
-          </div>
-        </div>
-
-        <div className="market-segmented-tabs" role="tablist" aria-label={t("markets.category")}>
-          {CATEGORY_OPTIONS.map((category) => {
-            const isActive = categoryFilter === category;
-            return (
+            <div className="markets-view-toggle" role="tablist" aria-label={t("markets.listTitle")}>
               <button
-                key={category}
                 type="button"
                 role="tab"
-                aria-selected={isActive}
-                className={`market-segmented-tab ${isActive ? "active" : ""}`}
-                onClick={() => setCategoryFilter(category)}
+                aria-selected={viewMode === "table"}
+                className={`market-segmented-tab ${viewMode === "table" ? "active" : ""}`}
+                onClick={() => setViewMode("table")}
               >
-                {formatCategoryLabel(category, t)}
+                {t("markets.tableView")}
               </button>
-            );
-          })}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === "cards"}
+                className={`market-segmented-tab ${viewMode === "cards" ? "active" : ""}`}
+                onClick={() => setViewMode("cards")}
+              >
+                {t("markets.cardView")}
+              </button>
+            </div>
+          </div>
         </div>
 
         {loading ? <LoadingSpinner label={t("markets.loading")} /> : null}
         {error ? <ErrorMessage message={error} /> : null}
 
-        {!loading && !error && filteredQuotes.length === 0 ? (
-          <EmptyState title={t("markets.emptyTitle")} description={t("markets.emptyDescription")} />
-        ) : null}
-
-        {!loading && !error && filteredQuotes.length > 0 ? (
-          <div className="market-stream-list" role="list">
-            <div className="market-stream-list-head" role="presentation">
-              <span>{t("markets.columns.instrument")}</span>
-              <span>{t("markets.columns.last")}</span>
-              <span>{t("markets.columns.change")}</span>
-              <span>{t("markets.columns.source")}</span>
+        <div className="markets-console-grid">
+          <aside className="markets-category-sidebar">
+            <p className="eyebrow">{t("markets.category")}</p>
+            <div className="markets-category-nav" role="tablist" aria-label={t("markets.category")}>
+              {CATEGORY_OPTIONS.map((category) => {
+                const isActive = categoryFilter === category;
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`markets-category-button ${isActive ? "active" : ""}`}
+                    onClick={() => setCategoryFilter(category)}
+                  >
+                    {formatCategoryLabel(category, t)}
+                  </button>
+                );
+              })}
             </div>
+          </aside>
 
-            <div className="market-stream-scroll">
-              {filteredQuotes.map((item) => (
-                <button
-                  key={`${item.symbol}-${item.source}`}
-                  type="button"
-                  className="market-stream-row"
-                  onClick={() => navigate(`/markets/${encodeURIComponent(item.symbol)}`)}
-                >
-                  <div className="market-stream-symbol">
-                    <strong>{item.symbol || "-"}</strong>
-                    <span>{item.displayName || item.instrumentType || "-"}</span>
-                  </div>
-                  <strong className="market-stream-price">{formatNumber(item.price)}</strong>
-                  <span className={`market-stream-change ${Number(item.changeRate) >= 0 ? "market-up" : "market-down"}`}>
-                    {formatMarketChange(item.changeRate)}
-                  </span>
-                  <div className="market-stream-meta">
-                    <span>{item.source || "-"}</span>
-                    <small>{formatCategoryLabel(item.marketCategory, t)}</small>
-                  </div>
-                </button>
-              ))}
-            </div>
+          <div className="markets-category-content">
+            {!loading && !error && filteredQuotes.length === 0 ? (
+              <EmptyState title={t("markets.emptyTitle")} description={t("markets.emptyDescription")} />
+            ) : null}
+
+            {!loading && !error && filteredQuotes.length > 0 && viewMode === "table" ? (
+              <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap">
+                <table className="finance-market-table">
+                  <thead>
+                    <tr>
+                      <th>{t("markets.columns.instrument")}</th>
+                      {isFxTable ? <th>{t("markets.columns.buy", { defaultValue: "Alış" })}</th> : null}
+                      {isFxTable ? <th>{t("markets.columns.sell", { defaultValue: "Satış" })}</th> : null}
+                      {!isFxTable ? <th>{t("markets.columns.lastPrice", { defaultValue: "Son Fiyat" })}</th> : null}
+                      <th>{t("markets.columns.change")}</th>
+                      <th>{t("markets.columns.source")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredQuotes.map((item) => (
+                      <tr key={`${item.symbol}-${item.source}-${item.marketCategory}`}>
+                        <td>
+                          <button
+                            type="button"
+                            className="finance-table-row-button"
+                            onClick={() => navigate(`/markets/${encodeURIComponent(item.symbol)}`)}
+                          >
+                            <span className="finance-table-symbol">
+                              <strong>{item.symbol || "-"}</strong>
+                              <span>{item.displayName || item.instrumentType || "-"}</span>
+                            </span>
+                          </button>
+                        </td>
+                        {isFxTable ? <td>{formatRate(item.buyRate)}</td> : null}
+                        {isFxTable ? <td>{formatRate(item.sellRate)}</td> : null}
+                        {!isFxTable ? <td>{formatRate(item.price)}</td> : null}
+                        <td className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</td>
+                        <td>{item.source || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
+            {!loading && !error && filteredQuotes.length > 0 && viewMode === "cards" ? (
+              <div className="market-card-grid markets-card-scroll-wrap">
+                {filteredQuotes.map((item) => (
+                  <button
+                    key={`${item.symbol}-${item.source}-${item.marketCategory}-card`}
+                    type="button"
+                    className="market-quote-card"
+                    onClick={() => navigate(`/markets/${encodeURIComponent(item.symbol)}`)}
+                  >
+                    <div className="market-quote-card-top">
+                      <div>
+                        <strong>{item.symbol || "-"}</strong>
+                        <p>{item.displayName || item.instrumentType || "-"}</p>
+                      </div>
+                      <span className="terminal-badge muted">{item.source || "-"}</span>
+                    </div>
+
+                    <div className="market-quote-card-body">
+                      <div>
+                        <span className="eyebrow">
+                          {isFxTable ? t("markets.columns.buy", { defaultValue: "Alış" }) : t("markets.columns.lastPrice", { defaultValue: "Son Fiyat" })}
+                        </span>
+                        <strong>{formatRate(isFxTable ? item.buyRate : item.price)}</strong>
+                      </div>
+                      {isFxTable ? (
+                        <div>
+                          <span className="eyebrow">{t("markets.columns.sell", { defaultValue: "Satış" })}</span>
+                          <strong>{formatRate(item.sellRate)}</strong>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="market-quote-card-foot">
+                      <span>{formatCategoryLabel(item.marketCategory, t)}</span>
+                      <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </section>
 
       <section className="panel-surface market-macro-panel">
@@ -381,38 +401,8 @@ export default function MarketsPage() {
                 <span className="terminal-badge muted">{t("common.records", { count: macroInstruments.length })}</span>
               </div>
 
-              {macroLoading ? <LoadingSpinner label={t("markets.macro.loading")} /> : null}
-              {macroError ? <ErrorMessage message={macroError} /> : null}
-
-              {!macroLoading && !macroError && macroInstruments.length === 0 ? (
+              {macroInstruments.length === 0 ? (
                 <EmptyState title={t("markets.macro.emptyTitle")} description={t("markets.macro.emptyDescription")} />
-              ) : null}
-
-              {!macroLoading && !macroError && macroInstruments.length > 0 ? (
-                <div className="market-macro-list-items">
-                  {macroInstruments.map((item) => {
-                    const isActive = normalizeText(item.symbol) === normalizeText(selectedMacroSymbol);
-                    return (
-                      <button
-                        key={item.symbol}
-                        type="button"
-                        className={`market-macro-list-item ${isActive ? "active" : ""}`}
-                        onClick={() => setSelectedMacroSymbol(item.symbol)}
-                      >
-                        <div>
-                          <strong>{item.displayName || item.symbol}</strong>
-                          <span>{item.symbol}</span>
-                        </div>
-                        <div className="market-macro-list-metric">
-                          <strong>{formatNumber(item.price)}</strong>
-                          <span className={Number(item.changeRate) >= 0 ? "market-up" : "market-down"}>
-                            {formatMarketChange(item.changeRate)}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
               ) : null}
             </div>
 
@@ -460,12 +450,12 @@ export default function MarketsPage() {
   );
 }
 
-function classifyCategory(item) {
+function classifyCategory(item, fallbackCategory) {
   const type = normalizeText(item?.instrumentType);
   if (type === "FOREX" || type === "CURRENCY") {
     return "FX";
   }
-  return ["CRYPTO", "FX", "STOCK", "FUND"].includes(type) ? type : "ALL";
+  return ["CRYPTO", "FX", "STOCK", "FUND", "FUTURES", "BOND"].includes(type) ? type : fallbackCategory;
 }
 
 function sortQuotes(left, right, sortBy) {
@@ -507,6 +497,14 @@ function formatMarketChange(value) {
   return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
 }
 
+function formatRate(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  return formatNumber(value);
+}
+
 function formatMacroMonth(value, language) {
   if (!value) {
     return "-";
@@ -535,4 +533,12 @@ function normalizeText(value) {
 
 function buildTodayIsoDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function getChangeToneClass(value) {
+  if (value === null || value === undefined || value === "") {
+    return "tone-muted";
+  }
+
+  return Number(value) >= 0 ? "tone-positive" : "tone-negative";
 }

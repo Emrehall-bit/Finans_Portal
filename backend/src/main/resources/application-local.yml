@@ -1,8 +1,34 @@
-management:
-  endpoint:
-    health:
-      show-details: always
-
-app:
-  logging:
-    path: ${LOG_PATH:logs}
+market:
+  providers:
+    tcmb:
+      base-url: https://evds3.tcmb.gov.tr
+      api-key: Rb7ROmhyOC
+    akbank:
+      base-url: https://apiportal.akbank.com
+      api-key: PLACEHOLDER_AKBANK_API_KEY
+    ziraat:
+      base-url: https://developers.ziraatbank.com.tr
+      api-key: PLACEHOLDER_ZIRAAT_API_KEY
+    binance:
+      base-url: https://api.binance.com/api/v3
+    yahoo:
+      base-url: https://query1.finance.yahoo.com
+    bist:
+      base-url: https://datastore.borsaistanbul.com
+    tefas:
+      base-url: https://www.tefas.gov.tr
+  scheduler:
+    fx-rate-ms: 1800000
+    crypto-rate-ms: 300000
+    fund-cron: "0 30 18 * * MON-FRI"
+    stock-rate-ms: 1800000
+    futures-cron: "0 0 19 * * MON-FRI"
+    bond-cron: "0 0 19 * * MON-FRI"
+  cache:
+    ttl-minutes:
+      fx: 40
+      crypto: 8
+      fund: 1500
+      stock: 40
+      futures: 1500
+      bond: 1500

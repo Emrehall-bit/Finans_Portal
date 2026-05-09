@@ -1,141 +1,29 @@
-2026-05-08 23:38:09.830 INFO  [background-preinit] Version requestId= userId= method= uri= status= durationMs= - HV000001: Hibernate Validator 8.0.3.Final
-2026-05-08 23:38:09.865 INFO  [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - Starting FundControllerTest using Java 25.0.2 with PID 21852 (started by ehall in C:\Users\ehall\Desktop\Finans-Portal\backend)
-2026-05-08 23:38:09.868 DEBUG [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - Running with Spring Boot v3.5.13, Spring v6.2.17
-2026-05-08 23:38:09.870 INFO  [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - No active profile set, falling back to 1 default profile: "local"
-2026-05-08 23:38:12.193 DEBUG [main] AuthenticationConfiguration$DefaultPasswordEncoderAuthenticationManagerBuilder requestId= userId= method= uri= status= durationMs= - No authenticationProviders and no parentAuthenticationManager defined. Returning null.
-2026-05-08 23:38:12.798 DEBUG [main] DefaultSecurityFilterChain requestId= userId= method= uri= status= durationMs= - Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, BearerTokenAuthenticationFilter, AuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
-2026-05-08 23:38:13.156 INFO  [main] SpringBootMockServletContext requestId= userId= method= uri= status= durationMs= - Initializing Spring TestDispatcherServlet ''
-2026-05-08 23:38:13.156 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Initializing Servlet ''
-2026-05-08 23:38:13.157 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Completed initialization in 1 ms
-2026-05-08 23:38:13.191 INFO  [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - Started FundControllerTest in 3.814 seconds (process running for 4.952)
-2026-05-08 23:38:13.316 DEBUG [main] FilterChainProxy requestId=fab0efd0-8c5b-44b8-9dd6-b0d95f8168ff userId= method= uri= status= durationMs= - Securing GET /api/v1/funds
-2026-05-08 23:38:13.324 DEBUG [main] AnonymousAuthenticationFilter requestId=fab0efd0-8c5b-44b8-9dd6-b0d95f8168ff userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
-2026-05-08 23:38:13.328 DEBUG [main] FilterChainProxy requestId=fab0efd0-8c5b-44b8-9dd6-b0d95f8168ff userId= method= uri= status= durationMs= - Secured GET /api/v1/funds
-2026-05-08 23:38:13.411 INFO  [main] HttpRequestLoggingFilter requestId=fab0efd0-8c5b-44b8-9dd6-b0d95f8168ff userId= method=GET uri=/api/v1/funds status=200 durationMs=107 - HTTP request completed
-2026-05-08 23:38:13.496 DEBUG [main] FilterChainProxy requestId=5a38cbc6-4f16-4831-aa2c-a06c0dad0fb7 userId= method= uri= status= durationMs= - Securing GET /api/v1/funds/AAL
-2026-05-08 23:38:13.497 DEBUG [main] AnonymousAuthenticationFilter requestId=5a38cbc6-4f16-4831-aa2c-a06c0dad0fb7 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
-2026-05-08 23:38:13.497 DEBUG [main] FilterChainProxy requestId=5a38cbc6-4f16-4831-aa2c-a06c0dad0fb7 userId= method= uri= status= durationMs= - Secured GET /api/v1/funds/AAL
-2026-05-08 23:38:13.510 INFO  [main] HttpRequestLoggingFilter requestId=5a38cbc6-4f16-4831-aa2c-a06c0dad0fb7 userId= method=GET uri=/api/v1/funds/AAL status=200 durationMs=14 - HTTP request completed
-2026-05-08 23:53:55.423 INFO  [background-preinit] Version requestId= userId= method= uri= status= durationMs= - HV000001: Hibernate Validator 8.0.3.Final
-2026-05-08 23:53:55.471 INFO  [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - Starting FundControllerTest using Java 25.0.2 with PID 32868 (started by ehall in C:\Users\ehall\Desktop\Finans-Portal\backend)
-2026-05-08 23:53:55.476 DEBUG [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - Running with Spring Boot v3.5.13, Spring v6.2.17
-2026-05-08 23:53:55.478 INFO  [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - No active profile set, falling back to 1 default profile: "local"
-2026-05-08 23:53:57.592 DEBUG [main] AuthenticationConfiguration$DefaultPasswordEncoderAuthenticationManagerBuilder requestId= userId= method= uri= status= durationMs= - No authenticationProviders and no parentAuthenticationManager defined. Returning null.
-2026-05-08 23:53:58.137 DEBUG [main] DefaultSecurityFilterChain requestId= userId= method= uri= status= durationMs= - Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, BearerTokenAuthenticationFilter, AuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
-2026-05-08 23:53:58.481 INFO  [main] SpringBootMockServletContext requestId= userId= method= uri= status= durationMs= - Initializing Spring TestDispatcherServlet ''
-2026-05-08 23:53:58.482 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Initializing Servlet ''
-2026-05-08 23:53:58.484 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Completed initialization in 1 ms
-2026-05-08 23:53:58.516 INFO  [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - Started FundControllerTest in 3.549 seconds (process running for 4.732)
-2026-05-08 23:53:58.623 DEBUG [main] FilterChainProxy requestId=0b63272a-75a4-4c84-8546-7003708132a2 userId= method= uri= status= durationMs= - Securing GET /api/v1/funds
-2026-05-08 23:53:58.628 DEBUG [main] AnonymousAuthenticationFilter requestId=0b63272a-75a4-4c84-8546-7003708132a2 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
-2026-05-08 23:53:58.631 DEBUG [main] FilterChainProxy requestId=0b63272a-75a4-4c84-8546-7003708132a2 userId= method= uri= status= durationMs= - Secured GET /api/v1/funds
-2026-05-08 23:53:58.691 INFO  [main] HttpRequestLoggingFilter requestId=0b63272a-75a4-4c84-8546-7003708132a2 userId= method=GET uri=/api/v1/funds status=200 durationMs=77 - HTTP request completed
-2026-05-08 23:53:58.741 DEBUG [main] FilterChainProxy requestId=197c91f9-c164-41f0-bfc4-659e0aa0a6ba userId= method= uri= status= durationMs= - Securing GET /api/v1/funds/AAL
-2026-05-08 23:53:58.742 DEBUG [main] AnonymousAuthenticationFilter requestId=197c91f9-c164-41f0-bfc4-659e0aa0a6ba userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
-2026-05-08 23:53:58.742 DEBUG [main] FilterChainProxy requestId=197c91f9-c164-41f0-bfc4-659e0aa0a6ba userId= method= uri= status= durationMs= - Secured GET /api/v1/funds/AAL
-2026-05-08 23:53:58.753 INFO  [main] HttpRequestLoggingFilter requestId=197c91f9-c164-41f0-bfc4-659e0aa0a6ba userId= method=GET uri=/api/v1/funds/AAL status=200 durationMs=12 - HTTP request completed
-2026-05-08 23:53:58.765 INFO  [main] AnnotationConfigContextLoaderUtils requestId= userId= method= uri= status= durationMs= - Could not detect default configuration classes for test class [com.emrehalli.financeportal.market.api.TefasAdminControllerTest]: TefasAdminControllerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-2026-05-08 23:53:58.782 INFO  [main] SpringBootTestContextBootstrapper requestId= userId= method= uri= status= durationMs= - Found @SpringBootConfiguration com.emrehalli.financeportal.BackendApplication for test class com.emrehalli.financeportal.market.api.TefasAdminControllerTest
-2026-05-08 23:53:58.855 INFO  [main] TefasAdminControllerTest requestId= userId= method= uri= status= durationMs= - Starting TefasAdminControllerTest using Java 25.0.2 with PID 32868 (started by ehall in C:\Users\ehall\Desktop\Finans-Portal\backend)
-2026-05-08 23:53:58.857 DEBUG [main] TefasAdminControllerTest requestId= userId= method= uri= status= durationMs= - Running with Spring Boot v3.5.13, Spring v6.2.17
-2026-05-08 23:53:58.857 INFO  [main] TefasAdminControllerTest requestId= userId= method= uri= status= durationMs= - No active profile set, falling back to 1 default profile: "local"
-2026-05-08 23:53:59.287 DEBUG [main] AuthenticationConfiguration$DefaultPasswordEncoderAuthenticationManagerBuilder requestId= userId= method= uri= status= durationMs= - No authenticationProviders and no parentAuthenticationManager defined. Returning null.
-2026-05-08 23:53:59.377 DEBUG [main] DefaultSecurityFilterChain requestId= userId= method= uri= status= durationMs= - Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, BearerTokenAuthenticationFilter, AuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
-2026-05-08 23:53:59.459 INFO  [main] SpringBootMockServletContext requestId= userId= method= uri= status= durationMs= - Initializing Spring TestDispatcherServlet ''
-2026-05-08 23:53:59.459 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Initializing Servlet ''
-2026-05-08 23:53:59.461 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Completed initialization in 2 ms
-2026-05-08 23:53:59.468 INFO  [main] TefasAdminControllerTest requestId= userId= method= uri= status= durationMs= - Started TefasAdminControllerTest in 0.681 seconds (process running for 5.684)
-2026-05-08 23:53:59.478 DEBUG [main] FilterChainProxy requestId=3485d7a2-8c4e-405c-a6ae-a0f3390bd4f4 userId= method= uri= status= durationMs= - Securing POST /api/v1/admin/tefas/refresh
-2026-05-08 23:53:59.478 DEBUG [main] AnonymousAuthenticationFilter requestId=3485d7a2-8c4e-405c-a6ae-a0f3390bd4f4 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
-2026-05-08 23:53:59.488 INFO  [main] HttpRequestLoggingFilter requestId=3485d7a2-8c4e-405c-a6ae-a0f3390bd4f4 userId= method=POST uri=/api/v1/admin/tefas/refresh status=401 durationMs=11 - HTTP request completed
-2026-05-08 23:53:59.605 WARN  [main] TefasApiClient requestId= userId= method= uri= status= durationMs= - TEFAS fiyat istegi tekrar denenecek: fonKod=AAL, attempt=1, timeoutMs=10000, hata=500 Internal Server Error on POST request for "https://www.tefas.gov.tr/api/funds/fonFiyatBilgiGetir": [no body]
-2026-05-08 23:53:59.825 INFO  [main] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market refresh scheduler evaluating providers: sources=[EVDS]
-2026-05-08 23:53:59.826 INFO  [main] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider skipped: source=EVDS, reason=not-due
-2026-05-08 23:53:59.832 INFO  [main] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market refresh scheduler evaluating providers: sources=[EVDS]
-2026-05-08 23:53:59.833 INFO  [main] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider due refresh started: source=EVDS, dueSymbolCount=2
-2026-05-08 23:53:59.833 INFO  [main] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider refresh completed: source=EVDS, quoteCount=0
-2026-05-08 23:54:00.083 INFO  [main] TefasFundSeeder requestId= userId= method= uri= status= durationMs= - TEFAS seed tamamlandi, toplam tanim: 266
-2026-05-08 23:54:00.085 INFO  [main] TefasFundSeeder requestId= userId= method= uri= status= durationMs= - TEFAS initial refresh started: fundCount=1
-2026-05-08 23:54:00.086 INFO  [main] TefasFundSeeder requestId= userId= method= uri= status= durationMs= - TEFAS initial refresh started: fundCount=1
-2026-05-08 23:54:00.182 INFO  [main] TefasRefreshService requestId= userId= method= uri= status= durationMs= - TEFAS refresh completed: processedFundCount=1, successfulFundCount=1, failedFundCount=0, mappingCreatedCount=1, quoteCount=1, historyReceivedCount=1, historyInsertedCount=1, historyDuplicateCount=0
-2026-05-08 23:54:32.350 INFO  [background-preinit] Version requestId= userId= method= uri= status= durationMs= - HV000001: Hibernate Validator 8.0.3.Final
-2026-05-08 23:54:32.386 INFO  [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - Starting FundControllerTest using Java 25.0.2 with PID 20704 (started by ehall in C:\Users\ehall\Desktop\Finans-Portal\backend)
-2026-05-08 23:54:32.391 DEBUG [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - Running with Spring Boot v3.5.13, Spring v6.2.17
-2026-05-08 23:54:32.393 INFO  [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - No active profile set, falling back to 1 default profile: "local"
-2026-05-08 23:54:34.688 DEBUG [main] AuthenticationConfiguration$DefaultPasswordEncoderAuthenticationManagerBuilder requestId= userId= method= uri= status= durationMs= - No authenticationProviders and no parentAuthenticationManager defined. Returning null.
-2026-05-08 23:54:35.344 DEBUG [main] DefaultSecurityFilterChain requestId= userId= method= uri= status= durationMs= - Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, BearerTokenAuthenticationFilter, AuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
-2026-05-08 23:54:35.702 INFO  [main] SpringBootMockServletContext requestId= userId= method= uri= status= durationMs= - Initializing Spring TestDispatcherServlet ''
-2026-05-08 23:54:35.703 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Initializing Servlet ''
-2026-05-08 23:54:35.705 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Completed initialization in 2 ms
-2026-05-08 23:54:35.735 INFO  [main] FundControllerTest requestId= userId= method= uri= status= durationMs= - Started FundControllerTest in 3.973 seconds (process running for 5.09)
-2026-05-08 23:54:35.839 DEBUG [main] FilterChainProxy requestId=9d41718d-39ef-45cb-ac9e-ced1c745963d userId= method= uri= status= durationMs= - Securing GET /api/v1/funds
-2026-05-08 23:54:35.847 DEBUG [main] AnonymousAuthenticationFilter requestId=9d41718d-39ef-45cb-ac9e-ced1c745963d userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
-2026-05-08 23:54:35.850 DEBUG [main] FilterChainProxy requestId=9d41718d-39ef-45cb-ac9e-ced1c745963d userId= method= uri= status= durationMs= - Secured GET /api/v1/funds
-2026-05-08 23:54:35.921 INFO  [main] HttpRequestLoggingFilter requestId=9d41718d-39ef-45cb-ac9e-ced1c745963d userId= method=GET uri=/api/v1/funds status=200 durationMs=95 - HTTP request completed
-2026-05-08 23:54:35.971 DEBUG [main] FilterChainProxy requestId=0b0f5c8c-24e4-45b5-9511-c771bd476ca0 userId= method= uri= status= durationMs= - Securing GET /api/v1/funds/AAL
-2026-05-08 23:54:35.971 DEBUG [main] AnonymousAuthenticationFilter requestId=0b0f5c8c-24e4-45b5-9511-c771bd476ca0 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
-2026-05-08 23:54:35.972 DEBUG [main] FilterChainProxy requestId=0b0f5c8c-24e4-45b5-9511-c771bd476ca0 userId= method= uri= status= durationMs= - Secured GET /api/v1/funds/AAL
-2026-05-08 23:54:35.983 INFO  [main] HttpRequestLoggingFilter requestId=0b0f5c8c-24e4-45b5-9511-c771bd476ca0 userId= method=GET uri=/api/v1/funds/AAL status=200 durationMs=12 - HTTP request completed
-2026-05-08 23:54:35.998 INFO  [main] AnnotationConfigContextLoaderUtils requestId= userId= method= uri= status= durationMs= - Could not detect default configuration classes for test class [com.emrehalli.financeportal.market.api.TefasAdminControllerTest]: TefasAdminControllerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-2026-05-08 23:54:36.024 INFO  [main] SpringBootTestContextBootstrapper requestId= userId= method= uri= status= durationMs= - Found @SpringBootConfiguration com.emrehalli.financeportal.BackendApplication for test class com.emrehalli.financeportal.market.api.TefasAdminControllerTest
-2026-05-08 23:54:36.090 INFO  [main] TefasAdminControllerTest requestId= userId= method= uri= status= durationMs= - Starting TefasAdminControllerTest using Java 25.0.2 with PID 20704 (started by ehall in C:\Users\ehall\Desktop\Finans-Portal\backend)
-2026-05-08 23:54:36.092 DEBUG [main] TefasAdminControllerTest requestId= userId= method= uri= status= durationMs= - Running with Spring Boot v3.5.13, Spring v6.2.17
-2026-05-08 23:54:36.093 INFO  [main] TefasAdminControllerTest requestId= userId= method= uri= status= durationMs= - No active profile set, falling back to 1 default profile: "local"
-2026-05-08 23:54:36.505 DEBUG [main] AuthenticationConfiguration$DefaultPasswordEncoderAuthenticationManagerBuilder requestId= userId= method= uri= status= durationMs= - No authenticationProviders and no parentAuthenticationManager defined. Returning null.
-2026-05-08 23:54:36.592 DEBUG [main] DefaultSecurityFilterChain requestId= userId= method= uri= status= durationMs= - Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, BearerTokenAuthenticationFilter, AuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
-2026-05-08 23:54:36.665 INFO  [main] SpringBootMockServletContext requestId= userId= method= uri= status= durationMs= - Initializing Spring TestDispatcherServlet ''
-2026-05-08 23:54:36.665 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Initializing Servlet ''
-2026-05-08 23:54:36.666 INFO  [main] TestDispatcherServlet requestId= userId= method= uri= status= durationMs= - Completed initialization in 1 ms
-2026-05-08 23:54:36.674 INFO  [main] TefasAdminControllerTest requestId= userId= method= uri= status= durationMs= - Started TefasAdminControllerTest in 0.643 seconds (process running for 6.029)
-2026-05-08 23:54:36.690 DEBUG [main] FilterChainProxy requestId=3be546df-65d6-4986-9bde-87e3d229c2ba userId= method= uri= status= durationMs= - Securing POST /api/v1/admin/tefas/refresh
-2026-05-08 23:54:36.691 DEBUG [main] FilterChainProxy requestId=3be546df-65d6-4986-9bde-87e3d229c2ba userId= method= uri= status= durationMs= - Secured POST /api/v1/admin/tefas/refresh
-2026-05-08 23:54:36.699 INFO  [main] HttpRequestLoggingFilter requestId=3be546df-65d6-4986-9bde-87e3d229c2ba userId= method=POST uri=/api/v1/admin/tefas/refresh status=200 durationMs=9 - HTTP request completed
-2026-05-08 23:54:36.809 WARN  [main] TefasApiClient requestId= userId= method= uri= status= durationMs= - TEFAS fiyat cekilemedi: fonKod=AAL, attempt=1, timeoutMs=10000, hata=500 Internal Server Error on POST request for "https://www.tefas.gov.tr/api/funds/fonFiyatBilgiGetir": [no body]
-2026-05-08 23:54:37.038 INFO  [main] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market refresh scheduler evaluating providers: sources=[EVDS]
-2026-05-08 23:54:37.039 INFO  [main] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider skipped: source=EVDS, reason=not-due
-2026-05-08 23:54:37.048 INFO  [main] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market refresh scheduler evaluating providers: sources=[EVDS]
-2026-05-08 23:54:37.049 INFO  [main] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider due refresh started: source=EVDS, dueSymbolCount=2
-2026-05-08 23:54:37.050 INFO  [main] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider refresh completed: source=EVDS, quoteCount=0
-2026-05-08 23:54:37.347 INFO  [main] TefasFundSeeder requestId= userId= method= uri= status= durationMs= - TEFAS seed tamamlandi, toplam tanim: 266
-2026-05-08 23:54:37.349 INFO  [main] TefasFundSeeder requestId= userId= method= uri= status= durationMs= - TEFAS initial refresh started: fundCount=1
-2026-05-08 23:54:37.350 INFO  [main] TefasFundSeeder requestId= userId= method= uri= status= durationMs= - TEFAS initial refresh started: fundCount=1
-2026-05-08 23:54:37.441 INFO  [main] TefasRefreshService requestId= userId= method= uri= status= durationMs= - TEFAS refresh completed: processedFundCount=1, successfulFundCount=1, failedFundCount=0, mappingCreatedCount=1, quoteCount=1, historyReceivedCount=1, historyInsertedCount=1, historyDuplicateCount=0
-2026-05-08 22:21:08.471 INFO  [background-preinit] Version requestId= userId= method= uri= status= durationMs= - HV000001: Hibernate Validator 8.0.3.Final
-2026-05-08 22:21:08.598 INFO  [main] BackendApplication requestId= userId= method= uri= status= durationMs= - Starting BackendApplication v0.0.1-SNAPSHOT using Java 21.0.10 with PID 7 (/app/app.jar started by root in /app)
-2026-05-08 22:21:08.609 INFO  [main] BackendApplication requestId= userId= method= uri= status= durationMs= - The following 1 profile is active: "local"
-2026-05-08 22:21:11.526 INFO  [main] RepositoryConfigurationDelegate requestId= userId= method= uri= status= durationMs= - Multiple Spring Data modules found, entering strict repository configuration mode
-2026-05-08 22:21:11.535 INFO  [main] RepositoryConfigurationDelegate requestId= userId= method= uri= status= durationMs= - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-05-08 22:21:12.109 INFO  [main] RepositoryConfigurationDelegate requestId= userId= method= uri= status= durationMs= - Finished Spring Data repository scanning in 542 ms. Found 10 JPA repository interfaces.
-2026-05-08 22:21:14.094 INFO  [main] TomcatWebServer requestId= userId= method= uri= status= durationMs= - Tomcat initialized with port 8080 (http)
-2026-05-08 22:21:14.125 INFO  [main] Http11NioProtocol requestId= userId= method= uri= status= durationMs= - Initializing ProtocolHandler ["http-nio-8080"]
-2026-05-08 22:21:14.144 INFO  [main] StandardService requestId= userId= method= uri= status= durationMs= - Starting service [Tomcat]
-2026-05-08 22:21:14.147 INFO  [main] StandardEngine requestId= userId= method= uri= status= durationMs= - Starting Servlet engine: [Apache Tomcat/10.1.53]
-2026-05-08 22:21:14.222 INFO  [main] [/] requestId= userId= method= uri= status= durationMs= - Initializing Spring embedded WebApplicationContext
-2026-05-08 22:21:14.228 INFO  [main] ServletWebServerApplicationContext requestId= userId= method= uri= status= durationMs= - Root WebApplicationContext: initialization completed in 5478 ms
-2026-05-08 22:21:16.121 INFO  [main] HikariDataSource requestId= userId= method= uri= status= durationMs= - HikariPool-1 - Starting...
-2026-05-08 22:21:16.501 INFO  [main] HikariPool requestId= userId= method= uri= status= durationMs= - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@1adf387e
-2026-05-08 22:21:16.506 INFO  [main] HikariDataSource requestId= userId= method= uri= status= durationMs= - HikariPool-1 - Start completed.
-2026-05-08 22:21:16.570 INFO  [main] FlywayExecutor requestId= userId= method= uri= status= durationMs= - Database: jdbc:postgresql://postgres:5432/financeportaldb (PostgreSQL 16.13)
-2026-05-08 22:21:16.732 INFO  [main] JdbcTableSchemaHistory requestId= userId= method= uri= status= durationMs= - Schema history table "public"."flyway_schema_history" does not exist yet
-2026-05-08 22:21:16.754 INFO  [main] DbValidate requestId= userId= method= uri= status= durationMs= - Successfully validated 7 migrations (execution time 00:00.086s)
-2026-05-08 22:21:16.808 INFO  [main] Flyway requestId= userId= method= uri= status= durationMs= - All configured schemas are empty; baseline operation skipped. A baseline or migration script with a lower version than the baseline version may execute if available. Check the Schemas parameter if this is not intended.
-2026-05-08 22:21:16.824 INFO  [main] JdbcTableSchemaHistory requestId= userId= method= uri= status= durationMs= - Creating Schema History table "public"."flyway_schema_history" ...
-2026-05-08 22:21:16.975 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Current version of schema "public": << Empty Schema >>
-2026-05-08 22:21:17.080 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Migrating schema "public" to version "1 - init schema"
-2026-05-08 22:21:17.477 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Migrating schema "public" to version "2 - market history partitioning"
-2026-05-08 22:21:17.725 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Migrating schema "public" to version "3 - instrument registry refactor"
-2026-05-08 22:21:17.891 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Migrating schema "public" to version "4 - market history registry alignment"
-2026-05-08 22:21:17.921 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Migrating schema "public" to version "5 - instrument registry legacy column relaxation"
-2026-05-08 22:21:17.947 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Migrating schema "public" to version "6 - market provider resilience and backfill progress"
-2026-05-08 22:21:17.975 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Migrating schema "public" to version "7 - align market uuid identifiers"
-2026-05-08 22:21:17.994 WARN  [main] DefaultSqlScriptExecutor requestId= userId= method= uri= status= durationMs= - DB: extension "pgcrypto" already exists, skipping (SQL State: 42710 - Error Code: 0)
-2026-05-08 22:21:18.023 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Successfully applied 7 migrations to schema "public", now at version v7 (execution time 00:00.758s)
-2026-05-08 22:21:18.224 INFO  [main] LogHelper requestId= userId= method= uri= status= durationMs= - HHH000204: Processing PersistenceUnitInfo [name: default]
-2026-05-08 22:21:18.364 INFO  [main] Version requestId= userId= method= uri= status= durationMs= - HHH000412: Hibernate ORM core version 6.6.45.Final
-2026-05-08 22:21:18.419 INFO  [main] RegionFactoryInitiator requestId= userId= method= uri= status= durationMs= - HHH000026: Second-level cache disabled
-2026-05-08 22:21:18.885 INFO  [main] SpringPersistenceUnitInfo requestId= userId= method= uri= status= durationMs= - No LoadTimeWeaver setup: ignoring JPA class transformer
-2026-05-08 22:21:18.968 WARN  [main] deprecation requestId= userId= method= uri= status= durationMs= - HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2026-05-08 22:21:18.987 INFO  [main] pooling requestId= userId= method= uri= status= durationMs= - HHH10001005: Database info:
+2026-05-09 13:11:35.773 INFO  [background-preinit] Version requestId= userId= method= uri= status= durationMs= - HV000001: Hibernate Validator 8.0.3.Final
+2026-05-09 13:11:35.892 INFO  [main] BackendApplication requestId= userId= method= uri= status= durationMs= - Starting BackendApplication v0.0.1-SNAPSHOT using Java 21.0.10 with PID 7 (/app/app.jar started by root in /app)
+2026-05-09 13:11:35.903 INFO  [main] BackendApplication requestId= userId= method= uri= status= durationMs= - The following 1 profile is active: "local"
+2026-05-09 13:11:38.937 INFO  [main] RepositoryConfigurationDelegate requestId= userId= method= uri= status= durationMs= - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-05-09 13:11:38.943 INFO  [main] RepositoryConfigurationDelegate requestId= userId= method= uri= status= durationMs= - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-05-09 13:11:39.492 INFO  [main] RepositoryConfigurationDelegate requestId= userId= method= uri= status= durationMs= - Finished Spring Data repository scanning in 524 ms. Found 10 JPA repository interfaces.
+2026-05-09 13:11:41.044 INFO  [main] TomcatWebServer requestId= userId= method= uri= status= durationMs= - Tomcat initialized with port 8080 (http)
+2026-05-09 13:11:41.071 INFO  [main] Http11NioProtocol requestId= userId= method= uri= status= durationMs= - Initializing ProtocolHandler ["http-nio-8080"]
+2026-05-09 13:11:41.078 INFO  [main] StandardService requestId= userId= method= uri= status= durationMs= - Starting service [Tomcat]
+2026-05-09 13:11:41.080 INFO  [main] StandardEngine requestId= userId= method= uri= status= durationMs= - Starting Servlet engine: [Apache Tomcat/10.1.53]
+2026-05-09 13:11:41.126 INFO  [main] [/] requestId= userId= method= uri= status= durationMs= - Initializing Spring embedded WebApplicationContext
+2026-05-09 13:11:41.129 INFO  [main] ServletWebServerApplicationContext requestId= userId= method= uri= status= durationMs= - Root WebApplicationContext: initialization completed in 5113 ms
+2026-05-09 13:11:42.756 INFO  [main] HikariDataSource requestId= userId= method= uri= status= durationMs= - HikariPool-1 - Starting...
+2026-05-09 13:11:43.211 INFO  [main] HikariPool requestId= userId= method= uri= status= durationMs= - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@a1a72d4
+2026-05-09 13:11:43.219 INFO  [main] HikariDataSource requestId= userId= method= uri= status= durationMs= - HikariPool-1 - Start completed.
+2026-05-09 13:11:43.303 INFO  [main] FlywayExecutor requestId= userId= method= uri= status= durationMs= - Database: jdbc:postgresql://postgres:5432/financeportaldb (PostgreSQL 16.13)
+2026-05-09 13:11:43.515 INFO  [main] DbValidate requestId= userId= method= uri= status= durationMs= - Successfully validated 14 migrations (execution time 00:00.116s)
+2026-05-09 13:11:43.544 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Current version of schema "public": 15
+2026-05-09 13:11:43.546 WARN  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Schema "public" has a version (15) that is newer than the latest available migration (7) !
+2026-05-09 13:11:43.555 INFO  [main] DbMigrate requestId= userId= method= uri= status= durationMs= - Schema "public" is up to date. No migration necessary.
+2026-05-09 13:11:43.699 INFO  [main] LogHelper requestId= userId= method= uri= status= durationMs= - HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-05-09 13:11:43.848 INFO  [main] Version requestId= userId= method= uri= status= durationMs= - HHH000412: Hibernate ORM core version 6.6.45.Final
+2026-05-09 13:11:43.928 INFO  [main] RegionFactoryInitiator requestId= userId= method= uri= status= durationMs= - HHH000026: Second-level cache disabled
+2026-05-09 13:11:44.331 INFO  [main] SpringPersistenceUnitInfo requestId= userId= method= uri= status= durationMs= - No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-05-09 13:11:44.464 WARN  [main] deprecation requestId= userId= method= uri= status= durationMs= - HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-05-09 13:11:44.492 INFO  [main] pooling requestId= userId= method= uri= status= durationMs= - HHH10001005: Database info:
 	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
 	Database driver: undefined/unknown
 	Database version: 16.13
@@ -143,34 +31,49 @@
 	Isolation level: undefined/unknown
 	Minimum pool size: undefined/unknown
 	Maximum pool size: undefined/unknown
-2026-05-08 22:21:20.309 INFO  [main] JtaPlatformInitiator requestId= userId= method= uri= status= durationMs= - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2026-05-08 22:21:20.373 INFO  [main] LocalContainerEntityManagerFactoryBean requestId= userId= method= uri= status= durationMs= - Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-05-08 22:21:20.925 INFO  [main] QueryEnhancerFactory requestId= userId= method= uri= status= durationMs= - Hibernate is in classpath; If applicable, HQL parser will be used.
-2026-05-08 22:21:23.285 INFO  [main] EvdsMarketDataProvider requestId= userId= method= uri= status= durationMs= - EVDS provider bean initialized: enabled=true, seriesCount=0
-2026-05-08 22:21:23.624 INFO  [main] NewsScheduler requestId= userId= method= uri= status= durationMs= - NewsScheduler started. Loading latest news on startup...
-2026-05-08 22:21:23.630 INFO  [main] NewsScheduler requestId= userId= method= uri= status= durationMs= - Startup FINNHUB news sync started
-2026-05-08 22:21:23.705 INFO  [main] FinnhubClient requestId= userId= method= uri= status= durationMs= - Sending Finnhub request to endpoint: general-news
-2026-05-08 22:21:23.710 DEBUG [main] FinnhubClient requestId= userId= method= uri= status= durationMs= - Finnhub request prepared. endpoint=general-news, category=general
-2026-05-08 22:21:24.635 INFO  [main] FinnhubClient requestId= userId= method= uri= status= durationMs= - Finnhub response received. Endpoint: general-news, count: 100
-2026-05-08 22:21:25.191 INFO  [main] NewsService requestId= userId= method= uri= status= durationMs= - News persistence completed. provider: FINNHUB, fetched: 100, valid: 100, invalid: 0, duplicate: 0, existing: 0, saved: 100, invalidBecauseMissingTitle: 0, invalidBecauseMissingUrl: 0, invalidBecauseMissingSource: 0, invalidBecauseMissingExternalId: 0, invalidBecauseMissingDate: 0
-2026-05-08 22:21:25.193 INFO  [main] NewsService requestId= userId= method= uri= status= durationMs=1516 - News sync stats. provider: FINNHUB, fetched: 100, valid: 100, invalid: 0, duplicate: 0, existing: 0, saved: 100, parseSuccessRatio: 1.00, durationMs: 1516
-2026-05-08 22:21:25.216 INFO  [main] NewsScheduler requestId= userId= method= uri= status= durationMs= - Startup FINNHUB sync completed. provider: FINNHUB, fetched: 100, saved: 100, existing: 0, invalid: 0
-2026-05-08 22:21:25.217 INFO  [main] NewsScheduler requestId= userId= method= uri= status= durationMs= - Startup INVESTING_RSS news sync started
-2026-05-08 22:21:25.559 INFO  [main] InvestingRssNewsClient requestId= userId= method= uri= status= durationMs= - Investing feed parsed. url: https://www.investing.com/rss/news_14.rss, fetched: 10
-2026-05-08 22:21:25.591 INFO  [main] NewsService requestId= userId= method= uri= status= durationMs= - News persistence completed. provider: INVESTING_RSS, fetched: 10, valid: 10, invalid: 0, duplicate: 0, existing: 0, saved: 10, invalidBecauseMissingTitle: 0, invalidBecauseMissingUrl: 0, invalidBecauseMissingSource: 0, invalidBecauseMissingExternalId: 0, invalidBecauseMissingDate: 0
-2026-05-08 22:21:25.592 INFO  [main] NewsService requestId= userId= method= uri= status= durationMs=373 - News sync stats. provider: INVESTING_RSS, fetched: 10, valid: 10, invalid: 0, duplicate: 0, existing: 0, saved: 10, parseSuccessRatio: 1.00, durationMs: 373
-2026-05-08 22:21:25.596 INFO  [main] NewsScheduler requestId= userId= method= uri= status= durationMs= - Startup INVESTING_RSS sync completed. provider: INVESTING_RSS, fetched: 10, saved: 10, existing: 0, invalid: 0
-2026-05-08 22:21:25.710 WARN  [main] JpaBaseConfiguration$JpaWebConfiguration requestId= userId= method= uri= status= durationMs= - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2026-05-08 22:21:25.763 DEBUG [main] AuthenticationConfiguration$DefaultPasswordEncoderAuthenticationManagerBuilder requestId= userId= method= uri= status= durationMs= - No authenticationProviders and no parentAuthenticationManager defined. Returning null.
-2026-05-08 22:21:26.509 INFO  [main] EndpointLinksResolver requestId= userId= method= uri= status= durationMs= - Exposing 4 endpoints beneath base path '/actuator'
-2026-05-08 22:21:26.827 DEBUG [main] DefaultSecurityFilterChain requestId= userId= method= uri= status= durationMs= - Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, BearerTokenAuthenticationFilter, AuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
-2026-05-08 22:21:27.307 INFO  [main] Http11NioProtocol requestId= userId= method= uri= status= durationMs= - Starting ProtocolHandler ["http-nio-8080"]
-2026-05-08 22:21:27.342 INFO  [main] TomcatWebServer requestId= userId= method= uri= status= durationMs= - Tomcat started on port 8080 (http) with context path '/'
-2026-05-08 22:21:27.374 INFO  [main] BackendApplication requestId= userId= method= uri= status= durationMs= - Started BackendApplication in 20.615 seconds (process running for 24.329)
-2026-05-08 22:21:27.399 INFO  [scheduling-1] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market refresh scheduler tick started
-2026-05-08 22:21:27.400 INFO  [scheduling-1] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market refresh scheduler evaluating providers: sources=[BINANCE, BIST, EVDS]
-2026-05-08 22:21:27.458 INFO  [scheduling-1] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider skipped: source=BINANCE, reason=not-due
-2026-05-08 22:21:27.464 INFO  [scheduling-1] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider skipped: source=BIST, reason=not-due
-2026-05-08 22:21:27.470 INFO  [scheduling-1] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider skipped: source=EVDS, reason=not-due
-2026-05-08 22:21:27.651 INFO  [main] MarketDataSeeder requestId= userId= method= uri= status= durationMs= - Market registry seeded: instrumentCount=181, mappingCount=181
-2026-05-08 22:21:28.925 INFO  [main] MarketHistoryService requestId= userId= method= uri= status= durationMs= - Market history cache cleared on startup: cacheName=market_history
+2026-05-09 13:11:44.581 INFO  [main] JtaPlatformInitiator requestId= userId= method= uri= status= durationMs= - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-05-09 13:11:44.653 INFO  [main] LocalContainerEntityManagerFactoryBean requestId= userId= method= uri= status= durationMs= - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-05-09 13:11:45.080 INFO  [main] QueryEnhancerFactory requestId= userId= method= uri= status= durationMs= - Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-05-09 13:11:46.747 INFO  [main] EvdsMarketDataProvider requestId= userId= method= uri= status= durationMs= - EVDS provider bean initialized: enabled=true, seriesCount=0
+2026-05-09 13:11:46.975 INFO  [main] NewsScheduler requestId= userId= method= uri= status= durationMs= - NewsScheduler started. Loading latest news on startup...
+2026-05-09 13:11:46.977 INFO  [main] NewsScheduler requestId= userId= method= uri= status= durationMs= - Startup FINNHUB news sync started
+2026-05-09 13:11:47.028 INFO  [main] FinnhubClient requestId= userId= method= uri= status= durationMs= - Sending Finnhub request to endpoint: general-news
+2026-05-09 13:11:47.031 DEBUG [main] FinnhubClient requestId= userId= method= uri= status= durationMs= - Finnhub request prepared. endpoint=general-news, category=general
+2026-05-09 13:11:47.841 INFO  [main] FinnhubClient requestId= userId= method= uri= status= durationMs= - Finnhub response received. Endpoint: general-news, count: 100
+2026-05-09 13:11:48.066 INFO  [main] NewsService requestId= userId= method= uri= status= durationMs= - News persistence completed. provider: FINNHUB, fetched: 100, valid: 100, invalid: 0, duplicate: 0, existing: 100, saved: 0, invalidBecauseMissingTitle: 0, invalidBecauseMissingUrl: 0, invalidBecauseMissingSource: 0, invalidBecauseMissingExternalId: 0, invalidBecauseMissingDate: 0
+2026-05-09 13:11:48.068 INFO  [main] NewsService requestId= userId= method= uri= status= durationMs=1060 - News sync stats. provider: FINNHUB, fetched: 100, valid: 100, invalid: 0, duplicate: 0, existing: 100, saved: 0, parseSuccessRatio: 1.00, durationMs: 1060
+2026-05-09 13:11:48.090 INFO  [main] NewsScheduler requestId= userId= method= uri= status= durationMs= - Startup FINNHUB sync completed. provider: FINNHUB, fetched: 100, saved: 0, existing: 100, invalid: 0
+2026-05-09 13:11:48.091 INFO  [main] NewsScheduler requestId= userId= method= uri= status= durationMs= - Startup INVESTING_RSS news sync started
+2026-05-09 13:11:48.775 INFO  [main] InvestingRssNewsClient requestId= userId= method= uri= status= durationMs= - Investing feed parsed. url: https://www.investing.com/rss/news_14.rss, fetched: 10
+2026-05-09 13:11:48.834 INFO  [main] NewsService requestId= userId= method= uri= status= durationMs= - News persistence completed. provider: INVESTING_RSS, fetched: 10, valid: 10, invalid: 0, duplicate: 0, existing: 7, saved: 3, invalidBecauseMissingTitle: 0, invalidBecauseMissingUrl: 0, invalidBecauseMissingSource: 0, invalidBecauseMissingExternalId: 0, invalidBecauseMissingDate: 0
+2026-05-09 13:11:48.836 INFO  [main] NewsService requestId= userId= method= uri= status= durationMs=743 - News sync stats. provider: INVESTING_RSS, fetched: 10, valid: 10, invalid: 0, duplicate: 0, existing: 7, saved: 3, parseSuccessRatio: 1.00, durationMs: 743
+2026-05-09 13:11:48.840 INFO  [main] NewsScheduler requestId= userId= method= uri= status= durationMs= - Startup INVESTING_RSS sync completed. provider: INVESTING_RSS, fetched: 10, saved: 3, existing: 7, invalid: 0
+2026-05-09 13:11:48.972 WARN  [main] JpaBaseConfiguration$JpaWebConfiguration requestId= userId= method= uri= status= durationMs= - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-05-09 13:11:49.027 DEBUG [main] AuthenticationConfiguration$DefaultPasswordEncoderAuthenticationManagerBuilder requestId= userId= method= uri= status= durationMs= - No authenticationProviders and no parentAuthenticationManager defined. Returning null.
+2026-05-09 13:11:49.666 INFO  [main] EndpointLinksResolver requestId= userId= method= uri= status= durationMs= - Exposing 4 endpoints beneath base path '/actuator'
+2026-05-09 13:11:49.926 DEBUG [main] DefaultSecurityFilterChain requestId= userId= method= uri= status= durationMs= - Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, LogoutFilter, BearerTokenAuthenticationFilter, AuthenticationFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, SessionManagementFilter, ExceptionTranslationFilter, AuthorizationFilter
+2026-05-09 13:11:50.561 INFO  [main] Http11NioProtocol requestId= userId= method= uri= status= durationMs= - Starting ProtocolHandler ["http-nio-8080"]
+2026-05-09 13:11:50.592 INFO  [main] TomcatWebServer requestId= userId= method= uri= status= durationMs= - Tomcat started on port 8080 (http) with context path '/'
+2026-05-09 13:11:50.625 INFO  [main] BackendApplication requestId= userId= method= uri= status= durationMs= - Started BackendApplication in 16.522 seconds (process running for 20.468)
+2026-05-09 13:11:50.652 INFO  [scheduling-1] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market refresh scheduler tick started
+2026-05-09 13:11:50.654 INFO  [scheduling-1] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market refresh scheduler evaluating providers: sources=[BINANCE, BIST, EVDS]
+2026-05-09 13:11:50.727 INFO  [scheduling-1] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider skipped: source=BINANCE, reason=not-due
+2026-05-09 13:11:50.735 INFO  [scheduling-1] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider skipped: source=BIST, reason=not-due
+2026-05-09 13:11:50.743 INFO  [scheduling-1] MarketRefreshScheduler requestId= userId= method= uri= status= durationMs= - Market provider skipped: source=EVDS, reason=not-due
+2026-05-09 13:11:50.829 INFO  [main] MarketDataSeeder requestId= userId= method= uri= status= durationMs= - Market registry seed skipped: instrumentCount=477, mappingCount=477
+2026-05-09 13:11:51.279 INFO  [main] MarketHistoryService requestId= userId= method= uri= status= durationMs= - Market history cache cleared on startup: cacheName=market_history
+2026-05-09 13:11:56.848 INFO  [http-nio-8080-exec-1] [/] requestId= userId= method= uri= status= durationMs= - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-09 13:11:56.850 INFO  [http-nio-8080-exec-1] DispatcherServlet requestId= userId= method= uri= status= durationMs= - Initializing Servlet 'dispatcherServlet'
+2026-05-09 13:11:56.852 INFO  [http-nio-8080-exec-1] DispatcherServlet requestId= userId= method= uri= status= durationMs= - Completed initialization in 1 ms
+2026-05-09 13:11:56.872 DEBUG [http-nio-8080-exec-1] FilterChainProxy requestId=78c90024-f1a0-4d7a-adf1-562c217eb750 userId= method= uri= status= durationMs= - Securing GET /actuator/prometheus
+2026-05-09 13:11:56.885 DEBUG [http-nio-8080-exec-1] AnonymousAuthenticationFilter requestId=78c90024-f1a0-4d7a-adf1-562c217eb750 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
+2026-05-09 13:11:56.895 DEBUG [http-nio-8080-exec-1] FilterChainProxy requestId=78c90024-f1a0-4d7a-adf1-562c217eb750 userId= method= uri= status= durationMs= - Secured GET /actuator/prometheus
+2026-05-09 13:11:56.943 INFO  [http-nio-8080-exec-1] HttpRequestLoggingFilter requestId=78c90024-f1a0-4d7a-adf1-562c217eb750 userId= method=GET uri=/actuator/prometheus status=200 durationMs=86 - HTTP request completed
+2026-05-09 13:12:06.802 DEBUG [http-nio-8080-exec-2] FilterChainProxy requestId=a5049dd7-05c0-4add-8a73-7414ef0d9811 userId= method= uri= status= durationMs= - Securing GET /actuator/prometheus
+2026-05-09 13:12:06.804 DEBUG [http-nio-8080-exec-2] AnonymousAuthenticationFilter requestId=a5049dd7-05c0-4add-8a73-7414ef0d9811 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
+2026-05-09 13:12:06.806 DEBUG [http-nio-8080-exec-2] FilterChainProxy requestId=a5049dd7-05c0-4add-8a73-7414ef0d9811 userId= method= uri= status= durationMs= - Secured GET /actuator/prometheus
+2026-05-09 13:12:06.816 INFO  [http-nio-8080-exec-2] HttpRequestLoggingFilter requestId=a5049dd7-05c0-4add-8a73-7414ef0d9811 userId= method=GET uri=/actuator/prometheus status=200 durationMs=15 - HTTP request completed
+2026-05-09 13:12:15.801 DEBUG [http-nio-8080-exec-3] FilterChainProxy requestId=c15b2f89-5d6a-40b3-a106-f61e515c3026 userId= method= uri= status= durationMs= - Securing GET /actuator/prometheus
+2026-05-09 13:12:15.803 DEBUG [http-nio-8080-exec-3] AnonymousAuthenticationFilter requestId=c15b2f89-5d6a-40b3-a106-f61e515c3026 userId= method= uri= status= durationMs= - Set SecurityContextHolder to anonymous SecurityContext
+2026-05-09 13:12:15.805 DEBUG [http-nio-8080-exec-3] FilterChainProxy requestId=c15b2f89-5d6a-40b3-a106-f61e515c3026 userId= method= uri= status= durationMs= - Secured GET /actuator/prometheus
+2026-05-09 13:12:15.816 INFO  [http-nio-8080-exec-3] HttpRequestLoggingFilter requestId=c15b2f89-5d6a-40b3-a106-f61e515c3026 userId= method=GET uri=/actuator/prometheus status=200 durationMs=16 - HTTP request completed

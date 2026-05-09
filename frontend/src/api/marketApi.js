@@ -8,12 +8,24 @@ function normalizeArrayPayload(payload) {
     return payload;
   }
 
+  if (Array.isArray(payload?.content)) {
+    return payload.content;
+  }
+
   if (Array.isArray(payload?.data)) {
     return payload.data;
   }
 
+  if (Array.isArray(payload?.data?.content)) {
+    return payload.data.content;
+  }
+
   if (Array.isArray(payload?.data?.data)) {
     return payload.data.data;
+  }
+
+  if (Array.isArray(payload?.data?.data?.content)) {
+    return payload.data.data.content;
   }
 
   if (Array.isArray(payload?.quotes)) {
@@ -21,6 +33,37 @@ function normalizeArrayPayload(payload) {
   }
 
   return [];
+}
+
+function normalizeAggregateMarketsPayload(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  const aggregate =
+    payload?.data?.data && !Array.isArray(payload.data.data)
+      ? payload.data.data
+      : payload?.data && !Array.isArray(payload.data)
+        ? payload.data
+        : payload;
+
+  const fxList = Array.isArray(aggregate?.fx) ? aggregate.fx : [];
+  const cryptoList = Array.isArray(aggregate?.crypto) ? aggregate.crypto : [];
+  const stockList = Array.isArray(aggregate?.stocks) ? aggregate.stocks : [];
+  const fundList = Array.isArray(aggregate?.funds) ? aggregate.funds : [];
+  const futuresList = Array.isArray(aggregate?.futures) ? aggregate.futures : [];
+  const bondList = Array.isArray(aggregate?.bonds) ? aggregate.bonds : [];
+
+  return [
+    ...fxList
+      .filter((item) => item && typeof item === "object")
+      .map(mapFxQuote),
+    ...cryptoList,
+    ...stockList,
+    ...fundList,
+    ...futuresList,
+    ...bondList,
+  ];
 }
 
 function normalizeObjectPayload(payload) {
@@ -52,7 +95,7 @@ function buildDefaultAnalysisRange() {
 
 export async function getMarkets(params = {}) {
   const { data } = await axiosClient.get(API_CONFIG.ENDPOINTS.markets, { params });
-  return normalizeArrayPayload(data);
+  return normalizeAggregateMarketsPayload(data);
 }
 
 export async function getMarketQuotes() {
@@ -60,10 +103,57 @@ export async function getMarketQuotes() {
 }
 
 export async function getMarketBySymbol(symbol) {
-  const { data } = await axiosClient.get(
-    `${API_CONFIG.ENDPOINTS.markets}/symbol/${encodeURIComponent(symbol)}`,
-  );
-  return normalizeObjectPayload(data);
+  const normalizedSymbol = encodeURIComponent(symbol);
+  const resolvers = [
+    async () => {
+      const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/fx/${normalizedSymbol}`);
+      const items = normalizeArrayPayload(data).map(mapFxQuote);
+      return items[0] ?? null;
+    },
+    async () => {
+      const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/crypto/${normalizedSymbol}`);
+      const item = normalizeObjectPayload(data);
+      return item ? mapCryptoQuote(item) : null;
+    },
+    async () => {
+      const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/stocks/${normalizedSymbol}`);
+      const item = normalizeObjectPayload(data);
+      return item ? mapStockQuote(item) : null;
+    },
+    async () => {
+      const { data } = await axiosClient.get(`/api/v1/funds/${normalizedSymbol}`);
+      const item = normalizeObjectPayload(data);
+      return item ? mapFundQuote(item) : null;
+    },
+    async () => {
+      const { data } = await axiosClient.get(`/api/v1/futures/${normalizedSymbol}`);
+      const item = normalizeObjectPayload(data);
+      return item ? mapFuturesQuote(item) : null;
+    },
+    async () => {
+      const { data } = await axiosClient.get(`/api/v1/bonds/${normalizedSymbol}`);
+      const item = normalizeObjectPayload(data);
+      return item ? mapBondQuote(item) : null;
+    },
+  ];
+
+  let lastError = null;
+  for (const resolve of resolvers) {
+    try {
+      const result = await resolve();
+      if (result) {
+        return result;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+
+  return null;
 }
 
 export async function getMarketQuote(symbol) {
@@ -71,6 +161,36 @@ export async function getMarketQuote(symbol) {
 }
 
 export async function getMarketsByType(type) {
+  if (type === "FX") {
+    const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/fx`);
+    return normalizeArrayPayload(data).map(mapFxQuote);
+  }
+
+  if (type === "CRYPTO") {
+    const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/crypto`);
+    return normalizeArrayPayload(data).map(mapCryptoQuote);
+  }
+
+  if (type === "STOCK") {
+    const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/stocks`);
+    return normalizeArrayPayload(data).map(mapStockQuote);
+  }
+
+  if (type === "FUND") {
+    const { data } = await axiosClient.get("/api/v1/funds");
+    return normalizeArrayPayload(data).map(mapFundQuote);
+  }
+
+  if (type === "FUTURES") {
+    const { data } = await axiosClient.get("/api/v1/futures");
+    return normalizeArrayPayload(data).map(mapFuturesQuote);
+  }
+
+  if (type === "BOND") {
+    const { data } = await axiosClient.get("/api/v1/bonds");
+    return normalizeArrayPayload(data).map(mapBondQuote);
+  }
+
   const { data } = await axiosClient.get(
     `${API_CONFIG.ENDPOINTS.markets}/type/${encodeURIComponent(type)}`,
   );
@@ -87,11 +207,25 @@ export async function getMarketHistory(symbol, paramsOrRange) {
           endDate: paramsOrRange?.to,
           source: paramsOrRange?.source,
         };
+  const analysisParams = {
+    from: params.startDate ?? params.from ?? buildDefaultAnalysisRange().from,
+    to: params.endDate ?? params.to ?? buildDefaultAnalysisRange().to,
+    indicators: "",
+  };
 
-  const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}/history`, {
-    params,
-  });
-  return normalizeArrayPayload(data);
+  const { data } = await axiosClient.get(
+    `${API_CONFIG.ENDPOINTS.technicalAnalysis}/${encodeURIComponent(symbol)}`,
+    { params: analysisParams },
+  );
+  const response = normalizeObjectPayload(data);
+  const points = Array.isArray(response?.points) ? response.points : [];
+  return points
+    .filter((point) => point && point.date != null && point.close != null)
+    .map((point) => ({
+      symbol,
+      priceDate: point.date,
+      closePrice: point.close,
+    }));
 }
 
 export async function getMacroHistory(symbol, params = {}) {
@@ -129,4 +263,94 @@ export async function compareTechnicalAnalysis(params) {
     params,
   });
   return data;
+}
+
+function mapFxQuote(item) {
+  return {
+    symbol: item.code ?? item.currencyCode ?? item.symbol,
+    displayName: item.name ?? item.code ?? item.currencyCode ?? item.symbol,
+    price: item.last ?? item.sellRate ?? item.sellingRate ?? item.sell ?? item.ask ?? item.buyRate ?? item.buyingRate ?? item.buy ?? item.bid,
+    changeRate: item.changePercent ?? item.dailyChangePercent ?? item.changeRate ?? null,
+    source: item.source ?? item.sourceName,
+    instrumentType: item.type || "FX",
+    dataTimestamp: item.priceTimestamp ?? item.dataTimestamp,
+    buyRate: item.buyRate ?? item.buyingRate ?? item.buy ?? item.alis ?? item.bid ?? null,
+    sellRate: item.sellRate ?? item.sellingRate ?? item.sell ?? item.satis ?? item.ask ?? null,
+    code: item.code ?? item.currencyCode ?? item.symbol,
+  };
+}
+
+function mapCryptoQuote(item) {
+  return {
+    symbol: item.symbol,
+    displayName: item.displayName ?? item.symbol,
+    price: item.price,
+    changeRate: item.changeRate ?? item.dailyChangePercent ?? null,
+    source: item.source,
+    instrumentType: item.instrumentType || "CRYPTO",
+    dataTimestamp: item.fetchedAt ?? item.dataTimestamp,
+    buyRate: null,
+    sellRate: null,
+    code: item.symbol,
+  };
+}
+
+function mapStockQuote(item) {
+  return {
+    symbol: item.symbol,
+    displayName: item.companyName ?? item.symbol,
+    price: item.currentPrice,
+    changeRate: item.changePercent ?? null,
+    source: item.sourceName,
+    instrumentType: "STOCK",
+    dataTimestamp: item.dataTimestamp,
+    buyRate: null,
+    sellRate: null,
+    code: item.symbol,
+  };
+}
+
+function mapFundQuote(item) {
+  return {
+    symbol: item.fundCode,
+    displayName: item.fundName ?? item.fundCode,
+    price: item.navValue,
+    changeRate: item.changeRate ?? null,
+    source: item.source ?? "TEFAS",
+    instrumentType: "FUND",
+    dataTimestamp: item.navDate,
+    buyRate: null,
+    sellRate: null,
+    code: item.fundCode,
+  };
+}
+
+function mapFuturesQuote(item) {
+  return {
+    symbol: item.contractCode,
+    displayName: item.contractName ?? item.contractCode,
+    price: item.lastPrice,
+    changeRate: item.dailyChangePercent ?? null,
+    source: item.source ?? "BIST",
+    instrumentType: "FUTURES",
+    dataTimestamp: item.dataTimestamp,
+    buyRate: null,
+    sellRate: null,
+    code: item.contractCode,
+  };
+}
+
+function mapBondQuote(item) {
+  return {
+    symbol: item.bondCode,
+    displayName: item.bondName ?? item.bondCode,
+    price: item.interestRate,
+    changeRate: item.changeRate ?? null,
+    source: item.source ?? "EVDS",
+    instrumentType: "BOND",
+    dataTimestamp: item.dataTimestamp,
+    buyRate: null,
+    sellRate: null,
+    code: item.bondCode,
+  };
 }

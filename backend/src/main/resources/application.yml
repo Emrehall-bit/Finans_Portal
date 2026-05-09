@@ -2,7 +2,7 @@ spring:
   application:
     name: finance-portal-backend
   profiles:
-    default: local
+    active: local
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/financeportaldb}
@@ -14,6 +14,7 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
       repositories:
         enabled: false
 
@@ -44,8 +45,6 @@ spring:
 
 logging:
   level:
-    com.emrehalli.financeportal.market: DEBUG
-    com.emrehalli.financeportal.market.provider.evds: DEBUG
     com.emrehalli.financeportal.news.provider.finnhub.client: DEBUG
     com.emrehalli.financeportal.news.provider.aa: DEBUG
     org.hibernate.SQL: WARN
@@ -64,122 +63,6 @@ management:
   metrics:
     tags:
       application: finance-portal-backend
-
-market:
-  sources:
-    tcmb-xml:
-      url: https://www.tcmb.gov.tr/kurlar/today.xml
-      enabled: true
-    tcmb-evds:
-      url: https://evds2.tcmb.gov.tr/service/evds
-      api-key: ${TCMB_EVDS_KEY:}
-      enabled: false
-    finnhub:
-      url: https://finnhub.io/api/v1
-      api-key: ${FINNHUB_KEY:${FINNHUB_API_KEY:d7laeepr01qm7o0b5dt0d7laeepr01qm7o0b5dtg}}
-      enabled: true
-      stock-symbols: ["IS:THYAO","IS:GARAN","IS:AKBNK","IS:EREGL","IS:KCHOL"]
-      commodity-symbols: ["OANDA:XAU_USD","OANDA:XAG_USD"]
-    newsapi:
-      url: https://newsapi.org/v2
-      api-key: ${NEWS_API_KEY:}
-      enabled: true
-
-  scheduler:
-    currency-cron: "0 */10 * * * *"
-    stock-cron: "0 */10 * * * *"
-    fund-cron: "0 0 18 * * *"
-
-  cache:
-    ttl:
-      BINANCE: 20m
-      BIST: 30m
-      EVDS: 12h
-      EVDS_MACRO: 12h
-      TEFAS: 6h
-      ALL: 10m
-
-  provider-clients:
-    bist:
-      enabled: true
-      provider-mode: YAHOO_LOW_FREQUENCY
-      batch-size: 10
-      request-delay-ms: 1500
-      cooldown-minutes-on-rate-limit: 60
-      yahoo:
-        enabled: true
-        base-url: https://query1.finance.yahoo.com
-      delayed:
-        enabled: false
-
-    binance:
-      enabled: true
-      base-url: https://api.binance.com
-
-    tefas:
-      enabled: true
-      base-url: https://www.tefas.gov.tr
-      auth-token: "Bearer ST-tefaswebwse3irfmSBj4iRAzGPbAlS94Se"
-      refresh-minutes: 360
-
-    evds:
-      enabled: true
-      api:
-        key: Rb7ROmhyOC
-        url: https://evds3.tcmb.gov.tr/igmevdsms-dis
-      history:
-        scheduler-lookback-days: 7
-        backfill-default-days: 365
-
-    evds-macro:
-      enabled: true
-      api:
-        key: ${TCMB_EVDS_KEY:Rb7ROmhyOC}
-        base-url: https://evds3.tcmb.gov.tr/igmevdsms-dis
-        macro-path: /fe
-      history:
-        scheduler-lookback-days: 31
-        backfill-default-days: 365
-
-  providers:
-    circuit-breaker:
-      sliding-window-size: 5
-      failure-rate-threshold: 60
-      wait-duration-open-state-seconds: 30
-      permitted-calls-in-half-open-state: 2
-      instances:
-        evds_macro:
-          sliding-window-size: 5
-          failure-rate-threshold: 60
-          wait-duration-open-state-seconds: 30
-          permitted-calls-in-half-open-state: 2
-
-  history:
-    backfill:
-      enabled: true
-      min-data-points: 100
-      interval-hours: 24
-      default-lookback-days: 365
-
-  refresh:
-    initial-delay-ms: 0
-    scheduler-delay-ms: 300000
-    providers:
-      bist:
-        enabled: true
-        refresh-minutes: 15
-      binance:
-        enabled: true
-        refresh-minutes: 10
-      evds:
-        enabled: true
-        refresh-minutes: 360
-      evds_macro:
-        enabled: true
-        refresh-minutes: 360
-      tefas:
-        enabled: true
-        refresh-minutes: 360
 
 finnhub:
   enabled: true
@@ -210,3 +93,15 @@ news:
       default-language: tr
       default-region-scope: TR
       max-items: 25
+
+market:
+  providers:
+    bist:
+      base-url: https://datastore.borsaistanbul.com
+  scheduler:
+    futures-cron: "0 0 19 * * MON-FRI"
+    bond-cron: "0 0 19 * * MON-FRI"
+  cache:
+    ttl-minutes:
+      futures: 1500
+      bond: 1500

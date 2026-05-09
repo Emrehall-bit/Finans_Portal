@@ -1,80 +1,79 @@
 package com.emrehalli.financeportal.market.api;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
-import com.emrehalli.financeportal.market.api.dto.MarketQuoteResponse;
-import com.emrehalli.financeportal.market.api.mapper.MarketApiMapper;
-import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.api.dto.FxRateResponse;
+import com.emrehalli.financeportal.market.api.dto.MarketAggregateResponse;
+import com.emrehalli.financeportal.market.service.CryptoService;
+import com.emrehalli.financeportal.market.service.FxService;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
-import com.emrehalli.financeportal.market.support.InstrumentTypeAliasResolver;
-import org.springframework.web.bind.annotation.*;
+import lombok.AllArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * REST controller for aggregate market data.
+ */
 @RestController
 @RequestMapping("/api/v1/markets")
+@AllArgsConstructor
 public class MarketController {
 
-    private final MarketQueryService marketQueryService;
-    private final MarketApiMapper marketApiMapper;
-    private final MarketApiResponseFactory responseFactory;
-    private final InstrumentTypeAliasResolver instrumentTypeAliasResolver;
+    private final FxService fxService;
+    private final CryptoService cryptoService;
 
-    public MarketController(MarketQueryService marketQueryService,
-                            MarketApiMapper marketApiMapper,
-                            MarketApiResponseFactory responseFactory,
-                            InstrumentTypeAliasResolver instrumentTypeAliasResolver) {
-        this.marketQueryService = marketQueryService;
-        this.marketApiMapper = marketApiMapper;
-        this.responseFactory = responseFactory;
-        this.instrumentTypeAliasResolver = instrumentTypeAliasResolver;
-    }
-
-    /**
-     * Returns all cached market quotes.
-     *
-     * Role: public endpoint.
-     * Return type: wrapped quote list.
-     */
     @GetMapping
-    public ApiResponse<List<MarketQuoteResponse>> getMarkets(@RequestParam(value = "type", required = false) String type) {
-        if (type == null || type.isBlank()) {
-            List<MarketQuoteResponse> quotes = marketQueryService.getDefaultQuotes().stream()
-                    .map(marketApiMapper::toResponse)
-                    .toList();
-            return responseFactory.success(quotes, "market.dataFetched");
+    public ApiResponse<MarketAggregateResponse> getAllMarkets(@RequestParam(name = "type", required = false) String type) {
+        boolean macroIndicatorRequest = isMacroIndicatorRequest(type);
+        List<FxRateResponse> fx = macroIndicatorRequest ? List.of() : fxService.getAll();
+        List<MarketQueryService.MarketSnapshot> cryptoSnapshots = macroIndicatorRequest ? List.of() : cryptoService.getAll();
+        List<Object> crypto = new ArrayList<>(cryptoSnapshots);
+        MarketAggregateResponse data = MarketAggregateResponse.builder()
+                .fx(fx)
+                .crypto(crypto)
+                .stocks(List.of())
+                .funds(List.of())
+                .futures(List.of())
+                .bonds(List.of())
+                .build();
+
+        return ApiResponse.<MarketAggregateResponse>builder()
+                .success(true)
+                .message("OK")
+                .data(data)
+                .dataDate(resolveDataDate(fx, cryptoSnapshots))
+                .build();
+    }
+
+    private boolean isMacroIndicatorRequest(String type) {
+        return type != null && "MACRO_INDICATOR".equalsIgnoreCase(type.trim());
+    }
+
+    private LocalDateTime resolveDataDate(List<FxRateResponse> responses,
+                                          List<MarketQueryService.MarketSnapshot> cryptoSnapshots) {
+        LocalDateTime fxLatest = responses.stream()
+                .map(FxRateResponse::getPriceTimestamp)
+                .filter(java.util.Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
+
+        LocalDateTime cryptoLatest = cryptoSnapshots.stream()
+                .map(MarketQueryService.MarketSnapshot::fetchedAt)
+                .filter(java.util.Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
+
+        if (fxLatest == null) {
+            return cryptoLatest;
         }
-
-        return responseFactory.success(resolveQuotesByType(type), "market.dataFetched");
-    }
-
-    /**
-     * Returns market quotes filtered by instrument type aliases.
-     *
-     * Role: public endpoint.
-     * Return type: wrapped quote list.
-     */
-    @GetMapping("/type/{type}")
-    public ApiResponse<List<MarketQuoteResponse>> getByType(@PathVariable String type) {
-        return responseFactory.success(resolveQuotesByType(type), "market.dataFetched");
-    }
-
-    /**
-     * Returns the current price snapshot for a symbol.
-     *
-     * Role: public endpoint.
-     * Return type: wrapped current price response.
-     */
-    @GetMapping("/symbol/{symbol}")
-    public ApiResponse<MarketQuoteResponse> getBySymbol(@PathVariable String symbol) {
-        MarketQuoteResponse quote = marketApiMapper.toResponse(marketQueryService.resolveCurrentPrice(symbol));
-        return responseFactory.success(quote, "market.dataFetched");
-    }
-
-    private List<MarketQuoteResponse> resolveQuotesByType(String type) {
-        InstrumentType instrumentType = instrumentTypeAliasResolver.resolve(type);
-        return marketQueryService.getAllQuotes().stream()
-                .filter(quote -> quote != null && instrumentTypeAliasResolver.compatibleTypes(instrumentType).contains(quote.instrumentType()))
-                .map(marketApiMapper::toResponse)
-                .toList();
+        if (cryptoLatest == null) {
+            return fxLatest;
+        }
+        return fxLatest.isAfter(cryptoLatest) ? fxLatest : cryptoLatest;
     }
 }

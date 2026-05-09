@@ -1,45 +1,67 @@
 package com.emrehalli.financeportal.market.api;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
-import com.emrehalli.financeportal.market.api.dto.MarketQuoteResponse;
-import com.emrehalli.financeportal.market.api.mapper.MarketApiMapper;
-import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
-import com.emrehalli.financeportal.market.service.MarketQueryService;
+import com.emrehalli.financeportal.market.provider.fund.dto.FundNavDto;
+import com.emrehalli.financeportal.market.service.FundService;
+import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
+/**
+ * REST controller for fund market data.
+ */
 @RestController
 @RequestMapping("/api/v1/funds")
+@AllArgsConstructor
 public class FundController {
 
-    private final MarketQueryService marketQueryService;
-    private final MarketApiMapper marketApiMapper;
-    private final MarketApiResponseFactory responseFactory;
-
-    public FundController(MarketQueryService marketQueryService,
-                          MarketApiMapper marketApiMapper,
-                          MarketApiResponseFactory responseFactory) {
-        this.marketQueryService = marketQueryService;
-        this.marketApiMapper = marketApiMapper;
-        this.responseFactory = responseFactory;
-    }
+    private final FundService fundService;
 
     @GetMapping
-    public ApiResponse<List<MarketQuoteResponse>> getFunds() {
-        List<MarketQuoteResponse> funds = marketQueryService.getAllQuotes().stream()
-                .filter(quote -> quote != null && quote.instrumentType() == InstrumentType.FUND)
-                .map(marketApiMapper::toResponse)
-                .toList();
-        return responseFactory.success(funds, "market.dataFetched");
+    public ApiResponse<?> getFunds(@RequestParam(required = false, name = "type") String type) {
+        if (type != null && !type.isBlank()) {
+            List<FundNavDto> data = fundService.getByType(type);
+            return ApiResponse.<List<FundNavDto>>builder()
+                    .success(true)
+                    .message("OK")
+                    .data(data)
+                    .dataDate(resolveListDataDate(data))
+                    .build();
+        }
+
+        List<FundNavDto> data = fundService.getAll();
+        return ApiResponse.<List<FundNavDto>>builder()
+                .success(true)
+                .message("OK")
+                .data(data)
+                .dataDate(resolveListDataDate(data))
+                .build();
     }
 
-    @GetMapping("/{symbol}")
-    public ApiResponse<MarketQuoteResponse> getFundBySymbol(@PathVariable String symbol) {
-        MarketQuoteResponse quote = marketApiMapper.toResponse(marketQueryService.resolveCurrentPrice(symbol));
-        return responseFactory.success(quote, "market.dataFetched");
+    @GetMapping("/{code}")
+    public ApiResponse<FundNavDto> getByCode(@PathVariable String code) {
+        FundNavDto data = fundService.getByCode(code);
+        return ApiResponse.<FundNavDto>builder()
+                .success(true)
+                .message("OK")
+                .data(data)
+                .dataDate(data != null && data.getNavDate() != null ? data.getNavDate().atStartOfDay() : null)
+                .build();
+    }
+
+    private LocalDateTime resolveListDataDate(List<FundNavDto> funds) {
+        return funds.stream()
+                .map(FundNavDto::getNavDate)
+                .filter(Objects::nonNull)
+                .map(java.time.LocalDate::atStartOfDay)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
     }
 }

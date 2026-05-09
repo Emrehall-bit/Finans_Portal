@@ -33,7 +33,6 @@ public class SecurityConfig {
                         // Admin endpoints
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/news/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/admin/markets/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
@@ -44,9 +43,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/actuator/metrics").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/metrics/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/funds/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/technical-analysis/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/ipos/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/futures/**").permitAll()
 

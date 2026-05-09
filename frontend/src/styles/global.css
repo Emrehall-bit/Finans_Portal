@@ -3828,6 +3828,17 @@ body {
   overflow-x: auto;
 }
 
+.finance-market-scroll-wrap {
+  max-height: 640px;
+  overflow-y: auto;
+}
+
+.markets-card-scroll-wrap {
+  max-height: 640px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .finance-market-table {
   width: 100%;
   border-collapse: collapse;
@@ -4464,6 +4475,84 @@ html[data-theme] button.sidebar-register-button {
   gap: 16px;
 }
 
+.markets-console-grid {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.markets-category-sidebar,
+.markets-category-content {
+  display: grid;
+  gap: 14px;
+}
+
+.markets-category-sidebar {
+  padding-right: 8px;
+  border-right: 1px solid var(--table-border);
+}
+
+.markets-category-nav {
+  display: grid;
+  gap: 10px;
+}
+
+.markets-category-button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+.markets-category-button:hover {
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+}
+
+.markets-category-button.active {
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  color: var(--accent);
+}
+
+.finance-table-row-button {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  text-align: left;
+}
+
+.finance-table-row-button:hover {
+  background: transparent;
+}
+
+.finance-market-scroll-wrap::-webkit-scrollbar,
+.markets-card-scroll-wrap::-webkit-scrollbar {
+  width: 10px;
+}
+
+.finance-market-scroll-wrap::-webkit-scrollbar-thumb,
+.markets-card-scroll-wrap::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.38);
+  border-radius: 999px;
+}
+
+.finance-market-scroll-wrap::-webkit-scrollbar-track,
+.markets-card-scroll-wrap::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: 999px;
+}
+
 .market-macro-grid {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
@@ -4550,8 +4639,16 @@ html[data-theme] button.sidebar-register-button {
 }
 
 @media (max-width: 1320px) {
+  .markets-console-grid,
   .market-macro-grid {
     grid-template-columns: 1fr;
+  }
+
+  .markets-category-sidebar {
+    padding-right: 0;
+    padding-bottom: 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--table-border);
   }
 }
 
