@@ -150,6 +150,7 @@ export default function MarketsPage() {
         const matchesQuery =
           query.length === 0 ||
           item.symbol?.toLowerCase().includes(query) ||
+          item.code?.toLowerCase().includes(query) ||
           item.displayName?.toLowerCase().includes(query);
 
         return matchesSource && matchesQuery;
@@ -318,7 +319,7 @@ export default function MarketsPage() {
                             onClick={() => navigate(`/markets/${encodeURIComponent(item.symbol)}`)}
                           >
                             <span className="finance-table-symbol">
-                              <strong>{item.symbol || "-"}</strong>
+                              <strong>{item.code || item.symbol || "-"}</strong>
                               <span>{item.displayName || item.instrumentType || "-"}</span>
                             </span>
                           </button>
@@ -346,7 +347,7 @@ export default function MarketsPage() {
                   >
                     <div className="market-quote-card-top">
                       <div>
-                        <strong>{item.symbol || "-"}</strong>
+                        <strong>{item.code || item.symbol || "-"}</strong>
                         <p>{item.displayName || item.instrumentType || "-"}</p>
                       </div>
                       <span className="terminal-badge muted">{item.source || "-"}</span>

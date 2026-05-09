@@ -308,8 +308,8 @@ export default function DashboardPage() {
                           <tr key={item.symbol}>
                             <td>
                               <Link to={`/markets/${encodeURIComponent(item.symbol)}`} className="finance-table-symbol">
-                                <strong>{item.symbol}</strong>
-                                <span>{item.displayName || item.symbol}</span>
+                                <strong>{item.code || item.symbol}</strong>
+                                <span>{item.displayName || item.code || item.symbol}</span>
                               </Link>
                             </td>
                             <td>{item.source || "-"}</td>
@@ -544,7 +544,16 @@ function isTriggeredAlert(item) {
 }
 
 function normalizeCode(value) {
-  return value == null ? "" : String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  if (value == null) {
+    return "";
+  }
+
+  const rawValue = String(value).trim();
+  if (rawValue.toUpperCase().startsWith("TCMB:")) {
+    return rawValue.toUpperCase();
+  }
+
+  return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
 function toNumber(value) {
@@ -572,3 +581,4 @@ function formatSignedCurrency(value) {
 
   return `${value >= 0 ? "+" : ""}${formatCurrency(value)}`;
 }
+

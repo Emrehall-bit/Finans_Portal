@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -53,28 +54,31 @@ class TcmbFxHistoricalBackfillServiceTest {
 
     @Test
     void backfillUsesConfiguredStartDateWhenNoHistoryExists() {
-        MarketInstrument buyInstrument = instrument("TCMB:USD:BUY");
         MarketInstrument sellInstrument = instrument("TCMB:USD:SELL");
 
-        when(instrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:BUY")).thenReturn(Optional.of(buyInstrument));
+        when(instrumentRepository.findByInstrumentCodeIgnoreCase(anyString())).thenReturn(Optional.empty());
         when(instrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:SELL")).thenReturn(Optional.of(sellInstrument));
-        when(priceHistoryRepository.findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampDesc(
-                eq(buyInstrument), eq(IntervalType.ONE_DAY), eq(SourceName.TCMB)
-        )).thenReturn(Optional.empty());
         when(priceHistoryRepository.findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampDesc(
                 eq(sellInstrument), eq(IntervalType.ONE_DAY), eq(SourceName.TCMB)
         )).thenReturn(Optional.empty());
         when(historicalFxProvider.fetchHistoricalChunked(
-                eq(List.of("TP.DK.USD.A.YTL", "TP.DK.USD.S.YTL")),
+                eq(List.of("TP.DK.USD.S.YTL")),
                 eq(LocalDate.of(2024, 1, 1)),
                 eq(LocalDate.of(2024, 1, 10))
         )).thenReturn(List.of());
         when(historicalFxMapper.mapRows(eq(List.of()), any())).thenReturn(List.of());
+        when(priceHistoryRepository.findByInstrumentInAndIntervalTypeAndSourceNameAndPriceTimestampBetween(
+                eq(List.of(sellInstrument)),
+                eq(IntervalType.ONE_DAY),
+                eq(SourceName.TCMB),
+                eq(LocalDate.of(2024, 1, 1).atStartOfDay()),
+                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1))
+        )).thenReturn(List.of());
 
         service.backfill();
 
         verify(historicalFxProvider).fetchHistoricalChunked(
-                eq(List.of("TP.DK.USD.A.YTL", "TP.DK.USD.S.YTL")),
+                eq(List.of("TP.DK.USD.S.YTL")),
                 eq(LocalDate.of(2024, 1, 1)),
                 eq(LocalDate.of(2024, 1, 10))
         );
@@ -82,34 +86,34 @@ class TcmbFxHistoricalBackfillServiceTest {
 
     @Test
     void backfillContinuesFromDayAfterLastRecord() {
-        MarketInstrument buyInstrument = instrument("TCMB:USD:BUY");
         MarketInstrument sellInstrument = instrument("TCMB:USD:SELL");
-        MarketPriceHistory buyHistory = MarketPriceHistory.builder()
-                .priceTimestamp(LocalDateTime.of(2024, 1, 5, 0, 0))
-                .build();
         MarketPriceHistory sellHistory = MarketPriceHistory.builder()
                 .priceTimestamp(LocalDateTime.of(2024, 1, 5, 0, 0))
                 .build();
 
-        when(instrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:BUY")).thenReturn(Optional.of(buyInstrument));
+        when(instrumentRepository.findByInstrumentCodeIgnoreCase(anyString())).thenReturn(Optional.empty());
         when(instrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:SELL")).thenReturn(Optional.of(sellInstrument));
-        when(priceHistoryRepository.findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampDesc(
-                eq(buyInstrument), eq(IntervalType.ONE_DAY), eq(SourceName.TCMB)
-        )).thenReturn(Optional.of(buyHistory));
         when(priceHistoryRepository.findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampDesc(
                 eq(sellInstrument), eq(IntervalType.ONE_DAY), eq(SourceName.TCMB)
         )).thenReturn(Optional.of(sellHistory));
         when(historicalFxProvider.fetchHistoricalChunked(
-                eq(List.of("TP.DK.USD.A.YTL", "TP.DK.USD.S.YTL")),
+                eq(List.of("TP.DK.USD.S.YTL")),
                 eq(LocalDate.of(2024, 1, 6)),
                 eq(LocalDate.of(2024, 1, 10))
         )).thenReturn(List.of());
         when(historicalFxMapper.mapRows(eq(List.of()), any())).thenReturn(List.of());
+        when(priceHistoryRepository.findByInstrumentInAndIntervalTypeAndSourceNameAndPriceTimestampBetween(
+                eq(List.of(sellInstrument)),
+                eq(IntervalType.ONE_DAY),
+                eq(SourceName.TCMB),
+                eq(LocalDate.of(2024, 1, 6).atStartOfDay()),
+                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1))
+        )).thenReturn(List.of());
 
         service.backfill();
 
         verify(historicalFxProvider).fetchHistoricalChunked(
-                eq(List.of("TP.DK.USD.A.YTL", "TP.DK.USD.S.YTL")),
+                eq(List.of("TP.DK.USD.S.YTL")),
                 eq(LocalDate.of(2024, 1, 6)),
                 eq(LocalDate.of(2024, 1, 10))
         );
@@ -117,35 +121,44 @@ class TcmbFxHistoricalBackfillServiceTest {
 
     @Test
     void backfillSkipsSaveWhenDuplicateExists() {
-        MarketInstrument buyInstrument = instrument("TCMB:USD:BUY");
+        MarketInstrument sellInstrument = instrument("TCMB:USD:SELL");
 
-        when(instrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:BUY")).thenReturn(Optional.of(buyInstrument));
-        when(instrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:SELL")).thenReturn(Optional.empty());
+        when(instrumentRepository.findByInstrumentCodeIgnoreCase(anyString())).thenReturn(Optional.empty());
+        when(instrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:SELL")).thenReturn(Optional.of(sellInstrument));
         when(priceHistoryRepository.findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampDesc(
-                eq(buyInstrument), eq(IntervalType.ONE_DAY), eq(SourceName.TCMB)
+                eq(sellInstrument), eq(IntervalType.ONE_DAY), eq(SourceName.TCMB)
         )).thenReturn(Optional.empty());
         when(historicalFxProvider.fetchHistoricalChunked(
-                eq(List.of("TP.DK.USD.A.YTL")),
+                eq(List.of("TP.DK.USD.S.YTL")),
                 eq(LocalDate.of(2024, 1, 1)),
                 eq(LocalDate.of(2024, 1, 10))
-        )).thenReturn(List.of(Map.of("Tarih", "01-01-2024", "TP_DK_USD_A_YTL", "29.5000")));
+        )).thenReturn(List.of(Map.of("Tarih", "01-01-2024", "TP_DK_USD_S_YTL", "29.5000")));
         when(historicalFxMapper.mapRows(any(), any())).thenReturn(List.of(
                 new TcmbHistoricalFxValue(
-                        "TCMB:USD:BUY",
-                        "TP.DK.USD.A.YTL",
+                        "TCMB:USD:SELL",
+                        "TP.DK.USD.S.YTL",
                         LocalDate.of(2024, 1, 1),
                         new BigDecimal("29.5000")
                 )
         ));
-        when(priceHistoryRepository.existsByInstrumentAndIntervalTypeAndPriceTimestamp(
-                eq(buyInstrument),
+        when(priceHistoryRepository.findByInstrumentInAndIntervalTypeAndSourceNameAndPriceTimestampBetween(
+                eq(List.of(sellInstrument)),
                 eq(IntervalType.ONE_DAY),
-                eq(LocalDateTime.of(2024, 1, 1, 0, 0))
-        )).thenReturn(true);
+                eq(SourceName.TCMB),
+                eq(LocalDate.of(2024, 1, 1).atStartOfDay()),
+                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1))
+        )).thenReturn(List.of(
+                MarketPriceHistory.builder()
+                        .instrument(sellInstrument)
+                        .intervalType(IntervalType.ONE_DAY)
+                        .sourceName(SourceName.TCMB)
+                        .priceTimestamp(LocalDateTime.of(2024, 1, 1, 0, 0))
+                        .build()
+        ));
 
         service.backfill();
 
-        verify(priceHistoryRepository, never()).save(any(MarketPriceHistory.class));
+        verify(priceHistoryRepository, never()).saveAll(any());
     }
 
     private MarketInstrument instrument(String code) {

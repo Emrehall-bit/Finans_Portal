@@ -87,7 +87,7 @@ export default function HomePage() {
                     {quotes.map((item) => (
                       <article key={item.symbol} className="market-board-row">
                         <div>
-                          <strong>{item.symbol}</strong>
+                          <strong>{item.code || item.symbol}</strong>
                           <p>{item.source || "-"}</p>
                         </div>
                         <div className="market-board-metric">
@@ -138,7 +138,7 @@ export default function HomePage() {
                   key={`${item.symbol}-${idx}`}
                   title={item.displayName || item.symbol}
                   value={`${item.price ?? "-"} ${item.currency || ""}`.trim()}
-                  subtitle={`${item.symbol} | ${item.source || "-"}`}
+                  subtitle={`${item.code || item.symbol} | ${item.source || "-"}`}
                   trend={formatMarketChange(item.changeRate)}
                   tone={Number(item.changeRate) >= 0 ? "cool" : "warm"}
                 />

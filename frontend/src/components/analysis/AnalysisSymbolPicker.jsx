@@ -40,7 +40,7 @@ export default function AnalysisSymbolPicker({
             <option value="">{t("analysis.symbolPicker.selectInstrument")}</option>
             {quotes.map((item) => (
               <option key={`${item.symbol}-${item.source}`} value={item.symbol}>
-                {item.symbol} {item.displayName ? `- ${item.displayName}` : ""}
+                {formatInstrumentLabel(item)} {item.displayName ? `- ${item.displayName}` : ""}
               </option>
             ))}
           </select>
@@ -56,7 +56,7 @@ export default function AnalysisSymbolPicker({
         {selectedSymbols.length === 0 ? <span className="muted">{t("analysis.symbolPicker.emptySelection")}</span> : null}
         {selectedSymbols.map((symbol) => (
           <button key={symbol} type="button" className="table-chip-button active" onClick={() => onToggleComparisonSymbol(symbol)}>
-            {symbol}
+            {formatSelectedSymbol(symbol, quotes)}
           </button>
         ))}
       </div>
@@ -66,7 +66,7 @@ export default function AnalysisSymbolPicker({
           const active = selectedSymbols.includes(item.symbol);
           return (
             <button key={`${item.symbol}-${item.source}`} type="button" className={`analysis-picker-card${active ? " active" : ""}`} onClick={() => onToggleComparisonSymbol(item.symbol)}>
-              <strong>{item.symbol}</strong>
+              <strong>{formatInstrumentLabel(item)}</strong>
               <span>{item.displayName || item.instrumentType || "-"}</span>
             </button>
           );
@@ -74,4 +74,12 @@ export default function AnalysisSymbolPicker({
       </div>
     </section>
   );
+}
+
+function formatInstrumentLabel(item) {
+  return item?.code || item?.symbol || "-";
+}
+
+function formatSelectedSymbol(symbol, quotes) {
+  return quotes.find((item) => item.symbol === symbol)?.code || symbol;
 }

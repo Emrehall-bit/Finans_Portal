@@ -182,7 +182,7 @@ export default function AppLayout() {
           <div className="market-tape-track">
             {[...tapeItems, ...tapeItems].map((item, index) => (
               <div key={`${item.symbol}-${index}`} className="market-tape-item">
-                <span className="market-tape-symbol">{item.symbol}</span>
+                <span className="market-tape-symbol">{item.code || item.symbol}</span>
                 <strong>{formatNumber(item.price)}</strong>
                 <span className={Number(item.changeRate) >= 0 ? "market-up" : "market-down"}>
                   {formatTapeChange(item.changeRate)}

@@ -100,6 +100,8 @@ export default function InstrumentDetailPage() {
       return;
     }
 
+    console.debug("selected instrument symbol", normalizedSymbol);
+
     let active = true;
 
     async function loadAnnualHistory() {
@@ -231,6 +233,14 @@ export default function InstrumentDetailPage() {
     () => buildChartData(Array.isArray(analysis?.points) ? analysis.points : [], annualHistory),
     [analysis, annualHistory],
   );
+  const displaySymbol = useMemo(
+    () => formatInstrumentDisplaySymbol(normalizedSymbol),
+    [normalizedSymbol],
+  );
+  const displayTitle = useMemo(
+    () => formatInstrumentDisplayTitle(normalizedSymbol, quote?.displayName),
+    [normalizedSymbol, quote?.displayName],
+  );
   const stats = useMemo(() => buildStats(quote, annualHistory), [quote, annualHistory]);
   const latestPrice = analysis?.latestPrice ?? quote?.price ?? null;
   const quoteUnavailable = !quoteLoading && !quoteError && (!quote || quote.price == null);
@@ -322,8 +332,8 @@ export default function InstrumentDetailPage() {
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
 
       <InstrumentHeader
-        symbol={normalizedSymbol}
-        displayName={quote?.displayName}
+        symbol={displaySymbol}
+        displayName={displayTitle}
         price={latestPrice}
         changeRate={quote?.changeRate}
         currency={quote?.currency}
@@ -540,5 +550,37 @@ function buildHistoryRequest(activeRange, dateRange, source) {
 }
 
 function normalizeCode(value) {
-  return value == null ? "" : String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  if (value == null) {
+    return "";
+  }
+
+  const rawValue = String(value).trim();
+  if (rawValue.toUpperCase().startsWith("TCMB:")) {
+    return rawValue.toUpperCase();
+  }
+
+  return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
+
+function formatInstrumentDisplaySymbol(symbol) {
+  const tcmbMatch = parseTcmbFxInstrumentCode(symbol);
+  return tcmbMatch?.currency || symbol || "-";
+}
+
+function formatInstrumentDisplayTitle(symbol, fallbackTitle) {
+  const tcmbMatch = parseTcmbFxInstrumentCode(symbol);
+  return tcmbMatch?.currency || fallbackTitle;
+}
+
+function parseTcmbFxInstrumentCode(symbol) {
+  const match = String(symbol || "").trim().toUpperCase().match(/^TCMB:([A-Z0-9]+):(BUY|SELL)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    currency: match[1],
+    side: match[2],
+  };
+}
+

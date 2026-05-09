@@ -240,7 +240,7 @@ export default function SimulationPage() {
                   <option value="">{t("simulation.past.instrumentPlaceholder")}</option>
                   {quotes.map((item) => (
                     <option key={`${item.symbol}-${item.source}`} value={item.symbol}>
-                      {item.symbol} {item.displayName ? `- ${item.displayName}` : ""}
+                      {item.code || item.symbol} {item.displayName ? `- ${item.displayName}` : ""}
                     </option>
                   ))}
                 </select>
@@ -332,7 +332,7 @@ export default function SimulationPage() {
                     <option value="">{t("simulation.past.instrumentPlaceholder")}</option>
                     {quotes.map((item) => (
                       <option key={`${item.symbol}-${item.source}`} value={item.symbol}>
-                        {item.symbol} {item.displayName ? `- ${item.displayName}` : ""}
+                        {item.code || item.symbol} {item.displayName ? `- ${item.displayName}` : ""}
                       </option>
                     ))}
                   </select>
@@ -417,7 +417,16 @@ export default function SimulationPage() {
 }
 
 function normalizeCode(value) {
-  return value == null ? "" : String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  if (value == null) {
+    return "";
+  }
+
+  const rawValue = String(value).trim();
+  if (rawValue.toUpperCase().startsWith("TCMB:")) {
+    return rawValue.toUpperCase();
+  }
+
+  return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
 function formatSigned(value) {
@@ -428,3 +437,4 @@ function formatSigned(value) {
 
   return `${numeric >= 0 ? "+" : ""}${formatCurrency(numeric)}`;
 }
+

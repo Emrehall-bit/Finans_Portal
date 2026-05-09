@@ -15,14 +15,15 @@ public class TcmbFxHistoricalBackfillController {
     private final TcmbFxHistoricalBackfillService tcmbFxHistoricalBackfillService;
 
     @PostMapping("/backfill")
-    public ApiResponse<Void> backfill() {
+    public ApiResponse<TcmbFxHistoricalBackfillService.BackfillSummary> backfill() {
         // This endpoint is temporarily public for manual operations.
         // It should be protected with ADMIN role in a later hardening pass.
-        tcmbFxHistoricalBackfillService.backfillAll();
+        TcmbFxHistoricalBackfillService.BackfillSummary summary = tcmbFxHistoricalBackfillService.backfillAll();
 
-        return ApiResponse.<Void>builder()
+        return ApiResponse.<TcmbFxHistoricalBackfillService.BackfillSummary>builder()
                 .success(true)
                 .message("TCMB FX historical backfill completed")
+                .data(summary)
                 .build();
     }
 }

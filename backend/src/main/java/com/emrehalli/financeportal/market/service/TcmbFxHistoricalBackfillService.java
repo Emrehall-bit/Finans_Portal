@@ -31,6 +31,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class TcmbFxHistoricalBackfillService {
 
+    private static final int SAVE_BATCH_SIZE = 1000;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
     private static final IntervalType INTERVAL_TYPE = IntervalType.ONE_DAY;
     private static final SourceName SOURCE_NAME = SourceName.TCMB;
@@ -42,7 +43,7 @@ public class TcmbFxHistoricalBackfillService {
     private final MarketProperties marketProperties;
 
     @Transactional
-    public void backfillAll() {
+    public BackfillSummary backfillAll() {
         List<TcmbFxSeriesDefinition> definitions = TcmbFxSeriesDefinitions.DEFAULT_DEFINITIONS;
         List<String> allSeriesCodes = definitions.stream()
                 .map(TcmbFxSeriesDefinition::seriesCode)
@@ -77,7 +78,15 @@ public class TcmbFxHistoricalBackfillService {
                     .map(TcmbFxSeriesDefinition::seriesCode)
                     .toList();
 
-            log.info("Fetching TCMB FX historical chunk. startDate={}, endDate={}, seriesCodes={}",
+            for (ResolvedDefinition resolvedDefinition : resolvedDefinitions) {
+                log.info("TCMB FX historical instrument processing. instrumentCode={}, seriesCode={}, startDate={}, endDate={}",
+                        resolvedDefinition.definition().instrumentCode(),
+                        resolvedDefinition.definition().seriesCode(),
+                        startDate,
+                        effectiveEndDate);
+            }
+
+            log.info("Fetching TCMB FX historical chunk group. startDate={}, endDate={}, seriesCodes={}",
                     startDate, effectiveEndDate, groupSeriesCodes);
 
             List<Map<String, Object>> rows = tcmbHistoricalFxProvider.fetchHistoricalChunked(
@@ -86,14 +95,40 @@ public class TcmbFxHistoricalBackfillService {
                     effectiveEndDate
             );
             totalRows += rows.size();
+            log.info("TCMB FX historical rows fetched. startDate={}, endDate={}, rowCount={}",
+                    startDate, effectiveEndDate, rows.size());
 
             List<TcmbHistoricalFxValue> mappedValues = tcmbHistoricalFxMapper.mapRows(rows, groupDefinitions);
             totalMappedValues += mappedValues.size();
+            log.info("TCMB FX historical rows mapped. startDate={}, endDate={}, mappedValuesCount={}",
+                    startDate, effectiveEndDate, mappedValues.size());
 
             Map<String, MarketInstrument> instrumentsByCode = new LinkedHashMap<>();
             for (ResolvedDefinition resolvedDefinition : resolvedDefinitions) {
                 instrumentsByCode.put(resolvedDefinition.definition().instrumentCode(), resolvedDefinition.instrument());
             }
+
+            List<MarketInstrument> instruments = new ArrayList<>(instrumentsByCode.values());
+            LocalDateTime rangeStart = startDate.atStartOfDay();
+            LocalDateTime rangeEnd = effectiveEndDate.plusDays(1).atStartOfDay().minusNanos(1);
+            List<MarketPriceHistory> existingRecords = instruments.isEmpty()
+                    ? List.of()
+                    : marketPriceHistoryRepository.findByInstrumentInAndIntervalTypeAndSourceNameAndPriceTimestampBetween(
+                            instruments,
+                            INTERVAL_TYPE,
+                            SOURCE_NAME,
+                            rangeStart,
+                            rangeEnd
+                    );
+            java.util.Set<String> existingKeys = new java.util.HashSet<>();
+            for (MarketPriceHistory existingRecord : existingRecords) {
+                existingKeys.add(buildHistoryKey(
+                        existingRecord.getInstrument().getId(),
+                        existingRecord.getPriceTimestamp()
+                ));
+            }
+
+            List<MarketPriceHistory> recordsToSave = new ArrayList<>();
 
             for (TcmbHistoricalFxValue value : mappedValues) {
                 MarketInstrument instrument = instrumentsByCode.get(value.instrumentCode());
@@ -105,35 +140,46 @@ public class TcmbFxHistoricalBackfillService {
                 }
 
                 LocalDateTime priceTimestamp = value.priceDate().atStartOfDay();
-                boolean exists = marketPriceHistoryRepository.existsByInstrumentAndIntervalTypeAndPriceTimestamp(
-                        instrument,
-                        INTERVAL_TYPE,
-                        priceTimestamp
-                );
-                if (exists) {
+                String historyKey = buildHistoryKey(instrument.getId(), priceTimestamp);
+                if (existingKeys.contains(historyKey)) {
                     totalDuplicates++;
                     continue;
                 }
 
-                marketPriceHistoryRepository.save(MarketPriceHistory.builder()
+                existingKeys.add(historyKey);
+                recordsToSave.add(MarketPriceHistory.builder()
                         .instrument(instrument)
                         .closePrice(value.priceValue())
                         .priceTimestamp(priceTimestamp)
                         .intervalType(INTERVAL_TYPE)
                         .sourceName(SOURCE_NAME)
                         .build());
-                totalSaved++;
+            }
+
+            int groupSaved = saveInBatches(recordsToSave);
+            totalSaved += groupSaved;
+            if (groupSaved > 0) {
+                log.info("TCMB FX historical group save completed. startDate={}, endDate={}, groupSaved={}",
+                        startDate, effectiveEndDate, groupSaved);
             }
         }
 
         int totalParseOrNullSkips = Math.max(totalRows * definitions.size() - totalMappedValues, 0);
         log.info("TCMB FX historical backfill completed. rows={}, saved={}, duplicatesSkipped={}, parseOrNullSkipped={}, missingInstruments={}",
                 totalRows, totalSaved, totalDuplicates, totalParseOrNullSkips, totalMissingInstruments);
+
+        return new BackfillSummary(
+                totalRows,
+                totalSaved,
+                totalDuplicates,
+                totalParseOrNullSkips,
+                totalMissingInstruments
+        );
     }
 
     @Transactional
-    public void backfill() {
-        backfillAll();
+    public BackfillSummary backfill() {
+        return backfillAll();
     }
 
     private Map<LocalDate, List<ResolvedDefinition>> resolveDefinitionsByStartDate(
@@ -175,6 +221,36 @@ public class TcmbFxHistoricalBackfillService {
 
     private LocalDate parseConfiguredDate(String value) {
         return LocalDate.parse(value, DATE_FORMATTER);
+    }
+
+    private int saveInBatches(List<MarketPriceHistory> recordsToSave) {
+        int saved = 0;
+        int batchIndex = 0;
+
+        for (int start = 0; start < recordsToSave.size(); start += SAVE_BATCH_SIZE) {
+            int end = Math.min(start + SAVE_BATCH_SIZE, recordsToSave.size());
+            List<MarketPriceHistory> batch = recordsToSave.subList(start, end);
+            marketPriceHistoryRepository.saveAll(batch);
+            batchIndex++;
+            saved += batch.size();
+            log.info("TCMB FX historical batch saved. batchIndex={}, batchSize={}, totalSaved={}",
+                    batchIndex, batch.size(), saved);
+        }
+
+        return saved;
+    }
+
+    private String buildHistoryKey(Long instrumentId, LocalDateTime priceTimestamp) {
+        return instrumentId + "|" + priceTimestamp;
+    }
+
+    public record BackfillSummary(
+            int rows,
+            int saved,
+            int duplicatesSkipped,
+            int parseOrNullSkipped,
+            int missingInstruments
+    ) {
     }
 
     private record ResolvedDefinition(TcmbFxSeriesDefinition definition, MarketInstrument instrument) {

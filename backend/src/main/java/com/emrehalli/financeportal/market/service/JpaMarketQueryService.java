@@ -1,8 +1,11 @@
 package com.emrehalli.financeportal.market.service;
 
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
+import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
+import com.emrehalli.financeportal.market.domain.enums.IntervalType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
+import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
 import com.emrehalli.financeportal.market.persistence.MarketPriceRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,8 +24,11 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class JpaMarketQueryService implements MarketQueryService {
 
+    private static final IntervalType DEFAULT_HISTORY_INTERVAL = IntervalType.ONE_DAY;
+
     private final MarketInstrumentRepository marketInstrumentRepository;
     private final MarketPriceRepository marketPriceRepository;
+    private final MarketPriceHistoryRepository marketPriceHistoryRepository;
 
     @Override
     public Optional<MarketSnapshot> findBySymbol(String symbol) {
@@ -40,16 +46,26 @@ public class JpaMarketQueryService implements MarketQueryService {
         LocalDateTime start = from != null ? from.atStartOfDay() : LocalDate.MIN.atStartOfDay();
         LocalDateTime end = to != null ? to.plusDays(1).atStartOfDay().minusNanos(1) : LocalDateTime.now();
 
-        return marketPriceRepository.findByInstrumentAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+        List<MarketPriceHistory> history = sourceName == null
+                ? marketPriceHistoryRepository.findByInstrumentAndIntervalTypeAndPriceTimestampBetweenOrderByPriceTimestampAsc(
                         instrumentOptional.get(),
+                        DEFAULT_HISTORY_INTERVAL,
                         start,
                         end
-                ).stream()
-                .filter(price -> sourceName == null || sourceName == price.getSourceName())
+                )
+                : marketPriceHistoryRepository.findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+                        instrumentOptional.get(),
+                        DEFAULT_HISTORY_INTERVAL,
+                        sourceName,
+                        start,
+                        end
+                );
+
+        return history.stream()
                 .map(price -> new HistoricalPrice(
                         price.getInstrument().getInstrumentCode(),
                         price.getPriceTimestamp().toLocalDate(),
-                        price.getPriceValue()
+                        price.getClosePrice()
                 ))
                 .toList();
     }

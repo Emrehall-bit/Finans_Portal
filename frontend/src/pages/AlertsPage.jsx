@@ -347,7 +347,16 @@ export default function AlertsPage() {
 }
 
 function normalizeCode(value) {
-  return value == null ? "" : String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  if (value == null) {
+    return "";
+  }
+
+  const rawValue = String(value).trim();
+  if (rawValue.toUpperCase().startsWith("TCMB:")) {
+    return rawValue.toUpperCase();
+  }
+
+  return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
 function formatCondition(value, t) {
@@ -360,3 +369,4 @@ function formatCondition(value, t) {
 function uniqueSymbolCount(rows) {
   return new Set(rows.map((item) => item.instrumentCode).filter(Boolean)).size;
 }
+

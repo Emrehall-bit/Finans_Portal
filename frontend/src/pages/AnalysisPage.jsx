@@ -70,6 +70,8 @@ export default function AnalysisPage() {
       return;
     }
 
+    console.debug("selected instrument symbol", primarySymbol);
+
     let active = true;
 
     async function loadAnalysis() {

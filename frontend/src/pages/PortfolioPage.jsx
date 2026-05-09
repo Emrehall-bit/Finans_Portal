@@ -499,7 +499,16 @@ export default function PortfolioPage() {
 }
 
 function normalizeCode(value) {
-  return value == null ? "" : String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  if (value == null) {
+    return "";
+  }
+
+  const rawValue = String(value).trim();
+  if (rawValue.toUpperCase().startsWith("TCMB:")) {
+    return rawValue.toUpperCase();
+  }
+
+  return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
 function toNumber(value) {
@@ -535,3 +544,4 @@ function formatVisibilityStatus(value, t) {
     PUBLIC: t("portfolio.visibilityOptions.PUBLIC"),
   }[value] ?? (value || "-");
 }
+

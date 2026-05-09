@@ -203,17 +203,22 @@ export async function compareTechnicalAnalysis(params) {
 }
 
 function mapFxQuote(item) {
+  const code = item.code ?? item.currencyCode ?? item.symbol;
+  const source = item.source ?? item.sourceName;
+  const instrumentSymbol = source === "TCMB" && code ? `TCMB:${String(code).toUpperCase()}:SELL` : code;
+  const displayCode = code ? String(code).toUpperCase() : instrumentSymbol;
+
   return {
-    symbol: item.code ?? item.currencyCode ?? item.symbol,
-    displayName: item.name ?? item.code ?? item.currencyCode ?? item.symbol,
+    symbol: instrumentSymbol,
+    displayName: item.name ?? (source === "TCMB" && displayCode ? `${displayCode}/TRY` : displayCode),
     price: item.last ?? item.sellRate ?? item.sellingRate ?? item.sell ?? item.ask ?? item.buyRate ?? item.buyingRate ?? item.buy ?? item.bid,
     changeRate: item.changePercent ?? item.dailyChangePercent ?? item.changeRate ?? null,
-    source: item.source ?? item.sourceName,
+    source,
     instrumentType: item.type || "FX",
     dataTimestamp: item.priceTimestamp ?? item.dataTimestamp,
     buyRate: item.buyRate ?? item.buyingRate ?? item.buy ?? item.alis ?? item.bid ?? null,
     sellRate: item.sellRate ?? item.sellingRate ?? item.sell ?? item.satis ?? item.ask ?? null,
-    code: item.code ?? item.currencyCode ?? item.symbol,
+    code: displayCode,
   };
 }
 

@@ -33,6 +33,22 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
             LocalDateTime to
     );
 
+    List<MarketPriceHistory> findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+            MarketInstrument instrument,
+            IntervalType intervalType,
+            SourceName sourceName,
+            LocalDateTime from,
+            LocalDateTime to
+    );
+
+    List<MarketPriceHistory> findByInstrumentInAndIntervalTypeAndSourceNameAndPriceTimestampBetween(
+            List<MarketInstrument> instruments,
+            IntervalType intervalType,
+            SourceName sourceName,
+            LocalDateTime from,
+            LocalDateTime to
+    );
+
     boolean existsByInstrumentAndIntervalTypeAndPriceTimestamp(
             MarketInstrument instrument,
             IntervalType intervalType,
