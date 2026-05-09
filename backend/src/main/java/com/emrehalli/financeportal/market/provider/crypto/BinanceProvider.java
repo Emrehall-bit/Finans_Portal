@@ -59,7 +59,7 @@ public class BinanceProvider implements MarketDataProvider {
         String baseUrl = props.getProviders().getBinance().getBaseUrl();
         String url;
         try {
-            url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/ticker/price")
+            url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/ticker/24hr")
                     .queryParam("symbols", objectMapper.writeValueAsString(symbols))
                     .build()
                     .toUriString();
@@ -93,15 +93,22 @@ public class BinanceProvider implements MarketDataProvider {
                 }
 
                 String symbol = item.get("symbol");
-                String priceText = item.get("price");
+                String priceText = item.get("lastPrice");
+                String changePercentText = item.get("priceChangePercent");
                 if (priceText == null || priceText.isBlank() || !binancePairMapper.isSupported(symbol)) {
                     continue;
                 }
 
                 try {
+                    BigDecimal dailyChangePercent = null;
+                    if (changePercentText != null && !changePercentText.isBlank()) {
+                        dailyChangePercent = new BigDecimal(changePercentText);
+                    }
+
                     tickers.add(CryptoTickerDto.builder()
                             .symbol(binancePairMapper.toDisplayCode(symbol))
                             .price(new BigDecimal(priceText))
+                            .dailyChangePercent(dailyChangePercent)
                             .dataTimestamp(timestamp)
                             .build());
                 } catch (NumberFormatException exception) {

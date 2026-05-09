@@ -19,5 +19,6 @@ public class CryptoTickerDto {
 
     private String symbol;
     private BigDecimal price;
+    private BigDecimal dailyChangePercent;
     private LocalDateTime dataTimestamp;
 }

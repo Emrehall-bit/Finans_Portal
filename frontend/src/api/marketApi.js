@@ -103,57 +103,8 @@ export async function getMarketQuotes() {
 }
 
 export async function getMarketBySymbol(symbol) {
-  const normalizedSymbol = encodeURIComponent(symbol);
-  const resolvers = [
-    async () => {
-      const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/fx/${normalizedSymbol}`);
-      const items = normalizeArrayPayload(data).map(mapFxQuote);
-      return items[0] ?? null;
-    },
-    async () => {
-      const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/crypto/${normalizedSymbol}`);
-      const item = normalizeObjectPayload(data);
-      return item ? mapCryptoQuote(item) : null;
-    },
-    async () => {
-      const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/stocks/${normalizedSymbol}`);
-      const item = normalizeObjectPayload(data);
-      return item ? mapStockQuote(item) : null;
-    },
-    async () => {
-      const { data } = await axiosClient.get(`/api/v1/funds/${normalizedSymbol}`);
-      const item = normalizeObjectPayload(data);
-      return item ? mapFundQuote(item) : null;
-    },
-    async () => {
-      const { data } = await axiosClient.get(`/api/v1/futures/${normalizedSymbol}`);
-      const item = normalizeObjectPayload(data);
-      return item ? mapFuturesQuote(item) : null;
-    },
-    async () => {
-      const { data } = await axiosClient.get(`/api/v1/bonds/${normalizedSymbol}`);
-      const item = normalizeObjectPayload(data);
-      return item ? mapBondQuote(item) : null;
-    },
-  ];
-
-  let lastError = null;
-  for (const resolve of resolvers) {
-    try {
-      const result = await resolve();
-      if (result) {
-        return result;
-      }
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (lastError) {
-    throw lastError;
-  }
-
-  return null;
+  const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}`);
+  return normalizeObjectPayload(data);
 }
 
 export async function getMarketQuote(symbol) {
@@ -207,25 +158,11 @@ export async function getMarketHistory(symbol, paramsOrRange) {
           endDate: paramsOrRange?.to,
           source: paramsOrRange?.source,
         };
-  const analysisParams = {
-    from: params.startDate ?? params.from ?? buildDefaultAnalysisRange().from,
-    to: params.endDate ?? params.to ?? buildDefaultAnalysisRange().to,
-    indicators: "",
-  };
 
-  const { data } = await axiosClient.get(
-    `${API_CONFIG.ENDPOINTS.technicalAnalysis}/${encodeURIComponent(symbol)}`,
-    { params: analysisParams },
-  );
-  const response = normalizeObjectPayload(data);
-  const points = Array.isArray(response?.points) ? response.points : [];
-  return points
-    .filter((point) => point && point.date != null && point.close != null)
-    .map((point) => ({
-      symbol,
-      priceDate: point.date,
-      closePrice: point.close,
-    }));
+  const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}/history`, {
+    params,
+  });
+  return normalizeArrayPayload(data);
 }
 
 export async function getMacroHistory(symbol, params = {}) {

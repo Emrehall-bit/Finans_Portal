@@ -1,9 +1,9 @@
 package com.emrehalli.financeportal.market.scheduler;
 
 import com.emrehalli.financeportal.market.provider.fx.AkbankFxProvider;
-import com.emrehalli.financeportal.market.provider.fx.TcmbFxProvider;
 import com.emrehalli.financeportal.market.provider.fx.ZiraatFxProvider;
 import com.emrehalli.financeportal.market.provider.fx.dto.FxRateDto;
+import com.emrehalli.financeportal.market.provider.fx.tcmb.TcmbFxProvider;
 import com.emrehalli.financeportal.market.service.FxService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

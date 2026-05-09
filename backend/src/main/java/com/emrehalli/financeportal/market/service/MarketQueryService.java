@@ -22,8 +22,12 @@ public interface MarketQueryService {
      */
     record MarketSnapshot(
             String symbol,
+            String displayName,
             BigDecimal price,
+            BigDecimal changeRate,
             String source,
+            String instrumentType,
+            String currency,
             LocalDateTime fetchedAt
     ) {
     }

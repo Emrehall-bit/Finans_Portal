@@ -18,7 +18,7 @@ public class MarketProperties {
 
     @Data
     public static class Providers {
-        private Provider tcmb = new Provider();
+        private TcmbProvider tcmb = new TcmbProvider();
         private Provider akbank = new Provider();
         private Provider ziraat = new Provider();
         private Provider binance = new Provider();
@@ -31,6 +31,12 @@ public class MarketProperties {
     public static class Provider {
         private String baseUrl;
         private String apiKey;
+    }
+
+    @Data
+    public static class TcmbProvider extends Provider {
+        private String startDate;
+        private String endDate;
     }
 
     @Data

@@ -66,8 +66,12 @@ public class CryptoService {
 
             putCacheSilently(buildCacheKey(displayCode), new MarketQueryService.MarketSnapshot(
                     displayCode,
+                    instrument.getInstrumentName(),
                     ticker.getPrice(),
+                    ticker.getDailyChangePercent(),
                     SourceName.BINANCE.name(),
+                    InstrumentType.CRYPTO.name(),
+                    "TRY",
                     timestamp
             ));
         }
@@ -79,20 +83,27 @@ public class CryptoService {
     public List<MarketQueryService.MarketSnapshot> getAll() {
         List<MarketQueryService.MarketSnapshot> cached = cacheService.getList(CACHE_KEY_ALL, MarketQueryService.MarketSnapshot.class);
         if (!cached.isEmpty()) {
-            return cached;
+            return cached.stream()
+                    .filter(this::hasNonBlankSymbol)
+                    .sorted(Comparator.comparing(MarketQueryService.MarketSnapshot::symbol))
+                    .toList();
         }
 
         try {
             List<MarketQueryService.MarketSnapshot> snapshots = getCryptoInstruments().stream()
                     .map(this::toSnapshot)
                     .filter(Objects::nonNull)
+                    .filter(this::hasNonBlankSymbol)
                     .sorted(Comparator.comparing(MarketQueryService.MarketSnapshot::symbol))
                     .toList();
             putCacheSilently(CACHE_KEY_ALL, snapshots);
             return snapshots;
         } catch (Exception exception) {
             log.error("Failed to load all crypto data from database. Returning cached values when available.", exception);
-            return cacheService.getList(CACHE_KEY_ALL, MarketQueryService.MarketSnapshot.class);
+            return cacheService.getList(CACHE_KEY_ALL, MarketQueryService.MarketSnapshot.class).stream()
+                    .filter(this::hasNonBlankSymbol)
+                    .sorted(Comparator.comparing(MarketQueryService.MarketSnapshot::symbol))
+                    .toList();
         }
     }
 
@@ -132,7 +143,7 @@ public class CryptoService {
     }
 
     private List<MarketInstrument> getCryptoInstruments() {
-        return marketInstrumentRepository.findAll().stream()
+        return marketInstrumentRepository.findAllWithNonBlankInstrumentCode().stream()
                 .filter(instrument -> instrument.getInstrumentType() == InstrumentType.CRYPTO)
                 .filter(instrument -> instrument.getSourceName() == SourceName.BINANCE)
                 .toList();
@@ -147,8 +158,12 @@ public class CryptoService {
         MarketPrice price = latestPrice.get();
         return new MarketQueryService.MarketSnapshot(
                 instrument.getInstrumentCode(),
+                instrument.getInstrumentName(),
                 price.getPriceValue(),
+                null,
                 instrument.getSourceName().name(),
+                instrument.getInstrumentType().name(),
+                "TRY",
                 price.getPriceTimestamp()
         );
     }
@@ -187,5 +202,9 @@ public class CryptoService {
             return "";
         }
         return symbol.replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
+    }
+
+    private boolean hasNonBlankSymbol(MarketQueryService.MarketSnapshot snapshot) {
+        return snapshot != null && snapshot.symbol() != null && !snapshot.symbol().isBlank();
     }
 }

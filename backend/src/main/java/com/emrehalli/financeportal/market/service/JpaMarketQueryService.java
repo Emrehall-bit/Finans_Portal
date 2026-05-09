@@ -58,8 +58,12 @@ public class JpaMarketQueryService implements MarketQueryService {
         return marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument)
                 .map(price -> new MarketSnapshot(
                         instrument.getInstrumentCode(),
+                        instrument.getInstrumentName(),
                         price.getPriceValue(),
+                        null,
                         price.getSourceName().name(),
+                        instrument.getInstrumentType().name(),
+                        null,
                         price.getPriceTimestamp()
                 ));
     }

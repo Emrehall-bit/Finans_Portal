@@ -30,6 +30,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                        // Temporary public admin endpoint. Protect with ADMIN role later.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/markets/fx/tcmb/history/backfill").permitAll()
+
                         // Admin endpoints
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/news/admin/**").hasRole("ADMIN")
