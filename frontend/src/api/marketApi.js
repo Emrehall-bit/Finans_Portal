@@ -123,7 +123,7 @@ export async function getMarketsByType(type) {
   }
 
   if (type === "STOCK") {
-    const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/stocks`);
+    const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/stocks?page=0&size=500`);
     return normalizeArrayPayload(data).map(mapStockQuote);
   }
 
@@ -153,13 +153,13 @@ export async function getMarketHistory(symbol, paramsOrRange) {
     typeof paramsOrRange === "string"
       ? { range: paramsOrRange }
       : {
-          range: paramsOrRange?.range,
-          startDate: paramsOrRange?.from,
-          endDate: paramsOrRange?.to,
+          period: paramsOrRange?.period,
           source: paramsOrRange?.source,
         };
 
-  const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}/history`, {
+  const url = `${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}/history`;
+  console.log("[getMarketHistory] url:", url, "params:", params);
+  const { data } = await axiosClient.get(url, {
     params,
   });
   return normalizeArrayPayload(data);
@@ -167,7 +167,7 @@ export async function getMarketHistory(symbol, paramsOrRange) {
 
 export async function getMacroHistory(symbol, params = {}) {
   const { data } = await axiosClient.get(
-    `${API_CONFIG.ENDPOINTS.markets}/history/${encodeURIComponent(symbol)}`,
+    `${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}/history`,
     { params },
   );
   return normalizeArrayPayload(data);
@@ -241,7 +241,7 @@ function mapStockQuote(item) {
   return {
     symbol: item.symbol,
     displayName: item.companyName ?? item.symbol,
-    price: item.currentPrice,
+    price: item.price ?? item.currentPrice,
     changeRate: item.changePercent ?? null,
     source: item.sourceName,
     instrumentType: "STOCK",
@@ -296,3 +296,6 @@ function mapBondQuote(item) {
     code: item.bondCode,
   };
 }
+
+
+

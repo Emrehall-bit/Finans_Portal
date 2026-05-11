@@ -48,6 +48,9 @@ public class MarketPrice {
     @Column(name = "price_value", nullable = false, precision = 19, scale = 6)
     private BigDecimal priceValue;
 
+    @Column(name = "change_rate", precision = 10, scale = 4)
+    private BigDecimal changeRate;
+
     @Column(name = "price_timestamp", nullable = false)
     private LocalDateTime priceTimestamp;
 

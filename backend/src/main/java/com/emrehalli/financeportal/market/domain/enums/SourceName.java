@@ -10,5 +10,6 @@ public enum SourceName {
     BINANCE,
     TEFAS,
     YAHOO_FINANCE,
+    IS_YATIRIM,
     BIST
 }

@@ -17,8 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -109,8 +110,8 @@ public class TcmbFxHistoricalBackfillService {
             }
 
             List<MarketInstrument> instruments = new ArrayList<>(instrumentsByCode.values());
-            LocalDateTime rangeStart = startDate.atStartOfDay();
-            LocalDateTime rangeEnd = effectiveEndDate.plusDays(1).atStartOfDay().minusNanos(1);
+            Instant rangeStart = startDate.atStartOfDay().toInstant(ZoneOffset.UTC);
+            Instant rangeEnd = effectiveEndDate.plusDays(1).atStartOfDay().minusNanos(1).toInstant(ZoneOffset.UTC);
             List<MarketPriceHistory> existingRecords = instruments.isEmpty()
                     ? List.of()
                     : marketPriceHistoryRepository.findByInstrumentInAndIntervalTypeAndSourceNameAndPriceTimestampBetween(
@@ -139,7 +140,7 @@ public class TcmbFxHistoricalBackfillService {
                     continue;
                 }
 
-                LocalDateTime priceTimestamp = value.priceDate().atStartOfDay();
+                Instant priceTimestamp = value.priceDate().atStartOfDay().toInstant(ZoneOffset.UTC);
                 String historyKey = buildHistoryKey(instrument.getId(), priceTimestamp);
                 if (existingKeys.contains(historyKey)) {
                     totalDuplicates++;
@@ -205,7 +206,7 @@ public class TcmbFxHistoricalBackfillService {
                             SOURCE_NAME
                     )
                     .map(MarketPriceHistory::getPriceTimestamp)
-                    .map(LocalDateTime::toLocalDate)
+                    .map(timestamp -> timestamp.atZone(ZoneOffset.UTC).toLocalDate())
                     .map(date -> date.plusDays(1))
                     .orElse(configuredStartDate);
 
@@ -240,7 +241,7 @@ public class TcmbFxHistoricalBackfillService {
         return saved;
     }
 
-    private String buildHistoryKey(Long instrumentId, LocalDateTime priceTimestamp) {
+    private String buildHistoryKey(Long instrumentId, Instant priceTimestamp) {
         return instrumentId + "|" + priceTimestamp;
     }
 

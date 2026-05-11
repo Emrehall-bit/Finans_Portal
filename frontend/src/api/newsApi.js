@@ -24,7 +24,6 @@ function compactParams(params = {}) {
 
 export async function getNews(params = {}) {
   const resolvedParams = compactParams(params);
-  console.debug("News API request params", resolvedParams);
   const response = await axiosClient.get(API_CONFIG.ENDPOINTS.news, { params: resolvedParams });
   const data = normalizeApiResponse(response).data;
 

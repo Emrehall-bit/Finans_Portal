@@ -42,8 +42,6 @@ public class TcmbEvdsClient {
         String url = buildUrl(joinedSeriesCodes, startDate, endDate);
 
         try {
-            log.info("TCMB EVDS request starting. chunkStart={}, chunkEnd={}, seriesCodesCount={}",
-                    startDate, endDate, seriesCodes.size());
             TcmbEvdsResponse response = restClient.get()
                     .uri(url)
                     .header(HttpHeaders.ACCEPT, "application/json")
@@ -57,8 +55,6 @@ public class TcmbEvdsClient {
             if (response.getItems() == null) {
                 response.setItems(List.of());
             }
-            log.info("TCMB EVDS request completed. chunkStart={}, chunkEnd={}, seriesCodesCount={}, returnedRowsCount={}",
-                    startDate, endDate, seriesCodes.size(), response.getItems().size());
             return response;
         } catch (RestClientException exception) {
             log.error("Failed to fetch TCMB EVDS data. chunkStart={}, chunkEnd={}, seriesCodesCount={}, series={}",

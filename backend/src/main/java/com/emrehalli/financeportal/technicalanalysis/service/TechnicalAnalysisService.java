@@ -57,6 +57,7 @@ public class TechnicalAnalysisService {
         if (history.size() < requiredPointCount) {
             logger.warn("Technical analysis has insufficient history: symbol={}, from={}, to={}, pointCount={}, requiredPointCount={}",
                     symbol, from, to, history.size(), requiredPointCount);
+            List<TechnicalAnalysisPoint> points = buildPoints(history, Map.of());
             return new TechnicalAnalysisResult(
                     symbol,
                     from,
@@ -67,7 +68,7 @@ public class TechnicalAnalysisService {
                     com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection.SIDEWAYS,
                     List.of(),
                     Map.of(),
-                    List.of()
+                    points
             );
         }
 

@@ -25,5 +25,6 @@ public class FxRateResponse {
     private BigDecimal buyRate;
     private BigDecimal sellRate;
     private BigDecimal last;
+    private BigDecimal changePercent;
     private LocalDateTime priceTimestamp;
 }

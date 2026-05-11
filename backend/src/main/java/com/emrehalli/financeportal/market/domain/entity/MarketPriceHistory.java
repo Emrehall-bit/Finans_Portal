@@ -20,6 +20,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -62,7 +63,7 @@ public class MarketPriceHistory {
     private BigDecimal volume;
 
     @Column(name = "price_timestamp", nullable = false)
-    private LocalDateTime priceTimestamp;
+    private Instant priceTimestamp;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "interval_type", nullable = false, length = 10)

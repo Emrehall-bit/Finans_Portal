@@ -1,8 +1,10 @@
 package com.emrehalli.financeportal.market.api;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
-import com.emrehalli.financeportal.market.service.TcmbFxHistoricalBackfillService;
+import com.emrehalli.financeportal.market.service.TcmbFxHistoryBackfillAsyncService;
+import com.emrehalli.financeportal.market.service.TcmbFxHistoryBackfillStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,18 +14,25 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class TcmbFxHistoricalBackfillController {
 
-    private final TcmbFxHistoricalBackfillService tcmbFxHistoricalBackfillService;
+    private final TcmbFxHistoryBackfillAsyncService tcmbFxHistoryBackfillAsyncService;
+    private final TcmbFxHistoryBackfillStatus tcmbFxHistoryBackfillStatus;
 
     @PostMapping("/backfill")
-    public ApiResponse<TcmbFxHistoricalBackfillService.BackfillSummary> backfill() {
-        // This endpoint is temporarily public for manual operations.
-        // It should be protected with ADMIN role in a later hardening pass.
-        TcmbFxHistoricalBackfillService.BackfillSummary summary = tcmbFxHistoricalBackfillService.backfillAll();
-
-        return ApiResponse.<TcmbFxHistoricalBackfillService.BackfillSummary>builder()
+    public ApiResponse<Void> backfill() {
+        tcmbFxHistoryBackfillAsyncService.runBackfillAsync();
+        return ApiResponse.<Void>builder()
                 .success(true)
-                .message("TCMB FX historical backfill completed")
-                .data(summary)
+                .message("TCMB FX historical backfill arka planda baslatildi. Loglari takip edin.")
+                .data(null)
                 .build();
+    }
+
+    @GetMapping("/backfill/status")
+    public AdminJobStatusResponse backfillStatus() {
+        return new AdminJobStatusResponse(
+                tcmbFxHistoryBackfillStatus.isRunning(),
+                tcmbFxHistoryBackfillStatus.getProcessed(),
+                tcmbFxHistoryBackfillStatus.getTotal()
+        );
     }
 }

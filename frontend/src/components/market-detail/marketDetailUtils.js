@@ -98,47 +98,36 @@ export function buildChartData(points = [], history = []) {
   const analysisPoints = Array.isArray(points) ? points : [];
   const historyPoints = Array.isArray(history) ? history : [];
 
-  if (historyPoints.length > 0) {
-    const indicatorsByDate = new Map(
-      analysisPoints
-        .filter((point) => point?.date)
-        .map((point) => [
-          String(point.date),
-          {
-            sma7: toNumeric(point?.sma7),
-            sma20: toNumeric(point?.sma20),
-            sma50: toNumeric(point?.sma50),
-            rsi14: toNumeric(point?.rsi14),
-          },
-        ]),
-    );
+  if (analysisPoints.length > 0) {
+    return analysisPoints
+      .map((point) => ({
+        date: formatChartDate(point?.date),
+        close: toNumeric(point?.close),
+        sma7: toNumeric(point?.sma7),
+        sma20: toNumeric(point?.sma20),
+        sma50: toNumeric(point?.sma50),
+        rsi14: toNumeric(point?.rsi14),
+      }))
+      .filter((point) => point.close !== null);
+  }
 
+  if (historyPoints.length > 0) {
     return historyPoints
       .map((point) => {
-        const rawDate = point?.priceDate ? String(point.priceDate) : null;
-        const indicatorValues = rawDate ? indicatorsByDate.get(rawDate) : null;
+        const rawDate = point?.priceTimestamp ? String(point.priceTimestamp) : null;
         return {
           date: formatChartDate(rawDate),
           close: toNumeric(point?.closePrice),
-          sma7: indicatorValues?.sma7 ?? null,
-          sma20: indicatorValues?.sma20 ?? null,
-          sma50: indicatorValues?.sma50 ?? null,
-          rsi14: indicatorValues?.rsi14 ?? null,
+          sma7: null,
+          sma20: null,
+          sma50: null,
+          rsi14: null,
         };
       })
       .filter((point) => point.close !== null);
   }
 
-  return analysisPoints
-    .map((point) => ({
-      date: formatChartDate(point?.date),
-      close: toNumeric(point?.close),
-      sma7: toNumeric(point?.sma7),
-      sma20: toNumeric(point?.sma20),
-      sma50: toNumeric(point?.sma50),
-      rsi14: toNumeric(point?.rsi14),
-    }))
-    .filter((point) => point.close !== null);
+  return [];
 }
 
 export function buildStats(quote, annualHistory = []) {

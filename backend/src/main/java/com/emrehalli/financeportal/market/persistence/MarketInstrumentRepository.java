@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.market.persistence;
 
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
+import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,8 @@ public interface MarketInstrumentRepository extends JpaRepository<MarketInstrume
     Optional<MarketInstrument> findByInstrumentCodeIgnoreCase(String instrumentCode);
 
     Optional<MarketInstrument> findByInstrumentCodeAndSourceName(String instrumentCode, SourceName sourceName);
+
+    Optional<MarketInstrument> findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(String code, InstrumentType type);
 
     boolean existsByInstrumentCodeIgnoreCase(String instrumentCode);
 

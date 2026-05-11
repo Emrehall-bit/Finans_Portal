@@ -11,8 +11,10 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,8 +45,12 @@ public class JpaMarketQueryService implements MarketQueryService {
             return List.of();
         }
 
-        LocalDateTime start = from != null ? from.atStartOfDay() : LocalDate.MIN.atStartOfDay();
-        LocalDateTime end = to != null ? to.plusDays(1).atStartOfDay().minusNanos(1) : LocalDateTime.now();
+        Instant start = from != null
+                ? from.atStartOfDay().toInstant(ZoneOffset.UTC)
+                : LocalDate.MIN.atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant end = to != null
+                ? to.plusDays(1).atStartOfDay().minusNanos(1).toInstant(ZoneOffset.UTC)
+                : Instant.now();
 
         List<MarketPriceHistory> history = sourceName == null
                 ? marketPriceHistoryRepository.findByInstrumentAndIntervalTypeAndPriceTimestampBetweenOrderByPriceTimestampAsc(
@@ -64,7 +70,7 @@ public class JpaMarketQueryService implements MarketQueryService {
         return history.stream()
                 .map(price -> new HistoricalPrice(
                         price.getInstrument().getInstrumentCode(),
-                        price.getPriceTimestamp().toLocalDate(),
+                        price.getPriceTimestamp().atZone(ZoneOffset.UTC).toLocalDate(),
                         price.getClosePrice()
                 ))
                 .toList();

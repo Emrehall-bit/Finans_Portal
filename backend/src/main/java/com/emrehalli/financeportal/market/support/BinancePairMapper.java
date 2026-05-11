@@ -6,13 +6,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Mapper for Binance TRY trading pairs.
@@ -22,48 +24,40 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class BinancePairMapper {
 
+    private static final Map<String, String> FALLBACK_SYMBOLS = Map.of(
+            "BTC", "BTCTRY",
+            "ETH", "ETHTRY",
+            "BNB", "BNBTRY",
+            "SOL", "SOLTRY",
+            "XRP", "XRPTRY"
+    );
+
     private final MarketProperties props;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    private final Map<String, String> symbolMap = new LinkedHashMap<>();
+    private final Map<String, String> symbolMap = new ConcurrentHashMap<>();
+    private final AtomicBoolean loading = new AtomicBoolean(false);
 
     @PostConstruct
     public void init() {
-        try {
-            String baseUrl = props.getProviders().getBinance().getBaseUrl();
-            String url = baseUrl + "/ticker/price";
-            String response = restTemplate.getForObject(url, String.class);
+        boolean loaded = tryLoadFromBinance();
+        if (!loaded) {
+            log.warn("[BinancePairMapper] Binance TRY pariteleri init sirasinda yuklenemedi. Fallback uygulanacak.");
+            applyFallback();
+        }
+    }
 
-            if (response == null || response.isBlank()) {
-                log.error("Binance pair mapper initialization returned empty payload");
-                return;
-            }
+    @Scheduled(fixedRate = 30 * 60 * 1000)
+    public void scheduledReload() {
+        if (loading.get()) {
+            log.debug("[BinancePairMapper] Yükleme devam ediyor, atlanıyor.");
+            return;
+        }
 
-            JsonNode root = objectMapper.readTree(response);
-            if (!root.isArray()) {
-                log.error("Binance pair mapper initialization returned unexpected payload type");
-                return;
-            }
-
-            Map<String, String> discoveredPairs = new LinkedHashMap<>();
-            for (JsonNode item : root) {
-                String symbol = item.path("symbol").asText("");
-                if (!isTryPair(symbol)) {
-                    continue;
-                }
-
-                String displayCode = symbol.substring(0, symbol.length() - 3);
-                if (displayCode.isBlank()) {
-                    continue;
-                }
-                discoveredPairs.put(displayCode, symbol);
-            }
-
-            symbolMap.clear();
-            symbolMap.putAll(discoveredPairs);
-        } catch (Exception exception) {
-            log.error("Failed to initialize Binance TRY pair mapper", exception);
+        boolean loaded = tryLoadFromBinance();
+        if (!loaded && symbolMap.isEmpty()) {
+            applyFallback();
         }
     }
 
@@ -96,6 +90,68 @@ public class BinancePairMapper {
 
         String normalized = symbol.trim().toUpperCase();
         return symbolMap.containsKey(normalized) || symbolMap.containsValue(normalized);
+    }
+
+    public boolean isReady() {
+        return !symbolMap.isEmpty();
+    }
+
+    private boolean tryLoadFromBinance() {
+        if (!loading.compareAndSet(false, true)) {
+            log.debug("[BinancePairMapper] Yükleme devam ediyor, atlanıyor.");
+            return false;
+        }
+
+        try {
+            String baseUrl = props.getProviders().getBinance().getBaseUrl();
+            String url = baseUrl + "/ticker/price";
+            String response = restTemplate.getForObject(url, String.class);
+
+            if (response == null || response.isBlank()) {
+                log.warn("[BinancePairMapper] Binance pair load empty payload dondu.");
+                return false;
+            }
+
+            JsonNode root = objectMapper.readTree(response);
+            if (!root.isArray()) {
+                log.warn("[BinancePairMapper] Binance pair load beklenmeyen payload tipi dondu.");
+                return false;
+            }
+
+            Map<String, String> discoveredPairs = new ConcurrentHashMap<>();
+            for (JsonNode item : root) {
+                String symbol = item.path("symbol").asText("");
+                if (!isTryPair(symbol)) {
+                    continue;
+                }
+
+                String displayCode = symbol.substring(0, symbol.length() - 3);
+                if (displayCode.isBlank()) {
+                    continue;
+                }
+                discoveredPairs.put(displayCode, symbol);
+            }
+
+            if (discoveredPairs.isEmpty()) {
+                log.warn("[BinancePairMapper] Binance yanıtı geldi ama hiç TRY pariti bulunamadı.");
+                return false;
+            }
+
+            symbolMap.clear();
+            symbolMap.putAll(discoveredPairs);
+            return true;
+        } catch (Exception exception) {
+            log.warn("[BinancePairMapper] Binance TRY pariteleri yuklenemedi.", exception);
+            return false;
+        } finally {
+            loading.set(false);
+        }
+    }
+
+    private void applyFallback() {
+        symbolMap.clear();
+        symbolMap.putAll(FALLBACK_SYMBOLS);
+        log.info("[BinancePairMapper] Fallback semboller uygulandı: {}", FALLBACK_SYMBOLS.keySet());
     }
 
     private boolean isTryPair(String symbol) {

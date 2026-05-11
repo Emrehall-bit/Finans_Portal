@@ -4,11 +4,17 @@ import com.emrehalli.financeportal.config.MarketProperties;
 import com.emrehalli.financeportal.market.cache.CacheService;
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.domain.entity.MarketPrice;
+import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.IntervalType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
+import com.emrehalli.financeportal.market.exception.InstrumentNotFoundException;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
+import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
 import com.emrehalli.financeportal.market.persistence.MarketPriceRepository;
-import com.emrehalli.financeportal.market.provider.stock.dto.StockQuoteDto;
+import com.emrehalli.financeportal.market.provider.stock.dto.StockHistoryDto;
+import com.emrehalli.financeportal.market.provider.stock.dto.StockPriceDto;
+import com.emrehalli.financeportal.market.support.BistSymbolRegistry;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +25,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -34,83 +42,130 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class StockService {
 
-    private static final String META_DELIMITER = "||META||";
-
     private final MarketInstrumentRepository marketInstrumentRepository;
     private final MarketPriceRepository marketPriceRepository;
+    private final MarketPriceHistoryRepository marketPriceHistoryRepository;
     private final CacheService cacheService;
     private final EntityManager entityManager;
     private final MarketProperties props;
+    private final BistSymbolRegistry bistSymbolRegistry;
 
     @Transactional
-    public void saveAll(List<StockQuoteDto> quotes) {
+    public void saveAll(List<StockPriceDto> quotes) {
         if (quotes == null || quotes.isEmpty()) {
             return;
         }
 
-        for (StockQuoteDto quote : quotes) {
+        for (StockPriceDto quote : quotes) {
             if (quote == null
-                    || isBlank(quote.getSymbol())
-                    || quote.getCurrentPrice() == null
-                    || quote.getSourceName() == null) {
+                    || isBlank(quote.symbol())
+                    || quote.price() == null
+                    || isBlank(quote.sourceName())) {
                 continue;
             }
 
-            String symbol = normalizeSymbol(quote.getSymbol());
-            LocalDateTime timestamp = quote.getDataTimestamp() != null ? quote.getDataTimestamp() : LocalDateTime.now();
-            String companyName = defaultString(quote.getCompanyName(), symbol);
-            BigDecimal changePercent = quote.getChangePercent();
+            String symbol = normalizeSymbol(quote.symbol());
+            SourceName sourceName = SourceName.valueOf(quote.sourceName());
+            LocalDateTime timestamp = quote.dataTimestamp() != null
+                    ? LocalDateTime.ofInstant(quote.dataTimestamp(), ZoneOffset.UTC)
+                    : LocalDateTime.now(ZoneOffset.UTC);
 
-            MarketInstrument instrument = marketInstrumentRepository.findByInstrumentCodeAndSourceName(symbol, quote.getSourceName())
+            MarketInstrument instrument = marketInstrumentRepository
+                    .findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(symbol, InstrumentType.STOCK)
                     .orElseGet(() -> marketInstrumentRepository.save(MarketInstrument.builder()
                             .instrumentCode(symbol)
-                            .instrumentName(encodeInstrumentName(companyName, changePercent))
+                            .instrumentName(symbol)
                             .instrumentType(InstrumentType.STOCK)
-                            .sourceName(quote.getSourceName())
+                            .sourceName(sourceName)
                             .build()));
-
-            instrument.setInstrumentName(encodeInstrumentName(companyName, changePercent));
-            marketInstrumentRepository.save(instrument);
 
             marketPriceRepository.save(MarketPrice.builder()
                     .instrument(instrument)
-                    .priceValue(quote.getCurrentPrice())
+                    .priceValue(quote.price())
+                    .changeRate(quote.changePercent())
                     .priceTimestamp(timestamp)
-                    .sourceName(quote.getSourceName())
+                    .sourceName(sourceName)
                     .build());
 
-            putCacheSilently(buildCacheKey(symbol), toDto(instrument, quote.getCurrentPrice(), timestamp));
+            putCacheSilently(buildCacheKey(symbol), toDto(instrument, quote.price(), timestamp, quote));
+        }
+    }
+
+    @Transactional
+    public void saveHistory(String symbol, List<StockHistoryDto> history) {
+        if (isBlank(symbol) || history == null || history.isEmpty()) {
+            return;
+        }
+
+        String normalizedSymbol = normalizeSymbol(symbol);
+        MarketInstrument instrument = marketInstrumentRepository.findByInstrumentCodeAndSourceName(normalizedSymbol, SourceName.BIST)
+                .filter(item -> item.getInstrumentType() == InstrumentType.STOCK)
+                .orElseGet(() -> marketInstrumentRepository.save(MarketInstrument.builder()
+                        .instrumentCode(normalizedSymbol)
+                        .instrumentName(normalizedSymbol)
+                        .instrumentType(InstrumentType.STOCK)
+                        .sourceName(SourceName.BIST)
+                        .build()));
+
+        for (StockHistoryDto item : history) {
+            if (item == null || item.priceTimestamp() == null) {
+                continue;
+            }
+
+            Instant normalizedTimestamp = item.priceTimestamp()
+                    .atZone(ZoneOffset.UTC)
+                    .toLocalDate()
+                    .atStartOfDay()
+                    .toInstant(ZoneOffset.UTC);
+
+            MarketPriceHistory entity = marketPriceHistoryRepository
+                    .findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestamp(
+                            instrument,
+                            IntervalType.ONE_DAY,
+                            SourceName.IS_YATIRIM,
+                            normalizedTimestamp
+                    )
+                    .orElseGet(() -> MarketPriceHistory.builder()
+                            .instrument(instrument)
+                            .intervalType(IntervalType.ONE_DAY)
+                            .sourceName(SourceName.IS_YATIRIM)
+                            .priceTimestamp(normalizedTimestamp)
+                            .build());
+
+            entity.setOpenPrice(item.openPrice());
+            entity.setHighPrice(item.highPrice());
+            entity.setLowPrice(item.lowPrice());
+            entity.setClosePrice(item.closePrice());
+            entity.setVolume(item.volume());
+
+            marketPriceHistoryRepository.save(entity);
         }
     }
 
     @Transactional(readOnly = true)
-    public Page<StockQuoteDto> getAll(Pageable pageable) {
+    public Page<StockPriceDto> getAll(Pageable pageable) {
         try {
             TypedQuery<MarketInstrument> dataQuery = entityManager.createQuery(
                     "select mi from MarketInstrument mi " +
                             "where mi.instrumentType = :instrumentType " +
-                            "and mi.sourceName = :sourceName " +
                             "order by mi.instrumentCode asc",
                     MarketInstrument.class
             );
             dataQuery.setParameter("instrumentType", InstrumentType.STOCK);
-            dataQuery.setParameter("sourceName", SourceName.YAHOO_FINANCE);
             dataQuery.setFirstResult((int) pageable.getOffset());
             dataQuery.setMaxResults(pageable.getPageSize());
 
-            List<StockQuoteDto> content = dataQuery.getResultList().stream()
+            List<StockPriceDto> content = dataQuery.getResultList().stream()
                     .map(this::toDto)
                     .filter(Objects::nonNull)
                     .toList();
 
             Long total = entityManager.createQuery(
                             "select count(mi) from MarketInstrument mi " +
-                                    "where mi.instrumentType = :instrumentType " +
-                                    "and mi.sourceName = :sourceName",
+                                    "where mi.instrumentType = :instrumentType",
                             Long.class
                     )
                     .setParameter("instrumentType", InstrumentType.STOCK)
-                    .setParameter("sourceName", SourceName.YAHOO_FINANCE)
                     .getSingleResult();
 
             return new PageImpl<>(content, pageable, total);
@@ -121,53 +176,119 @@ public class StockService {
     }
 
     @Transactional(readOnly = true)
-    public StockQuoteDto getBySymbol(String symbol) {
+    public StockPriceDto getBySymbol(String symbol) {
         String normalizedSymbol = normalizeSymbol(symbol);
-        StockQuoteDto cached = getCachedStock(normalizedSymbol);
+        StockPriceDto cached = getCachedStock(normalizedSymbol);
         if (cached != null) {
             return cached;
         }
 
         try {
-            StockQuoteDto dto = marketInstrumentRepository.findByInstrumentCodeAndSourceName(normalizedSymbol, SourceName.YAHOO_FINANCE)
-                    .filter(instrument -> instrument.getInstrumentType() == InstrumentType.STOCK)
-                    .map(this::toDto)
-                    .orElse(null);
+            MarketInstrument instrument = marketInstrumentRepository
+                    .findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(normalizedSymbol, InstrumentType.STOCK)
+                    .orElseThrow(() -> new InstrumentNotFoundException("Stock instrument not found: " + normalizedSymbol));
 
-            if (dto != null) {
-                putCacheSilently(buildCacheKey(normalizedSymbol), dto);
-            }
+            MarketPrice latestPrice = marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument)
+                    .orElseThrow(() -> new InstrumentNotFoundException("Stock price not found: " + normalizedSymbol));
+
+            StockPriceDto dto = toDto(instrument, latestPrice.getPriceValue(), latestPrice.getPriceTimestamp(), null);
+            putCacheSilently(buildCacheKey(normalizedSymbol), dto);
             return dto;
+        } catch (InstrumentNotFoundException exception) {
+            throw exception;
         } catch (Exception exception) {
-            log.error("Failed to load stock data for symbol {}. Returning cached value when available.", normalizedSymbol, exception);
-            return getCachedStock(normalizedSymbol);
+            log.error("Failed to load stock data for symbol {}.", normalizedSymbol, exception);
+            throw new InstrumentNotFoundException("Stock instrument not found: " + normalizedSymbol, exception);
         }
     }
 
-    private StockQuoteDto toDto(MarketInstrument instrument) {
-        Optional<MarketPrice> latestPrice = marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument);
-        if (latestPrice.isEmpty()) {
+    @Transactional(readOnly = true)
+    public List<StockHistoryDto> getHistory(String symbol, LocalDate startDate, LocalDate endDate) {
+        String normalizedSymbol = normalizeSymbol(symbol);
+        MarketInstrument instrument = marketInstrumentRepository.findByInstrumentCodeIgnoreCase(normalizedSymbol)
+                .orElseThrow(() -> new InstrumentNotFoundException("Stock instrument not found: " + normalizedSymbol));
+
+        Instant from = (startDate != null ? startDate : LocalDate.of(1970, 1, 1))
+                .atStartOfDay()
+                .toInstant(ZoneOffset.UTC);
+        Instant to = (endDate != null ? endDate : LocalDate.now(ZoneOffset.UTC))
+                .atStartOfDay()
+                .toInstant(ZoneOffset.UTC);
+
+        List<StockHistoryDto> history = marketPriceHistoryRepository
+                .findByInstrumentIdAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+                        instrument.getId(),
+                        from,
+                        to
+                ).stream()
+                .map(this::toHistoryDto)
+                .toList();
+
+        if (history.isEmpty()) {
+            throw new InstrumentNotFoundException("Stock history not found: " + normalizedSymbol);
+        }
+
+        return history;
+    }
+
+    private StockPriceDto toDto(MarketInstrument instrument) {
+        MarketPrice latestPrice = marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument).orElse(null);
+        if (latestPrice == null) {
             return null;
         }
-        MarketPrice marketPrice = latestPrice.get();
-        return toDto(instrument, marketPrice.getPriceValue(), marketPrice.getPriceTimestamp());
+        return new StockPriceDto(
+                instrument.getInstrumentCode(),
+                bistSymbolRegistry.toYahooSymbol(instrument.getInstrumentCode()),
+                latestPrice.getPriceValue(),
+                latestPrice.getChangeRate(),
+                null,
+                null,
+                null,
+                null,
+                instrument.getSourceName().name(),
+                latestPrice.getPriceTimestamp().toInstant(ZoneOffset.UTC)
+        );
     }
 
-    private StockQuoteDto toDto(MarketInstrument instrument, BigDecimal currentPrice, LocalDateTime dataTimestamp) {
-        StockMetadata metadata = decodeInstrumentName(instrument.getInstrumentName());
-        return StockQuoteDto.builder()
-                .symbol(instrument.getInstrumentCode())
-                .companyName(metadata.companyName())
-                .currentPrice(currentPrice)
-                .changePercent(metadata.changePercent())
-                .dataTimestamp(dataTimestamp)
-                .sourceName(instrument.getSourceName())
-                .build();
+    private StockPriceDto toDto(MarketInstrument instrument,
+                                java.math.BigDecimal currentPrice,
+                                LocalDateTime dataTimestamp,
+                                StockPriceDto cachedSource) {
+        String symbol = instrument.getInstrumentCode();
+        return new StockPriceDto(
+                symbol,
+                bistSymbolRegistry.toYahooSymbol(symbol),
+                currentPrice,
+                cachedSource != null ? cachedSource.changePercent() : null,
+                cachedSource != null ? cachedSource.previousClose() : null,
+                cachedSource != null ? cachedSource.dayHigh() : null,
+                cachedSource != null ? cachedSource.dayLow() : null,
+                cachedSource != null ? cachedSource.volume() : null,
+                instrument.getSourceName().name(),
+                dataTimestamp != null ? dataTimestamp.toInstant(ZoneOffset.UTC) : Instant.now()
+        );
     }
 
-    private StockQuoteDto getCachedStock(String symbol) {
+    private StockHistoryDto toHistoryDto(MarketPriceHistory history) {
+        return new StockHistoryDto(
+                history.getPriceTimestamp(),
+                history.getOpenPrice(),
+                history.getHighPrice(),
+                history.getLowPrice(),
+                history.getClosePrice(),
+                history.getVolume()
+        );
+    }
+
+    private MarketInstrument findStockInstrument(String normalizedSymbol) {
+        return marketInstrumentRepository.findByInstrumentCodeAndSourceName(normalizedSymbol, SourceName.YAHOO_FINANCE)
+                .filter(item -> item.getInstrumentType() == InstrumentType.STOCK)
+                .orElseThrow(() -> new InstrumentNotFoundException("Stock instrument not found: " + normalizedSymbol));
+    }
+
+    private StockPriceDto getCachedStock(String symbol) {
         try {
-            return cacheService.get(buildCacheKey(symbol), StockQuoteDto.class).orElse(null);
+            return cacheService.get(buildCacheKey(symbol), StockPriceDto.class).orElse(null);
         } catch (Exception exception) {
             log.warn("Failed to read stock cache for symbol={}", symbol, exception);
         }
@@ -193,39 +314,7 @@ public class StockService {
         return symbol.replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
     }
 
-    private String encodeInstrumentName(String companyName, BigDecimal changePercent) {
-        return companyName.trim() + META_DELIMITER + (changePercent != null ? changePercent.toPlainString() : "");
-    }
-
-    private StockMetadata decodeInstrumentName(String instrumentName) {
-        if (instrumentName == null || instrumentName.isBlank()) {
-            return new StockMetadata("", null);
-        }
-
-        String[] parts = instrumentName.split("\\Q" + META_DELIMITER + "\\E", 2);
-        if (parts.length < 2) {
-            return new StockMetadata(instrumentName, null);
-        }
-
-        BigDecimal changePercent = null;
-        if (!parts[1].isBlank()) {
-            try {
-                changePercent = new BigDecimal(parts[1]);
-            } catch (NumberFormatException ignored) {
-                // Ignore malformed metadata and keep null change percent.
-            }
-        }
-        return new StockMetadata(parts[0], changePercent);
-    }
-
-    private String defaultString(String value, String fallback) {
-        return isBlank(value) ? fallback : value;
-    }
-
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
-    }
-
-    private record StockMetadata(String companyName, BigDecimal changePercent) {
     }
 }

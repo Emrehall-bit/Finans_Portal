@@ -495,7 +495,7 @@ function formatMarketChange(value) {
     return String(value);
   }
 
-  return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
+  return `%${numeric.toFixed(2)}`;
 }
 
 function formatRate(value) {
@@ -543,3 +543,5 @@ function getChangeToneClass(value) {
 
   return Number(value) >= 0 ? "tone-positive" : "tone-negative";
 }
+
+

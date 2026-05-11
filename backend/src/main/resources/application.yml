@@ -51,7 +51,7 @@ logging:
     org.hibernate.orm.jdbc.bind: WARN
     org.springframework.security: DEBUG
     org.springframework.security.oauth2: DEBUG
-
+    com.emrehalli.financeportal.market: DEBUG
 management:
   endpoints:
     web:
@@ -96,6 +96,13 @@ news:
 
 market:
   providers:
+    yahoo:
+      base-url: https://query1.finance.yahoo.com
+      cookie: >-
+        ${YAHOO_COOKIE}
+      crumb: ${YAHOO_CRUMB}
+    isyatirim:
+      base-url: https://www.isyatirim.com.tr
     bist:
       base-url: https://datastore.borsaistanbul.com
   scheduler:

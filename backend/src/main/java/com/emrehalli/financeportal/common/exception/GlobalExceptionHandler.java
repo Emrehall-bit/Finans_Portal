@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;
 import com.emrehalli.financeportal.common.response.ApiResponse;
+import com.emrehalli.financeportal.market.exception.InstrumentNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -85,6 +86,18 @@ public class GlobalExceptionHandler {
                 .success(false)
                 .data(null)
                 .message(appMessageSource.get("common.resourceNotFound"))
+                .requestId(currentRequestId())
+                .build();
+    }
+
+    @ExceptionHandler(InstrumentNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Object> handleInstrumentNotFoundException(InstrumentNotFoundException e, HttpServletRequest request) {
+        logException("Instrument not found", e, request, false);
+        return ApiResponse.builder()
+                .success(false)
+                .data(null)
+                .message(e.getMessage())
                 .requestId(currentRequestId())
                 .build();
     }

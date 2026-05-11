@@ -30,9 +30,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Temporary public admin endpoint. Protect with ADMIN role later.
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/markets/fx/tcmb/history/backfill").permitAll()
-
                         // Admin endpoints
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/news/admin/**").hasRole("ADMIN")
@@ -46,6 +43,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/actuator/metrics").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/metrics/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/binance/history/fetch/status").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/binance/tcmb/sync/status").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/markets/fx/tcmb/history/backfill/status").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/stocks/fetch/status").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/stocks/history/backfill/status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/technical-analysis/**").permitAll()

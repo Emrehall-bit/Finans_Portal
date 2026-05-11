@@ -208,7 +208,7 @@ export default function AppLayout() {
               <p>{profileLabel}</p>
             </div>
             {isAuthenticated ? (
-              <button type="button" className="ghost-button light sidebar-login-button" onClick={logout}>
+              <button type="button" className="ghost-button light sidebar-login-button sidebar-logout-button" onClick={logout}>
                 {t("layout.logout")}
               </button>
             ) : (

@@ -32,7 +32,9 @@ public class StockProviderChain implements MarketDataProvider {
                 return result;
             }
         } catch (DataProviderException exception) {
-            log.warn("Yahoo Finance erisilemedi, yedek kaynak yok. Hata: {}", exception.getMessage());
+            log.warn("Yahoo Finance DataProviderException: {}", exception.getMessage(), exception);
+        } catch (Exception exception) {
+            log.error("Yahoo Finance beklenmedik hata: {}", exception.getMessage(), exception);
         }
         return Collections.emptyList();
     }

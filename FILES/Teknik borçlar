@@ -1,0 +1,18 @@
+Localden çalıştırmak uyumsuzluğa yol açar mı:
+Geliştirme sürecinde sorun olmaz ama dikkat edilmesi gereken bir şey var — environment variable meselesi. Docker Compose'da environment variable'ları docker-compose.yml veya .env dosyasına eklemen lazım:
+yamlenvironment:
+ !!! - YAHOO_COOKIE=...   // COOKIE-CRUMBLAR İLERDE DEĞİŞİRSE YAHOODAN VERİ ÇEKEMEYİZ GÜNCELEME GEREKİR
+  - YAHOO_CRUMB=...
+Şu an IntelliJ'den run configuration'a ekledin, Docker bilmiyor. Docker'a geçince Yahoo fetch çalışmaz, cookie/crumb eksik olur.
+Önerim:
+Geliştirme bitince Docker'a geçmeden önce:
+
+docker-compose.yml'e YAHOO_COOKIE ve YAHOO_CRUMB environment variable'larını ekle
+O sırada taze cookie/crumb al, onları ekle
+docker-compose up ile başlat
+
+!!! local ve genel yml dosyalarını en son düzenle
+
+!!!Keycloak-Superadmin / admin ---> master realm admin kullanıcıadı şifresi
+System-Admin / ADMIN ----> finance portal realmi uygulama admini
+

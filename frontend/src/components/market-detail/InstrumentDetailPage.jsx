@@ -100,14 +100,14 @@ export default function InstrumentDetailPage() {
       return;
     }
 
-    console.debug("selected instrument symbol", normalizedSymbol);
-
     let active = true;
 
     async function loadAnnualHistory() {
       try {
         setHistoryLoading(true);
-        const nextHistory = await getMarketHistory(normalizedSymbol, buildHistoryRequest(activeRange, dateRange, quote?.source));
+        const historyRequest = buildHistoryRequest(activeRange, dateRange, quote?.source);
+        console.log("[loadAnnualHistory] request:", historyRequest);
+        const nextHistory = await getMarketHistory(normalizedSymbol, historyRequest);
         if (active) {
           setAnnualHistory(Array.isArray(nextHistory) ? nextHistory : []);
         }
@@ -524,26 +524,8 @@ export default function InstrumentDetailPage() {
 }
 
 function buildHistoryRequest(activeRange, dateRange, source) {
-  const request = source ? { source } : {};
-
-  if (activeRange === "1W") {
-    return { ...request, range: "7d" };
-  }
-
-  if (activeRange === "1M") {
-    return { ...request, range: "1m" };
-  }
-
-  if (activeRange === "3M") {
-    return { ...request, range: "3m" };
-  }
-
-  if (activeRange === "1Y") {
-    return { ...request, range: "1y" };
-  }
-
   return {
-    ...request,
+    ...(source ? { source } : {}),
     from: dateRange?.from,
     to: dateRange?.to,
   };

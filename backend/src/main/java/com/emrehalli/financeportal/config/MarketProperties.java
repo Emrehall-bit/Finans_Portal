@@ -23,6 +23,7 @@ public class MarketProperties {
         private Provider ziraat = new Provider();
         private Provider binance = new Provider();
         private Provider yahoo = new Provider();
+        private Provider isyatirim = new Provider();
         private Provider bist = new Provider();
         private Provider tefas = new Provider();
     }
@@ -31,12 +32,18 @@ public class MarketProperties {
     public static class Provider {
         private String baseUrl;
         private String apiKey;
+        private String cookie;
+        private String crumb;
     }
 
     @Data
     public static class TcmbProvider extends Provider {
         private String startDate;
         private String endDate;
+        private boolean currentSyncEnabled = true;
+        private long currentSyncFixedRateMs = 3600000;
+        private boolean startupBackfillEnabled = true;
+        private boolean historicalSchedulerEnabled = false;
     }
 
     @Data
