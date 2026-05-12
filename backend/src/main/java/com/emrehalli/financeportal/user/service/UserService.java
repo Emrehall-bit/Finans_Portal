@@ -1,13 +1,13 @@
 package com.emrehalli.financeportal.user.service;
 
-import com.emrehalli.financeportal.audit.enums.AdminAuditAction;
-import com.emrehalli.financeportal.audit.service.AdminAuditLogService;
+import com.emrehalli.financeportal.admin.enums.AdminAuditAction;
+import com.emrehalli.financeportal.admin.service.AdminAuditLogService;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.config.security.CurrentUser;
 import com.emrehalli.financeportal.config.security.CurrentUserResolver;
-import com.emrehalli.financeportal.user.dto.AdminUpdateUserRequest;
+import com.emrehalli.financeportal.admin.dto.AdminUpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
 import com.emrehalli.financeportal.user.dto.UpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.UpdateUserRoleRequest;

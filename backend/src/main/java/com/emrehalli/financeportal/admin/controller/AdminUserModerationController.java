@@ -2,11 +2,11 @@ package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
-import com.emrehalli.financeportal.moderation.dto.ModerationResponseDto;
-import com.emrehalli.financeportal.moderation.dto.PermBlockUserRequest;
-import com.emrehalli.financeportal.moderation.dto.TempBlockUserRequest;
-import com.emrehalli.financeportal.moderation.dto.UnblockUserRequest;
-import com.emrehalli.financeportal.moderation.service.UserModerationService;
+import com.emrehalli.financeportal.admin.moderation.dto.ModerationResponseDto;
+import com.emrehalli.financeportal.admin.moderation.dto.PermBlockUserRequest;
+import com.emrehalli.financeportal.admin.moderation.dto.TempBlockUserRequest;
+import com.emrehalli.financeportal.admin.moderation.dto.UnblockUserRequest;
+import com.emrehalli.financeportal.admin.moderation.service.UserModerationService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;

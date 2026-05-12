@@ -183,3 +183,31 @@ select {
     border-radius: 14px;
   }
 }
+
+.market-tab {
+  border: 1px solid #d9e4ff;
+  background: #f7faff;
+  color: #5f6f92;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.market-tab:hover {
+  border-color: #7da2ff;
+  background: #eef4ff;
+  color: #4f6fd6;
+}
+
+.market-tab.active {
+  background: linear-gradient(135deg, #5b8cff, #7aa8ff);
+  border-color: #6f9cff;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(91, 140, 255, 0.25);
+}
+
+.market-tab.active:hover {
+  color: #ffffff;
+}

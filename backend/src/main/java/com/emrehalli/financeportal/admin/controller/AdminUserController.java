@@ -2,7 +2,7 @@ package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
-import com.emrehalli.financeportal.user.dto.AdminUpdateUserRequest;
+import com.emrehalli.financeportal.admin.dto.AdminUpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
 import com.emrehalli.financeportal.user.dto.UpdateUserRoleRequest;
 import com.emrehalli.financeportal.user.dto.UserResponseDto;

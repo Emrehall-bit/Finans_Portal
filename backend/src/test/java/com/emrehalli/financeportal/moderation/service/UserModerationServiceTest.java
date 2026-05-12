@@ -1,9 +1,9 @@
-package com.emrehalli.financeportal.moderation.service;
+package com.emrehalli.financeportal.admin.moderation.service;
 
-import com.emrehalli.financeportal.moderation.entity.UserModeration;
-import com.emrehalli.financeportal.moderation.enums.ModerationStatus;
-import com.emrehalli.financeportal.moderation.repository.UserModerationRepository;
-import com.emrehalli.financeportal.audit.service.AdminAuditLogService;
+import com.emrehalli.financeportal.admin.moderation.entity.UserModeration;
+import com.emrehalli.financeportal.admin.moderation.enums.ModerationStatus;
+import com.emrehalli.financeportal.admin.moderation.repository.UserModerationRepository;
+import com.emrehalli.financeportal.admin.service.AdminAuditLogService;
 import com.emrehalli.financeportal.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,11 +33,11 @@ class UserModerationServiceTest {
     @Mock
     private AdminAuditLogService adminAuditLogService;
 
-    private UserModerationService userModerationService;
+    private com.emrehalli.financeportal.admin.moderation.service.UserModerationService userModerationService;
 
     @BeforeEach
     void setUp() {
-        userModerationService = new UserModerationService(userModerationRepository, userService, adminAuditLogService);
+        userModerationService = new com.emrehalli.financeportal.admin.moderation.service.UserModerationService(userModerationRepository, userService, adminAuditLogService);
     }
 
     @Test

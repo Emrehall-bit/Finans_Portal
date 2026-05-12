@@ -1,9 +1,9 @@
 package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
-import com.emrehalli.financeportal.markettape.dto.MarketTapeConfigResponse;
-import com.emrehalli.financeportal.markettape.dto.UpdateMarketTapeConfigRequest;
-import com.emrehalli.financeportal.markettape.service.MarketTapeService;
+import com.emrehalli.financeportal.admin.markettape.dto.MarketTapeConfigResponse;
+import com.emrehalli.financeportal.admin.markettape.dto.UpdateMarketTapeConfigRequest;
+import com.emrehalli.financeportal.admin.markettape.service.MarketTapeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;

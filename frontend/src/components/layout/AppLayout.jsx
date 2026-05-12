@@ -12,6 +12,15 @@ import {
 import { extractErrorMessage } from "../../api/responseUtils";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatDateTime, formatNumber } from "../../utils/formatters";
+import {
+  LayoutDashboard,
+  LineChart,
+  Briefcase,
+  Newspaper,
+  Bell,
+  User,
+  Shield,
+} from "lucide-react";
 
 const PRIORITY_SYMBOLS = [
   "XU100",
@@ -70,27 +79,71 @@ export default function AppLayout() {
   const notificationMenuRef = useRef(null);
   const displayName = user?.fullName || user?.email || t("layout.guest");
   const profileLabel = isAuthenticated ? t(`layout.roleLabels.${role || "USER"}`) : t("layout.openAccess");
-  const showAdminTopbarLabel = isAdmin && location.pathname !== "/admin";
+  const showAdminTopbarLabel = isAdmin && !location.pathname.startsWith("/admin");
 
-  const navGroups = useMemo(
-    () => [
-      {
-        label: t("nav.mainMenu"),
-        items: [
-          { to: "/dashboard", label: t("nav.dashboard") },
-          { to: "/markets", label: t("nav.markets") },
-          { to: "/portfolio", label: t("nav.portfolio"), requiresAuth: true },
-          { to: "/analysis", label: t("nav.analysis"), requiresAuth: true },
-          { to: "/news", label: t("nav.news") },
-          { to: "/alerts", label: t("nav.alerts"), requiresAuth: true },
-          { to: "/simulation", label: t("nav.simulation"), requiresAuth: true },
-          { to: "/reports", label: t("nav.reports"), requiresAuth: true },
-          { to: "/profile", label: t("nav.profile"), requiresAuth: true },
-        ],
-      },
-    ],
-    [t],
-  );
+  const navigationItems = [
+    {
+      to: "/dashboard",
+      label: t("nav.dashboard"),
+      icon: LayoutDashboard,
+    },
+    {
+      to: "/markets",
+      label: t("nav.markets"),
+      icon: LineChart,
+    },
+    {
+      to: "/portfolio",
+      label: t("nav.portfolio"),
+      icon: Briefcase,
+      requiresAuth: true,
+    },
+    {
+      to: "/analysis",
+      label: t("nav.analysis"),
+      icon: LineChart,
+      requiresAuth: true,
+    },
+    {
+      to: "/news",
+      label: t("nav.news"),
+      icon: Newspaper,
+    },
+    {
+      to: "/alerts",
+      label: t("nav.alerts"),
+      icon: Bell,
+      requiresAuth: true,
+    },
+    {
+      to: "/simulation",
+      label: t("nav.simulation"),
+      icon: LineChart,
+      requiresAuth: true,
+    },
+    {
+      to: "/reports",
+      label: t("nav.reports"),
+      icon: Briefcase,
+      requiresAuth: true,
+    },
+    {
+      to: "/profile",
+      label: t("nav.profile"),
+      icon: User,
+      requiresAuth: true,
+    },
+    ...(isAdmin
+      ? [
+          {
+            to: "/admin",
+            label: t("nav.admin"),
+            icon: Shield,
+            requiresAuth: true,
+          },
+        ]
+      : []),
+  ];
 
   useEffect(() => {
     let active = true;
@@ -157,19 +210,6 @@ export default function AppLayout() {
 
     return unique.slice(0, 10);
   }, [marketTapeSymbols, tickerQuotes]);
-
-  const resolvedNavGroups = useMemo(() => {
-    if (!isAdmin) {
-      return navGroups;
-    }
-
-    return [
-      {
-        ...navGroups[0],
-        items: [...navGroups[0].items, { to: "/admin", label: t("nav.admin"), requiresAuth: true }],
-      },
-    ];
-  }, [isAdmin, navGroups, t]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -394,32 +434,23 @@ export default function AppLayout() {
           </div>
 
           <nav className="sidebar-nav">
-            {resolvedNavGroups.map((group) => (
-              <div key={group.label} className="nav-group">
-                <p className="nav-group-title">{group.label}</p>
-                {group.items.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.to === "/"}
-                    onClick={(event) => handleProtectedNavigation(event, item)}
-                    className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
-                  >
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+                  onClick={(event) => handleProtectedNavigation(event, item)}
+                >
+                  <span className="nav-item-main">
+                    <Icon size={18} aria-hidden="true" />
                     <span>{item.label}</span>
-                    {item.requiresAuth && !isAuthenticated ? (
-                      <small
-                        className="nav-auth-indicator"
-                        title={t("layout.authRequiredTitle")}
-                        aria-label={t("layout.authRequiredTitle")}
-                      >
-                        🔒
-                      </small>
-                    ) : null}
-                    {item.badge ? <small>{item.badge}</small> : null}
-                  </NavLink>
-                ))}
-              </div>
-            ))}
+                  </span>
+                </NavLink>
+              );
+            })}
           </nav>
 
           <div className="sidebar-footnote">

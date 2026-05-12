@@ -254,7 +254,6 @@ button:disabled {
 
 .eyebrow {
   margin: 0 0 6px;
-  text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 0.72rem;
   color: var(--text-soft);
@@ -315,7 +314,7 @@ button:disabled {
 .nav-group-title {
   margin: 0 8px;
   font-size: 0.78rem;
-  text-transform: uppercase;
+
   letter-spacing: 0.12em;
 }
 
@@ -707,7 +706,7 @@ button:disabled {
 
 .notification-menu-type {
   font-size: 0.74rem;
-  text-transform: uppercase;
+
   letter-spacing: 0.05em;
   background: rgba(96, 165, 250, 0.15);
   color: #bfdbfe;
@@ -827,7 +826,7 @@ button:disabled {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+
 }
 
 .page-content {
@@ -978,7 +977,7 @@ button:disabled {
   margin-bottom: 8px;
   color: var(--text-soft);
   font-size: 0.82rem;
-  text-transform: uppercase;
+
   letter-spacing: 0.06em;
 }
 
@@ -1161,7 +1160,6 @@ button:disabled {
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .market-toolbar-stat {
@@ -1241,7 +1239,6 @@ button:disabled {
 .indicator-value-card span {
   color: var(--text-soft);
   font-size: 0.78rem;
-  text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
@@ -1521,7 +1518,7 @@ td {
 th {
   color: var(--text-soft);
   font-size: 0.82rem;
-  text-transform: uppercase;
+
   letter-spacing: 0.08em;
 }
 
@@ -1682,7 +1679,7 @@ th {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+
 }
 
 .news-sort-field select {
@@ -1917,7 +1914,7 @@ th {
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+
 }
 
 .news-filter-field input {
@@ -2302,7 +2299,7 @@ th {
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+
 }
 
 .news-card-overlay {
@@ -3000,7 +2997,7 @@ th {
   font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+
 }
 
 .terminal-badge.muted {
@@ -4550,14 +4547,34 @@ html[data-theme] .ghost-button.light {
   border-color: var(--ghost-border);
 }
 
-html[data-theme] .panel-surface,
-html[data-theme] .card,
-html[data-theme] .summary-card,
-html[data-theme] .table-wrap,
-html[data-theme] .news-card,
-html[data-theme] .list-item {
-  background: var(--panel);
-  border-color: var(--panel-border);
+.panel-surface {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 28px;
+
+  box-shadow:
+    0 8px 24px rgba(15, 23, 42, 0.06),
+    0 2px 6px rgba(15, 23, 42, 0.04);
+
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.panel-surface:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 16px 36px rgba(15, 23, 42, 0.10),
+    0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, #eef4ff 0%, #e9eef9 35%, #e5ebf7 100%);
 }
 
 html[data-theme] .topbar {
@@ -5101,7 +5118,7 @@ html[data-theme] button.sidebar-register-button:focus-visible {
 .admin-console-metric-card span {
   color: var(--text-soft);
   font-size: 0.78rem;
-  text-transform: uppercase;
+
   letter-spacing: 0.08em;
 }
 
@@ -5143,7 +5160,7 @@ html[data-theme] button.sidebar-register-button:focus-visible {
   color: var(--text-soft);
   font-size: 0.82rem;
   font-weight: 700;
-  text-transform: uppercase;
+
   letter-spacing: 0.05em;
 }
 
@@ -5544,7 +5561,6 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 .fund-quote-card-meta span {
   color: var(--text-soft);
   font-size: 0.76rem;
-  text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
@@ -5574,7 +5590,6 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 .fund-return-grid-item span {
   color: var(--text-soft);
   font-size: 0.76rem;
-  text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
@@ -5673,7 +5688,7 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 .admin-users-table th {
   color: var(--text-soft);
   font-size: 0.8rem;
-  text-transform: uppercase;
+
   letter-spacing: 0.05em;
 }
 
@@ -5907,7 +5922,6 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 .admin-users-detail-list dt {
   color: var(--text-soft);
   font-size: 0.78rem;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
@@ -5965,4 +5979,89 @@ html[data-theme] button.sidebar-register-button:focus-visible,
   .admin-users-refresh {
     width: 100%;
   }
+}
+
+.dashboard-section-title {
+  margin-bottom: 18px;
+}
+
+.market-tabs {
+  margin-top: 12px;
+  margin-bottom: 26px;
+}
+
+.dashboard-news-list {
+  max-height: 760px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.dashboard-news-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dashboard-news-list::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 999px;
+}
+
+.dashboard-news-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.finance-news-link {
+  padding: 10px 12px;
+}
+
+.finance-news-link strong {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+
+.nav-item-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-item:hover {
+  transform: translateX(4px);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-item.active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 999px;
+  background: #60a5fa;
+}
+
+.metric-card-line {
+  width: 100%;
+  height: 8px;
+  margin-top: 28px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(37, 99, 235, 0.12),
+    rgba(37, 99, 235, 0.38),
+    rgba(37, 99, 235, 0.12)
+  );
 }

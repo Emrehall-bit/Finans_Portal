@@ -2,7 +2,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import AlertsPage from "./pages/AlertsPage";
 import AnalysisPage from "./pages/AnalysisPage";
-import AdminPage from "./pages/AdminPage";
+import AdminDataPage from "./pages/AdminDataPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import MarketDetailPage from "./pages/MarketDetailPage";
@@ -38,7 +39,9 @@ function App() {
           <Route path="/simulation" element={<SimulationPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route element={<AdminRoute />}>
-            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin" element={<Navigate to="/admin/data" replace />} />
+            <Route path="/admin/data" element={<AdminDataPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
           </Route>
         </Route>
       </Route>

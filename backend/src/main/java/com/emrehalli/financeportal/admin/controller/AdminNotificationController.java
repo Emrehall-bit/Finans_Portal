@@ -2,10 +2,10 @@ package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
-import com.emrehalli.financeportal.notification.dto.CreateBroadcastNotificationRequest;
-import com.emrehalli.financeportal.notification.dto.CreateUserNotificationRequest;
-import com.emrehalli.financeportal.notification.dto.NotificationResponseDto;
-import com.emrehalli.financeportal.notification.service.NotificationService;
+import com.emrehalli.financeportal.admin.notification.dto.CreateBroadcastNotificationRequest;
+import com.emrehalli.financeportal.admin.notification.dto.CreateUserNotificationRequest;
+import com.emrehalli.financeportal.admin.notification.dto.NotificationResponseDto;
+import com.emrehalli.financeportal.admin.notification.service.NotificationService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;

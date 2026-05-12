@@ -29,6 +29,8 @@
     "reports": "Reports",
     "profile": "Profile / Settings",
     "admin": "Admin Panel",
+    "adminData": "Data Operations",
+    "adminUsers": "User Management",
     "authBadge": "Login"
   },
   "layout": {
@@ -128,7 +130,11 @@
       "watchlistTrend": "Tracking",
       "alertsTitle": "Active alerts",
       "alertsSubtitle": "Rules waiting to trigger",
-      "alertsTrend": "Warning"
+      "alertsTrend": "Warning",
+      "marketTabs": {
+        "gainers": "Top gainers",
+        "losers": "Top losers"
+      }
     },
     "marketSummaryEyebrow": "Market Summary",
     "marketSummaryTitle": "Today's active instruments",
@@ -142,28 +148,28 @@
       "dailyChange": "Daily change"
     },
     "favoritesEyebrow": "Favorites",
-    "favoritesTitle": "Tracked instruments",
+    "favoritesTitle": "Favorites",
     "goMarkets": "Open markets",
     "favoritesEmptyTitle": "No favorite instruments",
     "favoritesEmptyDescription": "You can add instruments to your favorites from the market screen.",
     "waitingSource": "Source pending",
     "allocationEyebrow": "Portfolio Allocation",
-    "allocationTitle": "Current position weights",
+    "allocationTitle": "Portfolio Allocation",
     "portfolios": "Portfolios",
     "allocationEmptyTitle": "No allocation data",
     "allocationEmptyDescription": "A chart will appear here once portfolios and holdings are added.",
     "newsEyebrow": "Latest News",
-    "newsTitle": "Agenda flow",
+    "newsTitle": "Latest News",
     "allNews": "All news",
     "newsEmptyTitle": "News flow is empty",
     "newsEmptyDescription": "The backend did not return any news data.",
     "untitledNews": "Untitled news",
     "riskEyebrow": "Risk Alerts",
-    "riskTitle": "Areas needing attention",
+    "riskTitle": "Risk Alerts",
     "riskEmptyTitle": "No visible risk",
     "riskEmptyDescription": "No critical warnings were produced in the tracked datasets.",
     "notificationsEyebrow": "Notifications",
-    "notificationsTitle": "Alert triggers",
+    "notificationsTitle": "Alert Triggers",
     "notificationsEmptyTitle": "No new notifications",
     "notificationsEmptyDescription": "There are no triggered alerts or system notifications.",
     "notificationsLink": "Alerts",
@@ -176,7 +182,11 @@
       "nearAlertDescription": "Target {{target}}, last price {{price}}."
     },
     "triggeredAlertTitle": "{{symbol}} alert triggered",
-    "triggeredAlertDescription": "{{condition}} {{target}} condition was met."
+    "triggeredAlertDescription": "{{condition}} {{target}} condition was met.",
+    "marketTabs": {
+      "gainers": "Top gainers",
+      "losers": "Top losers"
+    }
   },
   "news": {
     "eyebrow": "Agenda",
@@ -623,33 +633,33 @@
         "description": "Reload the TCMB FX historical archive.",
         "action": "Start TCMB History"
       },
-        "binanceHistory": {
-          "eyebrow": "Crypto archive",
-          "title": "Binance History Fetch",
-          "description": "Pull Binance historical data for a given day range.",
-          "action": "Start Binance History"
-        },
-        "tefasFundFetch": {
-          "eyebrow": "Fund data",
-          "title": "TEFAS Fund Fetch",
-          "description": "Pull current fund NAV data from TEFAS and write it into local market tables.",
-          "action": "Start TEFAS Fetch"
-        },
-        "tefasFundBackfill": {
-          "eyebrow": "Fund archive",
-          "title": "TEFAS Fund Backfill",
-          "description": "Manually pull historical NAV data for one fund or all active TEFAS funds.",
-          "action": "Start TEFAS Backfill",
-          "fundCodePlaceholder": "Fund code (optional)",
-          "periodPlaceholder": "Period (optional)"
-        },
-        "tefasTestConnection": {
-          "eyebrow": "TEFAS connection",
-          "title": "TEFAS Test Connection",
-          "description": "Call the TEFAS list endpoint and verify the first returned fund.",
-          "action": "Test Connection"
-        }
+      "binanceHistory": {
+        "eyebrow": "Crypto archive",
+        "title": "Binance History Fetch",
+        "description": "Pull Binance historical data for a given day range.",
+        "action": "Start Binance History"
       },
+      "tefasFundFetch": {
+        "eyebrow": "Fund data",
+        "title": "TEFAS Fund Fetch",
+        "description": "Pull current fund NAV data from TEFAS and write it into local market tables.",
+        "action": "Start TEFAS Fetch"
+      },
+      "tefasFundBackfill": {
+        "eyebrow": "Fund archive",
+        "title": "TEFAS Fund Backfill",
+        "description": "Manually pull historical NAV data for one fund or all active TEFAS funds.",
+        "action": "Start TEFAS Backfill",
+        "fundCodePlaceholder": "Fund code (optional)",
+        "periodPlaceholder": "Period (optional)"
+      },
+      "tefasTestConnection": {
+        "eyebrow": "TEFAS connection",
+        "title": "TEFAS Test Connection",
+        "description": "Call the TEFAS list endpoint and verify the first returned fund.",
+        "action": "Test Connection"
+      }
+    },
     "stockHistory": {
       "eyebrow": "Stock archive",
       "title": "Stock History Backfill",
@@ -690,69 +700,69 @@
       "detailTitle": "Selected user",
       "detailEmptyTitle": "No user selected",
       "detailEmptyDescription": "Pick a user from the table to inspect the detail panel.",
-        "columns": {
-          "email": "Email",
-          "fullName": "Full Name",
-          "role": "Role",
-          "moderation": "Moderation",
-          "active": "Active",
-          "lastLogin": "Last Login",
-          "createdAt": "Created At",
-          "detail": "Detail"
-        },
+      "columns": {
+        "email": "Email",
+        "fullName": "Full Name",
+        "role": "Role",
+        "moderation": "Moderation",
+        "active": "Active",
+        "lastLogin": "Last Login",
+        "createdAt": "Created At",
+        "detail": "Detail"
+      },
       "fields": {
         "id": "ID",
         "keycloakId": "Keycloak ID",
         "email": "Email",
         "fullName": "Full Name",
         "role": "Role",
-          "active": "Status",
-          "preferences": "Language / Theme",
-          "lastLoginAt": "Last Login",
-          "createdAt": "Created At",
-          "updatedAt": "Updated At",
-          "moderationStatus": "Moderation Status",
-          "moderationReason": "Moderation Reason",
-          "moderationBlockedUntil": "Blocked Until",
-          "moderationCreatedBy": "Created By",
-          "moderationCreatedAt": "Moderation Created At"
-        },
-        "values": {
-          "active": "Active",
-          "passive": "Inactive"
-        },
-        "moderation": {
-          "tempBlock": "Temp Block",
-          "permBlock": "Perm Block",
-          "unblock": "Unblock",
-          "tempBlockEyebrow": "Temporary Block",
-          "permBlockEyebrow": "Permanent Block",
-          "unblockEyebrow": "Remove Block",
-          "tempBlockSubmit": "Apply Temporary Block",
-          "permBlockSubmit": "Apply Permanent Block",
-          "unblockSubmit": "Remove Block",
-          "tempBlockError": "Failed to temporarily block the user.",
-          "permBlockError": "Failed to permanently block the user.",
-          "unblockError": "Failed to remove the user block.",
-          "tempBlockSuccess": "User temporarily blocked.",
-          "permBlockSuccess": "User permanently blocked.",
-          "unblockSuccess": "User unblocked.",
-          "reasonLabel": "Reason",
-          "reasonPlaceholder": "Optional note",
-          "blockedUntilLabel": "Blocked Until",
-          "blockedUntilRequired": "Blocked until is required.",
-          "blockedUntilFuture": "You must select a future date.",
-          "submitting": "Submitting...",
-          "statusValues": {
-            "ACTIVE": "Active",
-            "TEMP_BLOCKED": "Temporarily Blocked",
-            "PERM_BLOCKED": "Permanently Blocked"
-          }
-        },
-        "notification": {
-          "eyebrow": "User Notification",
-          "titleLabel": "Title",
-          "messageLabel": "Message",
+        "active": "Status",
+        "preferences": "Language / Theme",
+        "lastLoginAt": "Last Login",
+        "createdAt": "Created At",
+        "updatedAt": "Updated At",
+        "moderationStatus": "Moderation Status",
+        "moderationReason": "Moderation Reason",
+        "moderationBlockedUntil": "Blocked Until",
+        "moderationCreatedBy": "Created By",
+        "moderationCreatedAt": "Moderation Created At"
+      },
+      "values": {
+        "active": "Active",
+        "passive": "Inactive"
+      },
+      "moderation": {
+        "tempBlock": "Temp Block",
+        "permBlock": "Perm Block",
+        "unblock": "Unblock",
+        "tempBlockEyebrow": "Temporary Block",
+        "permBlockEyebrow": "Permanent Block",
+        "unblockEyebrow": "Remove Block",
+        "tempBlockSubmit": "Apply Temporary Block",
+        "permBlockSubmit": "Apply Permanent Block",
+        "unblockSubmit": "Remove Block",
+        "tempBlockError": "Failed to temporarily block the user.",
+        "permBlockError": "Failed to permanently block the user.",
+        "unblockError": "Failed to remove the user block.",
+        "tempBlockSuccess": "User temporarily blocked.",
+        "permBlockSuccess": "User permanently blocked.",
+        "unblockSuccess": "User unblocked.",
+        "reasonLabel": "Reason",
+        "reasonPlaceholder": "Optional note",
+        "blockedUntilLabel": "Blocked Until",
+        "blockedUntilRequired": "Blocked until is required.",
+        "blockedUntilFuture": "You must select a future date.",
+        "submitting": "Submitting...",
+        "statusValues": {
+          "ACTIVE": "Active",
+          "TEMP_BLOCKED": "Temporarily Blocked",
+          "PERM_BLOCKED": "Permanently Blocked"
+        }
+      },
+      "notification": {
+        "eyebrow": "User Notification",
+        "titleLabel": "Title",
+        "messageLabel": "Message",
         "typeLabel": "Type",
         "submit": "Send",
         "submitting": "Sending...",
@@ -843,16 +853,16 @@
       "subject": "Subject",
       "authenticated": "Authenticated"
     },
-      "values": {
-        "role": {
-          "GUEST": "Guest",
-          "USER": "User",
-          "ADMIN": "Admin",
-          "USER_PREMIUM": "Premium User",
-          "SYSTEM_ENGINEER": "System Engineer"
-        },
-        "authProvider": {
-          "KEYCLOAK": "Keycloak",
+    "values": {
+      "role": {
+        "GUEST": "Guest",
+        "USER": "User",
+        "ADMIN": "Admin",
+        "USER_PREMIUM": "Premium User",
+        "SYSTEM_ENGINEER": "System Engineer"
+      },
+      "authProvider": {
+        "KEYCLOAK": "Keycloak",
         "LOCAL": "Local"
       }
     }

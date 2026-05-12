@@ -1,7 +1,7 @@
 package com.emrehalli.financeportal.config.security;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
-import com.emrehalli.financeportal.moderation.service.UserModerationService;
+import com.emrehalli.financeportal.admin.moderation.service.UserModerationService;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;

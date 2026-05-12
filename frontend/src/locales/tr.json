@@ -29,6 +29,8 @@
     "reports": "Raporlar",
     "profile": "Profil / Ayarlar",
     "admin": "Admin Paneli",
+    "adminData": "Veri İşlemleri",
+    "adminUsers": "Kullanıcı Yönetimi",
     "authBadge": "Giriş"
   },
   "layout": {
@@ -62,21 +64,21 @@
     "notificationDetailDate": "Tarih",
     "notificationAudienceBroadcast": "Duyuru",
     "notificationAudiencePersonal": "Kisisel",
-      "notificationTypes": {
-        "SYSTEM": "Sistem",
-        "ADMIN_MESSAGE": "Admin Mesaji",
-        "PRICE_ALERT": "Fiyat Alarmi",
-        "SECURITY": "Guvenlik",
-        "ANNOUNCEMENT": "Duyuru"
-      },
-      "roleLabels": {
-        "GUEST": "Misafir",
-        "USER": "Kullanici",
-        "ADMIN": "Admin",
-        "USER_PREMIUM": "Premium Kullanici",
-        "SYSTEM_ENGINEER": "System Engineer"
-      },
-      "myProfile": "Profilim",
+    "notificationTypes": {
+      "SYSTEM": "Sistem",
+      "ADMIN_MESSAGE": "Admin Mesaji",
+      "PRICE_ALERT": "Fiyat Alarmi",
+      "SECURITY": "Guvenlik",
+      "ANNOUNCEMENT": "Duyuru"
+    },
+    "roleLabels": {
+      "GUEST": "Misafir",
+      "USER": "Kullanici",
+      "ADMIN": "Admin",
+      "USER_PREMIUM": "Premium Kullanici",
+      "SYSTEM_ENGINEER": "System Engineer"
+    },
+    "myProfile": "Profilim",
     "theme": "Tema",
     "themeSelection": "Tema seçimi",
     "themeLight": "Açık",
@@ -128,10 +130,13 @@
       "watchlistTrend": "Takipte",
       "alertsTitle": "Aktif alarm",
       "alertsSubtitle": "Tetik bekleyen kurallar",
-      "alertsTrend": "Uyarı"
+      "alertsTrend": "Uyarı",
+      "marketTabs": {
+        "gainers": "En çok artan",
+        "losers": "En çok azalan"
+      }
     },
-    "marketSummaryEyebrow": "Piyasa Özeti",
-    "marketSummaryTitle": "Günün hareketli enstrümanları",
+    "marketSummaryTitle": "Günün Hareketli Enstrümanları",
     "allMarkets": "Tüm piyasa",
     "marketEmptyTitle": "Piyasa verisi bulunamadı",
     "marketEmptyDescription": "Market servisinden veri dönmedi.",
@@ -142,28 +147,24 @@
       "dailyChange": "Günlük değişim"
     },
     "favoritesEyebrow": "Favoriler",
-    "favoritesTitle": "İzlenen enstrümanlar",
+    "favoritesTitle": "Favoriler",
     "goMarkets": "Piyasaya git",
     "favoritesEmptyTitle": "Favori enstrüman yok",
     "favoritesEmptyDescription": "Piyasa ekranından favori listene enstrüman ekleyebilirsin.",
     "waitingSource": "Kaynak bekleniyor",
     "allocationEyebrow": "Portföy Dağılımı",
-    "allocationTitle": "Mevcut pozisyon ağırlıkları",
     "portfolios": "Portföyler",
     "allocationEmptyTitle": "Dağılım verisi yok",
     "allocationEmptyDescription": "Portföy ve holding eklendiğinde burada grafik oluşur.",
     "newsEyebrow": "Son Haberler",
-    "newsTitle": "Gündem akışı",
     "allNews": "Tüm haberler",
     "newsEmptyTitle": "Haber akışı boş",
     "newsEmptyDescription": "Backend tarafından haber verisi dönmedi.",
     "untitledNews": "Başlıksız haber",
     "riskEyebrow": "Risk Uyarıları",
-    "riskTitle": "Dikkat isteyen alanlar",
     "riskEmptyTitle": "Belirgin risk yok",
     "riskEmptyDescription": "Takip edilen veri setlerinde kritik uyarı oluşmadı.",
-    "notificationsEyebrow": "Bildirimler",
-    "notificationsTitle": "Alarm tetiklenmeleri",
+    "notificationsTitle": "Alarm Tetiklenmeleri",
     "notificationsEmptyTitle": "Yeni bildirim yok",
     "notificationsEmptyDescription": "Tetiklenen alarm veya sistem bildirimi bulunmuyor.",
     "notificationsLink": "Alarmlar",
@@ -176,7 +177,16 @@
       "nearAlertDescription": "Hedef {{target}}, son fiyat {{price}}."
     },
     "triggeredAlertTitle": "{{symbol}} alarmı tetiklendi",
-    "triggeredAlertDescription": "{{condition}} {{target}} koşulu sağlandı."
+    "triggeredAlertDescription": "{{condition}} {{target}} koşulu sağlandı.",
+    "marketTabs": {
+      "gainers": "En çok artan",
+      "losers": "En çok azalan"
+    },
+    "newsTitle": "Son Haberler",
+    "allocationTitle": "Portföy Dağılımı",
+    "riskTitle": "Risk Uyarıları",
+    "notificationsEyebrow": "Alarm Tetiklenmeleri",
+    "marketSummaryEyebrow": "Piyasa Özeti"
   },
   "news": {
     "eyebrow": "Gündem",
@@ -623,33 +633,33 @@
         "description": "TCMB doviz tarihcesini yeniden doldur.",
         "action": "TCMB History Baslat"
       },
-        "binanceHistory": {
-          "eyebrow": "Kripto arsivi",
-          "title": "Binance History Fetch",
-          "description": "Gun sayisi vererek Binance tarihsel verisini cek.",
-          "action": "Binance History Baslat"
-        },
-        "tefasFundFetch": {
-          "eyebrow": "Fon verisi",
-          "title": "TEFAS Fund Fetch",
-          "description": "TEFAS'tan guncel fon NAV verisini cek ve local market tablolarina yaz.",
-          "action": "TEFAS Fetch Baslat"
-        },
-        "tefasFundBackfill": {
-          "eyebrow": "Fon arsivi",
-          "title": "TEFAS Fund Backfill",
-          "description": "Fon verilerini aşağıdaki butona basarak manuel olarak doldurun. Fon kodu veya periyot girilmezse tüm veriler yeniden doldurulur.  ",
-          "action": "TEFAS Backfill Baslat",
-            "fundCodePlaceholder": "Fon kodu (opsiyonel)",
-            "periodPlaceholder": "Periyod (opsiyonel)"
-          },
-          "tefasTestConnection": {
-            "eyebrow": "TEFAS baglantisi",
-            "title": "TEFAS Test Connection",
-            "description": "TEFAS liste endpointine baglan ve ilk fon bilgisini dogrula.",
-            "action": "Baglantiyi Test Et"
-          }
-        },
+      "binanceHistory": {
+        "eyebrow": "Kripto arsivi",
+        "title": "Binance History Fetch",
+        "description": "Gun sayisi vererek Binance tarihsel verisini cek.",
+        "action": "Binance History Baslat"
+      },
+      "tefasFundFetch": {
+        "eyebrow": "Fon verisi",
+        "title": "TEFAS Fund Fetch",
+        "description": "TEFAS'tan guncel fon NAV verisini cek ve local market tablolarina yaz.",
+        "action": "TEFAS Fetch Baslat"
+      },
+      "tefasFundBackfill": {
+        "eyebrow": "Fon arsivi",
+        "title": "TEFAS Fund Backfill",
+        "description": "Fon verilerini aşağıdaki butona basarak manuel olarak doldurun. Fon kodu veya periyot girilmezse tüm veriler yeniden doldurulur.  ",
+        "action": "TEFAS Backfill Baslat",
+        "fundCodePlaceholder": "Fon kodu (opsiyonel)",
+        "periodPlaceholder": "Periyod (opsiyonel)"
+      },
+      "tefasTestConnection": {
+        "eyebrow": "TEFAS baglantisi",
+        "title": "TEFAS Test Connection",
+        "description": "TEFAS liste endpointine baglan ve ilk fon bilgisini dogrula.",
+        "action": "Baglantiyi Test Et"
+      }
+    },
     "stockHistory": {
       "eyebrow": "Hisse arsivi",
       "title": "Hisse History Backfill",
@@ -843,16 +853,16 @@
       "subject": "Kimlik",
       "authenticated": "Kimlik Durumu"
     },
-      "values": {
-        "role": {
-          "GUEST": "Misafir",
-          "USER": "Kullanici",
-          "ADMIN": "Admin",
-          "USER_PREMIUM": "Premium Kullanici",
-          "SYSTEM_ENGINEER": "System Engineer"
-        },
-        "authProvider": {
-          "KEYCLOAK": "Keycloak",
+    "values": {
+      "role": {
+        "GUEST": "Misafir",
+        "USER": "Kullanici",
+        "ADMIN": "Admin",
+        "USER_PREMIUM": "Premium Kullanici",
+        "SYSTEM_ENGINEER": "System Engineer"
+      },
+      "authProvider": {
+        "KEYCLOAK": "Keycloak",
         "LOCAL": "Yerel"
       }
     }
@@ -1072,7 +1082,7 @@
       "financials": "Finansallar"
     },
     "statsEyebrow": "Bilgi Paneli",
-    "statsTitle": "Piyasa ozeti",
+    "statsTitle": "PİYASA ÖZETİ",
     "newsEyebrow": "Haberler",
     "newsTitle": "Secili enstrumanla ilgili akis",
     "newsLoading": "Haberler yukleniyor...",
@@ -1115,7 +1125,7 @@
     "RSI_NEUTRAL": "RSI dengeli"
   },
   "stats": {
-    "lastPrice": "Son fiyat",
+    "lastPrice": "SON FİYAT",
     "dailyChange": "Gunluk degisim",
     "open": "Acilis",
     "volume": "Hacim",

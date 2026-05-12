@@ -1,6 +1,6 @@
 package com.emrehalli.financeportal.user.mapper;
 
-import com.emrehalli.financeportal.user.dto.AdminUpdateUserRequest;
+import com.emrehalli.financeportal.admin.dto.AdminUpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
 import com.emrehalli.financeportal.user.dto.UpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.UserResponseDto;

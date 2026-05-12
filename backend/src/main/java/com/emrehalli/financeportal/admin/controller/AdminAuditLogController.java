@@ -1,8 +1,8 @@
 package com.emrehalli.financeportal.admin.controller;
 
-import com.emrehalli.financeportal.audit.dto.AdminAuditLogResponseDto;
-import com.emrehalli.financeportal.audit.enums.AdminAuditAction;
-import com.emrehalli.financeportal.audit.service.AdminAuditLogService;
+import com.emrehalli.financeportal.admin.dto.AdminAuditLogResponseDto;
+import com.emrehalli.financeportal.admin.enums.AdminAuditAction;
+import com.emrehalli.financeportal.admin.service.AdminAuditLogService;
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import org.springframework.data.domain.Page;
