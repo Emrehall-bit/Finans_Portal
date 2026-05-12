@@ -1,5 +1,6 @@
-package com.emrehalli.financeportal.market.api;
+package com.emrehalli.financeportal.admin.controller;
 
+import com.emrehalli.financeportal.admin.dto.AdminJobStatusResponse;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.market.service.TcmbFxHistoryBackfillAsyncService;
 import com.emrehalli.financeportal.market.service.TcmbFxHistoryBackfillStatus;

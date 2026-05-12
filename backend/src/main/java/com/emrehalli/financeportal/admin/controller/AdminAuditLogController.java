@@ -1,4 +1,4 @@
-package com.emrehalli.financeportal.audit.controller;
+package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.audit.dto.AdminAuditLogResponseDto;
 import com.emrehalli.financeportal.audit.enums.AdminAuditAction;

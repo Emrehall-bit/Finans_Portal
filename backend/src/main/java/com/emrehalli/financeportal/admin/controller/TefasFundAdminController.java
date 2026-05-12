@@ -1,4 +1,4 @@
-package com.emrehalli.financeportal.market.api;
+package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.market.provider.fund.TefasProvider;

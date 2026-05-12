@@ -13,28 +13,28 @@ export async function updateCurrentUserProfile(payload) {
 }
 
 export async function getAllUsers() {
-  const response = await axiosClient.get(`${API_CONFIG.ENDPOINTS.users}/admin`);
+  const response = await axiosClient.get(`/api/v1/admin/users`);
   const data = normalizeApiResponse(response).data;
   return data ?? { content: [], totalElements: 0, totalPages: 0, size: 0, number: 0 };
 }
 
 export async function getUserById(userId) {
-  const response = await axiosClient.get(`${API_CONFIG.ENDPOINTS.users}/admin/${userId}`);
+  const response = await axiosClient.get(`/api/v1/admin/users/${userId}`);
   return normalizeApiResponse(response).data ?? null;
 }
 
 export async function activateUser(userId) {
-  const response = await axiosClient.patch(`${API_CONFIG.ENDPOINTS.users}/admin/${userId}/activate`);
+  const response = await axiosClient.patch(`/api/v1/admin/users/${userId}/activate`);
   return normalizeApiResponse(response).data ?? null;
 }
 
 export async function deactivateUser(userId) {
-  const response = await axiosClient.patch(`${API_CONFIG.ENDPOINTS.users}/admin/${userId}/deactivate`);
+  const response = await axiosClient.patch(`/api/v1/admin/users/${userId}/deactivate`);
   return normalizeApiResponse(response).data ?? null;
 }
 
 export async function updateUserRole(userId, role) {
-  const response = await axiosClient.patch(`${API_CONFIG.ENDPOINTS.users}/admin/${userId}/role`, { role });
+  const response = await axiosClient.patch(`/api/v1/admin/users/${userId}/role`, { role });
   return normalizeApiResponse(response).data ?? null;
 }
 

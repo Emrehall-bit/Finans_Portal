@@ -1,4 +1,4 @@
-package com.emrehalli.financeportal.notification.controller;
+package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;

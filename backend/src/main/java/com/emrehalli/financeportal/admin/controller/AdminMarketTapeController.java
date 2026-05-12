@@ -1,4 +1,4 @@
-package com.emrehalli.financeportal.markettape.controller;
+package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.markettape.dto.MarketTapeConfigResponse;
