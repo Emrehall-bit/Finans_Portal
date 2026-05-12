@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.user.dto.AdminUpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
 import com.emrehalli.financeportal.user.dto.UpdateUserRequest;
+import com.emrehalli.financeportal.user.dto.UpdateUserRoleRequest;
 import com.emrehalli.financeportal.user.dto.UserProfileResponseDto;
 import com.emrehalli.financeportal.user.dto.UserResponseDto;
 import com.emrehalli.financeportal.user.service.UserService;
@@ -114,6 +115,20 @@ public class UserController {
                 .success(true)
                 .data(user)
                 .message(appMessageSource.get("user.activated"))
+                .build();
+    }
+
+    @PatchMapping("/admin/{userId}/role")
+    public ApiResponse<UserResponseDto> updateUserRole(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateUserRoleRequest request
+    ) {
+        UserResponseDto user = userService.updateUserRole(userId, request);
+
+        return ApiResponse.<UserResponseDto>builder()
+                .success(true)
+                .data(user)
+                .message(appMessageSource.get("user.role.updated"))
                 .build();
     }
 }

@@ -23,15 +23,27 @@ public class FundDataFetcher {
 
     @Scheduled(cron = "${market.scheduler.fund-cron:0 30 18 * * MON-FRI}")
     public void fetch() {
+        fetchNow();
+    }
+
+    public FundFetchResult fetchNow() {
         try {
             List<FundNavDto> funds = tefasProvider.fetch();
             if (funds.isEmpty()) {
                 log.warn("TEFAS fund fetcher received no fund NAV data. saveAll skipped.");
-                return;
+                return new FundFetchResult(0, 0);
             }
             fundService.saveAll(funds);
+            return new FundFetchResult(funds.size(), funds.size());
         } catch (Exception exception) {
             log.error("Failed to fetch fund NAV data from TEFAS", exception);
+            throw exception;
         }
+    }
+
+    public record FundFetchResult(
+            int processedFunds,
+            int savedFunds
+    ) {
     }
 }

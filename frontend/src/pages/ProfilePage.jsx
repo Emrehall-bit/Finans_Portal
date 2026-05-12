@@ -281,17 +281,8 @@ export default function ProfilePage() {
 
 function formatRoleLabel(value, t) {
   const normalized = String(value || "USER").toUpperCase();
-  const currentLanguage =
-    typeof window === "undefined"
-      ? "tr"
-      : String(window.localStorage.getItem("financePortal.language") || "tr").toLowerCase();
-  const isTurkish = currentLanguage.startsWith("tr");
-  return {
-    USER: isTurkish ? "Kullanici" : "User",
-    ADMIN: isTurkish ? "Yonetici" : "Administrator",
-    ROLE_USER: isTurkish ? "Kullanici" : "User",
-    ROLE_ADMIN: isTurkish ? "Yonetici" : "Administrator",
-  }[normalized] ?? normalized;
+  const key = normalized.startsWith("ROLE_") ? normalized.slice(5) : normalized;
+  return t(`profile.values.role.${key}`, key);
 }
 
 function formatAuthProviderLabel(value, t) {

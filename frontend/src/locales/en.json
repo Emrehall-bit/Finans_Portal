@@ -35,6 +35,7 @@
     "brandEyebrow": "Market Terminal",
     "guest": "Guest",
     "connectedAccount": "Connected account",
+    "welcomeUser": "Welcome, {{name}}",
     "openAccess": "Open access",
     "syncedData": "Your data and personal lists stay in sync.",
     "openMode": "Market and news views are ready in open mode.",
@@ -48,6 +49,33 @@
     "analystMode": "Analyst mode",
     "guestMode": "Guest mode",
     "userMenu": "User menu",
+    "notificationsLoading": "Loading notifications...",
+    "notificationsLoadError": "Failed to load notifications.",
+    "notificationsUpdateError": "Failed to update notifications.",
+    "notificationsSummary": "{{count}} unread notifications",
+    "notificationsMarkAll": "Mark all as read",
+    "notificationsMarkingAll": "Updating...",
+    "notificationsEmptyTitle": "No notifications",
+    "notificationsEmptyDescription": "There are no notifications to show right now.",
+    "notificationRead": "Read",
+    "notificationUnread": "Unread",
+    "notificationDetailDate": "Date",
+    "notificationAudienceBroadcast": "Announcement",
+    "notificationAudiencePersonal": "Personal",
+    "notificationTypes": {
+      "SYSTEM": "System",
+      "ADMIN_MESSAGE": "Admin Message",
+      "PRICE_ALERT": "Price Alert",
+      "SECURITY": "Security",
+      "ANNOUNCEMENT": "Announcement"
+    },
+    "roleLabels": {
+      "GUEST": "Guest",
+      "USER": "User",
+      "ADMIN": "Admin",
+      "USER_PREMIUM": "Premium User",
+      "SYSTEM_ENGINEER": "System Engineer"
+    },
     "myProfile": "My Profile",
     "theme": "Theme",
     "themeSelection": "Theme selection",
@@ -211,6 +239,17 @@
       "change": "Change",
       "source": "Source",
       "detail": "Detail"
+    },
+    "fundColumns": {
+      "umbrellaType": "Umbrella Fund Type",
+      "risk": "Risk",
+      "getiri1a": "1 Month",
+      "getiri3a": "3 Months",
+      "getiri6a": "6 Months",
+      "getiriYb": "Year to Date",
+      "getiri1y": "1 Year",
+      "getiri3y": "3 Years",
+      "getiri5y": "5 Years"
     },
     "macroColumns": {
       "date": "Date",
@@ -523,6 +562,28 @@
     "running": "Running...",
     "progress": "Processing: {{processed}} / {{total}}",
     "completed": "Completed!",
+    "fundFetch": {
+      "running": "Fetching TEFAS fund data...",
+      "completed": "Completed. Processed funds: {{processedFunds}}, saved funds: {{savedFunds}}"
+    },
+    "marketTape": {
+      "eyebrow": "Market tape",
+      "title": "Top bar symbols",
+      "description": "Manage which symbols are prioritized in the scrolling market tape from here.",
+      "loading": "Loading market tape configuration...",
+      "loadError": "Failed to load market tape configuration.",
+      "selectedLabel": "Selected symbols",
+      "availableLabel": "Available market symbols",
+      "searchPlaceholder": "Search symbol",
+      "hint": "The order in the selected list becomes the top bar order. You can reorder with drag and drop.",
+      "emptySelectedTitle": "No selected symbols",
+      "emptySelectedDescription": "Add symbols from the available list to build the market tape.",
+      "emptyAvailableTitle": "No available symbols",
+      "emptyAvailableDescription": "No additional symbols came back from the market feed.",
+      "emptySearchTitle": "No matching symbols",
+      "emptySearchDescription": "No symbol matched the current search.",
+      "save": "Save market tape"
+    },
     "hero": {
       "eyebrow": "Operations",
       "title": "Manual operations on one screen",
@@ -562,13 +623,33 @@
         "description": "Reload the TCMB FX historical archive.",
         "action": "Start TCMB History"
       },
-      "binanceHistory": {
-        "eyebrow": "Crypto archive",
-        "title": "Binance History Fetch",
-        "description": "Pull Binance historical data for a given day range.",
-        "action": "Start Binance History"
-      }
-    },
+        "binanceHistory": {
+          "eyebrow": "Crypto archive",
+          "title": "Binance History Fetch",
+          "description": "Pull Binance historical data for a given day range.",
+          "action": "Start Binance History"
+        },
+        "tefasFundFetch": {
+          "eyebrow": "Fund data",
+          "title": "TEFAS Fund Fetch",
+          "description": "Pull current fund NAV data from TEFAS and write it into local market tables.",
+          "action": "Start TEFAS Fetch"
+        },
+        "tefasFundBackfill": {
+          "eyebrow": "Fund archive",
+          "title": "TEFAS Fund Backfill",
+          "description": "Manually pull historical NAV data for one fund or all active TEFAS funds.",
+          "action": "Start TEFAS Backfill",
+          "fundCodePlaceholder": "Fund code (optional)",
+          "periodPlaceholder": "Period (optional)"
+        },
+        "tefasTestConnection": {
+          "eyebrow": "TEFAS connection",
+          "title": "TEFAS Test Connection",
+          "description": "Call the TEFAS list endpoint and verify the first returned fund.",
+          "action": "Test Connection"
+        }
+      },
     "stockHistory": {
       "eyebrow": "Stock archive",
       "title": "Stock History Backfill",
@@ -584,6 +665,143 @@
       "description": "The backend response of the latest triggered admin operation.",
       "emptyTitle": "No operation yet",
       "emptyDescription": "The result will appear here after you trigger an admin operation."
+    },
+    "users": {
+      "eyebrow": "User Management",
+      "title": "User Directory",
+      "description": "Inspect records from the local users table and review core profile details.",
+      "count": "{{count}} users",
+      "loadingList": "Loading users...",
+      "loadingDetail": "Loading user detail...",
+      "updating": "Updating...",
+      "roleUpdating": "Updating role...",
+      "listError": "Failed to load users.",
+      "detailError": "Failed to load user detail.",
+      "statusUpdateError": "Failed to update user status.",
+      "roleUpdateError": "Failed to update user role.",
+      "emptyTitle": "No users found",
+      "emptyDescription": "There are no records to show in the local users table.",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "makeAdmin": "Make Admin",
+      "revokeAdmin": "Remove Admin",
+      "sendNotification": "Send Notification",
+      "detailEyebrow": "User Detail",
+      "detailTitle": "Selected user",
+      "detailEmptyTitle": "No user selected",
+      "detailEmptyDescription": "Pick a user from the table to inspect the detail panel.",
+        "columns": {
+          "email": "Email",
+          "fullName": "Full Name",
+          "role": "Role",
+          "moderation": "Moderation",
+          "active": "Active",
+          "lastLogin": "Last Login",
+          "createdAt": "Created At",
+          "detail": "Detail"
+        },
+      "fields": {
+        "id": "ID",
+        "keycloakId": "Keycloak ID",
+        "email": "Email",
+        "fullName": "Full Name",
+        "role": "Role",
+          "active": "Status",
+          "preferences": "Language / Theme",
+          "lastLoginAt": "Last Login",
+          "createdAt": "Created At",
+          "updatedAt": "Updated At",
+          "moderationStatus": "Moderation Status",
+          "moderationReason": "Moderation Reason",
+          "moderationBlockedUntil": "Blocked Until",
+          "moderationCreatedBy": "Created By",
+          "moderationCreatedAt": "Moderation Created At"
+        },
+        "values": {
+          "active": "Active",
+          "passive": "Inactive"
+        },
+        "moderation": {
+          "tempBlock": "Temp Block",
+          "permBlock": "Perm Block",
+          "unblock": "Unblock",
+          "tempBlockEyebrow": "Temporary Block",
+          "permBlockEyebrow": "Permanent Block",
+          "unblockEyebrow": "Remove Block",
+          "tempBlockSubmit": "Apply Temporary Block",
+          "permBlockSubmit": "Apply Permanent Block",
+          "unblockSubmit": "Remove Block",
+          "tempBlockError": "Failed to temporarily block the user.",
+          "permBlockError": "Failed to permanently block the user.",
+          "unblockError": "Failed to remove the user block.",
+          "tempBlockSuccess": "User temporarily blocked.",
+          "permBlockSuccess": "User permanently blocked.",
+          "unblockSuccess": "User unblocked.",
+          "reasonLabel": "Reason",
+          "reasonPlaceholder": "Optional note",
+          "blockedUntilLabel": "Blocked Until",
+          "blockedUntilRequired": "Blocked until is required.",
+          "blockedUntilFuture": "You must select a future date.",
+          "submitting": "Submitting...",
+          "statusValues": {
+            "ACTIVE": "Active",
+            "TEMP_BLOCKED": "Temporarily Blocked",
+            "PERM_BLOCKED": "Permanently Blocked"
+          }
+        },
+        "notification": {
+          "eyebrow": "User Notification",
+          "titleLabel": "Title",
+          "messageLabel": "Message",
+        "typeLabel": "Type",
+        "submit": "Send",
+        "submitting": "Sending...",
+        "success": "Notification sent.",
+        "error": "Failed to send notification."
+      }
+    },
+    "broadcast": {
+      "eyebrow": "Global Announcement",
+      "title": "Send announcement to all users",
+      "description": "The notification is stored as a broadcast record in the local database and appears in every user's dropdown.",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Maintenance notice",
+      "messageLabel": "Message",
+      "messagePlaceholder": "Announcement text visible to all users",
+      "typeLabel": "Type",
+      "submit": "Send Global Announcement",
+      "submitting": "Sending...",
+      "success": "Broadcast notification sent.",
+      "error": "Failed to send broadcast notification."
+    },
+    "auditLogs": {
+      "eyebrow": "Admin Audit Logs",
+      "title": "Recent admin actions",
+      "description": "Recent records for user, moderation, and notification actions.",
+      "loading": "Loading audit logs...",
+      "loadError": "Failed to load audit logs.",
+      "emptyTitle": "No audit logs found",
+      "emptyDescription": "There are no records for the selected filter.",
+      "filters": {
+        "allActions": "All actions"
+      },
+      "columns": {
+        "createdAt": "Date",
+        "actorUserId": "Actor User",
+        "targetUserId": "Target User",
+        "action": "Action",
+        "description": "Description"
+      },
+      "actions": {
+        "USER_ACTIVATED": "User Activated",
+        "USER_DEACTIVATED": "User Deactivated",
+        "USER_ROLE_CHANGED": "User Role Changed",
+        "USER_TEMP_BLOCKED": "Temporary Block",
+        "USER_PERM_BLOCKED": "Permanent Block",
+        "USER_UNBLOCKED": "User Unblocked",
+        "NOTIFICATION_SENT_TO_USER": "Notification Sent To User",
+        "NOTIFICATION_BROADCAST_SENT": "Broadcast Notification Sent"
+      }
     }
   },
   "profile": {
@@ -625,13 +843,16 @@
       "subject": "Subject",
       "authenticated": "Authenticated"
     },
-    "values": {
-      "role": {
-        "USER": "User",
-        "ADMIN": "Administrator"
-      },
-      "authProvider": {
-        "KEYCLOAK": "Keycloak",
+      "values": {
+        "role": {
+          "GUEST": "Guest",
+          "USER": "User",
+          "ADMIN": "Admin",
+          "USER_PREMIUM": "Premium User",
+          "SYSTEM_ENGINEER": "System Engineer"
+        },
+        "authProvider": {
+          "KEYCLOAK": "Keycloak",
         "LOCAL": "Local"
       }
     }

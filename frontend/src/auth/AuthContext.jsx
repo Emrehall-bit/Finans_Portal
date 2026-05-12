@@ -13,11 +13,44 @@ import keycloak, {
 
 const AuthContext = createContext(null);
 
-function resolveIsAdmin() {
+function normalizeRole(role) {
+  return String(role || "").trim().toUpperCase();
+}
+
+function resolveTokenRoles() {
   const realmRoles = keycloak.tokenParsed?.realm_access?.roles ?? [];
   const clientRoles = Object.values(keycloak.tokenParsed?.resource_access ?? {}).flatMap((entry) => entry?.roles ?? []);
-  const roles = [...realmRoles, ...clientRoles].map((role) => String(role).toUpperCase());
-  return roles.includes("ADMIN") || roles.includes("ROLE_ADMIN");
+  return [...realmRoles, ...clientRoles]
+    .map(normalizeRole)
+    .filter(Boolean)
+    .map((role) => (role.startsWith("ROLE_") ? role.slice(5) : role));
+}
+
+function resolvePrimaryRole(userProfileRole) {
+  const rolePriority = ["ADMIN", "SYSTEM_ENGINEER", "USER_PREMIUM", "USER", "GUEST"];
+  const tokenRoles = resolveTokenRoles();
+  const explicitRole = normalizeRole(userProfileRole);
+  const merged = explicitRole ? [explicitRole, ...tokenRoles] : tokenRoles;
+
+  return rolePriority.find((role) => merged.includes(role)) ?? (merged[0] || "GUEST");
+}
+
+function buildRoleHelpers(userProfileRole) {
+  const primaryRole = resolvePrimaryRole(userProfileRole);
+  const knownRoles = new Set([primaryRole, ...resolveTokenRoles()]);
+
+  const hasRole = (role) => knownRoles.has(normalizeRole(role));
+  const hasAnyRole = (roles) => roles.some((role) => hasRole(role));
+
+  return {
+    roles: Array.from(knownRoles),
+    primaryRole,
+    hasRole,
+    hasAnyRole,
+    isAdmin: hasRole("ADMIN"),
+    isPremium: hasAnyRole(["USER_PREMIUM", "ADMIN"]),
+    isSystemEngineer: hasRole("SYSTEM_ENGINEER"),
+  };
 }
 
 export function AuthProvider({ children }) {
@@ -192,7 +225,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({
+    () => {
+      const roleHelpers = buildRoleHelpers(userProfile?.user?.role ?? authSnapshot.user?.role);
+
+      return {
       initialized,
       authLoading,
       isAuthenticated,
@@ -209,9 +245,16 @@ export function AuthProvider({ children }) {
       userProfile,
       user: isAuthenticated ? userProfile?.user ?? authSnapshot.user ?? null : null,
       userId: userProfile?.user?.id ?? null,
-      isAdmin: resolveIsAdmin(),
+      role: roleHelpers.primaryRole,
+      roles: roleHelpers.roles,
+      hasRole: roleHelpers.hasRole,
+      hasAnyRole: roleHelpers.hasAnyRole,
+      isAdmin: roleHelpers.isAdmin,
+      isPremium: roleHelpers.isPremium,
+      isSystemEngineer: roleHelpers.isSystemEngineer,
       hasAuthenticatedSession: isAuthenticated || hasAuthenticatedSession(),
-    }),
+    };
+    },
     [
       initialized,
       authLoading,
@@ -224,6 +267,7 @@ export function AuthProvider({ children }) {
       ensureAuthenticated,
       loadUserProfile,
       saveUserProfile,
+      userProfile?.user?.role,
       userProfile,
     ],
   );

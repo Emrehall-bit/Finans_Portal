@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { getUserAlerts } from "../api/alertApi";
-import { getMarketQuotes } from "../api/marketApi";
+import { buildMarketDetailPath, getMarketQuotes } from "../api/marketApi";
 import { getNews } from "../api/newsApi";
 import { getPortfolioDetails, getUserPortfolios } from "../api/portfolioApi";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -12,7 +12,6 @@ import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
 import { useTheme } from "../theme/ThemeContext";
 import { formatCurrency, formatDateTime, formatNumber } from "../utils/formatters";
@@ -252,12 +251,6 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-stack finance-dashboard-shell">
-      <PageHeader
-        eyebrow={t("dashboard.eyebrow")}
-        title={t("dashboard.title", { suffix: user?.fullName ? `, ${user.fullName}` : "" })}
-        description={t("dashboard.description")}
-      />
-
       {loading ? <LoadingSpinner label={t("dashboard.loading")} /> : null}
 
       {!loading ? (
@@ -307,7 +300,7 @@ export default function DashboardPage() {
                         {marketRows.map((item) => (
                           <tr key={item.symbol}>
                             <td>
-                              <Link to={`/markets/${encodeURIComponent(item.symbol)}`} className="finance-table-symbol">
+                              <Link to={buildMarketDetailPath(item.symbol, item.instrumentType)} className="finance-table-symbol">
                                 <strong>{item.code || item.symbol}</strong>
                                 <span>{item.displayName || item.code || item.symbol}</span>
                               </Link>

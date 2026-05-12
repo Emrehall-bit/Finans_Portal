@@ -214,7 +214,7 @@ public class BinanceHistoryFetcher {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     private MarketInstrument findOrCreateInstrument(String coin) {
         String normalizedCoin = coin == null ? "" : coin.trim().toUpperCase();
-        return instrumentRepository.findByInstrumentCodeIgnoreCase(normalizedCoin)
+        return instrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName(normalizedCoin, SourceName.BINANCE)
                 .filter(instrument -> instrument.getInstrumentType() == InstrumentType.CRYPTO)
                 .orElseGet(() -> {
                     MarketInstrument marketInstrument = new MarketInstrument();

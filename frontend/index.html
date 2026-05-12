@@ -8,6 +8,64 @@
   </head>
   <body>
     <div id="root"></div>
+    <style>
+      .fixed-news-sidebar {
+        position: fixed !important;
+        top: 132px !important;
+        z-index: 2000 !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+        background: inherit !important;
+      }
+    </style>
+    <script>
+      // Small helper to keep news/markets sidebar visible when scrolling.
+      (function () {
+        function makeSticky(selector) {
+          const el = document.querySelector(selector);
+          if (!el) return;
+          const parent = el.parentElement;
+          let placeholder = null;
+          const topOffset = 132;
+
+          function onScroll() {
+            const rect = el.getBoundingClientRect();
+            if (rect.top <= topOffset) {
+              if (!placeholder) {
+                placeholder = document.createElement('div');
+                placeholder.style.width = el.offsetWidth + 'px';
+                placeholder.style.height = el.offsetHeight + 'px';
+                parent.insertBefore(placeholder, el);
+                el.classList.add('fixed-news-sidebar');
+                el.style.width = placeholder.style.width;
+                el.style.left = (placeholder.getBoundingClientRect().left) + 'px';
+              }
+            } else {
+              if (placeholder) {
+                el.classList.remove('fixed-news-sidebar');
+                el.style.left = '';
+                el.style.width = '';
+                parent.removeChild(placeholder);
+                placeholder = null;
+              }
+            }
+          }
+
+          window.addEventListener('scroll', onScroll, { passive: true });
+          window.addEventListener('resize', function () {
+            if (placeholder) {
+              el.style.width = placeholder.style.width;
+              el.style.left = (placeholder.getBoundingClientRect().left) + 'px';
+            }
+          });
+        }
+
+        // Try both news and markets selectors
+        document.addEventListener('DOMContentLoaded', function () {
+          makeSticky('.news-sidebar-card');
+          makeSticky('.markets-category-sidebar');
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

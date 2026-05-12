@@ -20,6 +20,16 @@ public class FundNavDto {
     private String fundCode;
     private String fundName;
     private BigDecimal navValue;
+    private BigDecimal previousNavValue;
+    private BigDecimal getiri1a;
+    private BigDecimal getiri3a;
+    private BigDecimal getiri6a;
+    private BigDecimal getiriYb;
+    private BigDecimal getiri1y;
+    private BigDecimal getiri3y;
+    private BigDecimal getiri5y;
+    private String riskDegeri;
+    private String fonTurAciklama;
     private LocalDate navDate;
     private String fundType;
 }

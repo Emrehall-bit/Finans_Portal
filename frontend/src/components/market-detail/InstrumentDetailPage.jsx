@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { getMarketHistory, getMarketBySymbol, getTechnicalAnalysis } from "../../api/marketApi";
 import { getNews } from "../../api/newsApi";
 import { extractErrorMessage } from "../../api/responseUtils";
@@ -29,7 +29,9 @@ import {
 export default function InstrumentDetailPage() {
   const { t } = useTranslation();
   const { symbol = "" } = useParams();
+  const [searchParams] = useSearchParams();
   const normalizedSymbol = decodeURIComponent(symbol);
+  const instrumentType = (searchParams.get("type") || "").trim().toUpperCase();
   const { userId, login } = useAuth();
   const { toast, showToast } = useToast();
 
@@ -71,7 +73,7 @@ export default function InstrumentDetailPage() {
       try {
         setQuoteLoading(true);
         setQuoteError("");
-        const data = await getMarketBySymbol(normalizedSymbol);
+        const data = await getMarketBySymbol(normalizedSymbol, { type: instrumentType || undefined });
         if (active) {
           setQuote(data ?? null);
         }
@@ -91,7 +93,7 @@ export default function InstrumentDetailPage() {
     return () => {
       active = false;
     };
-  }, [normalizedSymbol]);
+  }, [normalizedSymbol, instrumentType, t]);
 
   useEffect(() => {
     if (!normalizedSymbol) {
@@ -105,7 +107,7 @@ export default function InstrumentDetailPage() {
     async function loadAnnualHistory() {
       try {
         setHistoryLoading(true);
-        const historyRequest = buildHistoryRequest(activeRange, dateRange, quote?.source);
+        const historyRequest = buildHistoryRequest(activeRange, dateRange, quote?.source, instrumentType);
         console.log("[loadAnnualHistory] request:", historyRequest);
         const nextHistory = await getMarketHistory(normalizedSymbol, historyRequest);
         if (active) {
@@ -126,7 +128,7 @@ export default function InstrumentDetailPage() {
     return () => {
       active = false;
     };
-  }, [normalizedSymbol, activeRange, dateRange, quote?.source]);
+  }, [normalizedSymbol, activeRange, dateRange, quote?.source, instrumentType]);
 
   useEffect(() => {
     if (!normalizedSymbol || !dateRange.from || !dateRange.to || isDateRangeInvalid) {
@@ -523,9 +525,10 @@ export default function InstrumentDetailPage() {
   );
 }
 
-function buildHistoryRequest(activeRange, dateRange, source) {
+function buildHistoryRequest(activeRange, dateRange, source, type) {
   return {
     ...(source ? { source } : {}),
+    ...(type ? { type } : {}),
     from: dateRange?.from,
     to: dateRange?.to,
   };

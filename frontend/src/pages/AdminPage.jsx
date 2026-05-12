@@ -2,20 +2,46 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   getBinanceHistoryFetchStatus,
+  getMarketTapeCandidates,
+  getMarketTapeConfig,
   getStockFetchStatus,
   getStockHistoryBackfillStatus,
+  getTefasFundBackfillStatus,
+  getTefasFundFetchStatus,
   getTcmbHistoryBackfillStatus,
   getTcmbSyncStatus,
+  testTefasFundConnection,
   triggerBinanceHistoryFetch,
   triggerStockFetch,
   triggerStockHistoryBackfill,
+  triggerTefasFundFetch,
+  triggerTefasFundBackfill,
   triggerTcmbHistoryBackfill,
   triggerTcmbSync,
+  updateMarketTapeConfig,
 } from "../api/adminApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
-import PageHeader from "../components/common/PageHeader";
+import LoadingSpinner from "../components/common/LoadingSpinner";
+import AdminAuditLogsSection from "../components/admin/AdminAuditLogsSection";
+import BroadcastNotificationCard from "../components/admin/BroadcastNotificationCard";
+import UserManagementSection from "../components/admin/UserManagementSection";
+
+const DEFAULT_MARKET_TAPE_SYMBOLS = [
+  "XU100",
+  "BIST100",
+  "BTCUSDT",
+  "BTCTRY",
+  "BTC",
+  "USDTRY",
+  "EURTRY",
+  "XAUTRY",
+  "GRAMALTIN",
+  "ETHUSDT",
+  "ETHTRY",
+  "ETH",
+];
 
 function buildPayload(symbol, startDate, endDate) {
   return {
@@ -28,15 +54,24 @@ function buildPayload(symbol, startDate, endDate) {
 export default function AdminPage() {
   const { t } = useTranslation();
   const [busyKey, setBusyKey] = useState(null);
+  const [actionsLocked, setActionsLocked] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [stockSymbol, setStockSymbol] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [binanceDays, setBinanceDays] = useState("1825");
+  const [tefasFundCode, setTefasFundCode] = useState("");
+  const [tefasPeriod, setTefasPeriod] = useState("");
+  const [marketTapeSymbols, setMarketTapeSymbols] = useState([]);
+  const [marketTapeCatalog, setMarketTapeCatalog] = useState([]);
+  const [marketTapeSearch, setMarketTapeSearch] = useState("");
+  const [marketTapeLoaded, setMarketTapeLoaded] = useState(false);
   const [jobProgress, setJobProgress] = useState(null);
   const [completedJobKey, setCompletedJobKey] = useState(null);
   const pollingRef = useRef(null);
+  const actionsLockedRef = useRef(false);
+  const dragStateRef = useRef(null);
 
   const statusLoaders = useMemo(
     () => ({
@@ -45,6 +80,8 @@ export default function AdminPage() {
       "tcmb-sync": getTcmbSyncStatus,
       "tcmb-history": getTcmbHistoryBackfillStatus,
       "binance-history": getBinanceHistoryFetchStatus,
+      "tefas-fund-fetch": getTefasFundFetchStatus,
+      "tefas-fund-backfill": getTefasFundBackfillStatus,
     }),
     [],
   );
@@ -56,13 +93,70 @@ export default function AdminPage() {
     }
   };
 
+  const lockActions = () => {
+    if (actionsLockedRef.current) {
+      return false;
+    }
+
+    actionsLockedRef.current = true;
+    setActionsLocked(true);
+    return true;
+  };
+
+  const unlockActions = () => {
+    actionsLockedRef.current = false;
+    setActionsLocked(false);
+  };
+
   useEffect(() => () => stopJobPolling(), []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadMarketTape() {
+      const [configResult, quotesResult] = await Promise.allSettled([
+        getMarketTapeConfig(),
+        getMarketTapeCandidates(),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      const resolvedSymbols =
+        configResult.status === "fulfilled" && Array.isArray(configResult.value) && configResult.value.length > 0
+          ? configResult.value
+          : DEFAULT_MARKET_TAPE_SYMBOLS;
+
+      const resolvedQuotes =
+        quotesResult.status === "fulfilled" && Array.isArray(quotesResult.value)
+          ? quotesResult.value
+          : [];
+
+      setMarketTapeSymbols(resolvedSymbols);
+      setMarketTapeCatalog(resolvedQuotes);
+      setMarketTapeLoaded(true);
+
+      if (configResult.status === "rejected") {
+        setResult({
+          marketTapeConfigWarning: extractErrorMessage(configResult.reason, t("admin.marketTape.loadError")),
+        });
+      }
+    }
+
+    loadMarketTape();
+
+    return () => {
+      active = false;
+    };
+  }, [t]);
 
   const pollJobStatus = async (key) => {
     const statusLoader = statusLoaders[key];
     if (!statusLoader) {
       stopJobPolling();
       setBusyKey((current) => (current === key ? null : current));
+      unlockActions();
       return;
     }
 
@@ -74,16 +168,18 @@ export default function AdminPage() {
 
       setJobProgress({ key, ...status });
 
-      if (!status.running && status.total > 0) {
+      if (!status.running && isJobCompleted(key, status)) {
         stopJobPolling();
         setBusyKey((current) => (current === key ? null : current));
         setCompletedJobKey(key);
+        unlockActions();
       }
     } catch (err) {
       stopJobPolling();
       setBusyKey((current) => (current === key ? null : current));
       setJobProgress(null);
       setError(extractErrorMessage(err, t("admin.actionError")));
+      unlockActions();
     }
   };
 
@@ -98,6 +194,10 @@ export default function AdminPage() {
   };
 
   const startJob = async (key, executor) => {
+    if (!lockActions()) {
+      return;
+    }
+
     setBusyKey(key);
     setError("");
     setResult(null);
@@ -114,6 +214,28 @@ export default function AdminPage() {
       setJobProgress(null);
       setCompletedJobKey(null);
       setError(extractErrorMessage(err, t("admin.actionError")));
+      unlockActions();
+    }
+  };
+
+  const runAction = async (key, executor) => {
+    if (!lockActions()) {
+      return;
+    }
+
+    setBusyKey(key);
+    setError("");
+    setResult(null);
+    setCompletedJobKey(null);
+
+    try {
+      const response = await executor();
+      setResult(response ?? null);
+    } catch (err) {
+      setError(extractErrorMessage(err, t("admin.actionError")));
+    } finally {
+      setBusyKey((current) => (current === key ? null : current));
+      unlockActions();
     }
   };
 
@@ -165,15 +287,207 @@ export default function AdminPage() {
             triggerBinanceHistoryFetch(Number.parseInt(binanceDays, 10) || 1825),
           ),
       },
+      {
+        key: "tefas-fund-fetch",
+        eyebrow: t("admin.cards.tefasFundFetch.eyebrow"),
+        title: t("admin.cards.tefasFundFetch.title"),
+        description: t("admin.cards.tefasFundFetch.description"),
+        actionLabel: t("admin.cards.tefasFundFetch.action"),
+        onClick: () => startJob("tefas-fund-fetch", triggerTefasFundFetch),
+      },
+      {
+        key: "tefas-fund-backfill",
+        eyebrow: t("admin.cards.tefasFundBackfill.eyebrow"),
+        title: t("admin.cards.tefasFundBackfill.title"),
+        description: t("admin.cards.tefasFundBackfill.description"),
+        actionLabel: t("admin.cards.tefasFundBackfill.action"),
+        input: (
+          <div className="admin-console-form-grid">
+            <input
+              type="text"
+              value={tefasFundCode}
+              onChange={(event) => setTefasFundCode(event.target.value.toUpperCase())}
+              className="admin-console-input"
+              placeholder={t("admin.cards.tefasFundBackfill.fundCodePlaceholder")}
+            />
+            <input
+              type="number"
+              min="1"
+              max="60"
+              step="1"
+              value={tefasPeriod}
+              onChange={(event) => setTefasPeriod(event.target.value)}
+              className="admin-console-input"
+              placeholder={t("admin.cards.tefasFundBackfill.periodPlaceholder")}
+            />
+          </div>
+        ),
+        onClick: () =>
+          startJob("tefas-fund-backfill", () =>
+            triggerTefasFundBackfill({
+              fundCode: tefasFundCode.trim() || null,
+              periyod: tefasPeriod.trim() ? Number.parseInt(tefasPeriod, 10) || null : null,
+            }),
+          ),
+      },
+      {
+        key: "tefas-test-connection",
+        eyebrow: t("admin.cards.tefasTestConnection.eyebrow"),
+        title: t("admin.cards.tefasTestConnection.title"),
+        description: t("admin.cards.tefasTestConnection.description"),
+        actionLabel: t("admin.cards.tefasTestConnection.action"),
+        onClick: () => runAction("tefas-test-connection", testTefasFundConnection),
+      },
     ],
-    [binanceDays, t],
+    [binanceDays, tefasFundCode, tefasPeriod, t],
   );
 
   const isBusy = useMemo(() => (key) => busyKey === key, [busyKey]);
+  const controlsDisabled = actionsLocked || busyKey !== null || jobProgress?.running === true;
+  const availableMarketTapeSymbols = useMemo(() => {
+    const selected = new Set(marketTapeSymbols.map((item) => String(item).toUpperCase()));
+
+    return [...new Set(
+      marketTapeCatalog
+        .map((item) => item?.symbol)
+        .filter(Boolean)
+        .map((item) => String(item).toUpperCase()),
+    )]
+      .filter((symbol) => !selected.has(symbol))
+      .sort((left, right) => left.localeCompare(right));
+  }, [marketTapeCatalog, marketTapeSymbols]);
+
+  const filteredAvailableMarketTapeSymbols = useMemo(() => {
+    const query = marketTapeSearch.trim().toUpperCase();
+    if (!query) {
+      return availableMarketTapeSymbols;
+    }
+
+    return availableMarketTapeSymbols.filter((symbol) => symbol.includes(query));
+  }, [availableMarketTapeSymbols, marketTapeSearch]);
+
+  const handleSaveMarketTape = async () => {
+    await runAction("market-tape-save", async () => {
+      const response = await updateMarketTapeConfig(marketTapeSymbols);
+      setMarketTapeSymbols(response?.symbols ?? marketTapeSymbols);
+      window.dispatchEvent(new CustomEvent("market-tape-config-updated"));
+      return response;
+    });
+  };
+
+  const handleAddMarketTapeSymbol = (symbol) => {
+    if (!symbol) {
+      return;
+    }
+
+    setMarketTapeSymbols((current) => {
+      const normalized = String(symbol).toUpperCase();
+      if (current.includes(normalized)) {
+        return current;
+      }
+      return [...current, normalized];
+    });
+  };
+
+  const handleRemoveMarketTapeSymbol = (symbol) => {
+    setMarketTapeSymbols((current) => current.filter((item) => item !== symbol));
+  };
+
+  const handleSelectedDragStart = (symbol, index) => {
+    dragStateRef.current = { source: "selected", symbol, index };
+  };
+
+  const handleAvailableDragStart = (symbol) => {
+    dragStateRef.current = { source: "available", symbol, index: -1 };
+  };
+
+  const moveSelectedSymbol = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
+      return;
+    }
+
+    setMarketTapeSymbols((current) => {
+      if (fromIndex >= current.length || toIndex >= current.length) {
+        return current;
+      }
+
+      const next = [...current];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
+
+  const insertAvailableIntoSelected = (symbol, targetIndex = null) => {
+    if (!symbol) {
+      return;
+    }
+
+    setMarketTapeSymbols((current) => {
+      const normalized = String(symbol).toUpperCase();
+      if (current.includes(normalized)) {
+        return current;
+      }
+
+      const next = [...current];
+      if (targetIndex == null || targetIndex < 0 || targetIndex > next.length) {
+        next.push(normalized);
+      } else {
+        next.splice(targetIndex, 0, normalized);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectedDrop = (targetIndex) => {
+    const dragState = dragStateRef.current;
+    if (!dragState) {
+      return;
+    }
+
+    if (dragState.source === "selected") {
+      moveSelectedSymbol(dragState.index, targetIndex);
+    } else {
+      insertAvailableIntoSelected(dragState.symbol, targetIndex);
+    }
+
+    dragStateRef.current = null;
+  };
+
+  const handleSelectedAppendDrop = () => {
+    const dragState = dragStateRef.current;
+    if (!dragState) {
+      return;
+    }
+
+    if (dragState.source === "selected") {
+      setMarketTapeSymbols((current) => {
+        if (dragState.index < 0 || dragState.index >= current.length) {
+          return current;
+        }
+        const next = [...current];
+        const [moved] = next.splice(dragState.index, 1);
+        next.push(moved);
+        return next;
+      });
+    } else {
+      insertAvailableIntoSelected(dragState.symbol);
+    }
+
+    dragStateRef.current = null;
+  };
 
   const renderJobProgress = (key) => {
     if (jobProgress?.key === key) {
       if (jobProgress.running) {
+        if (key === "tefas-fund-fetch") {
+          return (
+            <div className="admin-console-job-status">
+              <LoadingSpinner label={t("admin.fundFetch.running")} />
+            </div>
+          );
+        }
+
         return (
           <p className="admin-console-copy">
             {t("admin.progress", {
@@ -185,6 +499,17 @@ export default function AdminPage() {
       }
 
       if (completedJobKey === key) {
+        if (key === "tefas-fund-fetch") {
+          return (
+            <p className="admin-console-copy">
+              {t("admin.fundFetch.completed", {
+                processedFunds: jobProgress.processedFunds ?? 0,
+                savedFunds: jobProgress.savedFunds ?? 0,
+              })}
+            </p>
+          );
+        }
+
         return <p className="admin-console-copy">{t("admin.completed")}</p>;
       }
     }
@@ -198,34 +523,123 @@ export default function AdminPage() {
 
   return (
     <div className="dashboard-stack admin-console-shell">
-      <PageHeader
-        eyebrow={t("admin.eyebrow")}
-        title={t("admin.title")}
-        description={t("admin.description")}
-      />
-
       {error ? <ErrorMessage message={error} /> : null}
 
-      <section className="admin-console-hero panel-surface">
-        <div className="admin-console-hero-copy">
-          <p className="eyebrow">{t("admin.hero.eyebrow")}</p>
-          <h2>{t("admin.hero.title")}</h2>
-          <p>{t("admin.hero.description")}</p>
+      <section className="admin-console-form panel-surface">
+        <div>
+          <p className="eyebrow">{t("admin.marketTape.eyebrow")}</p>
+          <h3>{t("admin.marketTape.title")}</h3>
+          <p className="admin-console-copy">{t("admin.marketTape.description")}</p>
         </div>
-        <div className="admin-console-hero-metrics">
-          <div className="admin-console-metric-card">
-            <span>{t("admin.metrics.operationType.label")}</span>
-            <strong>{t("admin.metrics.operationType.value")}</strong>
-          </div>
-          <div className="admin-console-metric-card">
-            <span>{t("admin.metrics.auth.label")}</span>
-            <strong>{t("admin.metrics.auth.value")}</strong>
-          </div>
-          <div className="admin-console-metric-card">
-            <span>{t("admin.metrics.status.label")}</span>
-            <strong>{busyKey ? t("admin.metrics.status.running") : t("admin.metrics.status.ready")}</strong>
-          </div>
-        </div>
+
+        {!marketTapeLoaded ? (
+          <LoadingSpinner label={t("admin.marketTape.loading")} />
+        ) : (
+          <>
+            <div className="market-tape-admin-grid">
+              <section className="market-tape-admin-panel">
+                <div className="market-tape-admin-head">
+                  <span className="admin-console-label">{t("admin.marketTape.selectedLabel")}</span>
+                  <strong>{marketTapeSymbols.length}</strong>
+                </div>
+
+                {marketTapeSymbols.length === 0 ? (
+                  <EmptyState
+                    title={t("admin.marketTape.emptySelectedTitle")}
+                    description={t("admin.marketTape.emptySelectedDescription")}
+                  />
+                ) : (
+                  <div
+                    className="market-tape-admin-list"
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={handleSelectedAppendDrop}
+                  >
+                    {marketTapeSymbols.map((symbol, index) => (
+                      <div
+                        key={symbol}
+                        className="market-tape-chip selected"
+                        draggable={!controlsDisabled}
+                        onDragStart={() => handleSelectedDragStart(symbol, index)}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={() => handleSelectedDrop(index)}
+                      >
+                        <span className="market-tape-chip-handle">::</span>
+                        <strong>{symbol}</strong>
+                        <button
+                          type="button"
+                          className="market-tape-chip-remove"
+                          disabled={controlsDisabled}
+                          onClick={() => handleRemoveMarketTapeSymbol(symbol)}
+                        >
+                          {t("common.remove")}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="market-tape-admin-panel">
+                <div className="market-tape-admin-head">
+                  <span className="admin-console-label">{t("admin.marketTape.availableLabel")}</span>
+                  <strong>{availableMarketTapeSymbols.length}</strong>
+                </div>
+                <input
+                  type="text"
+                  className="admin-console-input"
+                  value={marketTapeSearch}
+                  onChange={(event) => setMarketTapeSearch(event.target.value.toUpperCase())}
+                  placeholder={t("admin.marketTape.searchPlaceholder")}
+                  disabled={controlsDisabled}
+                />
+                <div className="market-tape-admin-list compact">
+                  {availableMarketTapeSymbols.length === 0 ? (
+                    <EmptyState
+                      title={t("admin.marketTape.emptyAvailableTitle")}
+                      description={t("admin.marketTape.emptyAvailableDescription")}
+                    />
+                  ) : filteredAvailableMarketTapeSymbols.length === 0 ? (
+                    <EmptyState
+                      title={t("admin.marketTape.emptySearchTitle")}
+                      description={t("admin.marketTape.emptySearchDescription")}
+                    />
+                  ) : (
+                    filteredAvailableMarketTapeSymbols.map((symbol) => (
+                      <div
+                        key={symbol}
+                        className="market-tape-chip available"
+                        draggable={!controlsDisabled}
+                        onDragStart={() => handleAvailableDragStart(symbol)}
+                      >
+                        <strong>{symbol}</strong>
+                        <button
+                          type="button"
+                          className="market-tape-chip-add"
+                          disabled={controlsDisabled}
+                          onClick={() => handleAddMarketTapeSymbol(symbol)}
+                        >
+                          {t("common.add")}
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+            </div>
+            <p className="admin-console-copy">{t("admin.marketTape.hint")}</p>
+            <div className="admin-console-actions">
+              <button
+                type="button"
+                className="admin-console-button"
+                disabled={controlsDisabled}
+                onClick={handleSaveMarketTape}
+              >
+                <span className="admin-console-button-glow" />
+                <span>{isBusy("market-tape-save") ? t("admin.running") : t("admin.marketTape.save")}</span>
+              </button>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="admin-console-grid">
@@ -240,7 +654,7 @@ export default function AdminPage() {
             <button
               type="button"
               className="admin-console-button"
-              disabled={busyKey !== null}
+              disabled={controlsDisabled}
               onClick={card.onClick}
             >
               <span className="admin-console-button-glow" />
@@ -250,6 +664,10 @@ export default function AdminPage() {
           </article>
         ))}
       </section>
+
+      <UserManagementSection />
+      <BroadcastNotificationCard />
+      <AdminAuditLogsSection />
 
       <section className="admin-console-form panel-surface">
         <div>
@@ -286,7 +704,7 @@ export default function AdminPage() {
           <button
             type="button"
             className="admin-console-button"
-            disabled={isBusy("stock-history")}
+            disabled={controlsDisabled}
             onClick={() =>
               startJob("stock-history", () =>
                 triggerStockHistoryBackfill(buildPayload(stockSymbol, startDate, endDate)),
@@ -299,7 +717,7 @@ export default function AdminPage() {
           <button
             type="button"
             className="admin-console-button admin-console-button-secondary"
-            disabled={isBusy("stock-history")}
+            disabled={controlsDisabled}
             onClick={() => {
               setStockSymbol("");
               setStartDate("");
@@ -334,4 +752,20 @@ export default function AdminPage() {
       </section>
     </div>
   );
+}
+
+function isJobCompleted(key, status) {
+  if (!status) {
+    return false;
+  }
+
+  if (key === "tefas-fund-fetch") {
+    return (
+      Number.isFinite(Number(status.processedFunds)) ||
+      Number.isFinite(Number(status.savedFunds)) ||
+      Boolean(status.lastError)
+    );
+  }
+
+  return Number(status.total) > 0 || Boolean(status.lastError);
 }

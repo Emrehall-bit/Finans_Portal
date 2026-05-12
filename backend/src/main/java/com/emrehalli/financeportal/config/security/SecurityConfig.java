@@ -6,6 +6,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -13,11 +14,14 @@ public class SecurityConfig {
 
     private final KeycloakJwtAuthenticationConverter keycloakJwtAuthenticationConverter;
     private final ResourceAccessManager resourceAccessManager;
+    private final ModerationEnforcementFilter moderationEnforcementFilter;
 
     public SecurityConfig(KeycloakJwtAuthenticationConverter keycloakJwtAuthenticationConverter,
-                          ResourceAccessManager resourceAccessManager) {
+                          ResourceAccessManager resourceAccessManager,
+                          ModerationEnforcementFilter moderationEnforcementFilter) {
         this.keycloakJwtAuthenticationConverter = keycloakJwtAuthenticationConverter;
         this.resourceAccessManager = resourceAccessManager;
+        this.moderationEnforcementFilter = moderationEnforcementFilter;
     }
 
     @Bean
@@ -33,6 +37,7 @@ public class SecurityConfig {
                         // Admin endpoints
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/news/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/admin").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
@@ -80,10 +85,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/portfolio-holdings/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers("/api/v1/watchlist/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers("/api/v1/alerts/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers("/api/v1/notifications/**").authenticated()
                         .requestMatchers("/api/v1/simulations/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
 
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakJwtAuthenticationConverter)));
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakJwtAuthenticationConverter)))
+                .addFilterAfter(moderationEnforcementFilter, BearerTokenAuthenticationFilter.class);
 
         return http.build();
     }

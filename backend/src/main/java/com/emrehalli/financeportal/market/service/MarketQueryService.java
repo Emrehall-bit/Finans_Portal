@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.market.service;
 
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
+import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -14,6 +15,8 @@ import java.util.Optional;
 public interface MarketQueryService {
 
     Optional<MarketSnapshot> findBySymbol(String symbol);
+
+    Optional<MarketSnapshot> findBySymbol(String symbol, InstrumentType instrumentType);
 
     List<HistoricalPrice> getHistory(String symbol, SourceName sourceName, LocalDate from, LocalDate to);
 

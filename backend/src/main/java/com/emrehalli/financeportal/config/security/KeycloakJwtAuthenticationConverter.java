@@ -96,8 +96,11 @@ public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, Abstra
 
     private int rolePriority(UserRole role) {
         return switch (role) {
-            case ADMIN -> 2;
-            case USER -> 1;
+            case ADMIN -> 5;
+            case SYSTEM_ENGINEER -> 4;
+            case USER_PREMIUM -> 3;
+            case USER -> 2;
+            case GUEST -> 1;
         };
     }
 }

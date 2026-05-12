@@ -4,9 +4,12 @@ import com.emrehalli.financeportal.config.MarketProperties;
 import com.emrehalli.financeportal.market.cache.CacheService;
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.domain.entity.MarketPrice;
+import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.IntervalType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
+import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
 import com.emrehalli.financeportal.market.persistence.MarketPriceRepository;
 import com.emrehalli.financeportal.market.provider.fund.dto.FundNavDto;
 import jakarta.persistence.EntityManager;
@@ -16,14 +19,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Service for fund persistence and retrieval.
@@ -38,6 +46,7 @@ public class FundService {
 
     private final MarketInstrumentRepository marketInstrumentRepository;
     private final MarketPriceRepository marketPriceRepository;
+    private final MarketPriceHistoryRepository marketPriceHistoryRepository;
     private final CacheService cacheService;
     private final EntityManager entityManager;
     private final MarketProperties props;
@@ -48,6 +57,7 @@ public class FundService {
             return;
         }
 
+        List<FundNavDto> cachedFunds = new ArrayList<>();
         for (FundNavDto fund : funds) {
             if (fund == null
                     || isBlank(fund.getFundCode())
@@ -72,6 +82,18 @@ public class FundService {
             instrument.setInstrumentName(encodeInstrumentName(fund.getFundName(), fundType));
             marketInstrumentRepository.save(instrument);
 
+            Instant todayStart = LocalDate.now().atStartOfDay().toInstant(java.time.ZoneOffset.UTC);
+            BigDecimal previousNavValue = marketPriceHistoryRepository
+                    .findTopByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampLessThanOrderByPriceTimestampDesc(
+                            instrument,
+                            IntervalType.ONE_DAY,
+                            SourceName.TEFAS,
+                            todayStart
+                    )
+                    .map(MarketPriceHistory::getClosePrice)
+                    .orElse(null);
+            fund.setPreviousNavValue(previousNavValue);
+
             marketPriceRepository.save(MarketPrice.builder()
                     .instrument(instrument)
                     .priceValue(fund.getNavValue())
@@ -79,10 +101,31 @@ public class FundService {
                     .sourceName(SourceName.TEFAS)
                     .build());
 
-            putCacheSilently(buildCacheKey(fundCode), toResponse(instrument, fund.getNavValue(), priceTimestamp));
+            marketPriceHistoryRepository
+                    .findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestamp(
+                            instrument,
+                            IntervalType.ONE_DAY,
+                            SourceName.TEFAS,
+                            todayStart
+                    )
+                    .orElseGet(() -> marketPriceHistoryRepository.save(MarketPriceHistory.builder()
+                            .instrument(instrument)
+                            .intervalType(IntervalType.ONE_DAY)
+                            .sourceName(SourceName.TEFAS)
+                            .closePrice(fund.getNavValue())
+                            .priceTimestamp(todayStart)
+                            .build()));
+
+            FundNavDto response = toResponse(instrument, fund.getNavValue(), previousNavValue, priceTimestamp);
+            applyEnrichedFundFields(response, fund);
+            putCacheSilently(buildCacheKey(fundCode), response);
+            cachedFunds.add(response);
         }
 
-        evictCacheSilently(CACHE_KEY_ALL);
+        List<FundNavDto> sortedFunds = cachedFunds.stream()
+                .sorted(Comparator.comparing(FundNavDto::getFundCode))
+                .toList();
+        putCacheSilently(CACHE_KEY_ALL, sortedFunds);
     }
 
     @Transactional(readOnly = true)
@@ -93,11 +136,12 @@ public class FundService {
         }
 
         try {
-            List<FundNavDto> funds = getFundInstruments().stream()
-                    .map(this::toDto)
-                    .filter(Objects::nonNull)
-                    .sorted(Comparator.comparing(FundNavDto::getFundCode))
-                    .toList();
+            List<FundNavDto> funds = buildFundDtos(
+                    marketInstrumentRepository.findAllByInstrumentTypeAndSourceName(
+                            InstrumentType.FUND,
+                            SourceName.TEFAS
+                    )
+            );
             putCacheSilently(CACHE_KEY_ALL, funds);
             return funds;
         } catch (Exception exception) {
@@ -132,6 +176,15 @@ public class FundService {
     @Transactional(readOnly = true)
     public List<FundNavDto> getByType(String fundType) {
         String normalizedType = normalizeType(fundType);
+        List<FundNavDto> cachedFunds = cacheService.getList(CACHE_KEY_ALL, FundNavDto.class);
+        if (!cachedFunds.isEmpty()) {
+            return cachedFunds.stream()
+                    .filter(Objects::nonNull)
+                    .filter(fund -> normalizedType.equals(normalizeType(resolveFundTypeForFilter(fund))))
+                    .sorted(Comparator.comparing(FundNavDto::getFundCode))
+                    .toList();
+        }
+
         try {
             TypedQuery<MarketInstrument> query = entityManager.createQuery(
                     "select mi from MarketInstrument mi " +
@@ -144,11 +197,7 @@ public class FundService {
             query.setParameter("sourceName", SourceName.TEFAS);
             query.setParameter("typePattern", "%"+ TYPE_DELIMITER + normalizedType);
 
-            return query.getResultList().stream()
-                    .map(this::toDto)
-                    .filter(Objects::nonNull)
-                    .sorted(Comparator.comparing(FundNavDto::getFundCode))
-                    .toList();
+            return buildFundDtos(query.getResultList());
         } catch (Exception exception) {
             log.error("Failed to load funds for type {} from database.", normalizedType, exception);
             return List.of();
@@ -162,6 +211,52 @@ public class FundService {
                 .toList();
     }
 
+    private List<FundNavDto> buildFundDtos(List<MarketInstrument> instruments) {
+        if (instruments == null || instruments.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> instrumentIds = instruments.stream()
+                .map(MarketInstrument::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (instrumentIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, MarketPrice> latestPricesByInstrumentId = marketPriceRepository
+                .findLatestPricesForInstruments(instrumentIds)
+                .stream()
+                .filter(price -> price.getInstrument() != null && price.getInstrument().getId() != null)
+                .collect(Collectors.toMap(
+                        price -> price.getInstrument().getId(),
+                        Function.identity(),
+                        (left, right) -> left
+                ));
+
+        Map<Long, MarketPriceHistory> previousClosesByInstrumentId = marketPriceHistoryRepository
+                .findPreviousClosesForInstruments(instrumentIds)
+                .stream()
+                .filter(history -> history.getInstrument() != null && history.getInstrument().getId() != null)
+                .collect(Collectors.toMap(
+                        history -> history.getInstrument().getId(),
+                        Function.identity(),
+                        (left, right) -> left
+                ));
+
+        return instruments.stream()
+                .map(instrument -> toDto(
+                        instrument,
+                        latestPricesByInstrumentId.get(instrument.getId()),
+                        previousClosesByInstrumentId.get(instrument.getId())
+                ))
+                .map(this::mergeCachedFundMetadata)
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(FundNavDto::getFundCode))
+                .toList();
+    }
+
     private FundNavDto toDto(MarketInstrument instrument) {
         Optional<MarketPrice> latestPrice = marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument);
         if (latestPrice.isEmpty()) {
@@ -170,26 +265,108 @@ public class FundService {
 
         MarketPrice price = latestPrice.get();
         FundMetadata metadata = decodeInstrumentName(instrument.getInstrumentName());
-        return toResponse(instrument, metadata.fundName(), metadata.fundType(), price.getPriceValue(), price.getPriceTimestamp());
+        BigDecimal previousNavValue = marketPriceHistoryRepository
+                .findTopByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampLessThanOrderByPriceTimestampDesc(
+                        instrument,
+                        IntervalType.ONE_DAY,
+                        SourceName.TEFAS,
+                        price.getPriceTimestamp().toLocalDate().atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
+                )
+                .map(MarketPriceHistory::getClosePrice)
+                .orElse(null);
+        return mergeCachedFundMetadata(toResponse(
+                instrument,
+                metadata.fundName(),
+                metadata.fundType(),
+                price.getPriceValue(),
+                previousNavValue,
+                price.getPriceTimestamp()
+        ));
     }
 
-    private FundNavDto toResponse(MarketInstrument instrument, java.math.BigDecimal navValue, LocalDateTime priceTimestamp) {
+    private FundNavDto toDto(
+            MarketInstrument instrument,
+            MarketPrice latestPrice,
+            MarketPriceHistory previousClose
+    ) {
+        if (instrument == null || latestPrice == null) {
+            return null;
+        }
+
         FundMetadata metadata = decodeInstrumentName(instrument.getInstrumentName());
-        return toResponse(instrument, metadata.fundName(), metadata.fundType(), navValue, priceTimestamp);
+        return mergeCachedFundMetadata(toResponse(
+                instrument,
+                metadata.fundName(),
+                metadata.fundType(),
+                latestPrice.getPriceValue(),
+                previousClose != null ? previousClose.getClosePrice() : null,
+                latestPrice.getPriceTimestamp()
+        ));
+    }
+
+    private FundNavDto toResponse(MarketInstrument instrument, java.math.BigDecimal navValue, BigDecimal previousNavValue, LocalDateTime priceTimestamp) {
+        FundMetadata metadata = decodeInstrumentName(instrument.getInstrumentName());
+        return toResponse(instrument, metadata.fundName(), metadata.fundType(), navValue, previousNavValue, priceTimestamp);
     }
 
     private FundNavDto toResponse(MarketInstrument instrument,
                                   String fundName,
                                   String fundType,
-                                  java.math.BigDecimal navValue,
+                                  BigDecimal navValue,
+                                  BigDecimal previousNavValue,
                                   LocalDateTime priceTimestamp) {
         return FundNavDto.builder()
                 .fundCode(instrument.getInstrumentCode())
                 .fundName(fundName)
                 .navValue(navValue)
+                .previousNavValue(previousNavValue)
                 .navDate(priceTimestamp != null ? priceTimestamp.toLocalDate() : null)
                 .fundType(fundType)
+                .fonTurAciklama(fundType)
                 .build();
+    }
+
+    private FundNavDto mergeCachedFundMetadata(FundNavDto fund) {
+        if (fund == null || isBlank(fund.getFundCode())) {
+            return fund;
+        }
+
+        FundNavDto cachedFund = getCachedFund(fund.getFundCode());
+        if (cachedFund == null) {
+            if (isBlank(fund.getFonTurAciklama())) {
+                fund.setFonTurAciklama(fund.getFundType());
+            }
+            return fund;
+        }
+
+        applyEnrichedFundFields(fund, cachedFund);
+        return fund;
+    }
+
+    private void applyEnrichedFundFields(FundNavDto target, FundNavDto source) {
+        if (target == null || source == null) {
+            return;
+        }
+
+        target.setGetiri1a(source.getGetiri1a());
+        target.setGetiri3a(source.getGetiri3a());
+        target.setGetiri6a(source.getGetiri6a());
+        target.setGetiriYb(source.getGetiriYb());
+        target.setGetiri1y(source.getGetiri1y());
+        target.setGetiri3y(source.getGetiri3y());
+        target.setGetiri5y(source.getGetiri5y());
+        target.setRiskDegeri(source.getRiskDegeri());
+        target.setFonTurAciklama(isBlank(source.getFonTurAciklama()) ? source.getFundType() : source.getFonTurAciklama());
+    }
+
+    private String resolveFundTypeForFilter(FundNavDto fund) {
+        if (fund == null) {
+            return "";
+        }
+        if (!isBlank(fund.getFundType())) {
+            return fund.getFundType();
+        }
+        return fund.getFonTurAciklama();
     }
 
     private FundNavDto getCachedFund(String code) {

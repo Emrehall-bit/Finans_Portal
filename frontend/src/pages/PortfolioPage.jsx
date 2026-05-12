@@ -14,7 +14,6 @@ import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
 import useToast from "../hooks/useToast";
 import { useTheme } from "../theme/ThemeContext";
@@ -200,12 +199,6 @@ export default function PortfolioPage() {
 
   return (
     <div className="portfolio-management-shell">
-      <PageHeader
-        title={t("portfolio.title")}
-        description={t("portfolio.description")}
-        eyebrow={t("portfolio.eyebrow")}
-      />
-
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
@@ -298,10 +291,8 @@ export default function PortfolioPage() {
                   <SummaryCard title={t("portfolio.summary.profitLossAmount")} value={formatCurrency(summary?.profitLoss ?? summary?.totalProfitLoss)} subtitle={t("portfolio.summary.profitLossAmountSubtitle")} tone={toNumber(summary?.profitLoss ?? summary?.totalProfitLoss) >= 0 ? "cool" : "warm"} />
                   <SummaryCard title={t("portfolio.summary.profitLossPercent")} value={formatPercent(summary?.profitLossPercent)} subtitle={t("portfolio.summary.profitLossPercentSubtitle")} tone={toNumber(summary?.profitLossPercent) >= 0 ? "cool" : "warm"} />
                 </div>
-              </section>
 
-              <section className="portfolio-management-content-grid">
-                <section className="panel-surface portfolio-management-panel">
+                <div className="portfolio-hero-allocation">
                   <div className="panel-head">
                     <div>
                       <p className="eyebrow">{t("portfolio.allocationEyebrow")}</p>
@@ -312,8 +303,8 @@ export default function PortfolioPage() {
                   {allocationData.length === 0 ? (
                     <EmptyState title={t("portfolio.allocationEmptyTitle")} description={t("portfolio.allocationEmptyDescription")} />
                   ) : (
-                    <div className="finance-allocation-shell">
-                      <div className="finance-allocation-chart">
+                    <div className="portfolio-hero-allocation-shell">
+                      <div className="portfolio-hero-allocation-chart">
                         <ResponsiveContainer>
                           <PieChart>
                             <Pie data={allocationData} dataKey="value" nameKey="instrumentCode" outerRadius={96} innerRadius={48}>
@@ -330,7 +321,7 @@ export default function PortfolioPage() {
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className="portfolio-allocation-list">
+                      <div className="portfolio-hero-allocation-list">
                         {allocationData.map((entry, index) => (
                           <div key={`${entry.instrumentCode}-${index}`} className="portfolio-allocation-item">
                             <div className="portfolio-allocation-label">
@@ -345,8 +336,10 @@ export default function PortfolioPage() {
                       </div>
                     </div>
                   )}
-                </section>
+                </div>
+              </section>
 
+              <section className="portfolio-management-content-grid">
                 <section className="panel-surface portfolio-management-panel">
                   <div className="panel-head">
                     <div>

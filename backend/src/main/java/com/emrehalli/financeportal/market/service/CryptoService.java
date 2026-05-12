@@ -150,9 +150,9 @@ public class CryptoService {
         }
 
         try {
-            MarketQueryService.MarketSnapshot snapshot = marketInstrumentRepository.findByInstrumentCodeIgnoreCase(normalizedSymbol)
+            MarketQueryService.MarketSnapshot snapshot = marketInstrumentRepository
+                    .findByInstrumentCodeIgnoreCaseAndSourceName(normalizedSymbol, SourceName.BINANCE)
                     .filter(instrument -> instrument.getInstrumentType() == InstrumentType.CRYPTO)
-                    .filter(instrument -> instrument.getSourceName() == SourceName.BINANCE)
                     .flatMap(marketPriceRepository::findTopByInstrumentOrderByPriceTimestampDesc)
                     .map(this::toDto)
                     .orElse(null);
@@ -168,7 +168,7 @@ public class CryptoService {
     }
 
     private MarketInstrument findOrCreateInstrument(String symbol) {
-        return marketInstrumentRepository.findByInstrumentCodeIgnoreCase(symbol)
+        return marketInstrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName(symbol, SourceName.BINANCE)
                 .orElseGet(() -> marketInstrumentRepository.save(MarketInstrument.builder()
                         .instrumentCode(symbol)
                         .instrumentName(symbol + "/TRY")

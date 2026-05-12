@@ -9,5 +9,6 @@ export const API_CONFIG = {
     watchlist: "/api/v1/watchlist",
     alerts: "/api/v1/alerts",
     users: "/api/v1/users",
+    notifications: "/api/v1/notifications",
   },
 };

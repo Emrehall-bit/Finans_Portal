@@ -191,7 +191,8 @@ public class TcmbFxHistoricalBackfillService {
         Map<LocalDate, List<ResolvedDefinition>> groupedDefinitions = new LinkedHashMap<>();
 
         for (TcmbFxSeriesDefinition definition : definitions) {
-            Optional<MarketInstrument> instrumentOptional = marketInstrumentRepository.findByInstrumentCodeIgnoreCase(definition.instrumentCode());
+            Optional<MarketInstrument> instrumentOptional = marketInstrumentRepository
+                    .findByInstrumentCodeIgnoreCaseAndSourceName(definition.instrumentCode(), SOURCE_NAME);
             if (instrumentOptional.isEmpty()) {
                 log.warn("Skipping TCMB FX historical backfill because instrument is missing. instrumentCode={}, seriesCode={}",
                         definition.instrumentCode(), definition.seriesCode());

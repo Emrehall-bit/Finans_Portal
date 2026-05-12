@@ -35,6 +35,7 @@
     "brandEyebrow": "Market Terminal",
     "guest": "Misafir",
     "connectedAccount": "Bağlı hesap",
+    "welcomeUser": "Hoş geldin, {{name}}",
     "openAccess": "Açık erişim",
     "syncedData": "Verileriniz ve kişisel listeleriniz eşzamanlı.",
     "openMode": "Açık modda market ve haber ekranları hazır.",
@@ -48,7 +49,34 @@
     "analystMode": "Analist modu",
     "guestMode": "Misafir modu",
     "userMenu": "Kullanıcı menüsü",
-    "myProfile": "Profilim",
+    "notificationsLoading": "Bildirimler yukleniyor...",
+    "notificationsLoadError": "Bildirimler yuklenemedi.",
+    "notificationsUpdateError": "Bildirimler guncellenemedi.",
+    "notificationsSummary": "{{count}} okunmamis bildirim",
+    "notificationsMarkAll": "Tumunu okundu yap",
+    "notificationsMarkingAll": "Guncelleniyor...",
+    "notificationsEmptyTitle": "Bildirim yok",
+    "notificationsEmptyDescription": "Su anda goruntulenecek bir bildirim bulunmuyor.",
+    "notificationRead": "Okundu",
+    "notificationUnread": "Okunmadi",
+    "notificationDetailDate": "Tarih",
+    "notificationAudienceBroadcast": "Duyuru",
+    "notificationAudiencePersonal": "Kisisel",
+      "notificationTypes": {
+        "SYSTEM": "Sistem",
+        "ADMIN_MESSAGE": "Admin Mesaji",
+        "PRICE_ALERT": "Fiyat Alarmi",
+        "SECURITY": "Guvenlik",
+        "ANNOUNCEMENT": "Duyuru"
+      },
+      "roleLabels": {
+        "GUEST": "Misafir",
+        "USER": "Kullanici",
+        "ADMIN": "Admin",
+        "USER_PREMIUM": "Premium Kullanici",
+        "SYSTEM_ENGINEER": "System Engineer"
+      },
+      "myProfile": "Profilim",
     "theme": "Tema",
     "themeSelection": "Tema seçimi",
     "themeLight": "Açık",
@@ -211,6 +239,17 @@
       "change": "Değişim",
       "source": "Kaynak",
       "detail": "Detay"
+    },
+    "fundColumns": {
+      "umbrellaType": "Şemsiye Fon Türü",
+      "risk": "Risk",
+      "getiri1a": "1 Ay",
+      "getiri3a": "3 Ay",
+      "getiri6a": "6 Ay",
+      "getiriYb": "Yılbaşı",
+      "getiri1y": "1 Yıl",
+      "getiri3y": "3 Yıl",
+      "getiri5y": "5 Yıl"
     },
     "macroColumns": {
       "date": "Tarih",
@@ -511,22 +550,44 @@
     }
   },
   "route": {
-    "loading": "Yukleniyor...",
-    "authRequired": "Bu hizmeti goruntulemek icin giris yapmaniz gerekiyor.",
+    "loading": "Yükleniyor...",
+    "authRequired": "Bu hizmeti görüntülemek için giriş yapmanız gerekiyor..",
     "adminCheck": "Yetkiler kontrol ediliyor..."
   },
   "admin": {
     "eyebrow": "Admin",
     "title": "Admin Paneli",
     "description": "Piyasaya ait manuel fetch ve backfill islemlerini bu ekrandan tetikleyin.",
-    "actionError": "Admin islemi basarisiz oldu.",
-    "running": "Calisiyor...",
-    "progress": "Isleniyor: {{processed}} / {{total}}",
-    "completed": "Tamamlandi!",
+    "actionError": "Admin şlemi başarısız oldu.",
+    "running": "Çalışıyor...",
+    "progress": "İşleniyor: {{processed}} / {{total}}",
+    "completed": "Tamamlandı!",
+    "fundFetch": {
+      "running": "TEFAS fon verisi çekiliyor...",
+      "completed": "İşlem tamamlandı. İşlenen fon: {{processedFunds}}, kaydedilen fon: {{savedFunds}}"
+    },
+    "marketTape": {
+      "eyebrow": "Piyasa bandi",
+      "title": "Ust bant sembolleri",
+      "description": "Topbarda kayan piyasa bandinda hangi sembollerin one cikacagini buradan yonet.",
+      "loading": "Piyasa bandi ayarlari yukleniyor...",
+      "loadError": "Piyasa bandi ayarlari yuklenemedi.",
+      "selectedLabel": "Secili semboller",
+      "availableLabel": "Mevcut piyasa sembolleri",
+      "searchPlaceholder": "Sembol ara",
+      "hint": "Secili alandaki siralama topbarda gosterim sirasini belirler. Surukle birak ile dizilimi degistirebilirsin.",
+      "emptySelectedTitle": "Secili sembol yok",
+      "emptySelectedDescription": "Sag taraftan sembol ekleyerek piyasa bandini olustur.",
+      "emptyAvailableTitle": "Eklenebilecek sembol yok",
+      "emptyAvailableDescription": "Su an market verisinden yeni sembol gelmedi.",
+      "emptySearchTitle": "Eslesen sembol yok",
+      "emptySearchDescription": "Arama kriterine uyan sembol bulunamadi.",
+      "save": "Piyasa bandini kaydet"
+    },
     "hero": {
       "eyebrow": "Operasyonlar",
-      "title": "Manuel islemler tek ekranda",
-      "description": "Fetch, sync ve backfill akislarini bu panelden yonetin. Son backend cevabi altta ham response olarak kalir."
+      "title": "Manuel işlemler tek ekranda",
+      "description": "Fetch, sync ve backfill akislarini bu panelden yönetin. Son backend cevabi altta ham response olarak kalir."
     },
     "metrics": {
       "operationType": {
@@ -547,7 +608,7 @@
       "stockFetch": {
         "eyebrow": "Canli fiyat",
         "title": "Hisse Fetch",
-        "description": "Yahoo Finance uzerinden anlik hisse verisini manuel cek.",
+        "description": "BIST tarafı için verileri manuel çekebilirsiniz",
         "action": "Hisse Verisini Cek"
       },
       "tcmbSync": {
@@ -562,13 +623,33 @@
         "description": "TCMB doviz tarihcesini yeniden doldur.",
         "action": "TCMB History Baslat"
       },
-      "binanceHistory": {
-        "eyebrow": "Kripto arsivi",
-        "title": "Binance History Fetch",
-        "description": "Gun sayisi vererek Binance tarihsel verisini cek.",
-        "action": "Binance History Baslat"
-      }
-    },
+        "binanceHistory": {
+          "eyebrow": "Kripto arsivi",
+          "title": "Binance History Fetch",
+          "description": "Gun sayisi vererek Binance tarihsel verisini cek.",
+          "action": "Binance History Baslat"
+        },
+        "tefasFundFetch": {
+          "eyebrow": "Fon verisi",
+          "title": "TEFAS Fund Fetch",
+          "description": "TEFAS'tan guncel fon NAV verisini cek ve local market tablolarina yaz.",
+          "action": "TEFAS Fetch Baslat"
+        },
+        "tefasFundBackfill": {
+          "eyebrow": "Fon arsivi",
+          "title": "TEFAS Fund Backfill",
+          "description": "Fon verilerini aşağıdaki butona basarak manuel olarak doldurun. Fon kodu veya periyot girilmezse tüm veriler yeniden doldurulur.  ",
+          "action": "TEFAS Backfill Baslat",
+            "fundCodePlaceholder": "Fon kodu (opsiyonel)",
+            "periodPlaceholder": "Periyod (opsiyonel)"
+          },
+          "tefasTestConnection": {
+            "eyebrow": "TEFAS baglantisi",
+            "title": "TEFAS Test Connection",
+            "description": "TEFAS liste endpointine baglan ve ilk fon bilgisini dogrula.",
+            "action": "Baglantiyi Test Et"
+          }
+        },
     "stockHistory": {
       "eyebrow": "Hisse arsivi",
       "title": "Hisse History Backfill",
@@ -584,6 +665,143 @@
       "description": "Son tetiklenen admin isleminin backend cevabi.",
       "emptyTitle": "Henuz bir islem yok",
       "emptyDescription": "Bir admin islemi tetikledikten sonra sonuc burada gorunur."
+    },
+    "users": {
+      "eyebrow": "Kullanici Yonetimi",
+      "title": "Kullanici Listesi",
+      "description": "Local users tablosundaki kayitlari goruntule ve temel profil detaylarini incele.",
+      "count": "{{count}} kullanici",
+      "loadingList": "Kullanicilar yukleniyor...",
+      "loadingDetail": "Kullanici detayi yukleniyor...",
+      "updating": "Guncelleniyor...",
+      "roleUpdating": "Rol guncelleniyor...",
+      "listError": "Kullanici listesi yuklenemedi.",
+      "detailError": "Kullanici detayi yuklenemedi.",
+      "statusUpdateError": "Kullanici durumu guncellenemedi.",
+      "roleUpdateError": "Kullanici rolu guncellenemedi.",
+      "emptyTitle": "Kullanici bulunamadi",
+      "emptyDescription": "Local users tablosunda listelenecek kayit yok.",
+      "activate": "Aktiflestir",
+      "deactivate": "Pasiflestir",
+      "makeAdmin": "Admin Yap",
+      "revokeAdmin": "Admin Yetkisini Al",
+      "sendNotification": "Bildirim Gonder",
+      "detailEyebrow": "Kullanici Detayi",
+      "detailTitle": "Secili kullanici",
+      "detailEmptyTitle": "Kullanici secilmedi",
+      "detailEmptyDescription": "Tablodan bir kullanici secerek detaylari goruntule.",
+      "columns": {
+        "email": "Email",
+        "fullName": "Ad Soyad",
+        "role": "Role",
+        "moderation": "Moderasyon",
+        "active": "Active",
+        "lastLogin": "Last Login",
+        "createdAt": "Created At",
+        "detail": "Detay"
+      },
+      "fields": {
+        "id": "ID",
+        "keycloakId": "Keycloak ID",
+        "email": "Email",
+        "fullName": "Ad Soyad",
+        "role": "Role",
+        "active": "Durum",
+        "preferences": "Dil / Tema",
+        "lastLoginAt": "Son Giris",
+        "createdAt": "Olusturma",
+        "updatedAt": "Guncelleme",
+        "moderationStatus": "Moderasyon Durumu",
+        "moderationReason": "Moderasyon Nedeni",
+        "moderationBlockedUntil": "Blok Bitis",
+        "moderationCreatedBy": "Islemi Yapan",
+        "moderationCreatedAt": "Moderasyon Tarihi"
+      },
+      "values": {
+        "active": "Aktif",
+        "passive": "Pasif"
+      },
+      "moderation": {
+        "tempBlock": "Gecici Blok",
+        "permBlock": "Kalici Blok",
+        "unblock": "Engeli Kaldir",
+        "tempBlockEyebrow": "Gecici Blok",
+        "permBlockEyebrow": "Kalici Blok",
+        "unblockEyebrow": "Engeli Kaldir",
+        "tempBlockSubmit": "Gecici Blok Uygula",
+        "permBlockSubmit": "Kalici Blok Uygula",
+        "unblockSubmit": "Engeli Kaldir",
+        "tempBlockError": "Gecici blok islemi basarisiz oldu.",
+        "permBlockError": "Kalici blok islemi basarisiz oldu.",
+        "unblockError": "Engel kaldirma islemi basarisiz oldu.",
+        "tempBlockSuccess": "Kullanici gecici olarak bloklandi.",
+        "permBlockSuccess": "Kullanici kalici olarak bloklandi.",
+        "unblockSuccess": "Kullanici engeli kaldirildi.",
+        "reasonLabel": "Gerekce",
+        "reasonPlaceholder": "Opsiyonel aciklama",
+        "blockedUntilLabel": "Blok Bitis Tarihi",
+        "blockedUntilRequired": "Blok bitis tarihi zorunludur.",
+        "blockedUntilFuture": "Gelecekte bir tarih secmelisiniz.",
+        "submitting": "Gonderiliyor...",
+        "statusValues": {
+          "ACTIVE": "Aktif",
+          "TEMP_BLOCKED": "Gecici Bloklu",
+          "PERM_BLOCKED": "Kalici Bloklu"
+        }
+      },
+      "notification": {
+        "eyebrow": "Kullanici Bildirimi",
+        "titleLabel": "Baslik",
+        "messageLabel": "Mesaj",
+        "typeLabel": "Tip",
+        "submit": "Gonder",
+        "submitting": "Gonderiliyor...",
+        "success": "Bildirim gonderildi.",
+        "error": "Bildirim gonderilemedi."
+      }
+    },
+    "broadcast": {
+      "eyebrow": "Global Duyuru",
+      "title": "Tum kullanicilara duyuru gonder",
+      "description": "Bildirim local veritabanina broadcast kaydi olarak yazilir ve tum kullanicilar dropdown alaninda gorur.",
+      "titleLabel": "Baslik",
+      "titlePlaceholder": "Bakim bildirimi",
+      "messageLabel": "Mesaj",
+      "messagePlaceholder": "Tum kullanicilarin gorecegi duyuru metni",
+      "typeLabel": "Tip",
+      "submit": "Global Duyuru Gonder",
+      "submitting": "Gonderiliyor...",
+      "success": "Global duyuru gonderildi.",
+      "error": "Global duyuru gonderilemedi."
+    },
+    "auditLogs": {
+      "eyebrow": "Admin Islem Loglari",
+      "title": "Yapilan admin islemleri",
+      "description": "Kullanici, moderasyon ve bildirim islemlerinin son kayitlari.",
+      "loading": "Islem loglari yukleniyor...",
+      "loadError": "Islem loglari yuklenemedi.",
+      "emptyTitle": "Islem logu bulunamadi",
+      "emptyDescription": "Secili filtre icin kayit yok.",
+      "filters": {
+        "allActions": "Tum aksiyonlar"
+      },
+      "columns": {
+        "createdAt": "Tarih",
+        "actorUserId": "Islemi Yapan",
+        "targetUserId": "Hedef Kullanici",
+        "action": "Aksiyon",
+        "description": "Aciklama"
+      },
+      "actions": {
+        "USER_ACTIVATED": "Kullanici Aktif Edildi",
+        "USER_DEACTIVATED": "Kullanici Pasiflestirildi",
+        "USER_ROLE_CHANGED": "Kullanici Rolu Degisti",
+        "USER_TEMP_BLOCKED": "Gecici Blok",
+        "USER_PERM_BLOCKED": "Kalici Blok",
+        "USER_UNBLOCKED": "Engel Kaldirildi",
+        "NOTIFICATION_SENT_TO_USER": "Kullaniciya Bildirim Gonderildi",
+        "NOTIFICATION_BROADCAST_SENT": "Global Duyuru Gonderildi"
+      }
     }
   },
   "profile": {
@@ -625,13 +843,16 @@
       "subject": "Kimlik",
       "authenticated": "Kimlik Durumu"
     },
-    "values": {
-      "role": {
-        "USER": "Kullanıcı",
-        "ADMIN": "Yönetici"
-      },
-      "authProvider": {
-        "KEYCLOAK": "Keycloak",
+      "values": {
+        "role": {
+          "GUEST": "Misafir",
+          "USER": "Kullanici",
+          "ADMIN": "Admin",
+          "USER_PREMIUM": "Premium Kullanici",
+          "SYSTEM_ENGINEER": "System Engineer"
+        },
+        "authProvider": {
+          "KEYCLOAK": "Keycloak",
         "LOCAL": "Yerel"
       }
     }

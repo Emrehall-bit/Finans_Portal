@@ -205,7 +205,9 @@ public class StockService {
     @Transactional(readOnly = true)
     public List<StockHistoryDto> getHistory(String symbol, LocalDate startDate, LocalDate endDate) {
         String normalizedSymbol = normalizeSymbol(symbol);
-        MarketInstrument instrument = marketInstrumentRepository.findByInstrumentCodeIgnoreCase(normalizedSymbol)
+        MarketInstrument instrument = marketInstrumentRepository
+                .findByInstrumentCodeIgnoreCaseAndSourceName(normalizedSymbol, SourceName.BIST)
+                .filter(item -> item.getInstrumentType() == InstrumentType.STOCK)
                 .orElseThrow(() -> new InstrumentNotFoundException("Stock instrument not found: " + normalizedSymbol));
 
         Instant from = (startDate != null ? startDate : LocalDate.of(1970, 1, 1))

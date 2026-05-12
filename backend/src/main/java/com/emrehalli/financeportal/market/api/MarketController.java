@@ -21,12 +21,15 @@ import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.market.service.StockService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -56,12 +59,22 @@ public class MarketController {
         boolean macroIndicatorRequest = isMacroIndicatorRequest(type);
         List<FxRateResponse> fx = macroIndicatorRequest ? List.of() : fxService.getAll();
         List<MarketQueryService.MarketSnapshot> cryptoSnapshots = macroIndicatorRequest ? List.of() : cryptoService.getAll();
+        List<StockPriceDto> stockQuotes = macroIndicatorRequest
+                ? List.of()
+                : stockService.getAll(PageRequest.of(0, 500)).getContent();
+        List<FundNavDto> fundQuotes = macroIndicatorRequest ? List.of() : fundService.getAll();
         List<Object> crypto = new ArrayList<>(cryptoSnapshots);
+        List<Object> stocks = new ArrayList<>(stockQuotes.stream()
+                .map(this::toMarketSnapshot)
+                .toList());
+        List<Object> funds = new ArrayList<>(fundQuotes.stream()
+                .map(fund -> toMarketSnapshot(fund, SourceName.TEFAS.name()))
+                .toList());
         MarketAggregateResponse data = MarketAggregateResponse.builder()
                 .fx(fx)
                 .crypto(crypto)
-                .stocks(List.of())
-                .funds(List.of())
+                .stocks(stocks)
+                .funds(funds)
                 .futures(List.of())
                 .bonds(List.of())
                 .build();
@@ -75,11 +88,17 @@ public class MarketController {
     }
 
     @GetMapping({"/{symbol}", "/symbol/{symbol}"})
-    public ApiResponse<MarketQueryService.MarketSnapshot> getMarketBySymbol(@PathVariable String symbol) {
+    public ApiResponse<MarketQueryService.MarketSnapshot> getMarketBySymbol(
+            @PathVariable String symbol,
+            @RequestParam(name = "type", required = false) InstrumentType type
+    ) {
         String normalizedSymbol = symbol.toUpperCase();
-        MarketQueryService.MarketSnapshot data = marketQueryService.findBySymbol(normalizedSymbol)
+        MarketQueryService.MarketSnapshot data = marketQueryService.findBySymbol(normalizedSymbol, type)
                 .map(snapshot -> resolveMarketSnapshot(normalizedSymbol, snapshot))
                 .or(() -> {
+                    if (type != null && type != InstrumentType.STOCK) {
+                        return java.util.Optional.empty();
+                    }
                     try {
                         StockPriceDto stock = stockService.getBySymbol(normalizedSymbol);
                         return stock != null ? java.util.Optional.of(toMarketSnapshot(stock)) : java.util.Optional.empty();
@@ -102,13 +121,14 @@ public class MarketController {
             @RequestParam(name = "from", required = false) String from,
             @RequestParam(name = "to", required = false) String to,
             @RequestParam(name = "period", required = false) String period,
-            @RequestParam(name = "source", required = false) String source
+            @RequestParam(name = "source", required = false) String source,
+            @RequestParam(name = "type", required = false) InstrumentType type
     ) {
         Instant resolvedTo = resolveTo(to);
         Instant resolvedFrom = resolveFrom(from, to, period, resolvedTo);
         SourceName sourceName = resolveSource(source);
 
-        List<PriceHistoryDto> data = instrumentRepository.findByInstrumentCodeIgnoreCase(symbol.toUpperCase())
+        List<PriceHistoryDto> data = resolveInstrument(symbol.toUpperCase(), type)
                 .map(instrument -> {
                     if (instrument.getInstrumentType() == InstrumentType.CRYPTO) {
                         return historyRepository
@@ -142,6 +162,45 @@ public class MarketController {
                 .message("OK")
                 .data(data)
                 .build();
+    }
+
+    private java.util.Optional<MarketInstrument> resolveInstrument(String symbol, InstrumentType type) {
+        SourceName sourceName = resolveInstrumentSource(symbol, type);
+        if (sourceName != null) {
+            return instrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName(symbol, sourceName);
+        }
+
+        if (type != null) {
+            return instrumentRepository.findFirstByInstrumentCodeIgnoreCaseAndInstrumentTypeOrderByCreatedAtAsc(symbol, type);
+        }
+
+        return instrumentRepository.findFirstByInstrumentCodeIgnoreCaseOrderByCreatedAtAsc(symbol);
+    }
+
+    private SourceName resolveInstrumentSource(String symbol, InstrumentType type) {
+        if (type == null) {
+            return null;
+        }
+
+        return switch (type) {
+            case FUND -> SourceName.TEFAS;
+            case CRYPTO -> SourceName.BINANCE;
+            case STOCK -> SourceName.BIST;
+            case FX -> parseSourceFromSymbol(symbol);
+            default -> null;
+        };
+    }
+
+    private SourceName parseSourceFromSymbol(String symbol) {
+        if (symbol == null || symbol.isBlank() || !symbol.contains(":")) {
+            return null;
+        }
+
+        try {
+            return SourceName.valueOf(symbol.split(":")[0].trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private boolean isMacroIndicatorRequest(String type) {
@@ -265,15 +324,23 @@ public class MarketController {
     }
 
     private MarketQueryService.MarketSnapshot toMarketSnapshot(FundNavDto fund, String source) {
+        BigDecimal changeRate = null;
+        if (fund.getPreviousNavValue() != null
+                && fund.getPreviousNavValue().compareTo(BigDecimal.ZERO) != 0) {
+            changeRate = fund.getNavValue()
+                    .subtract(fund.getPreviousNavValue())
+                    .divide(fund.getPreviousNavValue(), 4, RoundingMode.HALF_UP);
+        }
+
         return new MarketQueryService.MarketSnapshot(
                 fund.getFundCode(),
                 fund.getFundName(),
                 fund.getNavValue(),
-                null,
+                changeRate,
                 source,
                 InstrumentType.FUND.name(),
                 "TRY",
-                fund.getNavDate() != null ? fund.getNavDate().atStartOfDay() : null
+                LocalDateTime.now()
         );
     }
 

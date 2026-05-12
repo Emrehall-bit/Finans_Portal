@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.user.service;
 
+import com.emrehalli.financeportal.audit.enums.AdminAuditAction;
+import com.emrehalli.financeportal.audit.service.AdminAuditLogService;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
@@ -8,6 +10,7 @@ import com.emrehalli.financeportal.config.security.CurrentUserResolver;
 import com.emrehalli.financeportal.user.dto.AdminUpdateUserRequest;
 import com.emrehalli.financeportal.user.dto.CreateUserRequest;
 import com.emrehalli.financeportal.user.dto.UpdateUserRequest;
+import com.emrehalli.financeportal.user.dto.UpdateUserRoleRequest;
 import com.emrehalli.financeportal.user.dto.UserProfileResponseDto;
 import com.emrehalli.financeportal.user.dto.UserResponseDto;
 import com.emrehalli.financeportal.user.entity.User;
@@ -33,13 +36,16 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final CurrentUserResolver currentUserResolver;
+    private final AdminAuditLogService adminAuditLogService;
 
     public UserService(UserRepository userRepository,
                        UserMapper userMapper,
-                       CurrentUserResolver currentUserResolver) {
+                       CurrentUserResolver currentUserResolver,
+                       AdminAuditLogService adminAuditLogService) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.currentUserResolver = currentUserResolver;
+        this.adminAuditLogService = adminAuditLogService;
     }
 
     @Transactional
@@ -101,15 +107,58 @@ public class UserService {
     @Transactional
     public UserResponseDto deactivateUser(Long userId) {
         User user = getUserEntityById(userId);
+        ensureAdminCannotDeactivateSelf(user);
         user.setActive(false);
-        return userMapper.toResponse(userRepository.save(user));
+        User updatedUser = userRepository.save(user);
+        User actor = getCurrentAuthenticatedUserEntity();
+        adminAuditLogService.log(
+                actor.getId(),
+                updatedUser.getId(),
+                AdminAuditAction.USER_DEACTIVATED,
+                "User deactivated by admin",
+                "active=false"
+        );
+        return userMapper.toResponse(updatedUser);
     }
 
     @Transactional
     public UserResponseDto activateUser(Long userId) {
         User user = getUserEntityById(userId);
         user.setActive(true);
-        return userMapper.toResponse(userRepository.save(user));
+        User updatedUser = userRepository.save(user);
+        User actor = getCurrentAuthenticatedUserEntity();
+        adminAuditLogService.log(
+                actor.getId(),
+                updatedUser.getId(),
+                AdminAuditAction.USER_ACTIVATED,
+                "User activated by admin",
+                "active=true"
+        );
+        return userMapper.toResponse(updatedUser);
+    }
+
+    @Transactional
+    public UserResponseDto updateUserRole(Long userId, UpdateUserRoleRequest request) {
+        User user = getUserEntityById(userId);
+        ensureAdminCannotDemoteSelf(user, request.getRole());
+        UserRole previousRole = user.getRole();
+        user.setRole(request.getRole());
+        User updatedUser = userRepository.save(user);
+        User actor = getCurrentAuthenticatedUserEntity();
+        adminAuditLogService.log(
+                actor.getId(),
+                updatedUser.getId(),
+                AdminAuditAction.USER_ROLE_CHANGED,
+                "User role changed by admin",
+                "previousRole=" + previousRole + ",newRole=" + updatedUser.getRole()
+        );
+        return userMapper.toResponse(updatedUser);
+    }
+
+    @Transactional
+    public User getCurrentAuthenticatedUserEntity() {
+        CurrentUser currentUser = currentUserResolver.resolve();
+        return findOrCreateCurrentUser(currentUser);
     }
 
     private UserProfileResponseDto toUserProfileResponse(User user, CurrentUser currentUser) {
@@ -160,6 +209,28 @@ public class UserService {
     private void ensureUserIsActive(User user) {
         if (!user.isActive()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is deactivated");
+        }
+    }
+
+    private void ensureAdminCannotDeactivateSelf(User user) {
+        CurrentUser currentUser = currentUserResolver.resolve();
+        if (currentUser.keycloakId() != null
+                && user.getKeycloakId() != null
+                && currentUser.keycloakId().equals(user.getKeycloakId())) {
+            throw new BadRequestException("Admin users cannot deactivate their own account");
+        }
+    }
+
+    private void ensureAdminCannotDemoteSelf(User user, UserRole targetRole) {
+        if (targetRole != UserRole.USER) {
+            return;
+        }
+
+        CurrentUser currentUser = currentUserResolver.resolve();
+        if (currentUser.keycloakId() != null
+                && user.getKeycloakId() != null
+                && currentUser.keycloakId().equals(user.getKeycloakId())) {
+            throw new BadRequestException("Admin users cannot remove their own admin role");
         }
     }
 

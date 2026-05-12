@@ -102,8 +102,14 @@ export async function getMarketQuotes() {
   return getMarkets();
 }
 
-export async function getMarketBySymbol(symbol) {
-  const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}`);
+export async function getMarketTapeConfig() {
+  const { data } = await axiosClient.get("/api/v1/markets/tape/config");
+  return normalizeObjectPayload(data)?.symbols ?? [];
+}
+
+export async function getMarketBySymbol(symbol, options = {}) {
+  const params = options?.type ? { type: options.type } : undefined;
+  const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}`, { params });
   return normalizeObjectPayload(data);
 }
 
@@ -149,13 +155,16 @@ export async function getMarketsByType(type) {
 }
 
 export async function getMarketHistory(symbol, paramsOrRange) {
-  const params =
+  const params = {
+    ...(typeof paramsOrRange === "object" && paramsOrRange?.type ? { type: paramsOrRange.type } : {}),
+    ...(
     typeof paramsOrRange === "string"
       ? { range: paramsOrRange }
       : {
           period: paramsOrRange?.period,
           source: paramsOrRange?.source,
-        };
+        }),
+  };
 
   const url = `${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}/history`;
   console.log("[getMarketHistory] url:", url, "params:", params);
@@ -163,6 +172,12 @@ export async function getMarketHistory(symbol, paramsOrRange) {
     params,
   });
   return normalizeArrayPayload(data);
+}
+
+export function buildMarketDetailPath(symbol, instrumentType) {
+  const normalizedType = normalizeInstrumentType(instrumentType);
+  const query = normalizedType ? `?type=${encodeURIComponent(normalizedType)}` : "";
+  return `/markets/${encodeURIComponent(symbol)}${query}`;
 }
 
 export async function getMacroHistory(symbol, params = {}) {
@@ -253,18 +268,53 @@ function mapStockQuote(item) {
 }
 
 function mapFundQuote(item) {
+  const currentNav = toNumericValue(item.navValue);
+  const previousNav = toNumericValue(item.previousNavValue);
+  const changeRate =
+    currentNav !== null && previousNav !== null && previousNav !== 0
+      ? ((currentNav - previousNav) / previousNav) * 100
+      : null;
+
   return {
     symbol: item.fundCode,
     displayName: item.fundName ?? item.fundCode,
     price: item.navValue,
-    changeRate: item.changeRate ?? null,
+    changeRate,
     source: item.source ?? "TEFAS",
     instrumentType: "FUND",
     dataTimestamp: item.navDate,
     buyRate: null,
     sellRate: null,
     code: item.fundCode,
+    previousNavValue: item.previousNavValue ?? null,
+    fundType: item.fundType ?? null,
+    fonTurAciklama: item.fonTurAciklama ?? item.fundType ?? null,
+    riskDegeri: item.riskDegeri ?? null,
+    getiri1a: item.getiri1a ?? null,
+    getiri3a: item.getiri3a ?? null,
+    getiri6a: item.getiri6a ?? null,
+    getiriYb: item.getiriYb ?? null,
+    getiri1y: item.getiri1y ?? null,
+    getiri3y: item.getiri3y ?? null,
+    getiri5y: item.getiri5y ?? null,
   };
+}
+
+function toNumericValue(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeInstrumentType(value) {
+  if (value == null || value === "") {
+    return "";
+  }
+
+  return String(value).trim().toUpperCase();
 }
 
 function mapFuturesQuote(item) {

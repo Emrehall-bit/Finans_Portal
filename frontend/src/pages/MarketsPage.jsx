@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { getMacroHistory, getMarketsByType } from "../api/marketApi";
+import { buildMarketDetailPath, getMacroHistory, getMarketsByType } from "../api/marketApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
@@ -10,6 +10,15 @@ import { formatNumber } from "../utils/formatters";
 
 const CATEGORY_OPTIONS = ["FX", "CRYPTO", "STOCK", "FUND", "FUTURES", "BOND"];
 const MACRO_FROM_DATE = "2024-01-01";
+const FUND_RETURN_COLUMNS = [
+  { key: "getiri1a", labelKey: "markets.fundColumns.getiri1a", defaultLabel: "1 Ay" },
+  { key: "getiri3a", labelKey: "markets.fundColumns.getiri3a", defaultLabel: "3 Ay" },
+  { key: "getiri6a", labelKey: "markets.fundColumns.getiri6a", defaultLabel: "6 Ay" },
+  { key: "getiriYb", labelKey: "markets.fundColumns.getiriYb", defaultLabel: "Yılbaşı" },
+  { key: "getiri1y", labelKey: "markets.fundColumns.getiri1y", defaultLabel: "1 Yıl" },
+  { key: "getiri3y", labelKey: "markets.fundColumns.getiri3y", defaultLabel: "3 Yıl" },
+  { key: "getiri5y", labelKey: "markets.fundColumns.getiri5y", defaultLabel: "5 Yıl" },
+];
 
 export default function MarketsPage() {
   const { t, i18n } = useTranslation();
@@ -175,6 +184,7 @@ export default function MarketsPage() {
   );
 
   const isFxTable = categoryFilter === "FX";
+  const isFundTable = categoryFilter === "FUND";
 
   return (
     <div className="dashboard-stack market-terminal-page">
@@ -296,7 +306,63 @@ export default function MarketsPage() {
               <EmptyState title={t("markets.emptyTitle")} description={t("markets.emptyDescription")} />
             ) : null}
 
-            {!loading && !error && filteredQuotes.length > 0 && viewMode === "table" ? (
+            {!loading && !error && filteredQuotes.length > 0 && viewMode === "table" && isFundTable ? (
+              <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap fund-market-table-wrap">
+                <table className="finance-market-table fund-market-table">
+                  <thead>
+                    <tr>
+                      <th>{t("markets.columns.instrument")}</th>
+                      <th>{t("markets.fundColumns.umbrellaType", { defaultValue: "Şemsiye Fon Türü" })}</th>
+                      <th>{t("markets.fundColumns.risk", { defaultValue: "Risk" })}</th>
+                      <th>{t("markets.columns.lastPrice", { defaultValue: "Son Fiyat" })}</th>
+                      {FUND_RETURN_COLUMNS.map((column) => (
+                        <th key={column.key}>{t(column.labelKey, { defaultValue: column.defaultLabel })}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredQuotes.map((item) => (
+                      <tr key={`${item.symbol}-${item.source}-${item.marketCategory}`}>
+                        <td>
+                          <button
+                            type="button"
+                            className="finance-table-row-button"
+                            onClick={() => navigate(buildMarketDetailPath(item.symbol, item.instrumentType))}
+                          >
+                            <span className="finance-table-symbol fund-table-symbol">
+                              <strong>{item.code || item.symbol || "-"}</strong>
+                              <span>{item.displayName || item.instrumentType || "-"}</span>
+                            </span>
+                          </button>
+                        </td>
+                        <td>
+                          <div className="fund-table-type-cell">
+                            <strong>{item.fonTurAciklama || item.fundType || "-"}</strong>
+                            <span>{item.source || "TEFAS"}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`fund-risk-badge ${getRiskToneClass(item.riskDegeri)}`}>
+                            {formatFundRisk(item.riskDegeri)}
+                          </span>
+                        </td>
+                        <td className="fund-price-cell">
+                          <strong>{formatRate(item.price)}</strong>
+                          <span className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</span>
+                        </td>
+                        {FUND_RETURN_COLUMNS.map((column) => (
+                          <td key={`${item.symbol}-${column.key}`} className={getChangeToneClass(item[column.key])}>
+                            {formatFundReturn(item[column.key])}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
+            {!loading && !error && filteredQuotes.length > 0 && viewMode === "table" && !isFundTable ? (
               <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap">
                 <table className="finance-market-table">
                   <thead>
@@ -316,7 +382,7 @@ export default function MarketsPage() {
                           <button
                             type="button"
                             className="finance-table-row-button"
-                            onClick={() => navigate(`/markets/${encodeURIComponent(item.symbol)}`)}
+                            onClick={() => navigate(buildMarketDetailPath(item.symbol, item.instrumentType))}
                           >
                             <span className="finance-table-symbol">
                               <strong>{item.code || item.symbol || "-"}</strong>
@@ -336,14 +402,62 @@ export default function MarketsPage() {
               </div>
             ) : null}
 
-            {!loading && !error && filteredQuotes.length > 0 && viewMode === "cards" ? (
+            {!loading && !error && filteredQuotes.length > 0 && viewMode === "cards" && isFundTable ? (
+              <div className="market-card-grid markets-card-scroll-wrap fund-card-grid">
+                {filteredQuotes.map((item) => (
+                  <button
+                    key={`${item.symbol}-${item.source}-${item.marketCategory}-card`}
+                    type="button"
+                    className="market-quote-card fund-quote-card"
+                    onClick={() => navigate(buildMarketDetailPath(item.symbol, item.instrumentType))}
+                  >
+                    <div className="market-quote-card-top fund-quote-card-top">
+                      <div>
+                        <strong>{item.code || item.symbol || "-"}</strong>
+                        <p>{item.displayName || item.instrumentType || "-"}</p>
+                      </div>
+                      <span className={`fund-risk-badge ${getRiskToneClass(item.riskDegeri)}`}>
+                        {formatFundRisk(item.riskDegeri)}
+                      </span>
+                    </div>
+
+                    <div className="fund-quote-card-meta">
+                      <span>{t("markets.fundColumns.umbrellaType", { defaultValue: "Şemsiye Fon Türü" })}</span>
+                      <strong>{item.fonTurAciklama || item.fundType || "-"}</strong>
+                    </div>
+
+                    <div className="market-quote-card-body fund-quote-card-body">
+                      <div>
+                        <span className="eyebrow">{t("markets.columns.lastPrice", { defaultValue: "Son Fiyat" })}</span>
+                        <strong>{formatRate(item.price)}</strong>
+                      </div>
+                      <div>
+                        <span className="eyebrow">{t("markets.columns.change")}</span>
+                        <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="fund-return-grid">
+                      {FUND_RETURN_COLUMNS.map((column) => (
+                        <div key={`${item.symbol}-${column.key}`} className="fund-return-grid-item">
+                          <span>{t(column.labelKey, { defaultValue: column.defaultLabel })}</span>
+                          <strong className={getChangeToneClass(item[column.key])}>{formatFundReturn(item[column.key])}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {!loading && !error && filteredQuotes.length > 0 && viewMode === "cards" && !isFundTable ? (
               <div className="market-card-grid markets-card-scroll-wrap">
                 {filteredQuotes.map((item) => (
                   <button
                     key={`${item.symbol}-${item.source}-${item.marketCategory}-card`}
                     type="button"
                     className="market-quote-card"
-                    onClick={() => navigate(`/markets/${encodeURIComponent(item.symbol)}`)}
+                    onClick={() => navigate(buildMarketDetailPath(item.symbol, item.instrumentType))}
                   >
                     <div className="market-quote-card-top">
                       <div>
@@ -498,6 +612,27 @@ function formatMarketChange(value) {
   return `%${numeric.toFixed(2)}`;
 }
 
+function formatFundReturn(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) {
+    return String(value);
+  }
+
+  return `%${numeric.toFixed(2)}`;
+}
+
+function formatFundRisk(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  return `${value}/7`;
+}
+
 function formatRate(value) {
   if (value === null || value === undefined || value === "") {
     return "-";
@@ -542,6 +677,23 @@ function getChangeToneClass(value) {
   }
 
   return Number(value) >= 0 ? "tone-positive" : "tone-negative";
+}
+
+function getRiskToneClass(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "neutral";
+  }
+
+  if (numeric >= 6) {
+    return "high";
+  }
+
+  if (numeric >= 4) {
+    return "medium";
+  }
+
+  return "low";
 }
 
 

@@ -34,13 +34,19 @@ public class JpaMarketQueryService implements MarketQueryService {
 
     @Override
     public Optional<MarketSnapshot> findBySymbol(String symbol) {
-        return marketInstrumentRepository.findByInstrumentCodeIgnoreCase(symbol)
+        return findBySymbol(symbol, null);
+    }
+
+    @Override
+    public Optional<MarketSnapshot> findBySymbol(String symbol, com.emrehalli.financeportal.market.domain.enums.InstrumentType instrumentType) {
+        return resolveInstrument(symbol, instrumentType)
                 .flatMap(this::mapLatestSnapshot);
     }
 
     @Override
     public List<HistoricalPrice> getHistory(String symbol, SourceName sourceName, LocalDate from, LocalDate to) {
-        Optional<MarketInstrument> instrumentOptional = marketInstrumentRepository.findByInstrumentCodeIgnoreCase(symbol);
+        Optional<MarketInstrument> instrumentOptional = marketInstrumentRepository
+                .findFirstByInstrumentCodeIgnoreCaseOrderByCreatedAtAsc(symbol);
         if (instrumentOptional.isEmpty()) {
             return List.of();
         }
@@ -74,6 +80,18 @@ public class JpaMarketQueryService implements MarketQueryService {
                         price.getClosePrice()
                 ))
                 .toList();
+    }
+
+    private Optional<MarketInstrument> resolveInstrument(
+            String symbol,
+            com.emrehalli.financeportal.market.domain.enums.InstrumentType instrumentType
+    ) {
+        if (instrumentType != null) {
+            return marketInstrumentRepository
+                    .findFirstByInstrumentCodeIgnoreCaseAndInstrumentTypeOrderByCreatedAtAsc(symbol, instrumentType);
+        }
+
+        return marketInstrumentRepository.findFirstByInstrumentCodeIgnoreCaseOrderByCreatedAtAsc(symbol);
     }
 
     private Optional<MarketSnapshot> mapLatestSnapshot(MarketInstrument instrument) {

@@ -171,7 +171,7 @@ public class FxService {
 
     private MarketInstrument findOrCreateInstrument(SourceName sourceName, String currencyCode, FxPriceType priceType) {
         String instrumentCode = buildInstrumentCode(sourceName, currencyCode, priceType);
-        return marketInstrumentRepository.findByInstrumentCodeIgnoreCase(instrumentCode)
+        return marketInstrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName(instrumentCode, sourceName)
                 .orElseGet(() -> marketInstrumentRepository.save(MarketInstrument.builder()
                         .instrumentCode(instrumentCode)
                         .instrumentName(currencyCode + " " + priceType.name())
@@ -369,7 +369,10 @@ public class FxService {
             return null;
         }
 
-        return marketInstrumentRepository.findByInstrumentCodeIgnoreCase(buildInstrumentCode(sourceName, currencyCode, FxPriceType.SELL))
+        return marketInstrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName(
+                        buildInstrumentCode(sourceName, currencyCode, FxPriceType.SELL),
+                        sourceName
+                )
                 .map(sellInstrument -> MarketPrice.builder()
                         .instrument(sellInstrument)
                         .sourceName(sourceName)

@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { getMarketQuotes } from "../../api/marketApi";
+import { getMarketQuotes, getMarketTapeConfig } from "../../api/marketApi";
+import {
+  getNotifications,
+  getUnreadNotificationCount,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+} from "../../api/notificationApi";
+import { extractErrorMessage } from "../../api/responseUtils";
 import { useTheme } from "../../theme/ThemeContext";
-import { formatNumber } from "../../utils/formatters";
+import { formatDateTime, formatNumber } from "../../utils/formatters";
 
 const PRIORITY_SYMBOLS = [
   "XU100",
@@ -31,17 +38,39 @@ function getInitials(user) {
     .join("");
 }
 
+function getNotificationAudienceLabel(notification, t) {
+  return notification?.targetType === "BROADCAST"
+    ? t("layout.notificationAudienceBroadcast")
+    : t("layout.notificationAudiencePersonal");
+}
+
+function getNotificationTypeLabel(notification, t) {
+  return t(`layout.notificationTypes.${notification?.type ?? "SYSTEM"}`);
+}
+
 export default function AppLayout() {
   const { i18n, t } = useTranslation();
-  const { isAdmin, isAuthenticated, login, logout, register, user } = useAuth();
+  const { isAdmin, isAuthenticated, login, logout, register, role, user } = useAuth();
   const { setThemePreference, themePreference } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [tickerQuotes, setTickerQuotes] = useState([]);
+  const [marketTapeSymbols, setMarketTapeSymbols] = useState(PRIORITY_SYMBOLS);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
+  const [markingAllRead, setMarkingAllRead] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
   const userMenuRef = useRef(null);
+  const notificationMenuRef = useRef(null);
   const displayName = user?.fullName || user?.email || t("layout.guest");
-  const profileLabel = isAuthenticated ? t("layout.connectedAccount") : t("layout.openAccess");
+  const profileLabel = isAuthenticated ? t(`layout.roleLabels.${role || "USER"}`) : t("layout.openAccess");
+  const showAdminTopbarLabel = isAdmin && location.pathname !== "/admin";
 
   const navGroups = useMemo(
     () => [
@@ -66,24 +95,36 @@ export default function AppLayout() {
   useEffect(() => {
     let active = true;
 
-    async function loadTicker() {
+    async function loadTickerState() {
       try {
-        const data = await getMarketQuotes();
+        const [data, symbols] = await Promise.all([
+          getMarketQuotes(),
+          getMarketTapeConfig().catch(() => PRIORITY_SYMBOLS),
+        ]);
         if (!active) {
           return;
         }
         setTickerQuotes(data ?? []);
+        setMarketTapeSymbols(Array.isArray(symbols) && symbols.length > 0 ? symbols : PRIORITY_SYMBOLS);
       } catch {
         if (active) {
           setTickerQuotes([]);
+          setMarketTapeSymbols(PRIORITY_SYMBOLS);
         }
       }
     }
 
-    loadTicker();
+    loadTickerState();
+
+    const handleConfigUpdated = () => {
+      loadTickerState();
+    };
+
+    window.addEventListener("market-tape-config-updated", handleConfigUpdated);
 
     return () => {
       active = false;
+      window.removeEventListener("market-tape-config-updated", handleConfigUpdated);
     };
   }, []);
 
@@ -92,7 +133,9 @@ export default function AppLayout() {
       return [];
     }
 
-    const priorityMatches = PRIORITY_SYMBOLS.map((symbol) =>
+    const configuredSymbols = marketTapeSymbols.length > 0 ? marketTapeSymbols : PRIORITY_SYMBOLS;
+
+    const priorityMatches = configuredSymbols.map((symbol) =>
       tickerQuotes.find((item) => item.symbol?.toUpperCase() === symbol),
     ).filter(Boolean);
 
@@ -113,7 +156,7 @@ export default function AppLayout() {
     });
 
     return unique.slice(0, 10);
-  }, [tickerQuotes]);
+  }, [marketTapeSymbols, tickerQuotes]);
 
   const resolvedNavGroups = useMemo(() => {
     if (!isAdmin) {
@@ -129,15 +172,74 @@ export default function AppLayout() {
   }, [isAdmin, navGroups, t]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setNotificationMenuOpen(false);
+      setNotificationsError("");
+      setSelectedNotification(null);
+      setShowWelcomeBanner(false);
+      return;
+    }
+
+    let active = true;
+
+    async function loadUnreadCount() {
+      try {
+        const count = await getUnreadNotificationCount();
+        if (active) {
+          setUnreadCount(count);
+        }
+      } catch {
+        if (active) {
+          setUnreadCount(0);
+        }
+      }
+    }
+
+    loadUnreadCount();
+
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      setShowWelcomeBanner(false);
+      return;
+    }
+
+    const identity = user.keycloakId || user.email || user.fullName;
+    if (!identity) {
+      return;
+    }
+
+    const welcomeKey = `welcome-banner-seen:${identity}`;
+    const alreadySeen = window.sessionStorage.getItem(welcomeKey);
+    if (alreadySeen === "1") {
+      setShowWelcomeBanner(false);
+      return;
+    }
+
+    window.sessionStorage.setItem(welcomeKey, "1");
+    setShowWelcomeBanner(true);
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
     function handlePointerDown(event) {
       if (!userMenuRef.current?.contains(event.target)) {
         setUserMenuOpen(false);
+      }
+      if (!notificationMenuRef.current?.contains(event.target)) {
+        setNotificationMenuOpen(false);
       }
     }
 
     function handleEscape(event) {
       if (event.key === "Escape") {
         setUserMenuOpen(false);
+        setNotificationMenuOpen(false);
       }
     }
 
@@ -149,6 +251,39 @@ export default function AppLayout() {
       document.removeEventListener("keydown", handleEscape);
     };
   }, []);
+
+  useEffect(() => {
+    if (!notificationMenuOpen || !isAuthenticated) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadNotifications() {
+      try {
+        setNotificationsLoading(true);
+        setNotificationsError("");
+        const rows = await getNotifications();
+        if (active) {
+          setNotifications(rows);
+        }
+      } catch (error) {
+        if (active) {
+          setNotificationsError(extractErrorMessage(error, t("layout.notificationsLoadError")));
+        }
+      } finally {
+        if (active) {
+          setNotificationsLoading(false);
+        }
+      }
+    }
+
+    loadNotifications();
+
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, notificationMenuOpen, t]);
 
   function handleProtectedNavigation(event, item) {
     if (!item.requiresAuth || isAuthenticated) {
@@ -173,6 +308,41 @@ export default function AppLayout() {
 
     setUserMenuOpen(false);
     handleLoginClick();
+  }
+
+  async function handleNotificationClick(notification) {
+    if (!notification) {
+      return;
+    }
+
+    setSelectedNotification(notification);
+
+    if (notification.read) {
+      return;
+    }
+
+    try {
+      const updated = await markNotificationAsRead(notification.id);
+      setNotifications((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setSelectedNotification(updated);
+      setUnreadCount((current) => Math.max(0, current - 1));
+    } catch (error) {
+      setNotificationsError(extractErrorMessage(error, t("layout.notificationsUpdateError")));
+    }
+  }
+
+  async function handleMarkAllNotificationsAsRead() {
+    try {
+      setMarkingAllRead(true);
+      setNotificationsError("");
+      await markAllNotificationsAsRead();
+      setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      setNotificationsError(extractErrorMessage(error, t("layout.notificationsUpdateError")));
+    } finally {
+      setMarkingAllRead(false);
+    }
   }
 
   return (
@@ -260,11 +430,12 @@ export default function AppLayout() {
 
         <div className="app-main">
           <header className="topbar">
-            <div className="topbar-actions">
-              <div className="topbar-status-pill">
-                <span className="live-dot" />
-                <strong>{t("layout.liveFeed")}</strong>
+            {showAdminTopbarLabel ? (
+              <div className="topbar-page-label">
+                <strong>{t("nav.admin")}</strong>
               </div>
+            ) : null}
+            <div className="topbar-actions">
 
               <div className="theme-switcher theme-switcher-inline" role="group" aria-label={t("common.language")}>
                 <div className="theme-switcher-options">
@@ -286,9 +457,87 @@ export default function AppLayout() {
                 </div>
               </div>
 
-              <button type="button" className="icon-button" aria-label={t("layout.notifications")}>
-                1
-              </button>
+              <div className="topbar-user-shell" ref={notificationMenuRef}>
+                <button
+                  type="button"
+                  className="icon-button notification-trigger"
+                  aria-label={t("layout.notifications")}
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      handleLoginClick();
+                      return;
+                    }
+                    setNotificationMenuOpen((current) => !current);
+                    setUserMenuOpen(false);
+                  }}
+                >
+                  <span className="notification-trigger-icon" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true">
+                      <path d="M20 6H4C3.44772 6 3 6.44772 3 7V17C3 17.5523 3.44772 18 4 18H20C20.5523 18 21 17.5523 21 17V7C21 6.44772 20.5523 6 20 6Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M3 7L12 13L21 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                  {isAuthenticated && unreadCount > 0 ? (
+                    <span className="notification-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+                  ) : null}
+                </button>
+
+                {notificationMenuOpen ? (
+                  <div className="topbar-user-menu notification-menu" role="menu" aria-label={t("layout.notifications")}>
+                    <div className="notification-menu-head">
+                      <div>
+                        <span className="topbar-user-menu-label">{t("layout.notifications")}</span>
+                        <strong>{t("layout.notificationsSummary", { count: unreadCount })}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        className="topbar-user-menu-item notification-menu-action"
+                        onClick={handleMarkAllNotificationsAsRead}
+                        disabled={markingAllRead || notifications.length === 0}
+                      >
+                        {markingAllRead ? t("layout.notificationsMarkingAll") : t("layout.notificationsMarkAll")}
+                      </button>
+                    </div>
+
+                    {notificationsLoading ? (
+                      <div className="status-box loading">{t("layout.notificationsLoading")}</div>
+                    ) : notificationsError ? (
+                      <div className="status-box error">{notificationsError}</div>
+                    ) : notifications.length === 0 ? (
+                      <div className="status-box empty">
+                        <strong>{t("layout.notificationsEmptyTitle")}</strong>
+                        <p>{t("layout.notificationsEmptyDescription")}</p>
+                      </div>
+                    ) : (
+                      <div className="notification-menu-list">
+                        {notifications.map((notification) => (
+                          <button
+                            key={notification.id}
+                            type="button"
+                            className={`notification-menu-item${notification.read ? "" : " unread"}`}
+                            onClick={() => handleNotificationClick(notification)}
+                          >
+                            <div className="notification-menu-item-top">
+                              <strong>{notification.title}</strong>
+                              <div className="notification-menu-badges">
+                                <span className={`notification-menu-badge${notification.targetType === "BROADCAST" ? " broadcast" : " personal"}`}>
+                                  {getNotificationAudienceLabel(notification, t)}
+                                </span>
+                                <span className="notification-menu-type">{getNotificationTypeLabel(notification, t)}</span>
+                              </div>
+                            </div>
+                            <p>{notification.message}</p>
+                            <div className="notification-menu-item-meta">
+                              <span>{formatDateTime(notification.createdAt)}</span>
+                              <span>{notification.read ? t("layout.notificationRead") : t("layout.notificationUnread")}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
 
               <div className="topbar-user-shell" ref={userMenuRef}>
                 <button
@@ -300,7 +549,7 @@ export default function AppLayout() {
                 >
                   <div className="topbar-user-copy">
                     <strong>{displayName}</strong>
-                    <span>{isAuthenticated ? t("layout.analystMode") : t("layout.guestMode")}</span>
+                    <span>{isAuthenticated ? t(`layout.roleLabels.${role || "USER"}`) : t("layout.guestMode")}</span>
                   </div>
                   <div className="profile-avatar small">{getInitials(user)}</div>
                 </button>
@@ -391,6 +640,21 @@ export default function AppLayout() {
           </header>
 
           <main className="page-content">
+            {showWelcomeBanner ? (
+              <section className="welcome-banner panel-surface" aria-live="polite">
+                <div className="welcome-banner-copy">
+                  <span className="eyebrow">{t("layout.connectedAccount")}</span>
+                  <strong>{t("layout.welcomeUser", { name: displayName })}</strong>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button welcome-banner-close"
+                  onClick={() => setShowWelcomeBanner(false)}
+                >
+                  {t("common.close")}
+                </button>
+              </section>
+            ) : null}
             <Outlet />
           </main>
         </div>
@@ -415,6 +679,45 @@ export default function AppLayout() {
               <button type="button" onClick={handleLoginClick}>
                 {t("layout.login")}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {selectedNotification ? (
+        <div className="modal-backdrop" role="presentation" onClick={() => setSelectedNotification(null)}>
+          <div
+            className="auth-modal notification-detail-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notification-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="notification-detail-head">
+              <div>
+                <p className="eyebrow">{t("layout.notifications")}</p>
+                <h3 id="notification-detail-title">{selectedNotification.title}</h3>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => setSelectedNotification(null)}>
+                {t("common.close")}
+              </button>
+            </div>
+
+            <div className="notification-detail-badges">
+              <span className={`notification-menu-badge${selectedNotification.targetType === "BROADCAST" ? " broadcast" : " personal"}`}>
+                {getNotificationAudienceLabel(selectedNotification, t)}
+              </span>
+              <span className="notification-menu-type">{getNotificationTypeLabel(selectedNotification, t)}</span>
+              <span className={`notification-detail-state${selectedNotification.read ? " read" : " unread"}`}>
+                {selectedNotification.read ? t("layout.notificationRead") : t("layout.notificationUnread")}
+              </span>
+            </div>
+
+            <p className="notification-detail-message">{selectedNotification.message}</p>
+
+            <div className="notification-detail-meta">
+              <span>{t("layout.notificationDetailDate")}</span>
+              <strong>{formatDateTime(selectedNotification.createdAt)}</strong>
             </div>
           </div>
         </div>

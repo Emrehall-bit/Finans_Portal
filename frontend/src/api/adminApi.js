@@ -1,4 +1,5 @@
 ﻿import axiosClient from "./axiosClient";
+import { getMarketsByType } from "./marketApi";
 import { normalizeApiResponse } from "./responseUtils";
 
 export async function triggerStockFetch() {
@@ -49,4 +50,70 @@ export async function triggerTcmbHistoryBackfill() {
 export async function getTcmbHistoryBackfillStatus() {
   const response = await axiosClient.get("/api/v1/admin/markets/fx/tcmb/history/backfill/status");
   return normalizeApiResponse(response).data ?? null;
+}
+
+export async function triggerTefasFundBackfill(payload) {
+  const response = await axiosClient.post("/api/v1/admin/funds/backfill", payload);
+  return normalizeApiResponse(response);
+}
+
+export async function triggerTefasFundFetch() {
+  const response = await axiosClient.post("/api/v1/admin/funds/fetch");
+  return normalizeApiResponse(response);
+}
+
+export async function getTefasFundFetchStatus() {
+  const response = await axiosClient.get("/api/v1/admin/funds/fetch/status");
+  return normalizeApiResponse(response).data ?? null;
+}
+
+export async function getTefasFundBackfillStatus() {
+  const response = await axiosClient.get("/api/v1/admin/funds/backfill/status");
+  return normalizeApiResponse(response).data ?? null;
+}
+
+export async function testTefasFundConnection() {
+  const response = await axiosClient.get("/api/v1/admin/funds/test-connection");
+  return normalizeApiResponse(response).data ?? null;
+}
+
+export async function getMarketTapeConfig() {
+  const response = await axiosClient.get("/api/v1/markets/tape/config");
+  return normalizeApiResponse(response).data?.symbols ?? [];
+}
+
+export async function updateMarketTapeConfig(symbols) {
+  const response = await axiosClient.put("/api/v1/admin/markets/tape/config", { symbols });
+  return normalizeApiResponse(response).data ?? null;
+}
+
+export async function getMarketTapeCandidates() {
+  const [fx, crypto, stocks, funds] = await Promise.all([
+    getMarketsByType("FX").catch(() => []),
+    getMarketsByType("CRYPTO").catch(() => []),
+    getMarketsByType("STOCK").catch(() => []),
+    getMarketsByType("FUND").catch(() => []),
+  ]);
+
+  return [...fx, ...crypto, ...stocks, ...funds];
+}
+
+export async function getAdminAuditLogs(params = {}) {
+  const searchParams = new URLSearchParams();
+
+  if (params.action) {
+    searchParams.set("action", params.action);
+  }
+  if (params.targetUserId) {
+    searchParams.set("targetUserId", params.targetUserId);
+  }
+  if (params.actorUserId) {
+    searchParams.set("actorUserId", params.actorUserId);
+  }
+  searchParams.set("page", String(params.page ?? 0));
+  searchParams.set("size", String(params.size ?? 20));
+
+  const response = await axiosClient.get(`/api/v1/admin/audit-logs?${searchParams.toString()}`);
+  const data = normalizeApiResponse(response).data;
+  return data ?? { content: [], totalElements: 0, totalPages: 0, size: 0, number: 0 };
 }

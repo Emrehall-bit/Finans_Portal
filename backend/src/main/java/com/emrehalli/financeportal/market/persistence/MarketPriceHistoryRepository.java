@@ -102,6 +102,23 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
             Instant to
     );
 
+    @Query(value = """
+            select distinct on (mph.instrument_id) mph.*
+            from market_price_history mph
+            join (
+                select distinct on (mp.instrument_id) mp.instrument_id, mp.price_timestamp
+                from market_prices mp
+                where mp.instrument_id in (:instrumentIds)
+                order by mp.instrument_id, mp.price_timestamp desc, mp.id desc
+            ) latest on latest.instrument_id = mph.instrument_id
+            where mph.instrument_id in (:instrumentIds)
+              and mph.interval_type = 'ONE_DAY'
+              and mph.source_name = 'TEFAS'
+              and mph.price_timestamp < date_trunc('day', latest.price_timestamp)
+            order by mph.instrument_id, mph.price_timestamp desc, mph.id desc
+            """, nativeQuery = true)
+    List<MarketPriceHistory> findPreviousClosesForInstruments(@Param("instrumentIds") List<Long> instrumentIds);
+
     boolean existsByInstrumentAndIntervalTypeAndPriceTimestamp(
             MarketInstrument instrument,
             IntervalType intervalType,
