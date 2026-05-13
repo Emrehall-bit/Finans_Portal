@@ -17,6 +17,13 @@
     "rows": "{{count}} rows",
     "loading": "Loading..."
   },
+  "pagination": {
+    "page": "Page",
+    "totalNews": "{{count}} news items",
+    "pagesAria": "Pagination pages",
+    "previous": "Previous",
+    "next": "Next"
+  },
   "nav": {
     "mainMenu": "Main Menu",
     "dashboard": "Dashboard",
@@ -217,7 +224,8 @@
     "categories": "Categories",
     "providers": "Sources",
     "language": "Language",
-    "all": "All"
+    "all": "All",
+    "openNews": "Open news"
   },
   "markets": {
     "eyebrow": "Markets",
@@ -467,7 +475,14 @@
   "reports": {
     "eyebrow": "Reports",
     "title": "Reports",
-    "description": "Ready-made summary cards for portfolio and market flow reports.",
+    "description": "An export and analysis hub that summarizes portfolio and market flow in one place.",
+    "rangeLabel": "Report date range",
+    "ranges": {
+      "today": "Today",
+      "week": "7D",
+      "month": "30D",
+      "ytd": "YTD"
+    },
     "loading": "Loading report data...",
     "loadError": "Report data could not be loaded.",
     "portfolioEyebrow": "Portfolio Report",
@@ -480,10 +495,14 @@
     "symbolCount": "{{count}} symbols",
     "marketEmptyTitle": "Market report is not ready",
     "marketEmptyDescription": "No reportable data was returned from the market service.",
-    "pdf": "PDF export",
-    "excel": "Excel export",
+    "pdf": "Create PDF Report",
+    "excel": "Export to Excel",
     "pdfHint": "TODO: backend PDF export endpoint is required",
     "excelHint": "TODO: backend Excel export endpoint is required",
+    "reportablePortfolios": "Reportable portfolios",
+    "noRecentPortfolio": "No recent portfolio",
+    "historyEmptyTitle": "No recently created reports",
+    "historyEmptyDescription": "PDF or Excel reports will be listed here after you create them.",
     "cards": {
       "portfolioCount": "Portfolio count",
       "portfolioCountSubtitle": "Reportable records",
@@ -588,6 +607,21 @@
     "running": "Running...",
     "progress": "Processing: {{processed}} / {{total}}",
     "completed": "Completed!",
+    "longRunningWarning": "This operation may take a while.",
+    "status": {
+      "eyebrow": "Admin Status",
+      "title": "Operations summary",
+      "totalSymbols": "Total symbols",
+      "selectedTapeSymbols": "Selected tape symbols",
+      "lastOperationTime": "Last operation time",
+      "lastOperationStatus": "Last operation status"
+    },
+    "sections": {
+      "liveEyebrow": "Live Data Operations",
+      "liveTitle": "Live data operations",
+      "historyEyebrow": "Historical Data / Backfill",
+      "historyTitle": "Backfill operations"
+    },
     "fundFetch": {
       "running": "Fetching TEFAS fund data...",
       "completed": "Completed. Processed funds: {{processedFunds}}, saved funds: {{savedFunds}}"
@@ -627,7 +661,9 @@
       "status": {
         "label": "Status",
         "ready": "Ready",
-        "running": "Running"
+        "running": "Running",
+        "completed": "Completed",
+        "error": "Error"
       }
     },
     "cards": {
@@ -832,8 +868,8 @@
   },
   "profile": {
     "eyebrow": "Profile / Settings",
-    "title": "Account Settings",
-    "description": "Manage user details, preferences, and Keycloak session state.",
+    "title": "Profile and Preferences",
+    "description": "Manage your personal profile, account preferences, and community presence.",
     "logout": "Log Out",
     "loading": "Loading profile...",
     "loadError": "Profile details could not be loaded.",
@@ -842,11 +878,14 @@
     "userInfo": "User Details",
     "noUserName": "No user details",
     "noEmail": "No email available",
+    "bio": "Bio",
+    "badges": "Badges",
     "role": "Role",
     "authProvider": "Authentication Provider",
     "createdAt": "Account Created",
     "keycloakId": "Keycloak ID",
     "settings": "Settings",
+    "accountSettingsTitle": "Account settings",
     "preferencesTitle": "Profile and preferences",
     "selfService": "Self-service",
     "fullName": "Full Name",
@@ -859,9 +898,29 @@
     "activeTheme": "Active theme:",
     "saving": "Saving...",
     "saveChanges": "Save changes",
+    "community": {
+      "eyebrow": "Community",
+      "title": "Community profile",
+      "posts": "Posts",
+      "comments": "Comments",
+      "likes": "Likes",
+      "followers": "Followers"
+    },
+    "interactions": {
+      "eyebrow": "Activity",
+      "title": "Recent interactions",
+      "emptyTitle": "No recent interactions",
+      "emptyDescription": "Your activity will appear here when you use forum and community features."
+    },
+    "security": {
+      "eyebrow": "Security",
+      "title": "Account security",
+      "accountStatus": "Account status"
+    },
     "session": {
       "eyebrow": "Keycloak Session",
       "title": "Session details",
+      "technicalTitle": "Technical session information",
       "active": "Active",
       "inactive": "Inactive",
       "sessionState": "Session State",
@@ -1002,7 +1061,7 @@
       "instrument": "Select instrument",
       "instrumentPlaceholder": "Select instrument",
       "date": "Select date",
-      "amount": "Enter amount",
+      "amount": "Enter units/lots",
       "submit": "What would it be worth today?",
       "submitting": "Calculating...",
       "emptyTitle": "Past simulation is ready",
@@ -1014,7 +1073,9 @@
         "currentPrice": "Current price",
         "quantity": "Purchasable quantity",
         "quantitySubtitle": "Hypothetical lot/unit",
-        "todayValue": "Today's value"
+        "todayValue": "Today's value",
+        "calculatedQuantity": "Calculated quantity: {{value}} units",
+        "netProfitLoss": "Net gain / loss"
       }
     },
     "future": {

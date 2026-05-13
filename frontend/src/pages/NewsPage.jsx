@@ -7,6 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import PageHeader from "../components/common/PageHeader";
+import PaginationControls from "../components/common/PaginationControls";
 import NewsCard from "../components/news/NewsCard";
 import NewsFilterDrawer from "../components/news/NewsFilterDrawer";
 import NewsFeedSkeleton from "../components/news/NewsFeedSkeleton";
@@ -14,9 +15,9 @@ import NewsSidebarFilters from "../components/news/NewsSidebarFilters";
 import NewsTopBar from "../components/news/NewsTopBar";
 import { formatNewsCategoryLabel, getNewsProviderLabel } from "../components/news/newsCardUtils";
 import { getStoredNewsLanguage, persistNewsLanguage } from "./newsLanguagePreference";
-import { buildNewsQueryParams } from "./newsPageQueryUtils";
+import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
-const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
 const KNOWN_PROVIDERS = ["FINNHUB", "AA_RSS", "INVESTING_RSS"];
 const KNOWN_CATEGORIES = ["business", "ECONOMY", "top news", "general", "company"];
 const INITIAL_NEWS_PAGE = {
@@ -38,7 +39,6 @@ export default function NewsPage() {
   const defaultLanguage = getStoredNewsLanguage();
   const [newsPage, setNewsPage] = useState(INITIAL_NEWS_PAGE);
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({ keyword: "", category: "", provider: "", language: defaultLanguage });
   const [appliedFilters, setAppliedFilters] = useState({ keyword: "", category: "", provider: "", language: defaultLanguage });
@@ -56,11 +56,7 @@ export default function NewsPage() {
 
     async function loadNews() {
       try {
-        if (currentPage === 0) {
-          setLoading(true);
-        } else {
-          setLoadingMore(true);
-        }
+        setLoading(true);
         setError("");
         const requestParams = buildNewsQueryParams(appliedFilters, currentPage, appliedSortBy);
         const result = await getNews(requestParams);
@@ -69,29 +65,7 @@ export default function NewsPage() {
           return;
         }
 
-        setNewsPage((previous) => {
-          if (currentPage === 0) {
-            return result;
-          }
-
-          const mergedContent = [...(previous.content ?? []), ...(result.content ?? [])];
-          const dedupedContent = [];
-          const seen = new Set();
-
-          mergedContent.forEach((item) => {
-            const key = item?.id || item?.externalId || item?.url;
-            if (!key || seen.has(key)) {
-              return;
-            }
-            seen.add(key);
-            dedupedContent.push(item);
-          });
-
-          return {
-            ...result,
-            content: dedupedContent,
-          };
-        });
+        setNewsPage(result);
       } catch (err) {
         if (!active) {
           return;
@@ -103,7 +77,6 @@ export default function NewsPage() {
       } finally {
         if (active) {
           setLoading(false);
-          setLoadingMore(false);
         }
       }
     }
@@ -305,11 +278,19 @@ export default function NewsPage() {
     }
   }
 
-  function handleLoadMore() {
-    if (loading || loadingMore || newsPage.last || !newsPage.hasNext) {
+  function handlePageChange(page) {
+    if (loading || page === currentPage || page < 0 || page >= newsPage.totalPages) {
       return;
     }
-    setCurrentPage((prev) => prev + 1);
+    setCurrentPage(page);
+  }
+
+  function handlePreviousPage() {
+    handlePageChange(currentPage - 1);
+  }
+
+  function handleNextPage() {
+    handlePageChange(currentPage + 1);
   }
 
   return (
@@ -383,17 +364,19 @@ export default function NewsPage() {
             </section>
           ) : null}
 
-          {!loading && !error && items.length > 0 && newsPage.hasNext ? (
-            <div className="news-load-more-wrap">
-              <button
-                type="button"
-                className="news-load-more-button"
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-              >
-                {loadingMore ? t("news.loadingMore") : t("news.loadMore")}
-              </button>
-            </div>
+          {!error && newsPage.totalPages > 1 ? (
+            <PaginationControls
+              className="news-pagination-card-bottom"
+              currentPage={currentPage}
+              totalPages={newsPage.totalPages}
+              totalElements={newsPage.totalElements}
+              loading={loading}
+              isFirstPage={newsPage.first || currentPage === 0}
+              isLastPage={newsPage.last || currentPage >= newsPage.totalPages - 1}
+              onPrevious={handlePreviousPage}
+              onNext={handleNextPage}
+              onPageChange={handlePageChange}
+            />
           ) : null}
         </div>
       </div>

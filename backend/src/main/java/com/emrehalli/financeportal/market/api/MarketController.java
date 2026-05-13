@@ -153,7 +153,9 @@ public class MarketController {
                                 .toList();
                     }
 
-                    return List.<PriceHistoryDto>of();
+                    return getStoredHistory(instrument, sourceName, resolvedFrom, resolvedTo).stream()
+                            .map(this::toDto)
+                            .toList();
                 })
                 .orElse(List.of());
 
@@ -162,6 +164,41 @@ public class MarketController {
                 .message("OK")
                 .data(data)
                 .build();
+    }
+
+    private List<MarketPriceHistory> getStoredHistory(
+            MarketInstrument instrument,
+            SourceName sourceName,
+            Instant resolvedFrom,
+            Instant resolvedTo
+    ) {
+        if (sourceName == null) {
+            return historyRepository.findByInstrumentAndIntervalTypeAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+                    instrument,
+                    IntervalType.ONE_DAY,
+                    resolvedFrom,
+                    resolvedTo
+            );
+        }
+
+        List<MarketPriceHistory> sourceHistory = historyRepository.findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+                instrument,
+                IntervalType.ONE_DAY,
+                sourceName,
+                resolvedFrom,
+                resolvedTo
+        );
+
+        if (!sourceHistory.isEmpty()) {
+            return sourceHistory;
+        }
+
+        return historyRepository.findByInstrumentAndIntervalTypeAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+                instrument,
+                IntervalType.ONE_DAY,
+                resolvedFrom,
+                resolvedTo
+        );
     }
 
     private java.util.Optional<MarketInstrument> resolveInstrument(String symbol, InstrumentType type) {

@@ -6,6 +6,7 @@ import {
   formatChartDate,
   formatSignalLabel,
   formatTrendLabel,
+  resolveTrendDirection,
 } from "../market-detail/marketDetailUtils";
 
 export const ANALYSIS_RANGE_PRESETS = [
@@ -16,7 +17,16 @@ export const ANALYSIS_RANGE_PRESETS = [
   { key: "MAX", days: 3650 },
 ];
 
-export { buildChartData, buildPresetRange, DEFAULT_INDICATORS, formatAxisNumber, formatChartDate, formatSignalLabel, formatTrendLabel };
+export {
+  buildChartData,
+  buildPresetRange,
+  DEFAULT_INDICATORS,
+  formatAxisNumber,
+  formatChartDate,
+  formatSignalLabel,
+  formatTrendLabel,
+  resolveTrendDirection,
+};
 
 export function buildComparisonData(series = []) {
   const grouped = new Map();

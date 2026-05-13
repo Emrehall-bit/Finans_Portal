@@ -1,3 +1,5 @@
+export const NEWS_PAGE_SIZE = 12;
+
 export const NEWS_SORT_OPTIONS = [
   { value: "publishedAt", label: "En yeni" },
   { value: "importanceScore", label: "Onemli haberler" },
@@ -11,7 +13,7 @@ export function buildNewsQueryParams(filters, page, sortBy = "publishedAt") {
       provider: filters.provider || undefined,
       language: filters.language || undefined,
       page,
-      size: 20,
+      size: NEWS_PAGE_SIZE,
       sortBy,
       sortDirection: "desc",
     }).filter(([, value]) => value !== undefined)

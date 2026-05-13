@@ -341,12 +341,16 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 0.74rem;
   font-weight: 800;
   line-height: 1;
+}
+
+.nav-auth-indicator svg {
+  display: block;
 }
 
 .nav-item:hover,
@@ -860,7 +864,7 @@ button:disabled {
   box-shadow: none;
 }
 
-.panel-surface,
+
 .card,
 .summary-card,
 .table-wrap,
@@ -906,79 +910,155 @@ button:disabled {
   gap: 18px;
 }
 
-.profile-page-stack,
+.profile-settings-page,
+.profile-settings-page * {
+  min-width: 0;
+}
+
+.profile-settings-page,
 .profile-grid,
 .profile-form-grid,
-.profile-stat-grid {
+.profile-stat-grid,
+.profile-side-stack,
+.profile-community-grid,
+.profile-technical-grid {
   display: grid;
   gap: 18px;
 }
 
-.profile-grid {
-  grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.2fr);
+.profile-settings-page {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
-.profile-summary-card,
-.profile-form-card {
+.profile-hero-card,
+.profile-form-card,
+.profile-community-card,
+.profile-security-card,
+.profile-interactions-card {
   padding: 22px;
+  border-radius: 22px;
 }
 
-.profile-summary-card {
-  background:
-    radial-gradient(circle at top left, rgba(76, 127, 255, 0.18), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 246, 255, 0.98));
+.profile-hero-card {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.25fr) auto;
+  gap: 22px;
+  align-items: center;
 }
 
-.profile-summary-head {
+.profile-hero-main,
+.profile-hero-meta,
+.profile-badge-row,
+.profile-logout-button,
+.profile-form-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin: 8px 0 18px;
 }
 
-.profile-summary-head h3,
-.profile-summary-head p {
+.profile-hero-main {
+  gap: 16px;
+}
+
+.profile-hero-copy h1,
+.profile-hero-copy p,
+.profile-hero-meta span,
+.profile-hero-meta strong {
   margin: 0;
 }
 
-.profile-summary-head h3 {
+.profile-hero-copy h1 {
   color: var(--text-main);
-  font-size: 1.4rem;
+  font-size: clamp(1.55rem, 2.4vw, 2.25rem);
+  line-height: 1.08;
 }
 
-.profile-summary-head p,
+.profile-email,
 .profile-note {
   color: var(--text-soft);
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .profile-avatar-large {
-  width: 64px;
-  height: 64px;
-  border-radius: 20px;
-  font-size: 1.25rem;
+  width: 76px;
+  height: 76px;
+  border-radius: 24px;
+  font-size: 1.35rem;
+  flex: 0 0 auto;
+}
+
+.profile-hero-meta {
+  gap: 14px;
+  align-items: stretch;
+}
+
+.profile-hero-meta > div {
+  flex: 1 1 0;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+  background: rgba(76, 127, 255, 0.06);
+}
+
+.profile-hero-meta span,
+.profile-stat span,
+.profile-field span,
+.profile-technical-session summary {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+.profile-hero-meta strong {
+  color: var(--text-main);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.profile-badge-row {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.profile-logout-button {
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.profile-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.82fr);
+}
+
+.profile-side-stack {
+  align-content: start;
 }
 
 .profile-stat-grid,
-.profile-form-grid {
+.profile-form-grid,
+.profile-community-grid,
+.profile-technical-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.profile-security-card .profile-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
 .profile-stat {
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(214, 222, 241, 0.78);
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-soft);
 }
 
 .profile-stat span,
 .profile-field span {
   display: block;
   margin-bottom: 8px;
-  color: var(--text-soft);
-  font-size: 0.82rem;
-
-  letter-spacing: 0.06em;
 }
 
 .profile-stat strong {
@@ -992,16 +1072,44 @@ button:disabled {
   display: grid;
 }
 
+.profile-field input,
+.profile-field select,
+.profile-form-actions button {
+  width: 100%;
+  max-width: 100%;
+}
+
 .profile-field input:disabled {
-  background: rgba(241, 244, 252, 0.9);
+  background: var(--surface-muted);
   color: var(--text-soft);
 }
 
 .profile-note {
-  padding: 14px 16px;
+  padding: 13px 14px;
   border-radius: 16px;
   background: rgba(76, 127, 255, 0.08);
   border: 1px solid rgba(76, 127, 255, 0.14);
+}
+
+.profile-technical-session {
+  margin-top: 2px;
+  padding: 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  background: rgba(76, 127, 255, 0.05);
+}
+
+.profile-technical-session summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.profile-technical-grid {
+  margin-top: 14px;
+}
+
+.profile-interactions-card .empty-state {
+  margin-top: 4px;
 }
 
 .hero-grid {
@@ -1997,8 +2105,12 @@ th {
 }
 
 .news-pagination-card-bottom {
-  width: min(100%, 248px);
-  justify-self: end;
+  width: 100%;
+  max-width: 100%;
+  justify-self: stretch;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  margin-top: 10px;
 }
 
 .news-load-more-wrap {
@@ -2873,6 +2985,14 @@ th {
   .profile-grid {
     grid-template-columns: 1fr;
   }
+
+  .profile-hero-card {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-logout-button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 920px) {
@@ -2887,6 +3007,23 @@ th {
   .topbar,
   .page-header {
     padding: 16px;
+  }
+
+  .profile-form-grid,
+  .profile-stat-grid,
+  .profile-community-grid,
+  .profile-technical-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-hero-main,
+  .profile-hero-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-hero-meta > div {
+    width: 100%;
   }
 }
 
@@ -3494,6 +3631,27 @@ th {
   width: fit-content;
 }
 
+.instrument-detail-hero .market-detail-back {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.instrument-detail-hero .market-detail-back:hover,
+.instrument-detail-hero .market-detail-back:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  color: var(--accent);
+  text-decoration: underline;
+  transform: none;
+}
+
 .market-detail-heading {
   display: flex;
   align-items: flex-end;
@@ -3704,9 +3862,9 @@ th {
 
 .instrument-detail-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
-  gap: 20px;
-  padding: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.72fr);
+  gap: 16px;
+  padding: 18px;
   background:
     radial-gradient(circle at top right, rgba(96, 165, 250, 0.14), transparent 24%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 244, 255, 0.96));
@@ -3718,7 +3876,7 @@ th {
 .instrument-detail-main-column,
 .instrument-detail-side-column {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .instrument-detail-heading {
@@ -3731,30 +3889,57 @@ th {
 
 .instrument-detail-heading h1 {
   margin: 4px 0 0;
-  font-size: clamp(2.1rem, 3vw, 3.2rem);
+  font-size: clamp(1.85rem, 2.35vw, 2.65rem);
   line-height: 1;
 }
 
 .instrument-detail-subtitle {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: var(--text-soft);
 }
 
 .instrument-detail-price-block {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   justify-items: end;
 }
 
 .instrument-detail-price-block strong {
-  font-size: clamp(1.9rem, 2.5vw, 3rem);
+  font-size: clamp(1.65rem, 2.15vw, 2.45rem);
 }
 
 .instrument-detail-action-row {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+.instrument-detail-action-row button {
+  min-height: 42px;
+  padding: 8px 14px;
+  border-radius: 14px;
+}
+
+.instrument-detail-hero-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.instrument-detail-hero .terminal-price-card {
+  padding: 12px 14px;
+  border-radius: 14px;
+}
+
+.instrument-detail-hero .terminal-price-card strong {
+  margin-top: 6px;
+  font-size: 1.18rem;
+  line-height: 1.15;
+}
+
+.instrument-detail-hero .terminal-price-card span {
+  font-size: 0.76rem;
 }
 
 .instrument-detail-tabs {
@@ -3930,6 +4115,24 @@ th {
 
   .instrument-detail-price-block {
     justify-items: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .instrument-detail-hero {
+    padding: 16px;
+  }
+
+  .instrument-detail-hero-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .instrument-detail-action-row {
+    justify-content: stretch;
+  }
+
+  .instrument-detail-action-row button {
+    flex: 1 1 150px;
   }
 }
 
@@ -4463,25 +4666,163 @@ th {
   }
 }
 
-.reports-shell,
-.reports-grid,
-.reports-card {
-  display: grid;
+.reports-page,
+.reports-page * {
+  min-width: 0;
+}
+
+.reports-page {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   gap: 18px;
 }
 
+.reports-page .page-header {
+  padding: 22px 24px;
+  align-items: center;
+}
+
+.reports-page .page-header h1 {
+  margin-bottom: 6px;
+}
+
+.reports-range-chips,
+.reports-export-actions,
+.reports-info-line {
+  display: flex;
+  align-items: center;
+}
+
+.reports-range-chips {
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.reports-range-chips span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: rgba(76, 127, 255, 0.09);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .reports-grid {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .reports-card {
+  display: grid;
+  align-content: start;
+  gap: 16px;
   padding: 22px;
+  border-radius: 22px;
+  box-shadow: 0 18px 42px rgba(31, 64, 128, 0.1);
 }
 
-.reports-action-row {
-  display: flex;
+.reports-card-head {
+  margin-bottom: 0;
+}
+
+.reports-summary-grid {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.reports-summary-grid-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reports-market-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reports-card .summary-card {
+  min-height: 136px;
+  padding: 16px;
+  gap: 8px;
+  border-radius: 18px;
+}
+
+.reports-card .summary-card h3 {
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.reports-card .summary-card-title,
+.reports-card .summary-card-subtitle {
+  font-size: 0.8rem;
+}
+
+.reports-card .summary-sparkline {
+  height: 24px;
+  gap: 5px;
+}
+
+.reports-info-line {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  background: rgba(76, 127, 255, 0.06);
+  color: var(--text-soft);
+  font-size: 0.88rem;
+}
+
+.reports-info-line strong {
+  color: var(--text-main);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.reports-export-actions {
   gap: 10px;
   flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.reports-export-button {
+  flex: 1 1 180px;
+  width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(76, 127, 255, 0.22);
+  background: linear-gradient(180deg, rgba(76, 127, 255, 0.14), rgba(76, 127, 255, 0.08));
+  color: var(--accent);
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.reports-export-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  filter: saturate(0.75);
+}
+
+.reports-empty-history {
+  width: 100%;
+  max-width: 100%;
+  padding: 24px;
+  border-radius: 22px;
 }
 
 .settings-shell {
@@ -4500,6 +4841,36 @@ th {
   .reports-grid,
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .reports-page .page-header {
+    align-items: flex-start;
+    padding: 20px;
+  }
+
+  .reports-range-chips {
+    justify-content: flex-start;
+  }
+
+  .reports-summary-grid-two,
+  .reports-market-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-card {
+    padding: 20px;
+  }
+
+  .reports-card-head,
+  .reports-info-line {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reports-info-line strong {
+    text-align: left;
   }
 }
 
@@ -5338,6 +5709,174 @@ html[data-theme] button.sidebar-register-button:focus-visible {
   color: #cbd5e1;
   border: 1px solid rgba(96, 165, 250, 0.14);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.admin-panel-page,
+.admin-panel-page * {
+  min-width: 0;
+}
+
+.admin-panel-page {
+  width: 100%;
+  max-width: 100%;
+  gap: 18px;
+  overflow-x: hidden;
+}
+
+.admin-section {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-section-head,
+.admin-operation-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-section-head h3,
+.admin-section-head p,
+.admin-operation-card-head p {
+  margin: 0;
+}
+
+.admin-status-section {
+  padding: 20px;
+  border-radius: 22px;
+}
+
+.admin-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-panel-page .admin-console-metric-card {
+  min-height: 92px;
+  align-content: center;
+}
+
+.admin-panel-page .admin-console-metric-card strong {
+  font-size: clamp(1rem, 1.5vw, 1.35rem);
+  overflow-wrap: anywhere;
+}
+
+.admin-market-tape-section {
+  padding: 20px;
+}
+
+.admin-panel-page .market-tape-admin-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.86fr);
+  gap: 14px;
+}
+
+.admin-panel-page .market-tape-admin-panel {
+  padding: 14px;
+  border-radius: 16px;
+}
+
+.admin-panel-page .market-tape-admin-list {
+  min-height: 0;
+  max-height: 310px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.admin-panel-page .market-tape-admin-list.compact {
+  max-height: 310px;
+}
+
+.admin-panel-page .market-tape-chip {
+  min-height: 42px;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.admin-panel-page .admin-console-input {
+  min-height: 42px;
+}
+
+.admin-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.admin-operation-card {
+  min-height: 0;
+  padding: 18px;
+  border-radius: 20px;
+  gap: 14px;
+}
+
+.admin-operation-card .admin-console-card-copy {
+  gap: 8px;
+}
+
+.admin-operation-card .admin-console-card-copy p {
+  overflow-wrap: anywhere;
+}
+
+.admin-operation-card .admin-console-button {
+  width: 100%;
+  margin-top: auto;
+}
+
+.admin-warning-badge {
+  flex: 0 0 auto;
+  max-width: 180px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #f59e0b 34%, var(--panel-border));
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  color: #b45309;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.admin-response-panel {
+  padding: 20px;
+}
+
+.admin-response-panel .empty-state {
+  margin-top: 4px;
+}
+
+.admin-panel-page .admin-console-result-box {
+  max-height: 360px;
+  min-height: 150px;
+  overflow: auto;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 1180px) {
+  .admin-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-panel-page .market-tape-admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-status-grid,
+  .admin-grid,
+  .admin-console-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-section-head,
+  .admin-operation-card-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-warning-badge {
+    max-width: 100%;
+  }
 }
 
 button,
@@ -6256,13 +6795,11 @@ html[data-theme] button.sidebar-register-button:focus-visible,
   border-collapse: collapse;
 }
 
-.panel-surface,
-.portfolio-management-panel {
+.portfolio-page-v2 .portfolio-management-panel {
   position: static;
   max-width: none;
   box-sizing: border-box;
 }
-
 @media (max-width: 1200px) {
   .portfolio-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6286,5 +6823,897 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 
   .portfolio-detail-header {
     flex-direction: column;
+  }
+}
+
+/* SAFE PORTFOLIO ONLY FIX - başka sayfaları etkilemez */
+
+.portfolio-page-v2 {
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.portfolio-page-v2 .portfolio-management-grid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  width: 100%;
+}
+
+.portfolio-page-v2 .portfolio-list-sticky-wrap {
+  min-width: 0;
+  width: 100%;
+  position: static;
+}
+
+.portfolio-page-v2 .portfolio-list-rail {
+  width: 100%;
+  max-width: 300px;
+  position: sticky;
+  top: 96px;
+  z-index: 1;
+  padding: 18px;
+}
+
+.portfolio-page-v2 .portfolio-management-main {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  gap: 18px;
+}
+
+.portfolio-page-v2 .portfolio-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  position: static;
+}
+
+.portfolio-page-v2 .portfolio-kpi-panel {
+  padding: 18px;
+}
+
+.portfolio-page-v2 .portfolio-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.portfolio-page-v2 .portfolio-kpi-grid .summary-card {
+  min-height: 140px;
+  padding: 16px;
+}
+
+.portfolio-page-v2 .portfolio-kpi-grid .summary-card h3 {
+  font-size: 1.35rem;
+}
+
+.portfolio-page-v2 .portfolio-analytics-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 18px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.portfolio-page-v2 .portfolio-performance-panel,
+.portfolio-page-v2 .portfolio-allocation-panel,
+.portfolio-page-v2 .portfolio-holdings-panel {
+  min-width: 0;
+  width: 100%;
+  padding: 18px;
+}
+
+.portfolio-page-v2 .portfolio-performance-body {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+}
+
+.portfolio-page-v2 .portfolio-allocation-shell {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.portfolio-page-v2 .portfolio-allocation-chart-wrap {
+  height: 180px;
+  min-width: 0;
+}
+
+.portfolio-page-v2 .portfolio-allocation-legend {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.portfolio-page-v2 .portfolio-allocation-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.portfolio-page-v2 .portfolio-holdings-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table {
+  width: 100%;
+  min-width: 900px;
+}
+
+@media (max-width: 1200px) {
+  .portfolio-page-v2 .portfolio-management-grid {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+
+  .portfolio-page-v2 .portfolio-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portfolio-page-v2 .portfolio-analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .portfolio-page-v2 .portfolio-management-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-page-v2 .portfolio-list-rail {
+    max-width: none;
+    position: static;
+  }
+
+  .portfolio-page-v2 .portfolio-detail-header {
+    flex-direction: column;
+  }
+
+  .portfolio-page-v2 .portfolio-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-page-v2 .portfolio-allocation-shell {
+    grid-template-columns: 1fr;
+  }
+}
+/* =========================================================
+   SAFE PORTFOLIO PAGE OVERRIDE
+   Sadece .portfolio-page-v2 altında çalışır
+========================================================= */
+
+.portfolio-page-v2 {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  padding: 0;
+}
+
+.portfolio-page-v2 .portfolio-management-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.portfolio-page-v2 .portfolio-list-sticky-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.portfolio-page-v2 .portfolio-management-sidebar,
+.portfolio-page-v2 .portfolio-list-rail {
+  width: 100%;
+  max-width: 300px;
+  position: sticky;
+  top: 92px;
+  z-index: 2;
+}
+
+.portfolio-page-v2 .portfolio-management-main,
+.portfolio-page-v2 .portfolio-detail-stack {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.portfolio-page-v2 .portfolio-detail-header {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  position: static;
+}
+
+.portfolio-page-v2 .portfolio-detail-title {
+  font-size: 2rem;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.portfolio-page-v2 .portfolio-detail-meta {
+  margin-top: 6px;
+  color: var(--text-soft);
+}
+
+/* =========================================================
+   KPI SECTION
+========================================================= */
+
+.portfolio-page-v2 .portfolio-kpi-panel {
+  padding: 18px;
+}
+
+.portfolio-page-v2 .portfolio-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.portfolio-page-v2 .portfolio-kpi-wrap {
+  min-width: 0;
+}
+
+.portfolio-page-v2 .portfolio-kpi-grid .summary-card {
+  min-height: 150px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.portfolio-page-v2 .portfolio-kpi-grid .summary-card h3 {
+  font-size: 1.45rem;
+}
+
+.portfolio-page-v2 .portfolio-kpi-grid .summary-card-title {
+  font-size: 0.8rem;
+}
+
+/* =========================================================
+   ANALYTICS GRID
+========================================================= */
+
+.portfolio-page-v2 .portfolio-analytics-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.portfolio-page-v2 .portfolio-performance-panel,
+.portfolio-page-v2 .portfolio-allocation-panel {
+  width: 100%;
+  min-width: 0;
+  padding: 18px;
+}
+
+.portfolio-page-v2 .portfolio-performance-body {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+}
+
+.portfolio-page-v2 .portfolio-history-empty-card {
+  width: 100%;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: rgba(245, 248, 255, 0.72);
+  border: 1px dashed rgba(180, 190, 220, 0.55);
+}
+
+/* =========================================================
+   ALLOCATION
+========================================================= */
+
+.portfolio-page-v2 .portfolio-allocation-shell {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.portfolio-page-v2 .portfolio-allocation-chart-wrap {
+  width: 100%;
+  height: 190px;
+  min-width: 0;
+}
+
+.portfolio-page-v2 .portfolio-allocation-legend {
+  display: grid;
+  gap: 10px;
+}
+
+.portfolio-page-v2 .portfolio-allocation-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(245, 248, 255, 0.62);
+}
+
+.portfolio-page-v2 .portfolio-allocation-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.portfolio-page-v2 .portfolio-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.portfolio-page-v2 .portfolio-allocation-metrics {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.portfolio-page-v2 .portfolio-allocation-pct {
+  font-weight: 700;
+}
+
+.portfolio-page-v2 .portfolio-allocation-amt {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+/* =========================================================
+   HOLDINGS TABLE
+========================================================= */
+
+.portfolio-page-v2 .portfolio-holdings-panel {
+  width: 100%;
+  min-width: 0;
+  padding: 18px;
+}
+
+.portfolio-page-v2 .portfolio-holdings-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table {
+  width: 100%;
+  min-width: 960px;
+  border-collapse: collapse;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel-strong);
+  font-size: 0.78rem;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table td,
+.portfolio-page-v2 .portfolio-holdings-table th {
+  padding: 14px 12px;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table tbody tr {
+  transition: background 0.18s ease;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table tbody tr:hover {
+  background: rgba(76, 127, 255, 0.05);
+}
+
+.portfolio-page-v2 .portfolio-cell-stack {
+  display: grid;
+  gap: 4px;
+}
+
+.portfolio-page-v2 .portfolio-holdings-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.portfolio-page-v2 .portfolio-status-pill {
+  white-space: nowrap;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+.portfolio-page-v2 .secondary-button,
+.portfolio-page-v2 .danger-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 12px;
+}
+
+/* =========================================================
+   PANEL FIX
+========================================================= */
+
+.portfolio-page-v2 .portfolio-management-panel {
+  position: static;
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 1200px) {
+  .portfolio-page-v2 .portfolio-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portfolio-page-v2 .portfolio-analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .portfolio-page-v2 .portfolio-management-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-page-v2 .portfolio-management-sidebar,
+  .portfolio-page-v2 .portfolio-list-rail {
+    max-width: none;
+    position: static;
+  }
+
+  .portfolio-page-v2 .portfolio-detail-header {
+    flex-direction: column;
+  }
+
+  .portfolio-page-v2 .portfolio-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-page-v2 .portfolio-allocation-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* FINAL PORTFOLIO FIX - 1320px media override */
+
+@media (min-width: 901px) {
+  .portfolio-page-v2 .portfolio-management-grid {
+    display: grid !important;
+    grid-template-columns: 300px minmax(0, 1fr) !important;
+    gap: 20px !important;
+    align-items: start !important;
+  }
+
+  .portfolio-page-v2 .portfolio-list-rail {
+    max-width: 300px !important;
+    width: 100% !important;
+  }
+
+  .portfolio-page-v2 .portfolio-management-main {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* =========================================================
+   PORTFOLIO ONLY SAFE PATCH
+   Genel dashboard/news/market stillerine dokunmaz.
+========================================================= */
+@media (min-width: 901px) {
+  .portfolio-page-v2 .portfolio-management-grid {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+    width: 100%;
+  }
+
+  .portfolio-page-v2 .portfolio-list-rail {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .portfolio-page-v2 .portfolio-management-main {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .portfolio-page-v2 .portfolio-analytics-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    gap: 20px;
+    align-items: stretch;
+    width: 100%;
+  }
+}
+
+/* PORTFOLIO ONLY FINAL LAYOUT FORCE */
+
+@media (min-width: 921px) {
+  .portfolio-page-v2.portfolio-management-shell {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .portfolio-page-v2 .portfolio-management-grid {
+    display: grid !important;
+    grid-template-columns: 330px minmax(0, 1fr) !important;
+    gap: 20px !important;
+    align-items: start !important;
+    width: 100% !important;
+  }
+
+  .portfolio-page-v2 .portfolio-list-sticky-wrap {
+    width: 330px !important;
+    min-width: 0 !important;
+    position: static !important;
+  }
+
+  .portfolio-page-v2 .portfolio-list-rail {
+    width: 100% !important;
+    max-width: 330px !important;
+    position: static !important;
+    z-index: auto !important;
+  }
+
+  .portfolio-page-v2 .portfolio-management-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 20px !important;
+  }
+
+  .portfolio-page-v2 .portfolio-kpi-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  .portfolio-page-v2 .portfolio-analytics-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr) !important;
+    gap: 20px !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 920px) {
+  .portfolio-page-v2 .portfolio-management-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .portfolio-page-v2 .portfolio-list-sticky-wrap,
+  .portfolio-page-v2 .portfolio-list-rail {
+    width: 100% !important;
+    max-width: none !important;
+    position: static !important;
+  }
+}
+
+
+
+/* PORTFOLIO HOLDINGS TABLE FIX */
+
+.portfolio-page-v2 .portfolio-holdings-panel {
+  overflow: hidden !important;
+}
+
+.portfolio-page-v2 .portfolio-holdings-scroll {
+  width: 100% !important;
+  overflow-x: auto !important;
+  padding-bottom: 8px;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table {
+  width: 100% !important;
+  min-width: 980px !important;
+  table-layout: fixed !important;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table th,
+.portfolio-page-v2 .portfolio-holdings-table td {
+  padding: 14px 10px !important;
+  white-space: normal !important;
+  vertical-align: middle !important;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table th:nth-child(1),
+.portfolio-page-v2 .portfolio-holdings-table td:nth-child(1) {
+  width: 15%;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table th:nth-child(2),
+.portfolio-page-v2 .portfolio-holdings-table td:nth-child(2) {
+  width: 8%;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table th:nth-child(3),
+.portfolio-page-v2 .portfolio-holdings-table td:nth-child(3),
+.portfolio-page-v2 .portfolio-holdings-table th:nth-child(4),
+.portfolio-page-v2 .portfolio-holdings-table td:nth-child(4),
+.portfolio-page-v2 .portfolio-holdings-table th:nth-child(5),
+.portfolio-page-v2 .portfolio-holdings-table td:nth-child(5) {
+  width: 12%;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table th:nth-child(6),
+.portfolio-page-v2 .portfolio-holdings-table td:nth-child(6) {
+  width: 13%;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table th:nth-child(7),
+.portfolio-page-v2 .portfolio-holdings-table td:nth-child(7) {
+  width: 9%;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table th:nth-child(8),
+.portfolio-page-v2 .portfolio-holdings-table td:nth-child(8) {
+  width: 13%;
+}
+
+.portfolio-page-v2 .portfolio-holdings-table th:nth-child(9),
+.portfolio-page-v2 .portfolio-holdings-table td:nth-child(9) {
+  width: 14%;
+}
+
+.portfolio-page-v2 .portfolio-holdings-actions {
+  display: flex !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-end !important;
+}
+
+.portfolio-page-v2 .portfolio-holdings-actions button {
+  padding: 7px 10px !important;
+  min-height: 34px !important;
+  border-radius: 10px !important;
+  font-size: 0.78rem !important;
+  white-space: nowrap !important;
+}
+
+
+
+/* Simulation page refinement */
+
+.simulation-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  gap: 16px;
+}
+
+.simulation-shell > .page-header {
+  padding: 20px 22px;
+}
+
+.simulation-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.simulation-panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 22px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.simulation-panel .panel-head {
+  margin-bottom: 0;
+}
+
+.simulation-panel .panel-head h3 {
+  margin: 0;
+  font-size: clamp(1.15rem, 1.5vw, 1.45rem);
+}
+
+.simulation-form,
+.simulation-form-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.simulation-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.simulation-form label,
+.simulation-form-grid label,
+.simulation-panel label,
+.simulation-panel .portfolio-field {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.simulation-panel input,
+.simulation-panel select,
+.simulation-panel button {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.simulation-panel input,
+.simulation-panel select {
+  width: 100%;
+}
+
+.simulation-submit-row,
+.simulation-submit-row button {
+  width: 100%;
+}
+
+.simulation-mode-switch {
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--panel-border) 82%, transparent);
+}
+
+.simulation-mode-switch .table-chip-button {
+  width: auto;
+  min-height: 36px;
+  padding: 7px 14px;
+  border-radius: 12px;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.simulation-preset-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.simulation-preset-button {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--secondary-border) 88%, transparent);
+  background: color-mix(in srgb, var(--secondary-bg) 78%, transparent);
+  color: var(--accent);
+  box-shadow: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.simulation-preset-button.active,
+.simulation-preset-button:hover,
+.simulation-preset-button:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.simulation-panel .cards-grid.compact,
+.simulation-results-grid {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 12px;
+}
+
+.simulation-panel .summary-card {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.simulation-panel .summary-card h3 {
+  font-size: clamp(1.1rem, 1.65vw, 1.45rem);
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.simulation-panel .summary-card-title,
+.simulation-panel .summary-card-subtitle {
+  line-height: 1.35;
+}
+
+.simulation-quantity-note {
+  margin: 2px 0 0;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.simulation-panel .summary-sparkline {
+  height: 14px;
+  margin-top: 8px;
+  opacity: 0.5;
+}
+
+.simulation-future-results .summary-card:nth-child(3) {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--panel-border));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 12%, transparent), transparent 42%),
+    var(--panel-strong);
+}
+
+.simulation-note-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-muted) 66%, transparent);
+  border: 1px solid color-mix(in srgb, var(--panel-border) 78%, transparent);
+  box-shadow: none;
+}
+
+.simulation-panel .status-box.empty {
+  margin: 0;
+  padding: 18px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--panel-border) 90%, transparent);
+}
+
+@media (max-width: 1000px) {
+  .simulation-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .simulation-shell > .page-header,
+  .simulation-panel {
+    padding: 18px;
+  }
+
+  .simulation-form-grid,
+  .simulation-preset-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .simulation-mode-switch {
+    width: 100%;
+  }
+
+  .simulation-mode-switch .table-chip-button {
+    flex: 1 1 0;
   }
 }

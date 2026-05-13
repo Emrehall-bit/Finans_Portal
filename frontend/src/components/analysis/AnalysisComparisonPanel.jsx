@@ -48,7 +48,15 @@ export default function AnalysisComparisonPanel({ loading, error, comparison }) 
               <Tooltip content={<ComparisonTooltip chartTheme={chartTheme} />} />
               <Legend wrapperStyle={{ color: chartTheme.legendText }} />
               {series.map((item, index) => (
-                <Line key={item.symbol} type="monotone" dataKey={item.symbol} name={item.symbol} stroke={COLORS[index % COLORS.length]} strokeWidth={2.2} dot={false} />
+                <Line
+                  key={item.symbol}
+                  type="monotone"
+                  dataKey={item.symbol}
+                  name={formatComparisonSymbol(item.symbol)}
+                  stroke={COLORS[index % COLORS.length]}
+                  strokeWidth={2.2}
+                  dot={false}
+                />
               ))}
             </LineChart>
           </ResponsiveContainer>
@@ -56,6 +64,12 @@ export default function AnalysisComparisonPanel({ loading, error, comparison }) 
       ) : null}
     </section>
   );
+}
+
+function formatComparisonSymbol(symbol) {
+  const rawSymbol = String(symbol || "").trim();
+  const tcmbMatch = rawSymbol.toUpperCase().match(/^TCMB:([A-Z0-9]+):(BUY|SELL)$/);
+  return tcmbMatch?.[1] || rawSymbol || "-";
 }
 
 function ComparisonTooltip({ active, payload, label, chartTheme }) {

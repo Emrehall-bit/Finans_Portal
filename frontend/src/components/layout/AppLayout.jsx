@@ -19,7 +19,9 @@ import {
   Newspaper,
   Bell,
   User,
+  Users,
   Shield,
+  Lock,
 } from "lucide-react";
 
 const PRIORITY_SYMBOLS = [
@@ -136,9 +138,15 @@ export default function AppLayout() {
     ...(isAdmin
       ? [
           {
-            to: "/admin",
+            to: "/admin/data",
             label: t("nav.admin"),
             icon: Shield,
+            requiresAuth: true,
+          },
+          {
+            to: "/admin/users",
+            label: t("nav.adminUsers"),
+            icon: Users,
             requiresAuth: true,
           },
         ]
@@ -188,15 +196,11 @@ export default function AppLayout() {
 
     const configuredSymbols = marketTapeSymbols.length > 0 ? marketTapeSymbols : PRIORITY_SYMBOLS;
 
-    const priorityMatches = configuredSymbols.map((symbol) =>
+    const configuredMatches = configuredSymbols.map((symbol) =>
       tickerQuotes.find((item) => item.symbol?.toUpperCase() === symbol),
-    ).filter(Boolean);
+    ).filter((item) => item && Number(item.price) !== 0);
 
-    const fallback = [...tickerQuotes]
-      .sort((left, right) => Math.abs(Number(right.changeRate) || 0) - Math.abs(Number(left.changeRate) || 0))
-      .slice(0, 8);
-
-    const merged = [...priorityMatches, ...fallback];
+    const merged = configuredMatches;
     const unique = [];
     const seen = new Set();
 
@@ -448,6 +452,11 @@ export default function AppLayout() {
                     <Icon size={18} aria-hidden="true" />
                     <span>{item.label}</span>
                   </span>
+                  {item.requiresAuth && !isAuthenticated ? (
+                    <span className="nav-auth-indicator" title={t("layout.authRequired")} aria-label={t("layout.authRequired")}>
+                      <Lock size={12} strokeWidth={2.4} aria-hidden="true" />
+                    </span>
+                  ) : null}
                 </NavLink>
               );
             })}

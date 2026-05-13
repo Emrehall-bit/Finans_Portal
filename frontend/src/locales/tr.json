@@ -17,6 +17,13 @@
     "rows": "{{count}} satır",
     "loading": "Yükleniyor..."
   },
+  "pagination": {
+    "page": "Sayfa",
+    "totalNews": "{{count}} haber",
+    "pagesAria": "Sayfalar",
+    "previous": "Önceki",
+    "next": "Sonraki"
+  },
   "nav": {
     "mainMenu": "Ana Menü",
     "dashboard": "Dashboard",
@@ -200,7 +207,7 @@
     "searchPlaceholder": "Anahtar kelime ile haber ara...",
     "sort": "Sıralama",
     "sortNewest": "En Yeni",
-    "sortImportance": "Önem Skoru",
+    "sortImportance": "En Önemli",
     "listedCount": "{{count}} haber listeleniyor",
     "activeFilterCount": "{{count}} filtre aktif",
     "activeFilters": "Aktif filtreler",
@@ -217,7 +224,8 @@
     "categories": "Kategoriler",
     "providers": "Kaynaklar",
     "language": "Dil",
-    "all": "Hepsi"
+    "all": "Hepsi",
+    "openNews": "Haberi aç"
   },
   "markets": {
     "eyebrow": "Piyasa Takip",
@@ -372,7 +380,7 @@
     "historyEmptyTitle": "Performans geçmişi bulunmuyor",
     "historyEmptyDescription": "Bu portföy için zaman bazlı performans verisi hazır olduğunda burada grafik olarak gösterilecek.",
     "holdingsEyebrow": "Varlık Tablosu",
-    "holdingsTitle": "Holdingler",
+    "holdingsTitle": "Varlıklar",
     "emptyHoldingsTitle": "Varlık bulunmuyor",
     "emptyHoldingsDescription": "Seçili portföye varlık ekleyerek tabloyu oluştur.",
     "assetNumber": "Varlık #{{index}}",
@@ -433,7 +441,7 @@
       "emptyDescription": "Seçili enstrüman için analiz sonucu gelmedi."
     },
     "symbolPicker": {
-      "eyebrow": "Enstrüman Secimi",
+      "eyebrow": "Enstrüman Seçimi",
       "title": "Analiz sepeti",
       "primaryInstrument": "Ana enstrüman",
       "selectInstrument": "Enstrüman seç",
@@ -448,15 +456,15 @@
     "description": "Kullanıcı id: {{userId}}",
     "instrumentCode": "Enstrüman kodu",
     "add": "Ekle",
-    "remove": "Kaldir",
+    "remove": "Kaldır",
     "loading": "Watchlist yükleniyor...",
     "loadError": "Watchlist yüklenemedi.",
-    "addSuccess": "Watchlist oge eklendi.",
-    "addError": "Watchlist oge eklenemedi.",
-    "removeSuccess": "Watchlist oge kaldırıldı.",
-    "removeError": "Watchlist oge kaldirilamadi.",
-    "emptyTitle": "Watchlist bos",
-    "emptyDescription": "Ilk favori enstrümanıni ekle.",
+    "addSuccess": "Watchlist öğe eklendi.",
+    "addError": "Watchlist öğe eklenemedi.",
+    "removeSuccess": "Watchlist öğe kaldırıldı.",
+    "removeError": "Watchlist öğe kaldırılamadı.",
+    "emptyTitle": "Watchlist boş",
+    "emptyDescription": "İlk favori enstrümanını ekle.",
     "table": {
       "instrument": "Enstrüman",
       "currentPrice": "Güncel Fiyat",
@@ -467,7 +475,14 @@
   "reports": {
     "eyebrow": "Raporlar",
     "title": "Raporlar",
-    "description": "Portföy ve piyasa akışına ait özet raporlar için hazır kartlar.",
+    "description": "Portföy ve piyasa akışını tek ekrandan özetleyen export ve analiz merkezi.",
+    "rangeLabel": "Rapor zaman aralığı",
+    "ranges": {
+      "today": "Bugün",
+      "week": "7G",
+      "month": "30G",
+      "ytd": "YTD"
+    },
     "loading": "Rapor verileri yükleniyor...",
     "loadError": "Rapor verileri yüklenemedi.",
     "portfolioEyebrow": "Portföy Raporu",
@@ -480,22 +495,26 @@
     "symbolCount": "{{count}} sembol",
     "marketEmptyTitle": "Piyasa raporu hazır değil",
     "marketEmptyDescription": "Market servisinden raporlanabilir veri gelmedi.",
-    "pdf": "PDF export",
-    "excel": "Excel export",
+    "pdf": "PDF Raporu Oluştur",
+    "excel": "Excel Dışa Aktar",
     "pdfHint": "TODO: backend PDF export endpointi gerekli",
     "excelHint": "TODO: backend Excel export endpointi gerekli",
+    "reportablePortfolios": "Raporlanabilir portföyler",
+    "noRecentPortfolio": "Son portföy bulunmuyor",
+    "historyEmptyTitle": "Son oluşturulan rapor bulunmuyor",
+    "historyEmptyDescription": "PDF veya Excel raporu oluşturduğunuzda burada listelenecek.",
     "cards": {
       "portfolioCount": "Portföy adedi",
       "portfolioCountSubtitle": "Raporlanabilir kayıt",
       "latestPortfolio": "Son oluşturulan",
       "totalSymbols": "Toplam sembol",
-      "totalSymbolsSubtitle": "Gozlenen piyasa kaydi",
-      "positiveSymbols": "Artida olanlar",
-      "positiveSymbolsSubtitle": "Pozitif gunluk hareket",
+      "totalSymbolsSubtitle": "Gözlenen piyasa kaydı",
+      "positiveSymbols": "Artıda olanlar",
+      "positiveSymbolsSubtitle": "Pozitif günlük hareket",
       "negativeSymbols": "Ekside olanlar",
-      "negativeSymbolsSubtitle": "Negatif gunluk hareket",
-      "reportTime": "Rapor zamani",
-      "reportTimeSubtitle": "Anlık olusan özet"
+      "negativeSymbolsSubtitle": "Negatif günlük hareket",
+      "reportTime": "Rapor zamanı",
+      "reportTimeSubtitle": "Anlık oluşan özet"
     }
   },
   "portfolioDetail": {
@@ -535,7 +554,7 @@
       "currentValue": "Güncel Değer",
       "currentValueSubtitle": "Mevcut piyasa değerlemesi",
       "profitLoss": "Kar / Zarar",
-      "profitLossSubtitle": "Mevcut fiyatlara gore",
+      "profitLossSubtitle": "Mevcut fiyatlara göre",
       "profitLossPercent": "Kar / Zarar %",
       "profitLossPercentSubtitle": "Değerlenen holding ağırlığı ile",
       "pricedHoldings": "Fiyatlanan Holdingler",
@@ -583,19 +602,34 @@
   "admin": {
     "eyebrow": "Admin",
     "title": "Admin Paneli",
-    "description": "Piyasaya ait manuel fetch ve backfill islemlerini bu ekrandan tetikleyin.",
+    "description": "Piyasaya ait manuel fetch ve backfill işlemlerini bu ekrandan tetikleyin.",
     "actionError": "Admin işlemi başarısız oldu.",
     "running": "Çalışıyor...",
     "progress": "İşleniyor: {{processed}} / {{total}}",
     "completed": "Tamamlandı!",
+    "longRunningWarning": "Bu işlem uzun sürebilir.",
+    "status": {
+      "eyebrow": "Admin Durumu",
+      "title": "Operasyon özeti",
+      "totalSymbols": "Toplam sembol",
+      "selectedTapeSymbols": "Seçili bant sembolü",
+      "lastOperationTime": "Son işlem zamanı",
+      "lastOperationStatus": "Son işlem durumu"
+    },
+    "sections": {
+      "liveEyebrow": "Canlı Veri İşlemleri",
+      "liveTitle": "Canlı veri operasyonları",
+      "historyEyebrow": "Geçmiş Veri / Backfill",
+      "historyTitle": "Backfill operasyonları"
+    },
     "fundFetch": {
       "running": "TEFAS fon verisi çekiliyor...",
       "completed": "İşlem tamamlandı. İşlenen fon: {{processedFunds}}, kaydedilen fon: {{savedFunds}}"
     },
     "marketTape": {
       "eyebrow": "Piyasa bandı",
-      "title": "Ust bant sembolleri",
-      "description": "Topbarda kayan piyasa bandında hangi sembollerin one cikacagini buradan yonet.",
+      "title": "Üst bant sembolleri",
+      "description": "Topbarda kayan piyasa bandında hangi sembollerin öne çıkacağını buradan yönet.",
       "loading": "Piyasa bandı ayarları yükleniyor...",
       "loadError": "Piyasa bandı ayarları yüklenemedi.",
       "selectedLabel": "Seçili semboller",
@@ -603,17 +637,17 @@
       "searchPlaceholder": "Sembol ara",
       "hint": "Seçili alandaki sıralama topbarda gösterim sırasını belirler. Sürükle bırak ile dizilimi değiştirebilirsin.",
       "emptySelectedTitle": "Seçili sembol yok",
-      "emptySelectedDescription": "Sağ taraftan sembol ekleyerek piyasa bandıni oluştur.",
+      "emptySelectedDescription": "Sağ taraftan sembol ekleyerek piyasa bandını oluştur.",
       "emptyAvailableTitle": "Eklenebilecek sembol yok",
-      "emptyAvailableDescription": "Su an market verisinden yeni sembol gelmedi.",
-      "emptySearchTitle": "Eslesen sembol yok",
+      "emptyAvailableDescription": "Şu an market verisinden yeni sembol gelmedi.",
+      "emptySearchTitle": "Eşleşen sembol yok",
       "emptySearchDescription": "Arama kriterine uyan sembol bulunamadı.",
-      "save": "Piyasa bandıni kaydet"
+      "save": "Piyasa bandını kaydet"
     },
     "hero": {
       "eyebrow": "Operasyonlar",
       "title": "Manuel işlemler tek ekranda",
-      "description": "Fetch, sync ve backfill akışlarini bu panelden yönetin. Son backend cevabi altta ham response olarak kalir."
+      "description": "Fetch, sync ve backfill akışlarını bu panelden yönetin. Son backend cevabı altta ham response olarak kalır."
     },
     "metrics": {
       "operationType": {
@@ -627,7 +661,9 @@
       "status": {
         "label": "Durum",
         "ready": "Hazir",
-        "running": "Calışiyor"
+        "running": "Çalışıyor",
+        "completed": "Tamamlandı",
+        "error": "Hata"
       }
     },
     "cards": {
@@ -670,27 +706,27 @@
         "periodPlaceholder": "Periyod (opsiyonel)"
       },
       "tefasTestConnection": {
-        "eyebrow": "TEFAS baglantisi",
+        "eyebrow": "TEFAS bağlantısı",
         "title": "TEFAS Test Connection",
-        "description": "TEFAS liste endpointine baglan ve ilk fon bilgisini dogrula.",
-        "action": "Baglantiyi Test Et"
+        "description": "TEFAS liste endpointine bağlan ve ilk fon bilgisini doğrula.",
+        "action": "Bağlantıyı Test Et"
       }
     },
     "stockHistory": {
-      "eyebrow": "Hisse arsivi",
+      "eyebrow": "Hisse arşivi",
       "title": "Hisse History Backfill",
       "description": "Tek sembol veya tüm liste için tarihsel hisse verisini manuel yükle.",
       "symbolPlaceholder": "Sembol (opsiyonel)",
-      "startDatePlaceholder": "Baslangic (dd-MM-yyyy)",
-      "endDatePlaceholder": "Bitis (dd-MM-yyyy)",
-      "action": "History Backfill Baslat"
+      "startDatePlaceholder": "Başlangıç (dd-MM-yyyy)",
+      "endDatePlaceholder": "Bitiş (dd-MM-yyyy)",
+      "action": "History Backfill Başlat"
     },
     "result": {
       "eyebrow": "Response",
-      "title": "Sonuc",
-      "description": "Son tetiklenen admin isleminin backend cevabi.",
-      "emptyTitle": "Henuz bir islem yok",
-      "emptyDescription": "Bir admin islemi tetikledikten sonra sonuc burada görünür."
+      "title": "Sonuç",
+      "description": "Son tetiklenen admin işleminin backend cevabı.",
+      "emptyTitle": "Henüz bir işlem yok",
+      "emptyDescription": "Bir admin işlemi tetikledikten sonra sonuç burada görünür."
     },
     "users": {
       "eyebrow": "Kullanıcı Yönetimi",
@@ -711,7 +747,7 @@
       "deactivate": "Pasifleştir",
       "makeAdmin": "Admin Yap",
       "revokeAdmin": "Admin Yetkisini Al",
-      "sendNotification": "Bildirim Gonder",
+      "sendNotification": "Bildirim Gönder",
       "detailEyebrow": "Kullanıcı Detayı",
       "detailTitle": "Seçili kullanıcı",
       "detailEmptyTitle": "Kullanıcı seçilmedi",
@@ -734,12 +770,12 @@
         "role": "Role",
         "active": "Durum",
         "preferences": "Dil / Tema",
-        "lastLoginAt": "Son Giris",
-        "createdAt": "Olusturma",
+        "lastLoginAt": "Son Giriş",
+        "createdAt": "Oluşturma",
         "updatedAt": "Güncelleme",
         "moderationStatus": "Moderasyon Durumu",
         "moderationReason": "Moderasyon Nedeni",
-        "moderationBlockedUntil": "Blok Bitis",
+        "moderationBlockedUntil": "Blok Bitiş",
         "moderationCreatedBy": "İşlemi Yapan",
         "moderationCreatedAt": "Moderasyon Tarihi"
       },
@@ -748,31 +784,31 @@
         "passive": "Pasif"
       },
       "moderation": {
-        "tempBlock": "Gecici Blok",
-        "permBlock": "Kalici Blok",
-        "unblock": "Engeli Kaldir",
-        "tempBlockEyebrow": "Gecici Blok",
-        "permBlockEyebrow": "Kalici Blok",
-        "unblockEyebrow": "Engeli Kaldir",
-        "tempBlockSubmit": "Gecici Blok Uygula",
-        "permBlockSubmit": "Kalici Blok Uygula",
-        "unblockSubmit": "Engeli Kaldir",
-        "tempBlockError": "Gecici blok islemi basarisiz oldu.",
-        "permBlockError": "Kalici blok islemi basarisiz oldu.",
-        "unblockError": "Engel kaldirma islemi basarisiz oldu.",
-        "tempBlockSuccess": "Kullanıcı gecici olarak bloklandi.",
-        "permBlockSuccess": "Kullanıcı kalici olarak bloklandi.",
+        "tempBlock": "Geçici Blok",
+        "permBlock": "Kalıcı Blok",
+        "unblock": "Engeli Kaldır",
+        "tempBlockEyebrow": "Geçici Blok",
+        "permBlockEyebrow": "Kalıcı Blok",
+        "unblockEyebrow": "Engeli Kaldır",
+        "tempBlockSubmit": "Geçici Blok Uygula",
+        "permBlockSubmit": "Kalıcı Blok Uygula",
+        "unblockSubmit": "Engeli Kaldır",
+        "tempBlockError": "Geçici blok işlemi başarısız oldu.",
+        "permBlockError": "Kalıcı blok işlemi başarısız oldu.",
+        "unblockError": "Engel kaldırma işlemi başarısız oldu.",
+        "tempBlockSuccess": "Kullanıcı geçici olarak bloklandı.",
+        "permBlockSuccess": "Kullanıcı kalıcı olarak bloklandı.",
         "unblockSuccess": "Kullanıcı engeli kaldırıldı.",
-        "reasonLabel": "Gerekce",
-        "reasonPlaceholder": "Opsiyonel aciklama",
-        "blockedUntilLabel": "Blok Bitis Tarihi",
-        "blockedUntilRequired": "Blok bitis tarihi zorunludur.",
+        "reasonLabel": "Gerekçe",
+        "reasonPlaceholder": "Opsiyonel açıklama",
+        "blockedUntilLabel": "Blok Bitiş Tarihi",
+        "blockedUntilRequired": "Blok bitiş tarihi zorunludur.",
         "blockedUntilFuture": "Gelecekte bir tarih seçmelisiniz.",
-        "submitting": "Gonderiliyor...",
+        "submitting": "Gönderiliyor...",
         "statusValues": {
           "ACTIVE": "Aktif",
-          "TEMP_BLOCKED": "Gecici Bloklu",
-          "PERM_BLOCKED": "Kalici Bloklu"
+          "TEMP_BLOCKED": "Geçici Bloklu",
+          "PERM_BLOCKED": "Kalıcı Bloklu"
         }
       },
       "notification": {
@@ -780,50 +816,50 @@
         "titleLabel": "Başlık",
         "messageLabel": "Mesaj",
         "typeLabel": "Tip",
-        "submit": "Gonder",
-        "submitting": "Gonderiliyor...",
-        "success": "Bildirim gonderildi.",
-        "error": "Bildirim gonderilemedi."
+        "submit": "Gönder",
+        "submitting": "Gönderiliyor...",
+        "success": "Bildirim gönderildi.",
+        "error": "Bildirim gönderilemedi."
       }
     },
     "broadcast": {
       "eyebrow": "Global Duyuru",
-      "title": "Tum kullanıcılara duyuru gonder",
-      "description": "Bildirim local veritabanina broadcast kaydi olarak yazilir ve tüm kullanıcılar dropdown alaninda gorur.",
+      "title": "Tüm kullanıcılara duyuru gönder",
+      "description": "Bildirim local veritabanına broadcast kaydı olarak yazılır ve tüm kullanıcılar dropdown alanında görür.",
       "titleLabel": "Başlık",
-      "titlePlaceholder": "Bakim bildirimi",
+      "titlePlaceholder": "Bakım bildirimi",
       "messageLabel": "Mesaj",
-      "messagePlaceholder": "Tum kullanıcılarin gorecegi duyuru metni",
+      "messagePlaceholder": "Tüm kullanıcıların göreceği duyuru metni",
       "typeLabel": "Tip",
-      "submit": "Global Duyuru Gonder",
-      "submitting": "Gonderiliyor...",
-      "success": "Global duyuru gonderildi.",
-      "error": "Global duyuru gonderilemedi."
+      "submit": "Global Duyuru Gönder",
+      "submitting": "Gönderiliyor...",
+      "success": "Global duyuru gönderildi.",
+      "error": "Global duyuru gönderilemedi."
     },
     "auditLogs": {
       "eyebrow": "Admin İşlem Logları",
-      "title": "Yapilan admin islemleri",
-      "description": "Kullanıcı, moderasyon ve bildirim islemlerinin son kayıtları.",
-      "loading": "İşlem loglari yükleniyor...",
-      "loadError": "İşlem loglari yüklenemedi.",
+      "title": "Yapılan admin işlemleri",
+      "description": "Kullanıcı, moderasyon ve bildirim işlemlerinin son kayıtları.",
+      "loading": "İşlem logları yükleniyor...",
+      "loadError": "İşlem logları yüklenemedi.",
       "emptyTitle": "İşlem logu bulunamadı",
       "emptyDescription": "Seçili filtre için kayıt yok.",
       "filters": {
-        "allActions": "Tum aksiyonlar"
+        "allActions": "Tüm aksiyonlar"
       },
       "columns": {
         "createdAt": "Tarih",
         "actorUserId": "İşlemi Yapan",
         "targetUserId": "Hedef Kullanıcı",
         "action": "Aksiyon",
-        "description": "Aciklama"
+        "description": "Açıklama"
       },
       "actions": {
         "USER_ACTIVATED": "Kullanıcı Aktif Edildi",
         "USER_DEACTIVATED": "Kullanıcı Pasifleştirildi",
         "USER_ROLE_CHANGED": "Kullanıcı Rolu Degisti",
-        "USER_TEMP_BLOCKED": "Gecici Blok",
-        "USER_PERM_BLOCKED": "Kalici Blok",
+        "USER_TEMP_BLOCKED": "Geçici Blok",
+        "USER_PERM_BLOCKED": "Kalıcı Blok",
         "USER_UNBLOCKED": "Engel Kaldirildi",
         "NOTIFICATION_SENT_TO_USER": "Kullanıcıya Bildirim Gönderildi",
         "NOTIFICATION_BROADCAST_SENT": "Global Duyuru Gönderildi"
@@ -832,9 +868,9 @@
   },
   "profile": {
     "eyebrow": "Profil / Ayarlar",
-    "title": "Hesap Ayarları",
-    "description": "Kullanıcı bilgilerini, tercihlerini ve Keycloak oturum durumunu yonet.",
-    "logout": "Cikis yap",
+    "title": "Profil ve Tercihler",
+    "description": "Kişisel profilini, hesap tercihlerini ve topluluk görünümünü yönet.",
+    "logout": "Çıkış yap",
     "loading": "Profil yükleniyor...",
     "loadError": "Profil bilgileri yüklenemedi.",
     "updateSuccess": "Profil bilgileri güncellendi.",
@@ -842,11 +878,14 @@
     "userInfo": "Kullanıcı Bilgileri",
     "noUserName": "Kullanıcı bilgisi yok",
     "noEmail": "E-posta bilgisi yok",
+    "bio": "Bio",
+    "badges": "Rozetler",
     "role": "Rol",
     "authProvider": "Kimlik Sağlayıcı",
-    "createdAt": "Hesap Olusturma",
+    "createdAt": "Hesap Oluşturma",
     "keycloakId": "Keycloak ID",
     "settings": "Ayarlar",
+    "accountSettingsTitle": "Hesap ayarları",
     "preferencesTitle": "Profil ve tercihler",
     "selfService": "Self-service",
     "fullName": "Ad Soyad",
@@ -854,14 +893,34 @@
     "email": "E-posta",
     "language": "Dil seçimi",
     "theme": "Tema seçimi",
-    "systemDefault": "Sistem varsayilani",
+    "systemDefault": "Sistem varsayılanı",
     "themeNote": "Tema seçimi anında uygulanır ve cihazda saklanır. Profil tercihi daha sonra backend preference akışına bağlanabilir.",
     "activeTheme": "Aktif tema:",
     "saving": "Kaydediliyor...",
-    "saveChanges": "Degisiklikleri kaydet",
+    "saveChanges": "Değişiklikleri kaydet",
+    "community": {
+      "eyebrow": "Topluluk",
+      "title": "Topluluk profili",
+      "posts": "Gönderi",
+      "comments": "Yorum",
+      "likes": "Beğeni",
+      "followers": "Takipçi"
+    },
+    "interactions": {
+      "eyebrow": "Aktivite",
+      "title": "Son Etkileşimler",
+      "emptyTitle": "Son etkileşim bulunmuyor",
+      "emptyDescription": "Forum ve topluluk özelliklerini kullandığınızda aktiviteleriniz burada görünecek."
+    },
+    "security": {
+      "eyebrow": "Güvenlik",
+      "title": "Hesap güvenliği",
+      "accountStatus": "Hesap durumu"
+    },
     "session": {
       "eyebrow": "Keycloak Oturumu",
       "title": "Oturum bilgileri",
+      "technicalTitle": "Teknik oturum bilgileri",
       "active": "Aktif",
       "inactive": "Pasif",
       "sessionState": "Oturum Kimliği",
@@ -886,14 +945,14 @@
   "alerts": {
     "eyebrow": "Bildirimler",
     "title": "Alarmlar",
-    "description": "Fiyat seviyelerini izle, aktif kurallari yonet ve tetiklenen gecmisi takip et.",
+    "description": "Fiyat seviyelerini izle, aktif kuralları yönet ve tetiklenen geçmişi takip et.",
     "loading": "Alarmlar yükleniyor...",
     "loadError": "Alarmlar yüklenemedi.",
     "create": "Alarm oluştur",
     "creating": "Oluşturuluyor...",
     "createSuccess": "Alarm oluşturuldu.",
-    "createError": "Alarm oluşturulamadi.",
-    "cancelSuccess": "Alarm pasife alindi.",
+    "createError": "Alarm oluşturulamadı.",
+    "cancelSuccess": "Alarm pasife alındı.",
     "cancelError": "Alarm iptal edilemedi.",
     "cards": {
       "activeTitle": "Aktif alarmlar",
@@ -901,27 +960,27 @@
       "triggeredTitle": "Tetiklenen",
       "triggeredSubtitle": "Geçmiş bildirimler",
       "passiveTitle": "Pasif",
-      "passiveSubtitle": "Iptal edilen kurallar",
-      "symbolsTitle": "Izlenen sembol",
-      "symbolsSubtitle": "Alarm tanimli enstrüman"
+      "passiveSubtitle": "İptal edilen kurallar",
+      "symbolsTitle": "İzlenen sembol",
+      "symbolsSubtitle": "Alarm tanımlı enstrüman"
     },
     "activeEyebrow": "Aktif Alarmlar",
-    "activeTitle": "Calışan kurallar",
+    "activeTitle": "Çalışan kurallar",
     "activeCount": "{{count}} aktif",
     "emptyActiveTitle": "Aktif alarm yok",
-    "emptyActiveDescription": "Alarm oluşturarak fiyat seviyelerini takip etmeye basla.",
+    "emptyActiveDescription": "Alarm oluşturarak fiyat seviyelerini takip etmeye başla.",
     "notificationsEyebrow": "Bildirimler",
-    "notificationsTitle": "Tetiklenen gecmis",
+    "notificationsTitle": "Tetiklenen geçmiş",
     "emptyTriggeredTitle": "Tetiklenen alarm yok",
-    "emptyTriggeredDescription": "Kosullar saglandiginda gecmis burada listelenecek.",
+    "emptyTriggeredDescription": "Koşullar sağlandığında geçmiş burada listelenecek.",
     "passiveEyebrow": "Pasif Alarmlar",
-    "passiveTitle": "Arsiv",
+    "passiveTitle": "Arşiv",
     "emptyPassiveTitle": "Pasif alarm yok",
-    "emptyPassiveDescription": "Iptal edilen alarmlar burada görünür.",
+    "emptyPassiveDescription": "İptal edilen alarmlar burada görünür.",
     "table": {
       "instrument": "Enstrüman",
-      "condition": "Kosul",
-      "threshold": "Esik",
+      "condition": "Koşul",
+      "threshold": "Eşik",
       "lastPrice": "Son fiyat",
       "status": "Durum",
       "action": "Aksiyon"
@@ -931,18 +990,18 @@
     },
     "deactivate": "Pasife al",
     "noSource": "Kaynak yok",
-    "triggeredLabel": "{{symbol}} alarmi tetiklendi",
-    "modalEyebrow": "Alarm Olustur",
-    "modalTitle": "Yeni fiyat kurali",
+    "triggeredLabel": "{{symbol}} alarmı tetiklendi",
+    "modalEyebrow": "Alarm Oluştur",
+    "modalTitle": "Yeni fiyat kuralı",
     "searchInstrument": "Enstrüman ara",
     "searchPlaceholder": "BTCUSDT, THYAO, USDTRY...",
-    "thresholdValue": "Esik deger",
+    "thresholdValue": "Eşik değer",
     "selectedSymbol": "Seçili sembol",
     "lastPrice": "Son fiyat:",
     "noData": "Veri yok",
     "conditions": {
-      "above": "Fiyat ustune cikarsa",
-      "below": "Fiyat altina dusurse"
+      "above": "Fiyat üstüne çıkarsa",
+      "below": "Fiyat altına düşerse"
     }
   },
   "newsDetail": {
@@ -954,9 +1013,9 @@
     "loadError": "Haber detayı yüklenemedi.",
     "missingId": "Haber numarası bulunamadı.",
     "emptyTitle": "Haber bulunamadı",
-    "emptyDescription": "Kayit silinmiş veya erişilemiyor olabilir.",
+    "emptyDescription": "Kayıt silinmiş veya erişilemiyor olabilir.",
     "languageMismatchTitle": "Haber seçili dilde görüntülenemiyor",
-    "languageMismatchDescription": "Bu kayıt farklı dilde tutuluyor. Haber listesine dönup dil filtresini değiştirebilirsin.",
+    "languageMismatchDescription": "Bu kayıt farklı dilde tutuluyor. Haber listesine dönüp dil filtresini değiştirebilirsin.",
     "imageAlt": "Haber görseli",
     "sourceLogo": "Kaynak logosu",
     "defaultCategory": "Gündem",
@@ -975,46 +1034,48 @@
       "goPortfolio": "Portföy sayfasına git",
       "portfolio": "Portföy",
       "quantity": "Miktar",
-      "buyPrice": "Alis fiyatı",
+      "buyPrice": "Alış fiyatı",
       "submitting": "Ekleniyor...",
       "submit": "Portföye ekle"
     },
     "createAlert": {
       "eyebrow": "Alarm oluştur",
-      "condition": "Kosul",
-      "above": "Fiyat bunun ustune cikinca",
-      "below": "Fiyat bunun altina inince",
+      "condition": "Koşul",
+      "above": "Fiyat bunun üstüne çıkınca",
+      "below": "Fiyat bunun altına inince",
       "targetPrice": "Hedef fiyat",
       "submit": "Alarm oluştur",
       "submitting": "Oluşturuluyor...",
-      "error": "Alarm oluşturulamadi."
+      "error": "Alarm oluşturulamadı."
     }
   },
   "simulation": {
     "eyebrow": "Simülasyon",
     "title": "Simülasyon Laboratuvarı",
-    "description": "Geçmiş bir tarihteki yatırımin bugünkü etkisini ve varsayımsal fiyat senaryolarini test et.",
+    "description": "Geçmiş bir tarihteki yatırımın bugünkü etkisini ve varsayımsal fiyat senaryolarını test et.",
     "loading": "Simülasyon verileri yükleniyor...",
     "loadError": "Simülasyon verileri yüklenemedi.",
     "past": {
       "eyebrow": "Geçmiş Simülasyonu",
-      "title": "Bugun degeri ne olurdu?",
+      "title": "Bugün değeri ne olurdu?",
       "instrument": "Enstrüman seç",
       "instrumentPlaceholder": "Enstrüman seç",
       "date": "Tarih seç",
-      "amount": "Tutar gir",
-      "submit": "Bugun degeri ne olurdu?",
+      "amount": "Adet/lot gir",
+      "submit": "Bugün değeri ne olurdu?",
       "submitting": "Hesaplanıyor...",
       "emptyTitle": "Geçmiş simülasyonu hazır",
       "emptyDescription": "Tarih ve tutar girildiğinde mevcut market history verisi ile sonuç hesaplanır.",
       "insufficientData": "Simülasyon için yeterli veri bulunamadı.",
       "calculateError": "Geçmiş simülasyonu hesaplanamadı.",
       "cards": {
-        "buyPrice": "Alis fiyatı",
-        "currentPrice": "Bugunku fiyat",
+        "buyPrice": "Alış fiyatı",
+        "currentPrice": "Bugünkü fiyat",
         "quantity": "Alınabilecek miktar",
-        "quantitySubtitle": "Varsayimsal lot/adet",
-        "todayValue": "Bugunku deger"
+        "quantitySubtitle": "Varsayımsal lot/adet",
+        "todayValue": "Bugünkü değer",
+        "calculatedQuantity": "Hesaplanan miktar: {{value}} adet",
+        "netProfitLoss": "Net kazanç / kayıp"
       }
     },
     "future": {
@@ -1031,12 +1092,12 @@
       "emptyDescription": "Enstrüman veya portföy seçip yüzde değişim girdiğinde tahmini etki hesaplanır.",
       "cards": {
         "currentPrice": "Mevcut fiyat",
-        "currentPortfolioValue": "Mevcut portföy degeri",
-        "baseValue": "Bugunku baz deger",
+        "currentPortfolioValue": "Mevcut portföy değeri",
+        "baseValue": "Bugünkü baz değer",
         "scenarioImpact": "Senaryo etkisi",
         "manualAssumption": "Elle girilen varsayım",
-        "projectedResult": "Tahmini sonuc",
-        "projectedValue": "Yeni varsayımsal deger",
+        "projectedResult": "Tahmini sonuç",
+        "projectedValue": "Yeni varsayımsal değer",
         "netDifference": "Net fark"
       }
     },
@@ -1050,8 +1111,8 @@
     "back": "Piyasa ekranına dön",
     "eyebrow": "Enstrüman Detayı",
     "loadingSubtitle": "Piyasa verisi yükleniyor",
-    "processing": "Isleniyor...",
-    "removeFavorite": "Favoriden cikar",
+    "processing": "İşleniyor...",
+    "removeFavorite": "Favoriden çıkar",
     "addFavorite": "Favoriye ekle",
     "createAlert": "Alarm oluştur",
     "addToPortfolio": "Portföye ekle",
@@ -1060,12 +1121,12 @@
     "currency": "Para birimi",
     "invalidInstrument": "Geçerli bir enstrüman seçilmedi.",
     "quoteError": "Enstrüman bilgisi yüklenemedi.",
-    "invalidDateRange": "Baslangic tarihi bitis tarihinden sonra olamaz.",
+    "invalidDateRange": "Başlangıç tarihi bitiş tarihinden sonra olamaz.",
     "analysisError": "Teknik analiz yüklenemedi.",
     "newsError": "Haberler yüklenemedi.",
-    "favoriteRemoved": "Favorilerden cikarildi.",
+    "favoriteRemoved": "Favorilerden çıkarıldı.",
     "favoriteAdded": "Favorilere eklendi.",
-    "favoriteError": "Favori islemi tamamlanamadi.",
+    "favoriteError": "Favori işlemi tamamlanamadı.",
     "loading": "Enstrüman verisi yükleniyor...",
     "emptyTitle": "Veri bulunamadı",
     "emptyDescription": "Bu sembol için güncel fiyat verisi dönmedi.",
@@ -1076,18 +1137,18 @@
     "analysisEmptyDescription": "Bu enstrüman için teknik özet oluşmadı.",
     "trend": "Trend",
     "latestPrice": "Son fiyat",
-    "dataPoints": "Veri noktasi",
+    "dataPoints": "Veri noktası",
     "noSignal": "Belirgin sinyal yok",
     "indicatorsEmptyTitle": "İndikatör bulunamadı",
-    "indicatorsEmptyDescription": "Seçili aralık için son indikator değerleri oluşmadı.",
+    "indicatorsEmptyDescription": "Seçili aralık için son indikatör değerleri oluşmadı.",
     "financialsEyebrow": "Finansallar",
-    "financialsTitle": "Sirket finansallari",
+    "financialsTitle": "Şirket finansalları",
     "financialsEmptyTitle": "Bu enstrüman için finansal veri bulunmuyor",
     "financialsEmptyDescription": "Backend tarafında finansal tablo endpoint'i tanımlandığında bu alan doldurulacak.",
-    "contextEyebrow": "Baglam",
+    "contextEyebrow": "Bağlam",
     "contextTitle": "Geçmiş veri özeti",
-    "historyPoints": "Geçmiş veri noktasi",
-    "analysisRange": "Analiz araligi",
+    "historyPoints": "Geçmiş veri noktası",
+    "analysisRange": "Analiz aralığı",
     "addedToPortfolio": "Enstrüman portföye eklendi.",
     "alertCreated": "Alarm oluşturuldu.",
     "tabs": {
@@ -1103,18 +1164,18 @@
     "newsTitle": "Seçili enstrümanla ilgili akış",
     "newsLoading": "Haberler yükleniyor...",
     "newsEmptyTitle": "Haber bulunamadı",
-    "newsEmptyDescription": "Bu enstrüman için eslesen haber kaydi gelmedi.",
+    "newsEmptyDescription": "Bu enstrüman için eşleşen haber kaydı gelmedi.",
     "noSource": "Kaynak yok",
     "noTitle": "Başlık yok",
     "noSummary": "Özeti bilgisi gelmedi.",
     "openNews": "Habere git",
     "chartEyebrow": "Grafik",
     "chartTitle": "Fiyat ve teknik göstergeler",
-    "startDate": "Baslangic",
-    "endDate": "Bitis",
+    "startDate": "Başlangıç",
+    "endDate": "Bitiş",
     "chartLoading": "Grafik verisi yükleniyor...",
     "chartEmptyTitle": "Bu sembol için tarihsel veri bulunamadı",
-    "chartEmptyDescription": "Seçili aralıkta fiyat serisi donmedi.",
+    "chartEmptyDescription": "Seçili aralıkta fiyat serisi dönmedi.",
     "price": "Fiyat",
     "momentüm": "Momentüm",
     "ranges": {
@@ -1128,8 +1189,8 @@
     }
   },
   "trend": {
-    "uptrend": "Yukselis",
-    "downtrend": "Dusus",
+    "uptrend": "Yükseliş",
+    "downtrend": "Düşüş",
     "sideways": "Yatay"
   },
   "signals": {
@@ -1137,17 +1198,17 @@
     "PRICE_BELOW_SMA20": "Fiyat < SMA20",
     "SMA7_ABOVE_SMA20": "MA7 > MA20",
     "SMA7_BELOW_SMA20": "MA7 < MA20",
-    "RSI_OVERBOUGHT": "RSI asiri alim",
-    "RSI_OVERSOLD": "RSI asiri satim",
+    "RSI_OVERBOUGHT": "RSI aşırı alım",
+    "RSI_OVERSOLD": "RSI aşırı satım",
     "RSI_NEUTRAL": "RSI dengeli"
   },
   "stats": {
     "lastPrice": "SON FİYAT",
-    "dailyChange": "Gunluk değişim",
-    "open": "Acilis",
+    "dailyChange": "Günlük değişim",
+    "open": "Açılış",
     "volume": "Hacim",
-    "yearRange": "52 hafta araligi",
-    "dataSource": "Veri kaynagi",
-    "lastUpdate": "Son guncelleme"
+    "yearRange": "52 hafta aralığı",
+    "dataSource": "Veri kaynağı",
+    "lastUpdate": "Son güncelleme"
   }
 }

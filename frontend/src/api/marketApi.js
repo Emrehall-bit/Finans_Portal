@@ -161,13 +161,14 @@ export async function getMarketHistory(symbol, paramsOrRange) {
     typeof paramsOrRange === "string"
       ? { range: paramsOrRange }
       : {
+          from: paramsOrRange?.from,
+          to: paramsOrRange?.to,
           period: paramsOrRange?.period,
           source: paramsOrRange?.source,
         }),
   };
 
   const url = `${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}/history`;
-  console.log("[getMarketHistory] url:", url, "params:", params);
   const { data } = await axiosClient.get(url, {
     params,
   });

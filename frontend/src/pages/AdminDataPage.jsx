@@ -10,7 +10,6 @@ import {
   getTefasFundFetchStatus,
   getTcmbHistoryBackfillStatus,
   getTcmbSyncStatus,
-  testTefasFundConnection,
   triggerBinanceHistoryFetch,
   triggerStockFetch,
   triggerStockHistoryBackfill,
@@ -239,6 +238,7 @@ export default function AdminDataPage() {
     () => [
       {
         key: "stock-fetch",
+        group: "live",
         eyebrow: t("admin.cards.stockFetch.eyebrow"),
         title: t("admin.cards.stockFetch.title"),
         description: t("admin.cards.stockFetch.description"),
@@ -247,6 +247,7 @@ export default function AdminDataPage() {
       },
       {
         key: "tcmb-sync",
+        group: "live",
         eyebrow: t("admin.cards.tcmbSync.eyebrow"),
         title: t("admin.cards.tcmbSync.title"),
         description: t("admin.cards.tcmbSync.description"),
@@ -255,6 +256,8 @@ export default function AdminDataPage() {
       },
       {
         key: "tcmb-history",
+        group: "history",
+        warning: true,
         eyebrow: t("admin.cards.tcmbHistory.eyebrow"),
         title: t("admin.cards.tcmbHistory.title"),
         description: t("admin.cards.tcmbHistory.description"),
@@ -263,6 +266,8 @@ export default function AdminDataPage() {
       },
       {
         key: "binance-history",
+        group: "history",
+        warning: true,
         eyebrow: t("admin.cards.binanceHistory.eyebrow"),
         title: t("admin.cards.binanceHistory.title"),
         description: t("admin.cards.binanceHistory.description"),
@@ -285,6 +290,7 @@ export default function AdminDataPage() {
       },
       {
         key: "tefas-fund-fetch",
+        group: "live",
         eyebrow: t("admin.cards.tefasFundFetch.eyebrow"),
         title: t("admin.cards.tefasFundFetch.title"),
         description: t("admin.cards.tefasFundFetch.description"),
@@ -293,6 +299,8 @@ export default function AdminDataPage() {
       },
       {
         key: "tefas-fund-backfill",
+        group: "history",
+        warning: true,
         eyebrow: t("admin.cards.tefasFundBackfill.eyebrow"),
         title: t("admin.cards.tefasFundBackfill.title"),
         description: t("admin.cards.tefasFundBackfill.description"),
@@ -326,20 +334,21 @@ export default function AdminDataPage() {
             }),
           ),
       },
-      {
-        key: "tefas-test-connection",
-        eyebrow: t("admin.cards.tefasTestConnection.eyebrow"),
-        title: t("admin.cards.tefasTestConnection.title"),
-        description: t("admin.cards.tefasTestConnection.description"),
-        actionLabel: t("admin.cards.tefasTestConnection.action"),
-        onClick: () => runAction("tefas-test-connection", testTefasFundConnection),
-      },
     ],
     [binanceDays, tefasFundCode, tefasPeriod, t],
   );
 
   const isBusy = useMemo(() => (key) => busyKey === key, [busyKey]);
   const controlsDisabled = actionsLocked || busyKey !== null || jobProgress?.running === true;
+  const liveOperationCards = useMemo(() => actionCards.filter((card) => card.group === "live"), [actionCards]);
+  const historyOperationCards = useMemo(() => actionCards.filter((card) => card.group === "history"), [actionCards]);
+  const operationStatusLabel = error
+    ? t("admin.metrics.status.error")
+    : jobProgress?.running
+      ? t("admin.metrics.status.running")
+      : completedJobKey
+        ? t("admin.metrics.status.completed")
+        : "-";
 
   const availableMarketTapeSymbols = useMemo(() => {
     const selected = new Set(marketTapeSymbols.map((item) => String(item).toUpperCase()));
@@ -487,15 +496,70 @@ export default function AdminDataPage() {
     return null;
   };
 
+  const renderOperationCard = (card) => (
+    <article key={card.key} className="admin-console-card admin-operation-card panel-surface">
+      <div className="admin-console-card-copy">
+        <div className="admin-operation-card-head">
+          <p className="eyebrow">{card.eyebrow}</p>
+          {card.warning ? <span className="admin-warning-badge">{t("admin.longRunningWarning")}</span> : null}
+        </div>
+        <h3>{card.title}</h3>
+        <p>{card.description}</p>
+      </div>
+      {card.input ?? null}
+      <button
+        type="button"
+        className="admin-console-button"
+        disabled={controlsDisabled}
+        onClick={card.onClick}
+      >
+        <span className="admin-console-button-glow" />
+        <span>{isBusy(card.key) ? t("admin.running") : card.actionLabel}</span>
+      </button>
+      {renderJobProgress(card.key)}
+    </article>
+  );
+
   return (
-    <div className="dashboard-stack admin-console-shell">
+    <div className="dashboard-stack admin-console-shell admin-panel-page">
       {error ? <ErrorMessage message={error} /> : null}
 
-      <section className="admin-console-form panel-surface">
-        <div>
+      <section className="admin-section admin-status-section panel-surface">
+        <div className="admin-section-head">
+          <div>
+            <p className="eyebrow">{t("admin.status.eyebrow")}</p>
+            <h3>{t("admin.status.title")}</h3>
+          </div>
+          <span className="summary-chip">{t("admin.title")}</span>
+        </div>
+
+        <div className="admin-status-grid">
+          <div className="admin-console-metric-card">
+            <span>{t("admin.status.totalSymbols")}</span>
+            <strong>{marketTapeLoaded ? marketTapeCatalog.length || "-" : "-"}</strong>
+          </div>
+          <div className="admin-console-metric-card">
+            <span>{t("admin.status.selectedTapeSymbols")}</span>
+            <strong>{marketTapeLoaded ? marketTapeSymbols.length || "-" : "-"}</strong>
+          </div>
+          <div className="admin-console-metric-card">
+            <span>{t("admin.status.lastOperationTime")}</span>
+            <strong>-</strong>
+          </div>
+          <div className="admin-console-metric-card">
+            <span>{t("admin.status.lastOperationStatus")}</span>
+            <strong>{operationStatusLabel}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="admin-section admin-console-form admin-market-tape-section panel-surface">
+        <div className="admin-section-head">
+          <div>
           <p className="eyebrow">{t("admin.marketTape.eyebrow")}</p>
           <h3>{t("admin.marketTape.title")}</h3>
           <p className="admin-console-copy">{t("admin.marketTape.description")}</p>
+          </div>
         </div>
 
         {!marketTapeLoaded ? (
@@ -608,97 +672,104 @@ export default function AdminDataPage() {
         )}
       </section>
 
-      <section className="admin-console-grid">
-        {actionCards.map((card) => (
-          <article key={card.key} className="admin-console-card panel-surface">
+      <section className="admin-section">
+        <div className="admin-section-head">
+          <div>
+            <p className="eyebrow">{t("admin.sections.liveEyebrow")}</p>
+            <h3>{t("admin.sections.liveTitle")}</h3>
+          </div>
+        </div>
+        <div className="admin-console-grid admin-grid">
+          {liveOperationCards.map(renderOperationCard)}
+        </div>
+      </section>
+
+      <section className="admin-section">
+        <div className="admin-section-head">
+          <div>
+            <p className="eyebrow">{t("admin.sections.historyEyebrow")}</p>
+            <h3>{t("admin.sections.historyTitle")}</h3>
+          </div>
+        </div>
+
+        <div className="admin-console-grid admin-grid">
+          {historyOperationCards.map(renderOperationCard)}
+
+          <article className="admin-console-form admin-operation-card panel-surface">
             <div className="admin-console-card-copy">
-              <p className="eyebrow">{card.eyebrow}</p>
-              <h3>{card.title}</h3>
-              <p>{card.description}</p>
+              <div className="admin-operation-card-head">
+                <p className="eyebrow">{t("admin.stockHistory.eyebrow")}</p>
+                <span className="admin-warning-badge">{t("admin.longRunningWarning")}</span>
+              </div>
+              <h3>{t("admin.stockHistory.title")}</h3>
+              <p className="admin-console-copy">{t("admin.stockHistory.description")}</p>
             </div>
-            {card.input ?? null}
-            <button
-              type="button"
-              className="admin-console-button"
-              disabled={controlsDisabled}
-              onClick={card.onClick}
-            >
-              <span className="admin-console-button-glow" />
-              <span>{isBusy(card.key) ? t("admin.running") : card.actionLabel}</span>
-            </button>
-            {renderJobProgress(card.key)}
+
+            <div className="admin-console-form-grid">
+              <input
+                type="text"
+                value={stockSymbol}
+                onChange={(event) => setStockSymbol(event.target.value.toUpperCase())}
+                className="admin-console-input"
+                placeholder={t("admin.stockHistory.symbolPlaceholder")}
+              />
+              <input
+                type="text"
+                value={startDate}
+                onChange={(event) => setStartDate(event.target.value)}
+                className="admin-console-input"
+                placeholder={t("admin.stockHistory.startDatePlaceholder")}
+              />
+              <input
+                type="text"
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                className="admin-console-input"
+                placeholder={t("admin.stockHistory.endDatePlaceholder")}
+              />
+            </div>
+
+            <div className="admin-console-actions">
+              <button
+                type="button"
+                className="admin-console-button"
+                disabled={controlsDisabled}
+                onClick={() =>
+                  startJob("stock-history", () =>
+                    triggerStockHistoryBackfill(buildPayload(stockSymbol, startDate, endDate)),
+                  )
+                }
+              >
+                <span className="admin-console-button-glow" />
+                <span>{isBusy("stock-history") ? t("admin.running") : t("admin.stockHistory.action")}</span>
+              </button>
+              <button
+                type="button"
+                className="admin-console-button admin-console-button-secondary"
+                disabled={controlsDisabled}
+                onClick={() => {
+                  setStockSymbol("");
+                  setStartDate("");
+                  setEndDate("");
+                }}
+              >
+                <span className="admin-console-button-glow" />
+                <span>{t("common.clear")}</span>
+              </button>
+            </div>
+
+            {renderJobProgress("stock-history")}
           </article>
-        ))}
+        </div>
       </section>
 
-      <section className="admin-console-form panel-surface">
-        <div>
-          <p className="eyebrow">{t("admin.stockHistory.eyebrow")}</p>
-          <h3>{t("admin.stockHistory.title")}</h3>
-          <p className="admin-console-copy">{t("admin.stockHistory.description")}</p>
-        </div>
-
-        <div className="admin-console-form-grid">
-          <input
-            type="text"
-            value={stockSymbol}
-            onChange={(event) => setStockSymbol(event.target.value.toUpperCase())}
-            className="admin-console-input"
-            placeholder={t("admin.stockHistory.symbolPlaceholder")}
-          />
-          <input
-            type="text"
-            value={startDate}
-            onChange={(event) => setStartDate(event.target.value)}
-            className="admin-console-input"
-            placeholder={t("admin.stockHistory.startDatePlaceholder")}
-          />
-          <input
-            type="text"
-            value={endDate}
-            onChange={(event) => setEndDate(event.target.value)}
-            className="admin-console-input"
-            placeholder={t("admin.stockHistory.endDatePlaceholder")}
-          />
-        </div>
-
-        <div className="admin-console-actions">
-          <button
-            type="button"
-            className="admin-console-button"
-            disabled={controlsDisabled}
-            onClick={() =>
-              startJob("stock-history", () =>
-                triggerStockHistoryBackfill(buildPayload(stockSymbol, startDate, endDate)),
-              )
-            }
-          >
-            <span className="admin-console-button-glow" />
-            <span>{isBusy("stock-history") ? t("admin.running") : t("admin.stockHistory.action")}</span>
-          </button>
-          <button
-            type="button"
-            className="admin-console-button admin-console-button-secondary"
-            disabled={controlsDisabled}
-            onClick={() => {
-              setStockSymbol("");
-              setStartDate("");
-              setEndDate("");
-            }}
-          >
-            <span className="admin-console-button-glow" />
-            <span>{t("common.clear")}</span>
-          </button>
-        </div>
-
-        {renderJobProgress("stock-history")}
-      </section>
-
-      <section className="admin-console-result panel-surface">
-        <div>
+      <section className="admin-section admin-console-result admin-response-panel panel-surface">
+        <div className="admin-section-head">
+          <div>
           <p className="eyebrow">{t("admin.result.eyebrow")}</p>
           <h3>{t("admin.result.title")}</h3>
           <p className="admin-console-copy">{t("admin.result.description")}</p>
+          </div>
         </div>
 
         {!result ? (

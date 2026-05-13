@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { LogOut } from "lucide-react";
+import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import PageHeader from "../components/common/PageHeader";
 import { useAuth } from "../auth/AuthContext";
 import useToast from "../hooks/useToast";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -18,7 +19,7 @@ function buildFormState(user, themePreference) {
 }
 
 export default function ProfilePage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const {
     authLoading,
     hasAuthenticatedSession,
@@ -108,175 +109,214 @@ export default function ProfilePage() {
     };
   }, [hasAuthenticatedSession, keycloak, t]);
   const displayRole = formatRoleLabel(user?.role, t);
-  const displayAuthProvider = formatAuthProviderLabel(userProfile?.authProvider, t);
-  const currentLanguage = String(i18n.resolvedLanguage || i18n.language || "tr").toLowerCase();
-  const isTurkish = currentLanguage.startsWith("tr");
-  const profileLabels = isTurkish
-    ? {
-        authProvider: "Kimlik Saglayici",
-        sessionState: "Oturum Kimligi",
-        tokenExpiry: "Token Suresi",
-        subject: "Kimlik",
-        authenticated: "Kimlik Durumu",
-      }
-    : {
-        authProvider: "Authentication Provider",
-        sessionState: "Session State",
-        tokenExpiry: "Token Expiry",
-        subject: "Subject",
-        authenticated: "Authenticated",
-      };
+  const displayAuthProvider = formatAuthProviderLabel(user?.authProvider ?? userProfile?.authProvider, t);
+  const profileBio = userProfile?.bio || user?.bio || "-";
+  const profileBadges = Array.isArray(userProfile?.badges) ? userProfile.badges : [];
 
   return (
-    <div className="profile-page-stack settings-shell">
-      <PageHeader
-        eyebrow={t("profile.eyebrow")}
-        title={t("profile.title")}
-        description={t("profile.description")}
-        actions={
-          <div className="actions-row">
-            <button type="button" className="danger-button" onClick={logout}>
-              {t("profile.logout")}
-            </button>
-          </div>
-        }
-      />
-
+    <div className="profile-page-stack profile-settings-page">
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
       {error ? <ErrorMessage message={error} /> : null}
       {authLoading || loading ? <LoadingSpinner label={t("profile.loading")} /> : null}
 
       {!authLoading && !loading ? (
-        <div className="profile-grid settings-grid">
-          <section className="card profile-summary-card">
-            <p className="eyebrow">{t("profile.userInfo")}</p>
-            <div className="profile-summary-head">
+        <>
+          <section className="panel-surface profile-hero-card">
+            <div className="profile-hero-main">
               <div className="profile-avatar profile-avatar-large">
-                {(user?.fullName || user?.email || "FP")
-                  .split(" ")
-                  .filter(Boolean)
-                  .slice(0, 2)
-                  .map((part) => part[0]?.toUpperCase() || "")
-                  .join("")}
+                {getInitials(user?.fullName || user?.email)}
               </div>
-              <div>
-                <h3>{user?.fullName || t("profile.noUserName")}</h3>
-                <p>{user?.email || t("profile.noEmail")}</p>
+              <div className="profile-hero-copy">
+                <p className="eyebrow">{t("profile.eyebrow")}</p>
+                <h1>{user?.fullName || t("profile.noUserName")}</h1>
+                <p className="profile-email">{user?.email || t("profile.noEmail")}</p>
               </div>
             </div>
 
-            <div className="profile-stat-grid">
-              <div className="profile-stat">
-                <span>{t("profile.role")}</span>
-                <strong>{displayRole}</strong>
+            <div className="profile-hero-meta">
+              <div>
+                <span>{t("profile.bio")}</span>
+                <strong>{profileBio}</strong>
               </div>
-              <div className="profile-stat">
-                <span>{profileLabels.authProvider}</span>
-                <strong>{displayAuthProvider}</strong>
-              </div>
-              <div className="profile-stat">
-                <span>{t("profile.createdAt")}</span>
-                <strong>{formatDateTime(user?.createdAt)}</strong>
-              </div>
-              <div className="profile-stat">
-                <span>{t("profile.keycloakId")}</span>
-                <strong>{user?.keycloakId || "-"}</strong>
+              <div>
+                <span>{t("profile.badges")}</span>
+                {profileBadges.length > 0 ? (
+                  <div className="profile-badge-row">
+                    {profileBadges.map((badge) => (
+                      <span key={badge} className="summary-chip">{badge}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <strong>-</strong>
+                )}
               </div>
             </div>
+
+            <button type="button" className="danger-button profile-logout-button" onClick={logout}>
+              <LogOut size={18} strokeWidth={1.9} aria-hidden />
+              <span>{t("profile.logout")}</span>
+            </button>
           </section>
 
-          <form className="card profile-form-card" onSubmit={handleSubmit}>
+          <div className="profile-grid">
+            <form className="panel-surface profile-form-card profile-account-card" onSubmit={handleSubmit}>
+              <div className="panel-head">
+                <div>
+                  <p className="eyebrow">{t("profile.settings")}</p>
+                  <h3>{t("profile.accountSettingsTitle")}</h3>
+                </div>
+                <span className="pill">{t("profile.selfService")}</span>
+              </div>
+
+              <div className="profile-form-grid">
+                <label className="profile-field">
+                  <span>{t("profile.fullName")}</span>
+                  <input
+                    name="fullName"
+                    value={form.fullName}
+                    onChange={handleChange}
+                    placeholder={t("profile.fullNamePlaceholder")}
+                    maxLength={255}
+                  />
+                </label>
+
+                <label className="profile-field">
+                  <span>{t("profile.email")}</span>
+                  <input value={user?.email || ""} disabled readOnly />
+                </label>
+
+                <label className="profile-field">
+                  <span>{t("profile.language")}</span>
+                  <select name="preferredLanguage" value={form.preferredLanguage} onChange={handleChange}>
+                    <option value="">{t("profile.systemDefault")}</option>
+                    <option value="tr">{t("common.turkish")}</option>
+                    <option value="en">{t("common.english")}</option>
+                  </select>
+                </label>
+
+                <label className="profile-field">
+                  <span>{t("profile.theme")}</span>
+                  <select name="themePreference" value={form.themePreference} onChange={handleChange}>
+                    <option value="system">{t("profile.systemDefault")}</option>
+                    <option value="light">{t("layout.themeLight")}</option>
+                    <option value="dark">{t("layout.themeDark")}</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="profile-note">
+                {t("profile.activeTheme")} <strong>{resolvedTheme === "dark" ? t("layout.themeDark") : t("layout.themeLight")}</strong>
+              </div>
+
+              <div className="actions-row profile-form-actions">
+                <button type="submit" disabled={submitting}>
+                  {submitting ? t("profile.saving") : t("profile.saveChanges")}
+                </button>
+              </div>
+            </form>
+
+            <div className="profile-side-stack">
+              <section className="panel-surface profile-community-card">
+                <div className="panel-head">
+                  <div>
+                    <p className="eyebrow">{t("profile.community.eyebrow")}</p>
+                    <h3>{t("profile.community.title")}</h3>
+                  </div>
+                </div>
+
+                <div className="profile-community-grid">
+                  <div className="profile-stat">
+                    <span>{t("profile.community.posts")}</span>
+                    <strong>-</strong>
+                  </div>
+                  <div className="profile-stat">
+                    <span>{t("profile.community.comments")}</span>
+                    <strong>-</strong>
+                  </div>
+                  <div className="profile-stat">
+                    <span>{t("profile.community.likes")}</span>
+                    <strong>-</strong>
+                  </div>
+                  <div className="profile-stat">
+                    <span>{t("profile.community.followers")}</span>
+                    <strong>-</strong>
+                  </div>
+                </div>
+              </section>
+
+              <section className="panel-surface profile-security-card">
+                <div className="panel-head">
+                  <div>
+                    <p className="eyebrow">{t("profile.security.eyebrow")}</p>
+                    <h3>{t("profile.security.title")}</h3>
+                  </div>
+                  <span className={`portfolio-status-pill ${hasAuthenticatedSession ? "is-live" : "is-unavailable"}`}>
+                    {sessionDetails.authenticated}
+                  </span>
+                </div>
+
+                <div className="profile-stat-grid">
+                  <div className="profile-stat">
+                    <span>{t("profile.security.accountStatus")}</span>
+                    <strong>{hasAuthenticatedSession ? t("profile.session.active") : "-"}</strong>
+                  </div>
+                  <div className="profile-stat">
+                    <span>{t("profile.authProvider")}</span>
+                    <strong>{displayAuthProvider || "-"}</strong>
+                  </div>
+                  <div className="profile-stat">
+                    <span>{t("profile.createdAt")}</span>
+                    <strong>{formatDateTime(user?.createdAt)}</strong>
+                  </div>
+                </div>
+
+                <details className="profile-technical-session">
+                  <summary>{t("profile.session.technicalTitle")}</summary>
+                  <div className="profile-technical-grid">
+                    <div className="profile-stat">
+                      <span>{t("profile.keycloakId")}</span>
+                      <strong>{user?.keycloakId || "-"}</strong>
+                    </div>
+                    <div className="profile-stat">
+                      <span>{t("profile.session.sessionState")}</span>
+                      <strong>{sessionDetails.sessionState}</strong>
+                    </div>
+                    <div className="profile-stat">
+                      <span>{t("profile.session.tokenExpiry")}</span>
+                      <strong>{sessionDetails.tokenExpiry}</strong>
+                    </div>
+                    <div className="profile-stat">
+                      <span>{t("profile.session.subject")}</span>
+                      <strong>{sessionDetails.subject}</strong>
+                    </div>
+                  </div>
+                </details>
+              </section>
+            </div>
+          </div>
+
+          <section className="panel-surface profile-interactions-card">
             <div className="panel-head">
               <div>
-                <p className="eyebrow">{t("profile.settings")}</p>
-                <h3>{t("profile.preferencesTitle")}</h3>
-              </div>
-              <span className="pill">{t("profile.selfService")}</span>
-            </div>
-
-            <div className="profile-form-grid">
-              <label className="profile-field">
-                <span>{t("profile.fullName")}</span>
-                <input
-                  name="fullName"
-                  value={form.fullName}
-                  onChange={handleChange}
-                  placeholder={t("profile.fullNamePlaceholder")}
-                  maxLength={255}
-                />
-              </label>
-
-              <label className="profile-field">
-                <span>{t("profile.email")}</span>
-                <input value={user?.email || ""} disabled readOnly />
-              </label>
-
-              <label className="profile-field">
-                <span>{t("profile.language")}</span>
-                <select name="preferredLanguage" value={form.preferredLanguage} onChange={handleChange}>
-                  <option value="">{t("profile.systemDefault")}</option>
-                  <option value="tr">{t("common.turkish")}</option>
-                  <option value="en">{t("common.english")}</option>
-                </select>
-              </label>
-
-              <label className="profile-field">
-                <span>{t("profile.theme")}</span>
-                <select name="themePreference" value={form.themePreference} onChange={handleChange}>
-                  <option value="system">{t("profile.systemDefault")}</option>
-                  <option value="light">{t("layout.themeLight")}</option>
-                  <option value="dark">{t("layout.themeDark")}</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="profile-note">{t("profile.themeNote")}</div>
-
-            <div className="profile-note">
-              {t("profile.activeTheme")} <strong>{resolvedTheme === "dark" ? t("layout.themeDark") : t("layout.themeLight")}</strong>
-            </div>
-
-            <div className="actions-row">
-              <button type="submit" disabled={submitting}>
-                {submitting ? t("profile.saving") : t("profile.saveChanges")}
-              </button>
-            </div>
-          </form>
-
-          <section className="card profile-form-card settings-session-card">
-            <div className="panel-head">
-              <div>
-                <p className="eyebrow">{t("profile.session.eyebrow")}</p>
-                <h3>{t("profile.session.title")}</h3>
-              </div>
-              <span className={`portfolio-status-pill ${hasAuthenticatedSession ? "is-live" : "is-unavailable"}`}>
-                {sessionDetails.authenticated}
-              </span>
-            </div>
-
-            <div className="profile-stat-grid">
-              <div className="profile-stat">
-                <span>{profileLabels.sessionState}</span>
-                <strong>{sessionDetails.sessionState}</strong>
-              </div>
-              <div className="profile-stat">
-                <span>{profileLabels.tokenExpiry}</span>
-                <strong>{sessionDetails.tokenExpiry}</strong>
-              </div>
-              <div className="profile-stat">
-                <span>{profileLabels.subject}</span>
-                <strong>{sessionDetails.subject}</strong>
-              </div>
-              <div className="profile-stat">
-                <span>{profileLabels.authenticated}</span>
-                <strong>{sessionDetails.authenticated}</strong>
+                <p className="eyebrow">{t("profile.interactions.eyebrow")}</p>
+                <h3>{t("profile.interactions.title")}</h3>
               </div>
             </div>
+            <EmptyState title={t("profile.interactions.emptyTitle")} description={t("profile.interactions.emptyDescription")} />
           </section>
-        </div>
+        </>
       ) : null}
     </div>
   );
+}
+
+function getInitials(value) {
+  return String(value || "FP")
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
 }
 
 function formatRoleLabel(value, t) {

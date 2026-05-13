@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   buildNewsPlaceholderLabel,
   formatNewsCategoryLabel,
@@ -18,6 +19,7 @@ function resolveAccentLabel(item) {
 }
 
 export default function NewsCard({ item, onClick }) {
+  const { t } = useTranslation();
   const [imageFailed, setImageFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
   const thumbnail = resolveThumbnail(item);
@@ -84,7 +86,7 @@ export default function NewsCard({ item, onClick }) {
         <p className={`news-card-summary${item?.summary ? "" : " is-fallback"}`}>{summaryText}</p>
 
         <div className="news-card-footer">
-          <span className="news-card-link">Haberi ac</span>
+          <span className="news-card-link">{t("news.openNews")}</span>
         </div>
       </div>
     </button>

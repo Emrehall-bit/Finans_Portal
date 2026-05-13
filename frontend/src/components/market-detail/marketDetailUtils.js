@@ -82,6 +82,30 @@ export function formatTrendLabel(value) {
   }[value] ?? value;
 }
 
+export function resolveTrendDirection(fallbackTrend, chartData = []) {
+  const prices = (Array.isArray(chartData) ? chartData : [])
+    .map((point) => toNumeric(point?.close))
+    .filter((value) => value !== null);
+
+  if (prices.length < 2 || prices[0] === 0) {
+    return fallbackTrend;
+  }
+
+  const firstPrice = prices[0];
+  const lastPrice = prices[prices.length - 1];
+  const changePercent = ((lastPrice - firstPrice) / Math.abs(firstPrice)) * 100;
+
+  if (changePercent > 1) {
+    return "UPTREND";
+  }
+
+  if (changePercent < -1) {
+    return "DOWNTREND";
+  }
+
+  return "SIDEWAYS";
+}
+
 export function formatSignalLabel(value) {
   return {
     PRICE_ABOVE_SMA20: i18n.t("signals.PRICE_ABOVE_SMA20"),
@@ -133,17 +157,49 @@ export function buildChartData(points = [], history = []) {
 export function buildStats(quote, annualHistory = []) {
   const priceTime = quote?.priceTime ?? quote?.fetchedAt ?? null;
   const annualRange = computeAnnualRange(annualHistory);
+  const latestHistoryPoint = getLatestHistoryPoint(annualHistory);
+  const openPrice = firstNumeric(
+    quote?.openPrice,
+    quote?.open,
+    quote?.openingPrice,
+    latestHistoryPoint?.openPrice,
+  );
+  const volume = firstNumeric(
+    quote?.volume,
+    quote?.totalVolume,
+    latestHistoryPoint?.volume,
+  );
 
-  // TODO: expose open, volume and 52-week summary fields from backend market quote endpoint.
   return [
     { label: i18n.t("stats.lastPrice"), value: formatNumber(quote?.price), tone: "neutral" },
     { label: i18n.t("stats.dailyChange"), value: formatMarketChange(quote?.changeRate), tone: changeTone(quote?.changeRate) },
-    { label: i18n.t("stats.open"), value: "-", tone: "muted" },
-    { label: i18n.t("stats.volume"), value: "-", tone: "muted" },
+    { label: i18n.t("stats.open"), value: openPrice === null ? "-" : formatNumber(openPrice), tone: openPrice === null ? "muted" : "neutral" },
+    { label: i18n.t("stats.volume"), value: volume === null ? "-" : formatNumber(volume, 0), tone: volume === null ? "muted" : "neutral" },
     { label: i18n.t("stats.yearRange"), value: annualRange, tone: "neutral" },
     { label: i18n.t("stats.dataSource"), value: quote?.source || "-", tone: "neutral" },
     { label: i18n.t("stats.lastUpdate"), value: formatDateTime(priceTime), tone: "neutral" },
   ];
+}
+
+function firstNumeric(...values) {
+  for (const value of values) {
+    const numeric = toNumeric(value);
+    if (numeric !== null) {
+      return numeric;
+    }
+  }
+
+  return null;
+}
+
+function getLatestHistoryPoint(history = []) {
+  if (!Array.isArray(history) || history.length === 0) {
+    return null;
+  }
+
+  return [...history]
+    .filter((item) => item?.priceTimestamp)
+    .sort((left, right) => new Date(right.priceTimestamp).getTime() - new Date(left.priceTimestamp).getTime())[0] ?? history.at(-1);
 }
 
 function computeAnnualRange(history = []) {

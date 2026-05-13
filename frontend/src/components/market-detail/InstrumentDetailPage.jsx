@@ -24,6 +24,7 @@ import {
   DEFAULT_INDICATORS,
   formatSignalLabel,
   formatTrendLabel,
+  resolveTrendDirection,
 } from "./marketDetailUtils";
 
 export default function InstrumentDetailPage() {
@@ -38,6 +39,7 @@ export default function InstrumentDetailPage() {
   const [quote, setQuote] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [annualHistory, setAnnualHistory] = useState([]);
+  const [yearStatsHistory, setYearStatsHistory] = useState([]);
   const [newsItems, setNewsItems] = useState([]);
   const [watchlistItems, setWatchlistItems] = useState([]);
   const [quoteLoading, setQuoteLoading] = useState(true);
@@ -108,7 +110,6 @@ export default function InstrumentDetailPage() {
       try {
         setHistoryLoading(true);
         const historyRequest = buildHistoryRequest(activeRange, dateRange, quote?.source, instrumentType);
-        console.log("[loadAnnualHistory] request:", historyRequest);
         const nextHistory = await getMarketHistory(normalizedSymbol, historyRequest);
         if (active) {
           setAnnualHistory(Array.isArray(nextHistory) ? nextHistory : []);
@@ -129,6 +130,38 @@ export default function InstrumentDetailPage() {
       active = false;
     };
   }, [normalizedSymbol, activeRange, dateRange, quote?.source, instrumentType]);
+
+  useEffect(() => {
+    if (!normalizedSymbol) {
+      setYearStatsHistory([]);
+      return;
+    }
+
+    let active = true;
+
+    async function loadYearStatsHistory() {
+      try {
+        const statsRange = buildPresetRange(365);
+        const data = await getMarketHistory(normalizedSymbol, {
+          ...statsRange,
+          source: quote?.source,
+          type: instrumentType,
+        });
+        if (active) {
+          setYearStatsHistory(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (active) {
+          setYearStatsHistory([]);
+        }
+      }
+    }
+
+    loadYearStatsHistory();
+    return () => {
+      active = false;
+    };
+  }, [normalizedSymbol, quote?.source, instrumentType]);
 
   useEffect(() => {
     if (!normalizedSymbol || !dateRange.from || !dateRange.to || isDateRangeInvalid) {
@@ -235,6 +268,10 @@ export default function InstrumentDetailPage() {
     () => buildChartData(Array.isArray(analysis?.points) ? analysis.points : [], annualHistory),
     [analysis, annualHistory],
   );
+  const displayTrendDirection = useMemo(
+    () => resolveTrendDirection(analysis?.trendDirection, chartData),
+    [analysis?.trendDirection, chartData],
+  );
   const displaySymbol = useMemo(
     () => formatInstrumentDisplaySymbol(normalizedSymbol),
     [normalizedSymbol],
@@ -243,7 +280,7 @@ export default function InstrumentDetailPage() {
     () => formatInstrumentDisplayTitle(normalizedSymbol, quote?.displayName),
     [normalizedSymbol, quote?.displayName],
   );
-  const stats = useMemo(() => buildStats(quote, annualHistory), [quote, annualHistory]);
+  const stats = useMemo(() => buildStats(quote, yearStatsHistory), [quote, yearStatsHistory]);
   const latestPrice = analysis?.latestPrice ?? quote?.price ?? null;
   const quoteUnavailable = !quoteLoading && !quoteError && (!quote || quote.price == null);
   const isFavorite = useMemo(
@@ -383,7 +420,7 @@ export default function InstrumentDetailPage() {
                       <div className="instrument-overview-summary">
                         <div className="instrument-overview-metric">
                           <span>{t("instrumentDetail.trend")}</span>
-                          <strong>{formatTrendLabel(analysis.trendDirection)}</strong>
+                          <strong>{formatTrendLabel(displayTrendDirection)}</strong>
                         </div>
                         <div className="instrument-overview-metric">
                           <span>{t("instrumentDetail.latestPrice")}</span>
@@ -477,29 +514,6 @@ export default function InstrumentDetailPage() {
 
           <div className="instrument-detail-side-column">
             <InstrumentStatsPanel stats={stats} />
-
-            {!historyLoading && annualHistory.length > 0 ? (
-              <section className="panel-surface instrument-context-card">
-                <div className="panel-head">
-                  <div>
-                    <p className="eyebrow">{t("instrumentDetail.contextEyebrow")}</p>
-                    <h3>{t("instrumentDetail.contextTitle")}</h3>
-                  </div>
-                </div>
-                <div className="instrument-stats-list">
-                  <div className="instrument-stats-row">
-                    <span>{t("instrumentDetail.historyPoints")}</span>
-                    <strong>{annualHistory.length}</strong>
-                  </div>
-                  <div className="instrument-stats-row">
-                    <span>{t("instrumentDetail.analysisRange")}</span>
-                    <strong>
-                      {dateRange.from} / {dateRange.to}
-                    </strong>
-                  </div>
-                </div>
-              </section>
-            ) : null}
           </div>
         </section>
       ) : null}

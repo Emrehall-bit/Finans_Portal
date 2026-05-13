@@ -3,10 +3,11 @@ import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { formatNumber } from "../../utils/formatters";
-import { formatSignalLabel, formatTrendLabel } from "./analysisUtils";
+import { buildChartData, formatSignalLabel, formatTrendLabel, resolveTrendDirection } from "./analysisUtils";
 
 export default function AnalysisInsightPanel({ analysis, loading, error }) {
   const { t } = useTranslation();
+  const displayTrendDirection = resolveTrendDirection(analysis?.trendDirection, buildChartData(analysis?.points));
 
   return (
     <aside className="panel-surface analysis-lab-panel">
@@ -28,7 +29,7 @@ export default function AnalysisInsightPanel({ analysis, loading, error }) {
           <div className="instrument-overview-summary">
             <div className="instrument-overview-metric">
               <span>{t("instrumentDetail.trend")}</span>
-              <strong>{formatTrendLabel(analysis.trendDirection)}</strong>
+              <strong>{formatTrendLabel(displayTrendDirection)}</strong>
             </div>
             <div className="instrument-overview-metric">
               <span>{t("instrumentDetail.latestPrice")}</span>

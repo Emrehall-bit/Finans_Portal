@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   buildNewsPlaceholderLabel,
   formatNewsPublishedAt,
@@ -13,6 +14,7 @@ function resolveThumbnail(item) {
 }
 
 export default function FeaturedNewsHero({ item, onOpen }) {
+  const { t } = useTranslation();
   const [imageFailed, setImageFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
@@ -49,7 +51,7 @@ export default function FeaturedNewsHero({ item, onOpen }) {
         <p className="eyebrow">One Cikan Haber</p>
         <h2>{item.title || "Baslik bulunmuyor"}</h2>
         <p className={!item.summary ? "is-fallback" : undefined}>{summaryText}</p>
-        <span className="news-card-link">Haberi ac</span>
+        <span className="news-card-link">{t("news.openNews")}</span>
       </div>
 
       <div className="news-featured-media">

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 function buildVisiblePages(currentPage, totalPages) {
   if (totalPages <= 0) {
     return [];
@@ -32,18 +34,19 @@ export default function PaginationControls({
   onPageChange,
   className = "",
 }) {
+  const { t } = useTranslation();
   const classes = ["news-pagination-card", className].filter(Boolean).join(" ");
   const visiblePages = buildVisiblePages(currentPage, totalPages);
 
   return (
     <div className={classes}>
       <strong>
-        Page {currentPage + 1}
+        {t("pagination.page")} {currentPage + 1}
         {totalPages > 0 ? ` / ${totalPages}` : ""}
       </strong>
-      <p className="muted">{totalElements} total news items</p>
+      <p className="muted">{t("pagination.totalNews", { count: totalElements })}</p>
       {visiblePages.length > 0 ? (
-        <div className="news-pagination-pages" aria-label="Pagination pages">
+        <div className="news-pagination-pages" aria-label={t("pagination.pagesAria")}>
           {visiblePages.map((entry) => {
             if (typeof entry !== "number") {
               return (
@@ -72,10 +75,10 @@ export default function PaginationControls({
       ) : null}
       <div className="actions-row">
         <button type="button" onClick={onPrevious} disabled={loading || isFirstPage}>
-          Previous
+          {t("pagination.previous")}
         </button>
         <button type="button" onClick={onNext} disabled={loading || isLastPage}>
-          Next
+          {t("pagination.next")}
         </button>
       </div>
     </div>

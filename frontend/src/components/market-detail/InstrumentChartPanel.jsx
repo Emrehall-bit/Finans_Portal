@@ -101,7 +101,6 @@ export default function InstrumentChartPanel({
             <div className="analysis-chart-shell terminal-chart-shell market-detail-rsi">
               <div className="panel-head compact">
                 <div>
-                  <p className="eyebrow">{t("instrumentDetail.momentum")}</p>
                   <h3>RSI 14</h3>
                 </div>
               </div>

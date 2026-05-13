@@ -11,6 +11,8 @@ import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
 
+const FUTURE_PERCENT_PRESETS = [-20, -10, -5, 5, 10, 25];
+
 export default function SimulationPage() {
   const { t } = useTranslation();
   const { userId } = useAuth();
@@ -221,7 +223,7 @@ export default function SimulationPage() {
 
       {!loading && !error ? (
         <section className="simulation-grid">
-          <section className="panel-surface simulation-panel">
+          <section className="panel-surface simulation-panel simulation-panel-past">
             <div className="panel-head">
               <div>
                 <p className="eyebrow">{t("simulation.past.eyebrow")}</p>
@@ -270,7 +272,7 @@ export default function SimulationPage() {
                 </label>
               </div>
 
-              <div className="instrument-action-footer">
+              <div className="instrument-action-footer simulation-submit-row">
                 <button type="submit" disabled={pastLoading}>
                   {pastLoading ? t("simulation.past.submitting") : t("simulation.past.submit")}
                 </button>
@@ -286,16 +288,32 @@ export default function SimulationPage() {
             ) : null}
 
             {pastResult ? (
-              <div className="cards-grid compact">
+              <div className="cards-grid compact simulation-results-grid">
                 <SummaryCard title={t("simulation.past.cards.buyPrice")} value={formatCurrency(pastResult.historicalPrice)} subtitle={pastResult.priceDate} tone="neutral" />
                 <SummaryCard title={t("simulation.past.cards.currentPrice")} value={formatCurrency(pastResult.currentPrice)} subtitle={pastResult.source} tone="cool" />
-                <SummaryCard title={t("simulation.past.cards.quantity")} value={formatNumber(pastResult.quantity, 6)} subtitle={t("simulation.past.cards.quantitySubtitle")} tone="neutral" />
-                <SummaryCard title={t("simulation.past.cards.todayValue")} value={formatCurrency(pastResult.todayValue)} subtitle={formatSigned(pastResult.profitLoss)} tone={pastResult.profitLoss >= 0 ? "cool" : "warm"} />
+                <div className={`summary-card summary-card-${pastResult.profitLoss >= 0 ? "cool" : "warm"} simulation-today-value-card`}>
+                  <div className="summary-card-top">
+                    <p className="summary-card-title">{t("simulation.past.cards.todayValue")}</p>
+                  </div>
+                  <h3>{formatCurrency(pastResult.todayValue)}</h3>
+                  <p className="summary-card-subtitle">{formatSigned(pastResult.profitLoss)}</p>
+                  <p className="simulation-quantity-note">
+                    {t("simulation.past.cards.calculatedQuantity", { value: formatNumber(pastResult.quantity, 0) })}
+                  </p>
+                  <div className="summary-sparkline" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+                <SummaryCard title={t("simulation.past.cards.netProfitLoss")} value={formatCurrency(pastResult.profitLoss)} subtitle={formatSigned(pastResult.profitLoss)} tone={pastResult.profitLoss >= 0 ? "cool" : "warm"} />
               </div>
             ) : null}
           </section>
 
-          <section className="panel-surface simulation-panel">
+          <section className="panel-surface simulation-panel simulation-panel-future">
             <div className="panel-head">
               <div>
                 <p className="eyebrow">{t("simulation.future.eyebrow")}</p>
@@ -363,6 +381,18 @@ export default function SimulationPage() {
                   onChange={(event) => setFutureForm((current) => ({ ...current, percentChange: event.target.value }))}
                   placeholder={t("simulation.future.percentPlaceholder")}
                 />
+                <div className="simulation-preset-row" aria-label={t("simulation.future.percentChange")}>
+                  {FUTURE_PERCENT_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={`simulation-preset-button${Number(futureForm.percentChange) === preset ? " active" : ""}`}
+                      onClick={() => setFutureForm((current) => ({ ...current, percentChange: String(preset) }))}
+                    >
+                      {preset > 0 ? `+${preset}%` : `${preset}%`}
+                    </button>
+                  ))}
+                </div>
               </label>
             </div>
 
@@ -372,7 +402,7 @@ export default function SimulationPage() {
                 description={t("simulation.future.emptyDescription")}
               />
             ) : (
-              <div className="cards-grid compact">
+              <div className="cards-grid compact simulation-results-grid simulation-future-results">
                 <SummaryCard
                   title={futureScenario.type === "instrument" ? t("simulation.future.cards.currentPrice") : t("simulation.future.cards.currentPortfolioValue")}
                   value={formatCurrency(futureScenario.baseValue)}
