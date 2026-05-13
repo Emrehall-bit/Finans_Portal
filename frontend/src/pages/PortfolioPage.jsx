@@ -20,6 +20,7 @@ import { useTheme } from "../theme/ThemeContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
 
 const CHART_COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4f46e5"];
+const EMPTY_HOLDINGS = [];
 
 export default function PortfolioPage() {
   const { t } = useTranslation();
@@ -183,7 +184,9 @@ export default function PortfolioPage() {
   }
 
   const summary = selectedPortfolio?.summary ?? null;
-  const holdings = selectedPortfolio?.holdings ?? [];
+  const plAmount = toNumber(summary?.profitLoss ?? summary?.totalProfitLoss);
+  const plPct = toNumber(summary?.profitLossPercent);
+  const holdings = selectedPortfolio?.holdings ?? EMPTY_HOLDINGS;
   const allocationData = useMemo(() => {
     const totalValue = holdings.reduce((sum, holding) => sum + toNumber(holding.currentValue), 0);
     if (totalValue <= 0) {
@@ -198,67 +201,69 @@ export default function PortfolioPage() {
   }, [holdings]);
 
   return (
-    <div className="portfolio-management-shell">
+    <div className="portfolio-management-shell portfolio-page-v2">
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       <section className="portfolio-management-grid">
-        <aside className="panel-surface portfolio-management-sidebar">
-          <div className="panel-head">
-            <div>
-              <p className="eyebrow">{t("portfolio.listEyebrow")}</p>
-              <h3>{t("portfolio.listTitle")}</h3>
+        <div className="portfolio-list-sticky-wrap">
+          <aside className="panel-surface portfolio-management-sidebar portfolio-list-rail">
+            <div className="panel-head">
+              <div>
+                <p className="eyebrow">{t("portfolio.listEyebrow")}</p>
+                <h3>{t("portfolio.listTitle")}</h3>
+              </div>
+              <span className="summary-chip">{t("common.records", { count: portfolios.length })}</span>
             </div>
-            <span className="summary-chip">{t("common.records", { count: portfolios.length })}</span>
-          </div>
 
-          <form className="portfolio-create-panel" onSubmit={handleCreatePortfolio}>
-            <label className="portfolio-field">
-              <span>{t("portfolio.name")}</span>
-              <input
-                required
-                value={newPortfolio.portfolioName}
-                onChange={(event) => setNewPortfolio((current) => ({ ...current, portfolioName: event.target.value }))}
-                placeholder={t("portfolio.namePlaceholder")}
-              />
-            </label>
-            <label className="portfolio-field">
-              <span>{t("portfolio.visibility")}</span>
-              <select
-                value={newPortfolio.visibilityStatus}
-                onChange={(event) => setNewPortfolio((current) => ({ ...current, visibilityStatus: event.target.value }))}
-              >
-                <option value="PRIVATE">{t("portfolio.visibilityOptions.PRIVATE")}</option>
-                <option value="PUBLIC">{t("portfolio.visibilityOptions.PUBLIC")}</option>
-              </select>
-            </label>
-            <button type="submit">{t("portfolio.create")}</button>
-          </form>
-
-          {loadingList ? <LoadingSpinner label={t("portfolio.loadingList")} /> : null}
-          {!loadingList && portfolios.length === 0 ? (
-            <EmptyState title={t("portfolio.emptyListTitle")} description={t("portfolio.emptyListDescription")} />
-          ) : null}
-
-          {!loadingList && portfolios.length > 0 ? (
-            <div className="portfolio-selector-list">
-              {portfolios.map((portfolio) => (
-                <button
-                  key={portfolio.portfolioId}
-                  type="button"
-                  className={`portfolio-selector-card${portfolio.portfolioId === selectedPortfolioId ? " active" : ""}`}
-                  onClick={() => setSelectedPortfolioId(portfolio.portfolioId)}
+            <form className="portfolio-create-panel portfolio-create-panel--compact" onSubmit={handleCreatePortfolio}>
+              <label className="portfolio-field">
+                <span>{t("portfolio.name")}</span>
+                <input
+                  required
+                  value={newPortfolio.portfolioName}
+                  onChange={(event) => setNewPortfolio((current) => ({ ...current, portfolioName: event.target.value }))}
+                  placeholder={t("portfolio.namePlaceholder")}
+                />
+              </label>
+              <label className="portfolio-field">
+                <span>{t("portfolio.visibility")}</span>
+                <select
+                  value={newPortfolio.visibilityStatus}
+                  onChange={(event) => setNewPortfolio((current) => ({ ...current, visibilityStatus: event.target.value }))}
                 >
-                  <strong>{portfolio.portfolioName}</strong>
-                  <span>{formatVisibilityStatus(portfolio.visibilityStatus, t)}</span>
-                  <small>{formatDateTime(portfolio.createdAt)}</small>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </aside>
+                  <option value="PRIVATE">{t("portfolio.visibilityOptions.PRIVATE")}</option>
+                  <option value="PUBLIC">{t("portfolio.visibilityOptions.PUBLIC")}</option>
+                </select>
+              </label>
+              <button type="submit">{t("portfolio.create")}</button>
+            </form>
 
-        <div className="portfolio-management-main">
+            {loadingList ? <LoadingSpinner label={t("portfolio.loadingList")} /> : null}
+            {!loadingList && portfolios.length === 0 ? (
+              <EmptyState title={t("portfolio.emptyListTitle")} description={t("portfolio.emptyListDescription")} />
+            ) : null}
+
+            {!loadingList && portfolios.length > 0 ? (
+              <div className="portfolio-selector-list">
+                {portfolios.map((portfolio) => (
+                  <button
+                    key={portfolio.portfolioId}
+                    type="button"
+                    className={`portfolio-selector-card${portfolio.portfolioId === selectedPortfolioId ? " active" : ""}`}
+                    onClick={() => setSelectedPortfolioId(portfolio.portfolioId)}
+                  >
+                    <strong>{portfolio.portfolioName}</strong>
+                    <span>{formatVisibilityStatus(portfolio.visibilityStatus, t)}</span>
+                    <small>{formatDateTime(portfolio.createdAt)}</small>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </aside>
+        </div>
+
+        <div className={`portfolio-management-main${!loadingDetail && selectedPortfolio ? " portfolio-detail-stack" : ""}`}>
           {loadingDetail ? <LoadingSpinner label={t("portfolio.loadingDetail")} /> : null}
 
           {!loadingDetail && !selectedPortfolio ? (
@@ -269,45 +274,69 @@ export default function PortfolioPage() {
 
           {!loadingDetail && selectedPortfolio ? (
             <>
-              <section className="panel-surface portfolio-management-panel portfolio-management-hero">
-                <div className="portfolio-management-hero-head">
-                  <div>
-                    <p className="eyebrow">{t("portfolio.selectedEyebrow")}</p>
-                    <h2>{selectedPortfolio.portfolioName || "-"}</h2>
-                    <p className="page-description">
-                      {formatVisibilityStatus(selectedPortfolio.visibilityStatus || "PRIVATE", t)} · {t("portfolio.createdAt", { value: formatDateTime(selectedPortfolio.createdAt) })}
-                    </p>
+              <header className="portfolio-detail-header">
+                <div className="portfolio-detail-header-main">
+                  <p className="eyebrow">{t("portfolio.selectedEyebrow")}</p>
+                  <h2 className="portfolio-detail-title">{selectedPortfolio.portfolioName || "-"}</h2>
+                  <p className="portfolio-detail-meta">
+                    {formatVisibilityStatus(selectedPortfolio.visibilityStatus || "PRIVATE", t)} · {t("portfolio.createdAt", { value: formatDateTime(selectedPortfolio.createdAt) })}
+                  </p>
+                </div>
+                <div className="actions-row portfolio-detail-header-actions">
+                  <button type="button" onClick={openAddHoldingModal}>
+                    {t("portfolio.addAsset")}
+                  </button>
+                </div>
+              </header>
+
+              <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-kpi-panel">
+                <div className="portfolio-kpi-grid">
+                  <div className="portfolio-kpi-wrap portfolio-kpi-wrap--stat">
+                    <SummaryCard title={t("portfolio.summary.totalCost")} value={formatCurrency(summary?.totalCost)} subtitle={t("portfolio.summary.totalCostSubtitle")} tone="cool" />
                   </div>
-                  <div className="actions-row">
-                    <button type="button" onClick={openAddHoldingModal}>
-                      {t("portfolio.addAsset")}
-                    </button>
+                  <div className="portfolio-kpi-wrap portfolio-kpi-wrap--stat">
+                    <SummaryCard title={t("portfolio.summary.currentValue")} value={formatCurrency(summary?.currentValue ?? summary?.totalCurrentValue)} subtitle={t("portfolio.summary.currentValueSubtitle")} tone="cool" />
+                  </div>
+                  <div className={getSummaryPnLWrapClass(plAmount)}>
+                    <SummaryCard title={t("portfolio.summary.profitLossAmount")} value={formatCurrency(summary?.profitLoss ?? summary?.totalProfitLoss)} subtitle={t("portfolio.summary.profitLossAmountSubtitle")} tone={plAmount >= 0 ? "cool" : "warm"} />
+                  </div>
+                  <div className={getSummaryPnLWrapClass(plPct)}>
+                    <SummaryCard title={t("portfolio.summary.profitLossPercent")} value={formatPercent(summary?.profitLossPercent)} subtitle={t("portfolio.summary.profitLossPercentSubtitle")} tone={plPct >= 0 ? "cool" : "warm"} />
                   </div>
                 </div>
+              </section>
 
-                <div className="cards-grid compact">
-                  <SummaryCard title={t("portfolio.summary.totalCost")} value={formatCurrency(summary?.totalCost)} subtitle={t("portfolio.summary.totalCostSubtitle")} tone="cool" />
-                  <SummaryCard title={t("portfolio.summary.currentValue")} value={formatCurrency(summary?.currentValue ?? summary?.totalCurrentValue)} subtitle={t("portfolio.summary.currentValueSubtitle")} tone="cool" />
-                  <SummaryCard title={t("portfolio.summary.profitLossAmount")} value={formatCurrency(summary?.profitLoss ?? summary?.totalProfitLoss)} subtitle={t("portfolio.summary.profitLossAmountSubtitle")} tone={toNumber(summary?.profitLoss ?? summary?.totalProfitLoss) >= 0 ? "cool" : "warm"} />
-                  <SummaryCard title={t("portfolio.summary.profitLossPercent")} value={formatPercent(summary?.profitLossPercent)} subtitle={t("portfolio.summary.profitLossPercentSubtitle")} tone={toNumber(summary?.profitLossPercent) >= 0 ? "cool" : "warm"} />
-                </div>
+              <div className="portfolio-analytics-grid">
+                <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-performance-panel">
+                  <div className="panel-head portfolio-analytics-panel-head">
+                    <div>
+                      <p className="eyebrow">{t("portfolio.historyEyebrow")}</p>
+                      <h3>{t("portfolio.historyTitle")}</h3>
+                    </div>
+                  </div>
+                  {/* TODO: backend tarafinda portfoy performans gecmisi endpointi eklendiginde bu alan gercek veriyle doldurulacak. */}
+                  <div className="portfolio-performance-body">
+                    <div className="portfolio-history-empty-card portfolio-history-empty-card--fill">
+                      <EmptyState title={t("portfolio.historyEmptyTitle")} description={t("portfolio.historyEmptyDescription")} />
+                    </div>
+                  </div>
+                </section>
 
-                <div className="portfolio-hero-allocation">
-                  <div className="panel-head">
+                <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-allocation-panel">
+                  <div className="panel-head portfolio-analytics-panel-head">
                     <div>
                       <p className="eyebrow">{t("portfolio.allocationEyebrow")}</p>
                       <h3>{t("portfolio.allocationTitle")}</h3>
                     </div>
                   </div>
-
                   {allocationData.length === 0 ? (
                     <EmptyState title={t("portfolio.allocationEmptyTitle")} description={t("portfolio.allocationEmptyDescription")} />
                   ) : (
-                    <div className="portfolio-hero-allocation-shell">
-                      <div className="portfolio-hero-allocation-chart">
-                        <ResponsiveContainer>
+                    <div className="portfolio-allocation-shell">
+                      <div className="portfolio-allocation-chart-wrap">
+                        <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
-                            <Pie data={allocationData} dataKey="value" nameKey="instrumentCode" outerRadius={96} innerRadius={48}>
+                            <Pie data={allocationData} dataKey="value" nameKey="instrumentCode" outerRadius={58} innerRadius={34}>
                               {allocationData.map((entry, index) => (
                                 <Cell key={`${entry.instrumentCode}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                               ))}
@@ -321,38 +350,26 @@ export default function PortfolioPage() {
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className="portfolio-hero-allocation-list">
+                      <div className="portfolio-allocation-legend">
                         {allocationData.map((entry, index) => (
-                          <div key={`${entry.instrumentCode}-${index}`} className="portfolio-allocation-item">
+                          <div key={`${entry.instrumentCode}-${index}`} className="portfolio-allocation-item portfolio-allocation-item--v2">
                             <div className="portfolio-allocation-label">
                               <span className="portfolio-color-dot" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
-                              <strong>{entry.instrumentCode}</strong>
+                              <strong className="portfolio-allocation-code">{entry.instrumentCode}</strong>
                             </div>
-                            <span className="muted">
-                              {formatCurrency(entry.value)} ({formatNumber(entry.percentage, 2)}%)
-                            </span>
+                            <div className="portfolio-allocation-metrics" aria-label={`${entry.instrumentCode} allocation`}>
+                              <span className="portfolio-allocation-pct">{formatNumber(entry.percentage, 2)}%</span>
+                              <span className="portfolio-allocation-amt">{formatCurrency(entry.value)}</span>
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
-                </div>
-              </section>
-
-              <section className="portfolio-management-content-grid">
-                <section className="panel-surface portfolio-management-panel">
-                  <div className="panel-head">
-                    <div>
-                      <p className="eyebrow">{t("portfolio.historyEyebrow")}</p>
-                      <h3>{t("portfolio.historyTitle")}</h3>
-                    </div>
-                  </div>
-                  {/* TODO: backend tarafinda portfoy performans gecmisi endpointi eklendiginde bu alan gercek veriyle doldurulacak. */}
-                  <EmptyState title={t("portfolio.historyEmptyTitle")} description={t("portfolio.historyEmptyDescription")} />
                 </section>
-              </section>
+              </div>
 
-              <section className="panel-surface portfolio-management-panel table-wrap portfolio-table-card">
+              <section className="panel-surface portfolio-management-panel portfolio-table-card portfolio-holdings-section portfolio-detail-panel portfolio-holdings-panel">
                 <div className="panel-head">
                   <div>
                     <p className="eyebrow">{t("portfolio.holdingsEyebrow")}</p>
@@ -364,63 +381,65 @@ export default function PortfolioPage() {
                 {holdings.length === 0 ? (
                   <EmptyState title={t("portfolio.emptyHoldingsTitle")} description={t("portfolio.emptyHoldingsDescription")} />
                 ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>{t("portfolio.table.asset")}</th>
-                        <th>{t("portfolio.table.quantity")}</th>
-                        <th>{t("portfolio.table.cost")}</th>
-                        <th>{t("portfolio.table.currentPrice")}</th>
-                        <th>{t("portfolio.table.currentValue")}</th>
-                        <th>{t("portfolio.table.profitLoss")}</th>
-                        <th>{t("portfolio.table.status")}</th>
-                        <th>{t("portfolio.table.updatedAt")}</th>
-                        <th>{t("portfolio.table.action")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {holdings.map((holding, index) => (
-                        <tr key={`${holding.holdingId || holding.instrumentCode}-${index}`}>
-                          <td>
-                            <div className="portfolio-cell-stack">
-                              <strong>{holding.instrumentCode || "-"}</strong>
-                              <span className="muted">{t("portfolio.assetNumber", { index: index + 1 })}</span>
-                            </div>
-                          </td>
-                          <td>{formatNumber(holding.quantity)}</td>
-                          <td>{formatCurrency(holding.buyPrice)}</td>
-                          <td>{holding.valuationAvailable ? formatCurrency(holding.currentPrice) : t("portfolio.priceMissing")}</td>
-                          <td>{holding.valuationAvailable ? formatCurrency(holding.currentValue) : t("portfolio.missingData")}</td>
-                          <td>
-                            {holding.valuationAvailable ? (
-                              <div className="portfolio-cell-stack">
-                                <strong>{formatCurrency(holding.profitLoss)}</strong>
-                                <span className="muted">{formatPercent(holding.profitLossPercent)}</span>
-                              </div>
-                            ) : (
-                              <span className="muted">{t("portfolio.missingData")}</span>
-                            )}
-                          </td>
-                          <td>
-                            <span className={`portfolio-status-pill ${getPriceStatusClass(holding.priceStatus)}`}>
-                              {formatPriceStatus(holding.priceStatus, t)}
-                            </span>
-                          </td>
-                          <td>{formatDateTime(holding.lastPriceUpdateTime)}</td>
-                          <td>
-                            <div className="actions-row">
-                              <button type="button" className="secondary-button" onClick={() => openEditHoldingModal(holding)}>
-                                {t("portfolio.update")}
-                              </button>
-                              <button type="button" className="danger-button" onClick={() => handleDeleteHolding(holding.holdingId)}>
-                                {t("portfolio.delete")}
-                              </button>
-                            </div>
-                          </td>
+                  <div className="portfolio-holdings-scroll">
+                    <table className="portfolio-holdings-table">
+                      <thead>
+                        <tr>
+                          <th>{t("portfolio.table.asset")}</th>
+                          <th>{t("portfolio.table.quantity")}</th>
+                          <th>{t("portfolio.table.cost")}</th>
+                          <th>{t("portfolio.table.currentPrice")}</th>
+                          <th>{t("portfolio.table.currentValue")}</th>
+                          <th>{t("portfolio.table.profitLoss")}</th>
+                          <th>{t("portfolio.table.status")}</th>
+                          <th>{t("portfolio.table.updatedAt")}</th>
+                          <th>{t("portfolio.table.action")}</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {holdings.map((holding, index) => (
+                          <tr key={`${holding.holdingId || holding.instrumentCode}-${index}`}>
+                            <td>
+                              <div className="portfolio-cell-stack">
+                                <strong>{holding.instrumentCode || "-"}</strong>
+                                <span className="muted">{t("portfolio.assetNumber", { index: index + 1 })}</span>
+                              </div>
+                            </td>
+                            <td>{formatNumber(holding.quantity)}</td>
+                            <td>{formatCurrency(holding.buyPrice)}</td>
+                            <td>{holding.valuationAvailable ? formatCurrency(holding.currentPrice) : t("portfolio.priceMissing")}</td>
+                            <td>{holding.valuationAvailable ? formatCurrency(holding.currentValue) : t("portfolio.missingData")}</td>
+                            <td className={holding.valuationAvailable ? getPnLCellClass(holding.profitLoss) : undefined}>
+                              {holding.valuationAvailable ? (
+                                <div className="portfolio-cell-stack">
+                                  <strong>{formatCurrency(holding.profitLoss)}</strong>
+                                  <span className="muted">{formatPercent(holding.profitLossPercent)}</span>
+                                </div>
+                              ) : (
+                                <span className="muted">{t("portfolio.missingData")}</span>
+                              )}
+                            </td>
+                            <td>
+                              <span className={`portfolio-status-pill ${getPriceStatusClass(holding.priceStatus)}`}>
+                                {formatPriceStatus(holding.priceStatus, t)}
+                              </span>
+                            </td>
+                            <td>{formatDateTime(holding.lastPriceUpdateTime)}</td>
+                            <td>
+                              <div className="actions-row portfolio-holdings-actions">
+                                <button type="button" className="secondary-button" onClick={() => openEditHoldingModal(holding)}>
+                                  {t("portfolio.update")}
+                                </button>
+                                <button type="button" className="danger-button" onClick={() => handleDeleteHolding(holding.holdingId)}>
+                                  {t("portfolio.delete")}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </section>
             </>
@@ -507,6 +526,22 @@ function normalizeCode(value) {
 function toNumber(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function getSummaryPnLWrapClass(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric === 0) {
+    return "portfolio-kpi-wrap portfolio-kpi-wrap--flat";
+  }
+  return numeric > 0 ? "portfolio-kpi-wrap portfolio-kpi-wrap--up" : "portfolio-kpi-wrap portfolio-kpi-wrap--down";
+}
+
+function getPnLCellClass(profitLoss) {
+  const numeric = Number(profitLoss);
+  if (!Number.isFinite(numeric) || numeric === 0) {
+    return "portfolio-pl-cell is-flat";
+  }
+  return numeric > 0 ? "portfolio-pl-cell is-up" : "portfolio-pl-cell is-down";
 }
 
 function getPriceStatusClass(priceStatus) {

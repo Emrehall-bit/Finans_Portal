@@ -131,6 +131,7 @@
       "alertsTitle": "Active alerts",
       "alertsSubtitle": "Rules waiting to trigger",
       "alertsTrend": "Warning",
+      "heatmapTitle": "Market Heatmap",
       "marketTabs": {
         "gainers": "Top gainers",
         "losers": "Top losers"
@@ -220,10 +221,21 @@
   },
   "markets": {
     "eyebrow": "Markets",
-    "title": "Monitor multiple instrument groups on a single screen.",
-    "description": "Filter FX, gold, stocks, funds, and futures. Every row or card opens its detail page.",
+    "title": "Markets on a single screen.",
+    "description": "Track the financial data you need from one place. Use search and filters to focus on what matters to you.",
+    "movement": {
+      "label": "Movement",
+      "all": "All",
+      "topGainers": "Top gainers",
+      "topLosers": "Top losers"
+    },
+    "sortDisabledHint": "While a movement filter is on, order is fixed by change %.",
+    "favoritesOnly": "My favorites",
+    "favoritesLoginHint": "Sign in to filter by favorites",
+    "favoritesEmptyTitle": "No favorites in this view",
+    "favoritesEmptyDescription": "You have no favorites in this category, or search filters hide them. Click the star on a row to add one.",
     "searchLabel": "Search symbol or name",
-    "searchPlaceholder": "THYAO, USDTRY, BTCUSDT...",
+    "searchPlaceholder": "THYAO, USDTRY, XU030...",
     "category": "Category",
     "source": "Source",
     "sorting": "Sorting",
@@ -244,8 +256,12 @@
     "examine": "Inspect",
     "columns": {
       "instrument": "Instrument",
+      "favorite": "Favorite",
       "category": "Category",
       "last": "Last",
+      "lastPrice": "Last price",
+      "buy": "Bid",
+      "sell": "Ask",
       "change": "Change",
       "source": "Source",
       "detail": "Detail"
@@ -281,7 +297,7 @@
       "STOCK": "Stock",
       "FUND": "Fund",
       "FUTURES": "Futures",
-      "BOND": "Bond",
+      "BOND": "Bond / T-bill",
       "MACRO": "Macro"
     },
     "macro": {
@@ -348,13 +364,13 @@
       "profitLossPercentSubtitle": "Percentage performance"
     },
     "allocationEyebrow": "Portfolio Allocation",
-    "allocationTitle": "Pie chart",
+    "allocationTitle": "Allocation chart",
     "allocationEmptyTitle": "No allocation data",
     "allocationEmptyDescription": "The chart will render once there are valuated assets.",
     "historyEyebrow": "Performance History",
-    "historyTitle": "Time series",
+    "historyTitle": "Performance chart",
     "historyEmptyTitle": "No performance history",
-    "historyEmptyDescription": "There is no time-based performance data for this portfolio yet.",
+    "historyEmptyDescription": "When historical performance is available for this portfolio, it will appear here as a chart.",
     "holdingsEyebrow": "Asset Table",
     "holdingsTitle": "Holdings",
     "emptyHoldingsTitle": "No assets",
@@ -381,7 +397,7 @@
     "table": {
       "asset": "Asset",
       "quantity": "Quantity",
-      "cost": "Cost",
+      "cost": "Avg. cost",
       "currentPrice": "Current price",
       "currentValue": "Current value",
       "profitLoss": "Profit / Loss",
@@ -1106,6 +1122,7 @@
       "1W": "1W",
       "1M": "1M",
       "3M": "3M",
+      "6M": "6A",
       "1Y": "1Y",
       "MAX": "MAX"
     }
