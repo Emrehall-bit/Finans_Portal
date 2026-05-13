@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LogOut } from "lucide-react";
-import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { useAuth } from "../auth/AuthContext";
@@ -108,10 +107,7 @@ export default function ProfilePage() {
       tokenExpiry: parsed?.exp ? formatDateTime(new Date(parsed.exp * 1000)) : "-",
     };
   }, [hasAuthenticatedSession, keycloak, t]);
-  const displayRole = formatRoleLabel(user?.role, t);
   const displayAuthProvider = formatAuthProviderLabel(user?.authProvider ?? userProfile?.authProvider, t);
-  const profileBio = userProfile?.bio || user?.bio || "-";
-  const profileBadges = Array.isArray(userProfile?.badges) ? userProfile.badges : [];
 
   return (
     <div className="profile-page-stack profile-settings-page">
@@ -130,25 +126,6 @@ export default function ProfilePage() {
                 <p className="eyebrow">{t("profile.eyebrow")}</p>
                 <h1>{user?.fullName || t("profile.noUserName")}</h1>
                 <p className="profile-email">{user?.email || t("profile.noEmail")}</p>
-              </div>
-            </div>
-
-            <div className="profile-hero-meta">
-              <div>
-                <span>{t("profile.bio")}</span>
-                <strong>{profileBio}</strong>
-              </div>
-              <div>
-                <span>{t("profile.badges")}</span>
-                {profileBadges.length > 0 ? (
-                  <div className="profile-badge-row">
-                    {profileBadges.map((badge) => (
-                      <span key={badge} className="summary-chip">{badge}</span>
-                    ))}
-                  </div>
-                ) : (
-                  <strong>-</strong>
-                )}
               </div>
             </div>
 
@@ -216,34 +193,6 @@ export default function ProfilePage() {
             </form>
 
             <div className="profile-side-stack">
-              <section className="panel-surface profile-community-card">
-                <div className="panel-head">
-                  <div>
-                    <p className="eyebrow">{t("profile.community.eyebrow")}</p>
-                    <h3>{t("profile.community.title")}</h3>
-                  </div>
-                </div>
-
-                <div className="profile-community-grid">
-                  <div className="profile-stat">
-                    <span>{t("profile.community.posts")}</span>
-                    <strong>-</strong>
-                  </div>
-                  <div className="profile-stat">
-                    <span>{t("profile.community.comments")}</span>
-                    <strong>-</strong>
-                  </div>
-                  <div className="profile-stat">
-                    <span>{t("profile.community.likes")}</span>
-                    <strong>-</strong>
-                  </div>
-                  <div className="profile-stat">
-                    <span>{t("profile.community.followers")}</span>
-                    <strong>-</strong>
-                  </div>
-                </div>
-              </section>
-
               <section className="panel-surface profile-security-card">
                 <div className="panel-head">
                   <div>
@@ -295,15 +244,6 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <section className="panel-surface profile-interactions-card">
-            <div className="panel-head">
-              <div>
-                <p className="eyebrow">{t("profile.interactions.eyebrow")}</p>
-                <h3>{t("profile.interactions.title")}</h3>
-              </div>
-            </div>
-            <EmptyState title={t("profile.interactions.emptyTitle")} description={t("profile.interactions.emptyDescription")} />
-          </section>
         </>
       ) : null}
     </div>
@@ -317,12 +257,6 @@ function getInitials(value) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || "")
     .join("");
-}
-
-function formatRoleLabel(value, t) {
-  const normalized = String(value || "USER").toUpperCase();
-  const key = normalized.startsWith("ROLE_") ? normalized.slice(5) : normalized;
-  return t(`profile.values.role.${key}`, key);
 }
 
 function formatAuthProviderLabel(value, t) {

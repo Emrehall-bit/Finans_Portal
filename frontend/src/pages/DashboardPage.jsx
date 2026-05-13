@@ -24,11 +24,6 @@ export default function DashboardPage() {
   const [sectionErrors, setSectionErrors] = useState({});
 
   useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-
     let active = true;
 
     async function loadDashboard() {
@@ -36,13 +31,16 @@ export default function DashboardPage() {
         setLoading(true);
         setSectionErrors({});
 
-        const [marketResult, newsResult, watchlistResult, alertsResult, portfoliosResult] = await Promise.allSettled([
-          getMarketQuotes(),
-          getNews({ size: 6 }),
-          getUserWatchlist(userId),
-          getUserAlerts(userId),
-          getUserPortfolios(userId),
-        ]);
+        // Public veriler her zaman yüklenir (giriş gerektirmez)
+        const publicRequests = [getMarketQuotes(), getNews({ size: 6 })];
+
+        // Kullanıcıya özel veriler yalnızca giriş yapılmışsa yüklenir
+        const userRequests = userId
+          ? [getUserWatchlist(userId), getUserAlerts(userId), getUserPortfolios(userId)]
+          : [Promise.resolve([]), Promise.resolve([]), Promise.resolve([])];
+
+        const [marketResult, newsResult, watchlistResult, alertsResult, portfoliosResult] =
+          await Promise.allSettled([...publicRequests, ...userRequests]);
 
         if (!active) {
           return;
@@ -64,13 +62,13 @@ export default function DashboardPage() {
         if (newsResult.status === "rejected") {
           nextErrors.news = extractErrorMessage(newsResult.reason, t("dashboard.newsError"));
         }
-        if (watchlistResult.status === "rejected") {
+        if (userId && watchlistResult.status === "rejected") {
           nextErrors.watchlist = extractErrorMessage(watchlistResult.reason, t("dashboard.watchlistError"));
         }
-        if (alertsResult.status === "rejected") {
+        if (userId && alertsResult.status === "rejected") {
           nextErrors.alerts = extractErrorMessage(alertsResult.reason, t("dashboard.alertsError"));
         }
-        if (portfoliosResult.status === "rejected") {
+        if (userId && portfoliosResult.status === "rejected") {
           nextErrors.portfolios = extractErrorMessage(portfoliosResult.reason, t("dashboard.portfoliosError"));
         }
 

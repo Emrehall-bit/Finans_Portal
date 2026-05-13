@@ -6,6 +6,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -87,9 +89,31 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/simulations/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
 
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakJwtAuthenticationConverter)))
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .bearerTokenResolver(guestSafeBearerTokenResolver())
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakJwtAuthenticationConverter)))
                 .addFilterAfter(moderationEnforcementFilter, BearerTokenAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public BearerTokenResolver guestSafeBearerTokenResolver() {
+        DefaultBearerTokenResolver delegate = new DefaultBearerTokenResolver();
+        return request -> {
+            String token = delegate.resolve(request);
+            if (token == null) {
+                return null;
+            }
+            // "null"/"undefined" gibi sahte token değerlerini ve geçersiz JWT formatlarını yoksay
+            if ("null".equalsIgnoreCase(token) || "undefined".equalsIgnoreCase(token)) {
+                return null;
+            }
+            // Geçerli bir JWT en az 2 nokta içermeli (header.payload.signature)
+            if (token.indexOf('.') == -1 || token.chars().filter(c -> c == '.').count() < 2) {
+                return null;
+            }
+            return token;
+        };
     }
 }

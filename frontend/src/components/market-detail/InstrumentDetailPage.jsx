@@ -281,7 +281,7 @@ export default function InstrumentDetailPage() {
     [normalizedSymbol, quote?.displayName],
   );
   const stats = useMemo(() => buildStats(quote, yearStatsHistory), [quote, yearStatsHistory]);
-  const latestPrice = analysis?.latestPrice ?? quote?.price ?? null;
+  const latestPrice = quote?.price ?? analysis?.latestPrice ?? null;
   const quoteUnavailable = !quoteLoading && !quoteError && (!quote || quote.price == null);
   const isFavorite = useMemo(
     () => watchlistItems.some((item) => normalizeCode(item.instrumentCode) === normalizeCode(normalizedSymbol)),

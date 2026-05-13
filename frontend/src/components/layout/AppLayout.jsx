@@ -3,6 +3,9 @@ import { useTranslation } from "react-i18next";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { getMarketQuotes, getMarketTapeConfig } from "../../api/marketApi";
+import { getUserWatchlist } from "../../api/watchlistApi";
+import { getUserAlerts } from "../../api/alertApi";
+import { getUserPortfolios, getPortfolioHoldings } from "../../api/portfolioApi";
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -61,7 +64,7 @@ function getNotificationTypeLabel(notification, t) {
 
 export default function AppLayout() {
   const { i18n, t } = useTranslation();
-  const { isAdmin, isAuthenticated, login, logout, register, role, user } = useAuth();
+  const { isAdmin, isAuthenticated, login, logout, register, role, user, userId } = useAuth();
   const { setThemePreference, themePreference } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -158,15 +161,63 @@ export default function AppLayout() {
 
     async function loadTickerState() {
       try {
-        const [data, symbols] = await Promise.all([
+        const [marketResult, tapeResult] = await Promise.allSettled([
           getMarketQuotes(),
-          getMarketTapeConfig().catch(() => PRIORITY_SYMBOLS),
+          getMarketTapeConfig(),
         ]);
-        if (!active) {
-          return;
+
+        if (!active) return;
+
+        const quotes = marketResult.status === "fulfilled" ? marketResult.value ?? [] : [];
+        const adminSymbols =
+          tapeResult.status === "fulfilled" &&
+          Array.isArray(tapeResult.value) &&
+          tapeResult.value.length > 0
+            ? tapeResult.value
+            : PRIORITY_SYMBOLS;
+
+        setTickerQuotes(quotes);
+
+        if (isAuthenticated && userId) {
+          // Kullanıcıya özel: portföy + izleme listesi + alarmlar
+          const [watchlistResult, alertsResult, portfoliosResult] = await Promise.allSettled([
+            getUserWatchlist(userId),
+            getUserAlerts(userId),
+            getUserPortfolios(userId),
+          ]);
+
+          if (!active) return;
+
+          const watchlistCodes = watchlistResult.status === "fulfilled"
+            ? (watchlistResult.value ?? []).map((item) => item.instrumentCode).filter(Boolean)
+            : [];
+
+          const alertCodes = alertsResult.status === "fulfilled"
+            ? (alertsResult.value ?? []).map((item) => item.instrumentCode).filter(Boolean)
+            : [];
+
+          const portfolios = portfoliosResult.status === "fulfilled"
+            ? (portfoliosResult.value ?? []).slice(0, 5)
+            : [];
+
+          const holdingsResults = await Promise.allSettled(
+            portfolios.map((p) => getPortfolioHoldings(p.portfolioId)),
+          );
+
+          if (!active) return;
+
+          const portfolioCodes = holdingsResults
+            .filter((r) => r.status === "fulfilled")
+            .flatMap((r) => (r.value ?? []).map((h) => h.instrumentCode).filter(Boolean));
+
+          // Portföy > izleme listesi > alarmlar önceliği, tekrarlar temizlenir
+          const userSymbols = [...new Set([...portfolioCodes, ...watchlistCodes, ...alertCodes])];
+
+          setMarketTapeSymbols(userSymbols.length > 0 ? userSymbols : adminSymbols);
+        } else {
+          // Guest: admin tarafından belirlenen varsayılan liste
+          setMarketTapeSymbols(adminSymbols);
         }
-        setTickerQuotes(data ?? []);
-        setMarketTapeSymbols(Array.isArray(symbols) && symbols.length > 0 ? symbols : PRIORITY_SYMBOLS);
       } catch {
         if (active) {
           setTickerQuotes([]);
@@ -187,7 +238,7 @@ export default function AppLayout() {
       active = false;
       window.removeEventListener("market-tape-config-updated", handleConfigUpdated);
     };
-  }, []);
+  }, [isAuthenticated, userId]);
 
   const tapeItems = useMemo(() => {
     if (!tickerQuotes.length) {

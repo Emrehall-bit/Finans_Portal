@@ -1,9 +1,5 @@
 package com.emrehalli.financeportal;
 
-
-
-
-
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
 import com.emrehalli.financeportal.news.provider.finnhub.FinnhubProperties;
 import com.emrehalli.financeportal.news.provider.investing.InvestingNewsProperties;
