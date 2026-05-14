@@ -33,6 +33,9 @@ public class FinancialItemDictionary {
         ALIASES.put(FinancialItemKey.TOPLAM_VARLIKLAR, List.of(
                 "Toplam Varlıklar", "Toplam Aktifler", "Total Assets"
         ));
+        ALIASES.put(FinancialItemKey.TOPLAM_KAYNAKLAR, List.of(
+                "Toplam Kaynaklar"
+        ));
         ALIASES.put(FinancialItemKey.TOPLAM_YUKUMLULUKLER, List.of(
                 "Toplam Yükümlülükler", "Toplam Borçlar", "Total Liabilities"
         ));

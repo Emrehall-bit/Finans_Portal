@@ -8,7 +8,8 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "company_profiles", indexes = {
         @Index(name = "idx_company_profiles_ticker_code", columnList = "ticker_code"),
-        @Index(name = "idx_company_profiles_kap_company_id", columnList = "kap_company_id")
+        @Index(name = "idx_company_profiles_kap_company_id", columnList = "kap_company_id"),
+        @Index(name = "idx_company_profiles_mkk_member_oid", columnList = "mkk_member_oid")
 })
 @Data
 @NoArgsConstructor
@@ -34,6 +35,9 @@ public class CompanyProfile {
 
     @Column(name = "kap_company_id", length = 50)
     private String kapCompanyId;
+
+    @Column(name = "mkk_member_oid", length = 100)
+    private String mkkMemberOid;
 
     @Builder.Default
     @Column(nullable = false)

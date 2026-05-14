@@ -9,15 +9,23 @@ function fmtRatio(value, decimals = 2) {
   if (value === null || value === undefined) return NO_DATA;
   const n = Number(value);
   if (!Number.isFinite(n)) return NO_DATA;
-  return n.toLocaleString(undefined, { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
+  return n.toLocaleString("tr-TR", { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
 }
 
-function fmtPercent(value, decimals = 2) {
+function fmtPercent(value, decimals = 2, options = {}) {
   if (value === null || value === undefined) return NO_DATA;
   const n = Number(value);
   if (!Number.isFinite(n)) return NO_DATA;
   const pct = n * 100;
-  return `${pct.toLocaleString(undefined, { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}%`;
+  const absPct = Math.abs(pct);
+  if (options.floorTiny && absPct > 0 && absPct < 0.01) {
+    return "0,01% altı";
+  }
+  const resolvedDecimals = absPct > 0 && absPct < 1 ? Math.max(decimals, 4) : decimals;
+  return `${pct.toLocaleString("tr-TR", {
+    maximumFractionDigits: resolvedDecimals,
+    minimumFractionDigits: resolvedDecimals,
+  })}%`;
 }
 
 function fmtDate(value) {
@@ -77,16 +85,16 @@ export default function InstrumentFundamentalsPanel({ loading, error, data }) {
       ) : (
         <>
           <div className="indicator-value-grid terminal-indicator-grid">
-            <RatioCard label={t("instrumentDetail.fundamentals.peRatio")} value={fmtRatio(data.peRatio)} />
-            <RatioCard label={t("instrumentDetail.fundamentals.pbRatio")} value={fmtRatio(data.pbRatio)} />
-            <RatioCard label={t("instrumentDetail.fundamentals.debtToEquity")} value={fmtRatio(data.debtToEquity)} />
-            <RatioCard label={t("instrumentDetail.fundamentals.grossMargin")} value={fmtPercent(data.grossMargin)} />
-            <RatioCard label={t("instrumentDetail.fundamentals.netMargin")} value={fmtPercent(data.netMargin)} />
-            <RatioCard label={t("instrumentDetail.fundamentals.roe")} value={fmtPercent(data.roe)} />
-            <RatioCard label={t("instrumentDetail.fundamentals.roa")} value={fmtPercent(data.roa)} />
-            <RatioCard label={t("instrumentDetail.fundamentals.revenueGrowth")} value={fmtPercent(data.revenueGrowth)} />
-            <RatioCard label={t("instrumentDetail.fundamentals.netProfitGrowth")} value={fmtPercent(data.netProfitGrowth)} />
-            <RatioCard label={t("instrumentDetail.fundamentals.assetGrowth")} value={fmtPercent(data.assetGrowth)} />
+            <RatioCard label={t("instrumentDetail.fundamentals.peRatio")} value={fmtRatio(data.peRatio)} rawValue={data.peRatio} />
+            <RatioCard label={t("instrumentDetail.fundamentals.pbRatio")} value={fmtRatio(data.pbRatio)} rawValue={data.pbRatio} />
+            <RatioCard label={t("instrumentDetail.fundamentals.debtToEquity")} value={fmtRatio(data.debtToEquity)} rawValue={data.debtToEquity} />
+            <RatioCard label={t("instrumentDetail.fundamentals.grossMargin")} value={fmtPercent(data.grossMargin)} rawValue={data.grossMargin} />
+            <RatioCard label={t("instrumentDetail.fundamentals.netMargin")} value={fmtPercent(data.netMargin)} rawValue={data.netMargin} />
+            <RatioCard label={t("instrumentDetail.fundamentals.roe")} value={fmtPercent(data.roe)} rawValue={data.roe} />
+            <RatioCard label={t("instrumentDetail.fundamentals.roa")} value={fmtPercent(data.roa, 2, { floorTiny: true })} rawValue={data.roa} />
+            <RatioCard label={t("instrumentDetail.fundamentals.revenueGrowth")} value={fmtPercent(data.revenueGrowth)} rawValue={data.revenueGrowth} />
+            <RatioCard label={t("instrumentDetail.fundamentals.netProfitGrowth")} value={fmtPercent(data.netProfitGrowth)} rawValue={data.netProfitGrowth} />
+            <RatioCard label={t("instrumentDetail.fundamentals.assetGrowth")} value={fmtPercent(data.assetGrowth)} rawValue={data.assetGrowth} />
           </div>
 
           {data.healthLabel && (
@@ -115,12 +123,20 @@ export default function InstrumentFundamentalsPanel({ loading, error, data }) {
   );
 }
 
-function RatioCard({ label, value }) {
+function RatioCard({ label, value, rawValue }) {
   const isNoData = value === NO_DATA;
+  const sentiment = resolveSentiment(rawValue);
   return (
-    <div className="indicator-value-card">
+    <div className={`indicator-value-card fundamentals-ratio-card ${sentiment}`}>
       <span>{label}</span>
-      <strong style={isNoData ? { opacity: 0.45, fontStyle: "italic" } : undefined}>{value}</strong>
+      <strong className={isNoData ? "muted-value" : undefined}>{value}</strong>
     </div>
   );
+}
+
+function resolveSentiment(value) {
+  if (value === null || value === undefined || value === "") return "ratio-neutral";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric === 0) return "ratio-neutral";
+  return numeric > 0 ? "ratio-positive" : "ratio-negative";
 }

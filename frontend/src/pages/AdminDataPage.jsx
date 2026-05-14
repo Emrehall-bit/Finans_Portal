@@ -22,6 +22,7 @@ import {
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
+import KapManagementSection from "../components/admin/KapManagementSection";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 
 const DEFAULT_MARKET_TAPE_SYMBOLS = [
@@ -762,6 +763,8 @@ export default function AdminDataPage() {
           </article>
         </div>
       </section>
+
+      <KapManagementSection />
 
       <section className="admin-section admin-console-result admin-response-panel panel-surface">
         <div className="admin-section-head">

@@ -2,11 +2,17 @@ package com.emrehalli.financeportal.company.service;
 
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.company.dto.FinancialReportSyncResponse;
+import com.emrehalli.financeportal.company.dto.KapFinancialTableDebugResponse;
+import com.emrehalli.financeportal.company.dto.ParseFailureDto;
 import com.emrehalli.financeportal.company.entity.CompanyFinancialReport;
 import com.emrehalli.financeportal.company.entity.CompanyProfile;
 import com.emrehalli.financeportal.company.enums.ParseStatus;
 import com.emrehalli.financeportal.company.parser.FinancialItemParser;
+import com.emrehalli.financeportal.company.parser.ParseAttemptResult;
+import com.emrehalli.financeportal.company.dto.SkippedReportReasonDto;
+import com.emrehalli.financeportal.company.provider.kap.KapFinancialTableClient;
 import com.emrehalli.financeportal.company.provider.kap.KapFinancialReportProvider;
+import com.emrehalli.financeportal.company.provider.kap.KapFinancialReportProviderResult;
 import com.emrehalli.financeportal.company.provider.kap.dto.KapFinancialReportDto;
 import com.emrehalli.financeportal.company.repository.CompanyFinancialReportRepository;
 import com.emrehalli.financeportal.company.repository.CompanyProfileRepository;
@@ -29,15 +35,18 @@ public class CompanyFinancialReportSyncService {
     private final CompanyFinancialReportRepository reportRepository;
     private final KapFinancialReportProvider reportProvider;
     private final FinancialItemParser itemParser;
+    private final KapFinancialTableClient financialTableClient;
 
     public CompanyFinancialReportSyncService(CompanyProfileRepository profileRepository,
                                              CompanyFinancialReportRepository reportRepository,
                                              KapFinancialReportProvider reportProvider,
-                                             FinancialItemParser itemParser) {
+                                             FinancialItemParser itemParser,
+                                             KapFinancialTableClient financialTableClient) {
         this.profileRepository = profileRepository;
         this.reportRepository = reportRepository;
         this.reportProvider = reportProvider;
         this.itemParser = itemParser;
+        this.financialTableClient = financialTableClient;
     }
 
     // -------------------------------------------------------------------------
@@ -47,7 +56,9 @@ public class CompanyFinancialReportSyncService {
     @Transactional
     public FinancialReportSyncResponse syncReportsForTicker(String tickerCode) {
         CompanyProfile company = requireCompany(tickerCode);
-        List<KapFinancialReportDto> candidates = reportProvider.findCandidateReports(company);
+        KapFinancialReportProviderResult providerResult = reportProvider.findCandidateReports(company);
+        List<KapFinancialReportDto> candidates = providerResult.reports();
+        List<SkippedReportReasonDto> skippedReasons = new ArrayList<>(providerResult.skippedReasons());
 
         int savedReports = 0;
         int duplicateSkipped = 0;
@@ -77,14 +88,16 @@ public class CompanyFinancialReportSyncService {
             }
         }
 
-        logger.info("Report sync done. ticker={}, discovered={}, saved={}, dupes={}",
-                tickerCode, candidates.size(), savedReports, duplicateSkipped);
+        int totalDiscovered = candidates.size() + providerResult.skippedReasons().size();
+        logger.info("Report sync done. ticker={}, financial={}, saved={}, dupes={}, skipped={}",
+                tickerCode, totalDiscovered, savedReports, duplicateSkipped, skippedReasons.size());
 
         return FinancialReportSyncResponse.builder()
                 .tickerCode(tickerCode)
-                .discoveredReports(candidates.size())
+                .discoveredReports(totalDiscovered)
                 .savedReports(savedReports)
                 .duplicateSkipped(duplicateSkipped)
+                .skippedReasons(skippedReasons.isEmpty() ? null : skippedReasons)
                 .message("Rapor sync tamamlandı.")
                 .build();
     }
@@ -111,35 +124,72 @@ public class CompanyFinancialReportSyncService {
     // -------------------------------------------------------------------------
 
     public FinancialReportSyncResponse parsePendingReportsForTicker(String tickerCode) {
+        return parsePendingReportsForTicker(tickerCode, false, false);
+    }
+
+    public FinancialReportSyncResponse parsePendingReportsForTicker(String tickerCode, boolean includeFailed) {
+        return parsePendingReportsForTicker(tickerCode, includeFailed, false);
+    }
+
+    public FinancialReportSyncResponse parsePendingReportsForTicker(String tickerCode, boolean includeFailed, boolean forceReparse) {
         requireCompany(tickerCode);
-        List<CompanyFinancialReport> pending = reportRepository
-                .findByCompanyTickerCodeIgnoreCaseAndParseStatus(tickerCode, ParseStatus.PENDING);
+        List<ParseStatus> statuses = forceReparse
+                ? List.of(ParseStatus.PENDING, ParseStatus.FAILED, ParseStatus.PARTIAL, ParseStatus.SUCCESS)
+                : includeFailed
+                ? List.of(ParseStatus.PENDING, ParseStatus.FAILED)
+                : List.of(ParseStatus.PENDING);
+        List<CompanyFinancialReport> reports = reportRepository.findEligibleReports(tickerCode, statuses);
 
         int successCount = 0;
         int partialCount = 0;
         int failedCount = 0;
+        int matchedItemCount = 0;
+        int savedValueCount = 0;
+        int updatedValueCount = 0;
+        List<ParseFailureDto> parseFailures = new ArrayList<>();
 
-        for (CompanyFinancialReport report : pending) {
+        for (CompanyFinancialReport report : reports) {
             try {
-                ParseStatus result = itemParser.parsePendingReport(report.getId());
-                if (result == ParseStatus.SUCCESS) successCount++;
-                else if (result == ParseStatus.PARTIAL) partialCount++;
+                ParseAttemptResult result = (includeFailed || forceReparse)
+                        ? itemParser.parseReport(report.getId(), true)
+                        : itemParser.parsePendingReport(report.getId());
+                if (result.status() == ParseStatus.SUCCESS) successCount++;
+                else if (result.status() == ParseStatus.PARTIAL) partialCount++;
                 else failedCount++;
+                matchedItemCount += result.matchedItemCount();
+                savedValueCount += result.savedValueCount();
+                updatedValueCount += result.updatedValueCount();
+                if (result.failure() != null) {
+                    parseFailures.add(result.failure());
+                }
             } catch (Exception e) {
                 logger.error("Parse failed. ticker={}, reportId={}", tickerCode, report.getId(), e);
                 failedCount++;
+                parseFailures.add(ParseFailureDto.builder()
+                        .reportId(report.getId())
+                        .sourceUrl(report.getSourceUrl())
+                        .periodYear(report.getPeriodYear())
+                        .periodQuarter(report.getPeriodQuarter())
+                        .reason("Unknown parse error")
+                        .build());
             }
         }
 
-        logger.info("Parse done. ticker={}, parsed={}, success={}, partial={}, failed={}",
-                tickerCode, pending.size(), successCount, partialCount, failedCount);
+        logger.info("Parse done. ticker={}, includeFailed={}, forceReparse={}, parsed={}, reparsed={}, success={}, partial={}, failed={}, updatedValues={}",
+                tickerCode, includeFailed, forceReparse, reports.size(), forceReparse ? reports.size() : 0,
+                successCount, partialCount, failedCount, updatedValueCount);
 
         return FinancialReportSyncResponse.builder()
                 .tickerCode(tickerCode)
-                .parsedReports(pending.size())
+                .parsedReports(reports.size())
                 .successCount(successCount)
                 .partialCount(partialCount)
                 .failedCount(failedCount)
+                .matchedItemCount(matchedItemCount)
+                .savedValueCount(savedValueCount)
+                .reparsedCount(forceReparse ? reports.size() : 0)
+                .updatedValueCount(updatedValueCount)
+                .parseFailures(parseFailures.isEmpty() ? null : parseFailures)
                 .message("Parse tamamlandı.")
                 .build();
     }
@@ -159,6 +209,11 @@ public class CompanyFinancialReportSyncService {
             sleepBetweenCompanies(i, companies.size(), ticker);
         }
         return results;
+    }
+
+    public KapFinancialTableDebugResponse debugFetchFinancialTable(String tickerCode, String year, String period) {
+        CompanyProfile company = requireCompany(tickerCode);
+        return financialTableClient.debugFetch(company, year, period);
     }
 
     // -------------------------------------------------------------------------

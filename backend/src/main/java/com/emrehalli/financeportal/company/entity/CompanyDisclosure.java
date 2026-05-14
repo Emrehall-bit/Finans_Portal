@@ -38,6 +38,15 @@ public class CompanyDisclosure {
     @Column(columnDefinition = "TEXT")
     private String summary;
 
+    @Column(name = "kap_year")
+    private Integer kapYear;
+
+    @Column(name = "kap_donem")
+    private Integer kapDonem;
+
+    @Column(name = "kap_period", length = 20)
+    private String kapPeriod;
+
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 }

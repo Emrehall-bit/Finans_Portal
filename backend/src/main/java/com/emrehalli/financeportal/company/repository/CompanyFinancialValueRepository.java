@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CompanyFinancialValueRepository extends JpaRepository<CompanyFinancialValue, Long> {
 
@@ -15,4 +16,6 @@ public interface CompanyFinancialValueRepository extends JpaRepository<CompanyFi
     List<CompanyFinancialValue> findByReportIdIn(@Param("reportIds") List<Long> reportIds);
 
     boolean existsByReportIdAndItemKey(Long reportId, String itemKey);
+
+    Optional<CompanyFinancialValue> findByReportIdAndItemKey(Long reportId, String itemKey);
 }

@@ -16,3 +16,8 @@ export async function getCompanyDisclosures(ticker, page = 0, size = 15) {
   });
   return unwrap(data);
 }
+
+export async function getCompanyFinancials(ticker) {
+  const { data } = await axiosClient.get(`/api/v1/companies/${encodeURIComponent(ticker)}/financials`);
+  return Array.isArray(data?.data) ? data.data : [];
+}

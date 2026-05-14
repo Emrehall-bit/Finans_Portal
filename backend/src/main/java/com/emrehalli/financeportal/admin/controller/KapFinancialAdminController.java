@@ -2,10 +2,12 @@ package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.company.dto.FinancialReportSyncResponse;
+import com.emrehalli.financeportal.company.dto.KapFinancialTableDebugResponse;
 import com.emrehalli.financeportal.company.service.CompanyFinancialReportSyncService;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -42,12 +44,26 @@ public class KapFinancialAdminController {
     }
 
     @PostMapping("/{ticker}/financial-reports/parse-pending")
-    public ApiResponse<FinancialReportSyncResponse> parsePending(@PathVariable String ticker) {
-        FinancialReportSyncResponse result = syncService.parsePendingReportsForTicker(ticker);
+    public ApiResponse<FinancialReportSyncResponse> parsePending(@PathVariable String ticker,
+                                                                 @RequestParam(defaultValue = "false") boolean includeFailed,
+                                                                 @RequestParam(defaultValue = "false") boolean forceReparse) {
+        FinancialReportSyncResponse result = syncService.parsePendingReportsForTicker(ticker, includeFailed, forceReparse);
         return ApiResponse.<FinancialReportSyncResponse>builder()
                 .success(true)
                 .data(result)
                 .message(result.getMessage())
+                .build();
+    }
+
+    @PostMapping("/{ticker}/financial-table/debug-fetch")
+    public ApiResponse<KapFinancialTableDebugResponse> debugFetchFinancialTable(@PathVariable String ticker,
+                                                                               @RequestParam String year,
+                                                                               @RequestParam String period) {
+        KapFinancialTableDebugResponse result = syncService.debugFetchFinancialTable(ticker, year, period);
+        return ApiResponse.<KapFinancialTableDebugResponse>builder()
+                .success(result.isSuccess())
+                .data(result)
+                .message(result.isSuccess() ? "KAP compareItems debug fetch başarılı." : "KAP compareItems debug fetch başarısız.")
                 .build();
     }
 

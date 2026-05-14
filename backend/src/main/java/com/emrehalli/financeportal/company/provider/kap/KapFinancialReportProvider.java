@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.company.provider.kap;
 
+import com.emrehalli.financeportal.company.dto.SkippedReportReasonDto;
 import com.emrehalli.financeportal.company.entity.CompanyDisclosure;
 import com.emrehalli.financeportal.company.entity.CompanyProfile;
 import com.emrehalli.financeportal.company.enums.DisclosureType;
@@ -10,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -21,11 +23,8 @@ public class KapFinancialReportProvider {
 
     private static final Logger logger = LogManager.getLogger(KapFinancialReportProvider.class);
 
-    // Matches "2024/9" or "2024/12"
     private static final Pattern YEAR_SLASH_MONTH = Pattern.compile("\\b(20\\d{2})/(\\d{1,2})\\b");
-    // Matches "31.12.2024", "30.09.2024", "30.06.2024", "31.03.2024"
     private static final Pattern END_DATE = Pattern.compile("\\b(31\\.12|30\\.09|30\\.06|31\\.03)\\.(20\\d{2})\\b");
-    // Matches any 4-digit year in 2000-2099 range
     private static final Pattern YEAR_ONLY = Pattern.compile("\\b(20\\d{2})\\b");
 
     private final CompanyDisclosureRepository disclosureRepository;
@@ -34,29 +33,75 @@ public class KapFinancialReportProvider {
         this.disclosureRepository = disclosureRepository;
     }
 
-    public List<KapFinancialReportDto> findCandidateReports(CompanyProfile company) {
+    public KapFinancialReportProviderResult findCandidateReports(CompanyProfile company) {
         List<CompanyDisclosure> financialDisclosures = disclosureRepository
                 .findByCompanyTickerCodeIgnoreCaseAndDisclosureType(
                         company.getTickerCode(), DisclosureType.FINANCIAL);
 
-        return financialDisclosures.stream()
-                .map(d -> detectPeriod(company, d))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .toList();
+        List<KapFinancialReportDto> reports = new ArrayList<>();
+        List<SkippedReportReasonDto> skipped = new ArrayList<>();
+
+        for (CompanyDisclosure d : financialDisclosures) {
+            Optional<KapFinancialReportDto> result = detectPeriod(company, d);
+            if (result.isPresent()) {
+                reports.add(result.get());
+            } else {
+                skipped.add(SkippedReportReasonDto.builder()
+                        .title(d.getTitle())
+                        .kapUrl(d.getKapUrl())
+                        .reason("Dönem tespit edilemedi (kapYear=" + d.getKapYear()
+                                + ", kapDonem=" + d.getKapDonem()
+                                + ", title=" + d.getTitle() + ")")
+                        .build());
+                logger.debug("Period not detected. ticker={}, kapYear={}, kapDonem={}, title={}",
+                        company.getTickerCode(), d.getKapYear(), d.getKapDonem(), d.getTitle());
+            }
+        }
+
+        logger.info("Candidate report detection done. ticker={}, financial={}, mapped={}, skipped={}",
+                company.getTickerCode(), financialDisclosures.size(), reports.size(), skipped.size());
+
+        return new KapFinancialReportProviderResult(reports, skipped);
     }
 
     private Optional<KapFinancialReportDto> detectPeriod(CompanyProfile company, CompanyDisclosure disclosure) {
+        // 1. Prefer structured kapYear/kapDonem from KAP JSON metadata
+        if (disclosure.getKapYear() != null && disclosure.getKapDonem() != null) {
+            return buildByDonem(company, disclosure, disclosure.getKapYear(), disclosure.getKapDonem());
+        }
+
+        // 2. Fallback: regex on title
+        return detectPeriodFromTitle(company, disclosure);
+    }
+
+    private Optional<KapFinancialReportDto> buildByDonem(CompanyProfile company,
+                                                          CompanyDisclosure disclosure,
+                                                          int year, int donem) {
+        int quarter;
+        ReportType reportType;
+        switch (donem) {
+            case 1 -> { quarter = 1; reportType = ReportType.Q1; }
+            case 2 -> { quarter = 2; reportType = ReportType.Q2; }
+            case 3 -> { quarter = 3; reportType = ReportType.Q3; }
+            case 4 -> { quarter = 4; reportType = ReportType.ANNUAL; }
+            default -> {
+                logger.debug("Unsupported kapDonem={}. ticker={}, title={}",
+                        donem, company.getTickerCode(), disclosure.getTitle());
+                return Optional.empty();
+            }
+        }
+        return Optional.of(buildDto(company, disclosure, year, quarter, reportType));
+    }
+
+    private Optional<KapFinancialReportDto> detectPeriodFromTitle(CompanyProfile company,
+                                                                    CompanyDisclosure disclosure) {
         String title = disclosure.getTitle();
         if (title == null || title.isBlank()) {
             return Optional.empty();
         }
 
-        String lower = title
-                .replace('İ', 'i')
-                .toLowerCase(Locale.ROOT);
+        String lower = title.replace('İ', 'i').toLowerCase(Locale.ROOT);
 
-        // 1. YYYY/M pattern — most reliable
         Matcher slashMatcher = YEAR_SLASH_MONTH.matcher(title);
         if (slashMatcher.find()) {
             int year = Integer.parseInt(slashMatcher.group(1));
@@ -64,7 +109,6 @@ public class KapFinancialReportProvider {
             return buildByMonth(company, disclosure, year, month);
         }
 
-        // 2. End-date pattern (dd.MM.YYYY)
         Matcher endDateMatcher = END_DATE.matcher(title);
         if (endDateMatcher.find()) {
             String dayMonth = endDateMatcher.group(1);
@@ -78,10 +122,8 @@ public class KapFinancialReportProvider {
             };
         }
 
-        // 3. Keyword-based — need year too
         Matcher yearMatcher = YEAR_ONLY.matcher(title);
         if (!yearMatcher.find()) {
-            logger.debug("Period not detected (no year). ticker={}, title={}", company.getTickerCode(), title);
             return Optional.empty();
         }
         int year = Integer.parseInt(yearMatcher.group(1));
@@ -99,7 +141,6 @@ public class KapFinancialReportProvider {
             return buildByMonth(company, disclosure, year, 3);
         }
 
-        logger.debug("Period not detected (no keyword match). ticker={}, title={}", company.getTickerCode(), title);
         return Optional.empty();
     }
 
@@ -114,12 +155,16 @@ public class KapFinancialReportProvider {
             case 6  -> { quarter = 2; reportType = ReportType.Q2; }
             case 3  -> { quarter = 1; reportType = ReportType.Q1; }
             default -> {
-                logger.debug("Unsupported month {}. ticker={}, title={}", month, company.getTickerCode(), disclosure.getTitle());
+                logger.debug("Unsupported month={}. ticker={}", month, company.getTickerCode());
                 return Optional.empty();
             }
         }
+        return Optional.of(buildDto(company, disclosure, year, quarter, reportType));
+    }
 
-        return Optional.of(KapFinancialReportDto.builder()
+    private KapFinancialReportDto buildDto(CompanyProfile company, CompanyDisclosure disclosure,
+                                            int year, int quarter, ReportType reportType) {
+        return KapFinancialReportDto.builder()
                 .companyId(company.getId())
                 .periodYear(year)
                 .periodQuarter(quarter)
@@ -128,7 +173,7 @@ public class KapFinancialReportProvider {
                 .publishedAt(disclosure.getPublishedAt() != null
                         ? disclosure.getPublishedAt().toLocalDate()
                         : null)
-                .build());
+                .build();
     }
 
     private boolean containsAny(String text, String... terms) {

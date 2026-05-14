@@ -7767,7 +7767,347 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 }
 
 .instrument-fundamentals-panel,
+.instrument-financials-panel,
 .instrument-kap-panel {
   width: 100%;
 }
 
+.financial-period-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.financial-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.financial-summary-card,
+.fundamentals-ratio-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(76, 127, 255, 0.09), rgba(255, 255, 255, 0.86)),
+    rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.financial-summary-card:hover,
+.fundamentals-ratio-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(76, 127, 255, 0.34);
+  box-shadow: 0 18px 42px rgba(30, 64, 175, 0.12);
+}
+
+.financial-summary-card {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 16px;
+}
+
+.financial-summary-card span,
+.financial-summary-card small {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.financial-summary-card small {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.financial-summary-card strong {
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.financial-period-block {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+}
+
+.financial-period-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.financial-period-head h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.financial-period-empty {
+  margin: 0;
+  padding: 16px;
+  color: var(--text-soft);
+}
+
+.financial-values-table-wrap {
+  overflow-x: auto;
+  max-height: 520px;
+}
+
+.financial-values-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.financial-values-table th,
+.financial-values-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.88rem;
+}
+
+.financial-values-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(242, 246, 255, 0.96);
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.financial-values-table tbody tr:nth-child(even) {
+  background: rgba(76, 127, 255, 0.035);
+}
+
+.financial-values-table tbody tr {
+  transition: background 0.16s ease;
+}
+
+.financial-values-table tbody tr:hover {
+  background: rgba(76, 127, 255, 0.1);
+}
+
+.financial-values-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.financial-values-table td:first-child {
+  font-weight: 700;
+}
+
+.value-positive,
+.ratio-positive strong {
+  color: #15803d;
+}
+
+.value-negative,
+.ratio-negative strong {
+  color: #dc2626;
+}
+
+.value-neutral,
+.ratio-neutral strong {
+  color: var(--text-soft);
+}
+
+.financial-change-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 74px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.financial-change-badge.value-positive {
+  color: #15803d;
+  background: rgba(34, 176, 125, 0.13);
+}
+
+.financial-change-badge.value-negative {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.11);
+}
+
+.financial-change-badge.value-neutral {
+  color: var(--text-soft);
+  background: rgba(148, 163, 184, 0.13);
+}
+
+.financial-change-empty {
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.muted-value {
+  opacity: 0.45;
+  font-style: italic;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.status-badge.success {
+  color: #15803d;
+  background: rgba(34, 176, 125, 0.14);
+}
+
+.status-badge.partial {
+  color: #b45309;
+  background: rgba(244, 180, 78, 0.18);
+}
+
+.status-badge.failed {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.12);
+}
+
+.financial-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 16px;
+}
+
+.financial-empty-state > span {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.financial-empty-state.compact {
+  padding: 10px;
+}
+
+@media (max-width: 980px) {
+  .financial-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .financial-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .financial-period-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* ── KAP Management Admin Section ────────────────────────────── */
+.kap-ticker-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.kap-ticker-input {
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.kap-preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kap-preset-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.kap-preset-chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.kap-preset-chip.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.kap-preset-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.kap-debug-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.kap-debug-input {
+  width: 140px;
+}
+
+.kap-actions-grid {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 920px) {
+  .kap-ticker-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kap-ticker-input {
+    width: 100%;
+  }
+
+  .kap-debug-input {
+    width: 100%;
+  }
+
+  .kap-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

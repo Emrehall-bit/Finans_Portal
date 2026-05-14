@@ -9,7 +9,10 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\" -Recurse -Include \"*Controller.java\")",
       "Bash(Select-Object -First 5)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\\\\market\" -Recurse -Directory)",
-      "Bash(mvn test *)"
+      "Bash(mvn test *)",
+      "Bash(npm run *)",
+      "Bash(Select-String -Pattern \"\\(CompanyProfile|KapDisclosure|CompanyDisclosure|DisclosureSyncResult|SyncResult\\)\")",
+      "Bash(./mvnw test *)"
     ]
   }
 }

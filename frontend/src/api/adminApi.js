@@ -98,6 +98,47 @@ export async function getMarketTapeCandidates() {
   return [...fx, ...crypto, ...stocks, ...funds];
 }
 
+export async function syncCompanyDisclosures(ticker) {
+  const response = await axiosClient.post(`/api/v1/admin/companies/${encodeURIComponent(ticker)}/disclosures/sync`);
+  return normalizeApiResponse(response);
+}
+
+export async function syncCompanyFinancialReports(ticker) {
+  const response = await axiosClient.post(`/api/v1/admin/companies/${encodeURIComponent(ticker)}/financial-reports/sync`);
+  return normalizeApiResponse(response);
+}
+
+export async function parsePendingReports(ticker, options = {}) {
+  const params = new URLSearchParams();
+  if (options.includeFailed) {
+    params.set("includeFailed", "true");
+  }
+  if (options.forceReparse) {
+    params.set("forceReparse", "true");
+  }
+  const query = params.toString();
+  const response = await axiosClient.post(`/api/v1/admin/companies/${encodeURIComponent(ticker)}/financial-reports/parse-pending${query ? `?${query}` : ""}`);
+  return normalizeApiResponse(response);
+}
+
+export async function debugFetchCompanyFinancialTable(ticker, year = "2025", period = "1") {
+  const params = new URLSearchParams();
+  params.set("year", String(year));
+  params.set("period", String(period));
+  const response = await axiosClient.post(`/api/v1/admin/companies/${encodeURIComponent(ticker)}/financial-table/debug-fetch?${params.toString()}`);
+  return normalizeApiResponse(response);
+}
+
+export async function calculateCompanyRatios(ticker) {
+  const response = await axiosClient.post(`/api/v1/admin/companies/${encodeURIComponent(ticker)}/ratios/calculate`);
+  return normalizeApiResponse(response);
+}
+
+export async function syncAllCompanyDisclosures() {
+  const response = await axiosClient.post(`/api/v1/admin/companies/disclosures/sync-all`);
+  return normalizeApiResponse(response);
+}
+
 export async function getAdminAuditLogs(params = {}) {
   const searchParams = new URLSearchParams();
 

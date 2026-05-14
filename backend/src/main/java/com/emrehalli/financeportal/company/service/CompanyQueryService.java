@@ -90,6 +90,7 @@ public class CompanyQueryService {
                 .sector(c.getSector())
                 .market(c.getMarket())
                 .kapCompanyId(c.getKapCompanyId())
+                .mkkMemberOid(c.getMkkMemberOid())
                 .active(c.isActive())
                 .build();
     }

@@ -11,8 +11,12 @@ import java.time.OffsetDateTime;
 public class KapDisclosureDto {
 
     private String title;
+    private String disclosureIndex;
     private String kapUrl;
     private OffsetDateTime publishedAt;
     private DisclosureType disclosureType;
     private String summary;
+    private Integer kapYear;
+    private Integer kapDonem;
+    private String kapPeriod;
 }

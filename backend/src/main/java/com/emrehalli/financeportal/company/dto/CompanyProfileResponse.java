@@ -12,5 +12,6 @@ public class CompanyProfileResponse {
     private String sector;
     private String market;
     private String kapCompanyId;
+    private String mkkMemberOid;
     private boolean active;
 }

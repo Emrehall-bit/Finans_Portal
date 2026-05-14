@@ -1,62 +1,151 @@
 package com.emrehalli.financeportal.company.provider.kap;
 
+import com.emrehalli.financeportal.company.dto.DisclosureFailedItemDto;
 import com.emrehalli.financeportal.company.enums.DisclosureType;
 import com.emrehalli.financeportal.company.provider.kap.dto.KapDisclosureDto;
-import com.emrehalli.financeportal.news.provider.kap.KapNewsClient;
+import com.emrehalli.financeportal.company.provider.kap.dto.KapSgbfDisclosureBasic;
+import com.emrehalli.financeportal.company.provider.kap.dto.KapSgbfItem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 @Component
 public class KapDisclosureProvider {
 
     private static final Logger logger = LogManager.getLogger(KapDisclosureProvider.class);
     private static final ZoneId KAP_ZONE = ZoneId.of("Europe/Istanbul");
+    private static final DateTimeFormatter PUBLISH_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
+    private static final String KAP_API_URL =
+            "https://kap.org.tr/tr/api/company-detail/sgbf-data/{oid}/ALL/365";
+    private static final String KAP_DISCLOSURE_URL_PREFIX = "https://www.kap.org.tr/tr/Bildirim/";
 
-    private final KapNewsClient kapNewsClient;
+    private final RestClient restClient;
 
-    public KapDisclosureProvider(KapNewsClient kapNewsClient) {
-        this.kapNewsClient = kapNewsClient;
+    public KapDisclosureProvider(RestClient restClient) {
+        this.restClient = restClient;
     }
 
-    public List<KapDisclosureDto> fetchDisclosures(String searchQuery) {
-        if (searchQuery == null || searchQuery.isBlank()) {
-            return List.of();
+    public KapDisclosureProviderResult fetchDisclosures(String mkkMemberOid) {
+        if (mkkMemberOid == null || mkkMemberOid.isBlank()) {
+            return new KapDisclosureProviderResult(List.of(), List.of());
         }
 
-        logger.info("KAP disclosure fetch started. query={}", searchQuery);
+        logger.info("KAP SGBF fetch started. mkkMemberOid={}", mkkMemberOid);
 
-        return kapNewsClient.fetchCompanyNews(searchQuery)
-                .stream()
-                .map(item -> KapDisclosureDto.builder()
-                        .title(item.getTitle())
-                        .kapUrl(item.getUrl())
-                        .publishedAt(item.getPublishedAt() != null
-                                ? item.getPublishedAt().atZone(KAP_ZONE).toOffsetDateTime()
-                                : null)
-                        .summary(item.getSummary())
-                        .disclosureType(classifyDisclosure(item.getTitle()))
-                        .build())
-                .toList();
+        KapSgbfItem[] rawItems;
+        try {
+            rawItems = restClient.get()
+                    .uri(KAP_API_URL, mkkMemberOid)
+                    .header("Accept", "application/json")
+                    .header("User-Agent", "Mozilla/5.0 (compatible; FinancePortal/1.0)")
+                    .retrieve()
+                    .body(KapSgbfItem[].class);
+        } catch (Exception e) {
+            logger.error("KAP SGBF API call failed. mkkMemberOid={}", mkkMemberOid, e);
+            throw e;
+        }
+
+        if (rawItems == null || rawItems.length == 0) {
+            logger.info("KAP SGBF returned empty result. mkkMemberOid={}", mkkMemberOid);
+            return new KapDisclosureProviderResult(List.of(), List.of());
+        }
+
+        List<KapDisclosureDto> disclosures = new ArrayList<>();
+        List<DisclosureFailedItemDto> failedItems = new ArrayList<>();
+
+        for (KapSgbfItem item : rawItems) {
+            if (item.getDisclosureBasic() == null) {
+                continue;
+            }
+            mapItem(item.getDisclosureBasic(), disclosures, failedItems);
+        }
+
+        logger.info("KAP SGBF parse complete. mkkMemberOid={}, total={}, parsed={}, failed={}",
+                mkkMemberOid, rawItems.length, disclosures.size(), failedItems.size());
+
+        return new KapDisclosureProviderResult(disclosures, failedItems);
     }
 
-    private DisclosureType classifyDisclosure(String title) {
-        if (title == null) {
+    private void mapItem(KapSgbfDisclosureBasic basic,
+                         List<KapDisclosureDto> disclosures,
+                         List<DisclosureFailedItemDto> failedItems) {
+        String title = basic.getTitle();
+        String disclosureIndex = basic.getDisclosureIndex();
+
+        if (title == null || title.isBlank()) {
+            failedItems.add(DisclosureFailedItemDto.builder()
+                    .title(null)
+                    .disclosureIndex(disclosureIndex)
+                    .reason("title boş veya null")
+                    .build());
+            logger.debug("Disclosure skipped — blank title. disclosureIndex={}", disclosureIndex);
+            return;
+        }
+
+        if (disclosureIndex == null || disclosureIndex.isBlank()) {
+            failedItems.add(DisclosureFailedItemDto.builder()
+                    .title(title)
+                    .disclosureIndex(null)
+                    .reason("disclosureIndex null")
+                    .build());
+            logger.debug("Disclosure skipped — null disclosureIndex. title={}", title);
+            return;
+        }
+
+        OffsetDateTime publishedAt;
+        try {
+            publishedAt = LocalDateTime.parse(basic.getPublishDate(), PUBLISH_DATE_FORMATTER)
+                    .atZone(KAP_ZONE)
+                    .toOffsetDateTime();
+        } catch (Exception e) {
+            String reason = "publishDate parse edilemedi: " + basic.getPublishDate();
+            failedItems.add(DisclosureFailedItemDto.builder()
+                    .title(title)
+                    .disclosureIndex(disclosureIndex)
+                    .reason(reason)
+                    .build());
+            logger.warn("Disclosure skipped — {}. title={}", reason, title);
+            return;
+        }
+
+        disclosures.add(KapDisclosureDto.builder()
+                .title(title)
+                .disclosureIndex(disclosureIndex)
+                .kapUrl(KAP_DISCLOSURE_URL_PREFIX + disclosureIndex)
+                .publishedAt(publishedAt)
+                .summary(basic.getSummary())
+                .disclosureType(mapDisclosureType(basic.getDisclosureType()))
+                .kapYear(parseIntOrNull(basic.getYear()))
+                .kapDonem(parseIntOrNull(basic.getDonem()))
+                .kapPeriod(basic.getPeriod())
+                .build());
+    }
+
+    private static Integer parseIntOrNull(String s) {
+        if (s == null || s.isBlank()) return null;
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private DisclosureType mapDisclosureType(String rawType) {
+        if (rawType == null) {
             return DisclosureType.GENERAL;
         }
-        String lower = title.toLowerCase(Locale.ROOT);
-        if (lower.contains("finansal tablo") || lower.contains("bilanço")
-                || lower.contains("gelir tablosu") || lower.contains("finansal rapor")
-                || lower.contains("faaliyet raporu")) {
-            return DisclosureType.FINANCIAL;
-        }
-        if (lower.contains("özel durum") || lower.contains("material event")) {
-            return DisclosureType.SPECIAL;
-        }
-        return DisclosureType.GENERAL;
+        return switch (rawType) {
+            case "FR"  -> DisclosureType.FINANCIAL;
+            case "ODA" -> DisclosureType.SPECIAL;
+            default    -> DisclosureType.GENERAL;
+        };
     }
 }

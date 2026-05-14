@@ -32,7 +32,7 @@ public class CompanyRatioService {
     private static final Logger logger = LogManager.getLogger(CompanyRatioService.class);
     private static final int SCALE = 6;
     private static final RoundingMode ROUNDING = RoundingMode.HALF_UP;
-    private static final List<ParseStatus> ELIGIBLE_STATUSES = List.of(ParseStatus.SUCCESS, ParseStatus.PARTIAL);
+    private static final List<ParseStatus> ELIGIBLE_STATUSES = List.of(ParseStatus.SUCCESS);
 
     private final CompanyProfileRepository profileRepository;
     private final CompanyFinancialReportRepository reportRepository;
@@ -62,7 +62,7 @@ public class CompanyRatioService {
 
         List<CompanyFinancialReport> eligible = reportRepository.findEligibleReports(ticker, ELIGIBLE_STATUSES);
         if (eligible.isEmpty()) {
-            return failed(ticker, "Hesaplanabilir finansal rapor bulunamadı (SUCCESS veya PARTIAL).");
+            return failed(ticker, "Hesaplanabilir finansal rapor bulunamadı (SUCCESS).");
         }
 
         CompanyFinancialReport latest = eligible.get(0);
@@ -113,6 +113,7 @@ public class CompanyRatioService {
         BigDecimal netDonemKari       = get(values, FinancialItemKey.NET_DONEM_KARI);
         BigDecimal ozkaynaklar        = get(values, FinancialItemKey.OZKAYNAKLAR);
         BigDecimal toplamVarliklar    = get(values, FinancialItemKey.TOPLAM_VARLIKLAR);
+        BigDecimal toplamKaynaklar    = get(values, FinancialItemKey.TOPLAM_KAYNAKLAR);
         BigDecimal toplamYukumlulukler= get(values, FinancialItemKey.TOPLAM_YUKUMLULUKLER);
         BigDecimal odenmisSermeye     = get(values, FinancialItemKey.ODENMIS_SERMAYE);
 
@@ -133,6 +134,15 @@ public class CompanyRatioService {
             netProfGrowth = growth(netDonemKari,    get(prevValues, FinancialItemKey.NET_DONEM_KARI));
             assetGrowth   = growth(toplamVarliklar, get(prevValues, FinancialItemKey.TOPLAM_VARLIKLAR));
         }
+
+        logger.info("Ratio asset metrics. ticker={}, reportId={}, currentAssets={}, totalResources={}, previousAssets={}, calculatedRoa={}, calculatedAssetGrowth={}",
+                company.getTickerCode(),
+                report.getId(),
+                toplamVarliklar,
+                toplamKaynaklar,
+                get(prevValues, FinancialItemKey.TOPLAM_VARLIKLAR),
+                roa,
+                assetGrowth);
 
         String healthLabel = computeHealthLabel(debtToEq, netMargin, roe);
         OffsetDateTime now = OffsetDateTime.now();

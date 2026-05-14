@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams } from "react-router-dom";
 import { getMarketHistory, getMarketBySymbol, getTechnicalAnalysis } from "../../api/marketApi";
 import { getNews } from "../../api/newsApi";
-import { getCompanyFundamentals, getCompanyDisclosures } from "../../api/companyApi";
+import { getCompanyFundamentals, getCompanyDisclosures, getCompanyFinancials } from "../../api/companyApi";
 import { extractErrorMessage } from "../../api/responseUtils";
 import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../../api/watchlistApi";
 import { useAuth } from "../../auth/AuthContext";
@@ -14,6 +14,7 @@ import useToast from "../../hooks/useToast";
 import AddToPortfolioModal from "./AddToPortfolioModal";
 import CreateAlertModal from "./CreateAlertModal";
 import InstrumentChartPanel from "./InstrumentChartPanel";
+import InstrumentFinancialsPanel from "./InstrumentFinancialsPanel";
 import InstrumentFundamentalsPanel from "./InstrumentFundamentalsPanel";
 import InstrumentHeader from "./InstrumentHeader";
 import InstrumentKapDisclosuresPanel from "./InstrumentKapDisclosuresPanel";
@@ -63,6 +64,10 @@ export default function InstrumentDetailPage() {
   const [fundamentals, setFundamentals] = useState(null);
   const [fundamentalsLoading, setFundamentalsLoading] = useState(false);
   const [fundamentalsError, setFundamentalsError] = useState("");
+
+  const [financialReports, setFinancialReports] = useState([]);
+  const [financialsLoading, setFinancialsLoading] = useState(false);
+  const [financialsError, setFinancialsError] = useState("");
 
   const [disclosurePage, setDisclosurePage] = useState(null);
   const [disclosuresLoading, setDisclosuresLoading] = useState(false);
@@ -304,6 +309,43 @@ export default function InstrumentDetailPage() {
     }
 
     loadFundamentals();
+    return () => {
+      active = false;
+    };
+  }, [activeTab, normalizedSymbol, t]);
+
+  useEffect(() => {
+    if (activeTab !== "financials" || !normalizedSymbol) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadFinancials() {
+      try {
+        setFinancialsLoading(true);
+        setFinancialsError("");
+        const data = await getCompanyFinancials(normalizedSymbol);
+        if (active) {
+          setFinancialReports(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        if (active) {
+          setFinancialReports([]);
+          if (err?.response?.status === 404) {
+            setFinancialsError("");
+          } else {
+            setFinancialsError(extractErrorMessage(err, t("instrumentDetail.financialsError", "Finansallar yüklenemedi.")));
+          }
+        }
+      } finally {
+        if (active) {
+          setFinancialsLoading(false);
+        }
+      }
+    }
+
+    loadFinancials();
     return () => {
       active = false;
     };
@@ -578,19 +620,11 @@ export default function InstrumentDetailPage() {
             ) : null}
 
             {activeTab === "financials" ? (
-              <section className="panel-surface instrument-financials-panel">
-                <div className="panel-head">
-                  <div>
-                    <p className="eyebrow">{t("instrumentDetail.financialsEyebrow")}</p>
-                    <h3>{t("instrumentDetail.financialsTitle")}</h3>
-                  </div>
-                </div>
-                {/* TODO: replace this fallback with a backend financial statements endpoint when available. */}
-                <EmptyState
-                  title={t("instrumentDetail.financialsEmptyTitle")}
-                  description={t("instrumentDetail.financialsEmptyDescription")}
-                />
-              </section>
+              <InstrumentFinancialsPanel
+                loading={financialsLoading}
+                error={financialsError}
+                reports={financialReports}
+              />
             ) : null}
 
             {activeTab === "fundamentals" ? (
@@ -681,4 +715,3 @@ function parseTcmbFxInstrumentCode(symbol) {
     side: match[2],
   };
 }
-
