@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)",
+      "Bash(mvn compile *)",
+      "Read(//mnt/c/Users/ehall/Desktop/Finans-Portal/**)",
+      "Bash(./mvnw compile *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\" -Recurse -Include \"*Controller.java\")",
+      "Bash(Select-Object -First 5)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\\\\market\" -Recurse -Directory)",
+      "Bash(mvn test *)"
+    ]
+  }
+}

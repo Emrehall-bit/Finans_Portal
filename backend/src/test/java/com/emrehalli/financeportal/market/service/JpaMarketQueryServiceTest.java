@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,16 +50,16 @@ class JpaMarketQueryServiceTest {
                 .closePrice(new BigDecimal("39.1200"))
                 .intervalType(IntervalType.ONE_DAY)
                 .sourceName(SourceName.TCMB)
-                .priceTimestamp(LocalDateTime.of(2024, 1, 1, 0, 0))
+                .priceTimestamp(LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC))
                 .build();
 
-        when(marketInstrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:SELL"))
+        when(marketInstrumentRepository.findFirstByInstrumentCodeIgnoreCaseOrderByCreatedAtAsc("TCMB:USD:SELL"))
                 .thenReturn(Optional.of(instrument));
         when(marketPriceHistoryRepository.findByInstrumentAndIntervalTypeAndPriceTimestampBetweenOrderByPriceTimestampAsc(
                 eq(instrument),
                 eq(IntervalType.ONE_DAY),
-                eq(LocalDate.of(2024, 1, 1).atStartOfDay()),
-                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1))
+                eq(LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC)),
+                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1).toInstant(ZoneOffset.UTC))
         )).thenReturn(List.of(history));
 
         List<MarketQueryService.HistoricalPrice> result = service.getHistory(
@@ -79,14 +79,14 @@ class JpaMarketQueryServiceTest {
     void getHistoryAppliesSourceFilterWhenProvided() {
         MarketInstrument instrument = instrument("TCMB:USD:SELL");
 
-        when(marketInstrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:SELL"))
+        when(marketInstrumentRepository.findFirstByInstrumentCodeIgnoreCaseOrderByCreatedAtAsc("TCMB:USD:SELL"))
                 .thenReturn(Optional.of(instrument));
         when(marketPriceHistoryRepository.findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
                 eq(instrument),
                 eq(IntervalType.ONE_DAY),
                 eq(SourceName.TCMB),
-                eq(LocalDate.of(2024, 1, 1).atStartOfDay()),
-                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1))
+                eq(LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC)),
+                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1).toInstant(ZoneOffset.UTC))
         )).thenReturn(List.of());
 
         service.getHistory(
@@ -101,8 +101,8 @@ class JpaMarketQueryServiceTest {
                         eq(instrument),
                         eq(IntervalType.ONE_DAY),
                         eq(SourceName.TCMB),
-                        eq(LocalDate.of(2024, 1, 1).atStartOfDay()),
-                        eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1))
+                        eq(LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC)),
+                        eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1).toInstant(ZoneOffset.UTC))
                 );
     }
 

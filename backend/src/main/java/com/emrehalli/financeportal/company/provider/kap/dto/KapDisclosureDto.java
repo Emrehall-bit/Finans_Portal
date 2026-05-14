@@ -1,0 +1,18 @@
+package com.emrehalli.financeportal.company.provider.kap.dto;
+
+import com.emrehalli.financeportal.company.enums.DisclosureType;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.OffsetDateTime;
+
+@Getter
+@Builder
+public class KapDisclosureDto {
+
+    private String title;
+    private String kapUrl;
+    private OffsetDateTime publishedAt;
+    private DisclosureType disclosureType;
+    private String summary;
+}

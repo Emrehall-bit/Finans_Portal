@@ -25,6 +25,10 @@ public class PortfolioPriceResolver {
     public PriceResolutionResult resolveCurrentPriceWithFallback(String instrumentCode,
                                                                  BigDecimal purchasePricePerUnit,
                                                                  LocalDateTime referenceTime) {
+        if ("TRY".equalsIgnoreCase(instrumentCode)) {
+            return PriceResolutionResult.available(BigDecimal.ONE, PriceStatus.LIVE, LocalDateTime.now());
+        }
+
         var snapshot = marketQueryService.findBySymbol(instrumentCode).orElse(null);
         if (snapshot != null && snapshot.price() != null) {
             logger.debug("Using market price for instrument {}", instrumentCode);

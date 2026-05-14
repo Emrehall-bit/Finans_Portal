@@ -7717,3 +7717,57 @@ html[data-theme] button.sidebar-register-button:focus-visible,
     flex: 1 1 0;
   }
 }
+
+/* ── KAP Disclosure List ─────────────────────────────────────── */
+.kap-disclosure-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.kap-disclosure-item {
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+}
+
+.kap-disclosure-item:last-child {
+  border-bottom: none;
+}
+
+.kap-disclosure-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.kap-disclosure-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+  line-height: 1.4;
+}
+
+.kap-disclosure-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--accent, rgba(255, 255, 255, 0.3));
+}
+
+.kap-disclosure-link:hover {
+  text-decoration-color: currentColor;
+}
+
+.kap-disclosure-summary {
+  font-size: 0.8rem;
+  margin: 0;
+  line-height: 1.5;
+  opacity: 0.7;
+}
+
+.instrument-fundamentals-panel,
+.instrument-kap-panel {
+  width: 100%;
+}
+

@@ -1,0 +1,271 @@
+package com.emrehalli.financeportal.company.service;
+
+import com.emrehalli.financeportal.company.dto.CompanyRatioCalculationResponse;
+import com.emrehalli.financeportal.company.entity.*;
+import com.emrehalli.financeportal.company.enums.ParseStatus;
+import com.emrehalli.financeportal.company.enums.ReportType;
+import com.emrehalli.financeportal.company.parser.FinancialItemKey;
+import com.emrehalli.financeportal.company.repository.*;
+import com.emrehalli.financeportal.market.service.MarketQueryService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+class CompanyRatioServiceTest {
+
+    private CompanyProfileRepository profileRepository;
+    private CompanyFinancialReportRepository reportRepository;
+    private CompanyFinancialValueRepository valueRepository;
+    private CompanyRatioRepository ratioRepository;
+    private MarketQueryService marketQueryService;
+
+    private CompanyRatioService service;
+
+    private CompanyProfile company;
+    private CompanyFinancialReport report;
+
+    @BeforeEach
+    void setUp() {
+        profileRepository    = mock(CompanyProfileRepository.class);
+        reportRepository     = mock(CompanyFinancialReportRepository.class);
+        valueRepository      = mock(CompanyFinancialValueRepository.class);
+        ratioRepository      = mock(CompanyRatioRepository.class);
+        marketQueryService   = mock(MarketQueryService.class);
+
+        service = new CompanyRatioService(profileRepository, reportRepository,
+                valueRepository, ratioRepository, marketQueryService);
+
+        company = CompanyProfile.builder()
+                .id(1L).tickerCode("TEST").companyName("Test A.Ş.")
+                .sector("Sektör").market("BIST").build();
+
+        report = CompanyFinancialReport.builder()
+                .id(10L).company(company)
+                .periodYear(2024).periodQuarter(4).reportType(ReportType.ANNUAL)
+                .parseStatus(ParseStatus.SUCCESS)
+                .build();
+
+        when(profileRepository.findByTickerCodeIgnoreCase("TEST")).thenReturn(Optional.of(company));
+        when(reportRepository.findEligibleReports(eq("TEST"), anyCollection())).thenReturn(List.of(report));
+        when(ratioRepository.findByCompanyIdAndReportId(1L, 10L)).thenReturn(Optional.empty());
+        when(ratioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // peRatio — null when net profit is negative or zero
+    // -------------------------------------------------------------------------
+
+    @Test
+    void peRatio_isNull_whenNetProfitIsNegative() {
+        stubMarketPrice("100");
+        stubValues(List.of(
+                value(FinancialItemKey.HASILAT, "1000000"),
+                value(FinancialItemKey.BRUT_KAR, "300000"),
+                value(FinancialItemKey.NET_DONEM_KARI, "-50000"),   // negative
+                value(FinancialItemKey.OZKAYNAKLAR, "500000"),
+                value(FinancialItemKey.TOPLAM_VARLIKLAR, "800000"),
+                value(FinancialItemKey.TOPLAM_YUKUMLULUKLER, "300000"),
+                value(FinancialItemKey.ODENMIS_SERMAYE, "100000")
+        ));
+
+        CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
+
+        assertThat(result.isCalculated()).isTrue();
+        assertThat(result.getPeRatio()).isNull();
+        assertThat(result.getNetMargin()).isNotNull().isNegative();
+    }
+
+    @Test
+    void peRatio_isNull_whenNetProfitIsZero() {
+        stubMarketPrice("100");
+        stubValues(List.of(
+                value(FinancialItemKey.HASILAT, "1000000"),
+                value(FinancialItemKey.BRUT_KAR, "200000"),
+                value(FinancialItemKey.NET_DONEM_KARI, "0"),         // zero
+                value(FinancialItemKey.OZKAYNAKLAR, "500000"),
+                value(FinancialItemKey.TOPLAM_VARLIKLAR, "800000"),
+                value(FinancialItemKey.TOPLAM_YUKUMLULUKLER, "300000"),
+                value(FinancialItemKey.ODENMIS_SERMAYE, "100000")
+        ));
+
+        CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
+
+        assertThat(result.getPeRatio()).isNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // Zero denominator — ratio must be null, no exception
+    // -------------------------------------------------------------------------
+
+    @Test
+    void ratios_areNull_whenDenominatorsAreZero() {
+        stubMarketPrice("100");
+        stubValues(List.of(
+                value(FinancialItemKey.HASILAT, "0"),                // zero → margins null
+                value(FinancialItemKey.BRUT_KAR, "200000"),
+                value(FinancialItemKey.NET_DONEM_KARI, "50000"),
+                value(FinancialItemKey.OZKAYNAKLAR, "0"),            // zero → pbRatio, roe, debtToEquity null
+                value(FinancialItemKey.TOPLAM_VARLIKLAR, "0"),       // zero → roa null
+                value(FinancialItemKey.TOPLAM_YUKUMLULUKLER, "300000"),
+                value(FinancialItemKey.ODENMIS_SERMAYE, "100000")
+        ));
+
+        CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
+
+        assertThat(result.isCalculated()).isTrue();
+        assertThat(result.getPbRatio()).isNull();
+        assertThat(result.getRoe()).isNull();
+        assertThat(result.getRoa()).isNull();
+        assertThat(result.getDebtToEquity()).isNull();
+        assertThat(result.getGrossMargin()).isNull();
+        assertThat(result.getNetMargin()).isNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // Growth rates — null when no previous period
+    // -------------------------------------------------------------------------
+
+    @Test
+    void growthRates_areNull_whenNoPreviousPeriod() {
+        // Only one eligible report — no previous period
+        when(reportRepository.findEligibleReports(eq("TEST"), anyCollection())).thenReturn(List.of(report));
+        stubMarketPrice("100");
+        stubValues(List.of(
+                value(FinancialItemKey.HASILAT, "1000000"),
+                value(FinancialItemKey.BRUT_KAR, "300000"),
+                value(FinancialItemKey.NET_DONEM_KARI, "100000"),
+                value(FinancialItemKey.OZKAYNAKLAR, "500000"),
+                value(FinancialItemKey.TOPLAM_VARLIKLAR, "800000"),
+                value(FinancialItemKey.TOPLAM_YUKUMLULUKLER, "300000"),
+                value(FinancialItemKey.ODENMIS_SERMAYE, "100000")
+        ));
+
+        CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
+
+        assertThat(result.isCalculated()).isTrue();
+        assertThat(result.getRevenueGrowth()).isNull();
+        assertThat(result.getNetProfitGrowth()).isNull();
+        assertThat(result.getAssetGrowth()).isNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // Direct unit tests for arithmetic helpers
+    // -------------------------------------------------------------------------
+
+    @Test
+    void divide_returnsNull_whenDenominatorIsZero() {
+        assertThat(service.divide(new BigDecimal("100"), BigDecimal.ZERO)).isNull();
+    }
+
+    @Test
+    void divide_returnsNull_whenNumeratorIsNull() {
+        assertThat(service.divide(null, new BigDecimal("100"))).isNull();
+    }
+
+    @Test
+    void divide_returnsNull_whenDenominatorIsNull() {
+        assertThat(service.divide(new BigDecimal("100"), null)).isNull();
+    }
+
+    @Test
+    void growth_returnsNull_whenPreviousIsZero() {
+        assertThat(service.growth(new BigDecimal("100"), BigDecimal.ZERO)).isNull();
+    }
+
+    @Test
+    void growth_returnsNull_whenPreviousIsNull() {
+        assertThat(service.growth(new BigDecimal("100"), null)).isNull();
+    }
+
+    @Test
+    void healthLabel_debtHigh_whenDebtToEquityAbove2() {
+        String label = service.computeHealthLabel(
+                new BigDecimal("2.5"),
+                new BigDecimal("0.20"),
+                new BigDecimal("0.20"));
+        assertThat(label).isEqualTo("Borçluluk yüksek");
+    }
+
+    @Test
+    void healthLabel_profitable_whenMarginAndRoeAbove15pct() {
+        String label = service.computeHealthLabel(
+                new BigDecimal("1.0"),
+                new BigDecimal("0.20"),
+                new BigDecimal("0.20"));
+        assertThat(label).isEqualTo("Kârlılık güçlü");
+    }
+
+    @Test
+    void healthLabel_loss_whenNetMarginNegative() {
+        String label = service.computeHealthLabel(
+                new BigDecimal("1.0"),
+                new BigDecimal("-0.05"),
+                new BigDecimal("0.10"));
+        assertThat(label).isEqualTo("Zarar açıklamış");
+    }
+
+    @Test
+    void healthLabel_neutral_whenNoSpecialCondition() {
+        String label = service.computeHealthLabel(
+                new BigDecimal("1.0"),
+                new BigDecimal("0.05"),
+                new BigDecimal("0.08"));
+        assertThat(label).isEqualTo("Nötr");
+    }
+
+    // -------------------------------------------------------------------------
+    // Failure cases
+    // -------------------------------------------------------------------------
+
+    @Test
+    void calculateForTicker_fails_whenNoEligibleReport() {
+        when(reportRepository.findEligibleReports(eq("TEST"), anyCollection())).thenReturn(List.of());
+        stubMarketPrice("100");
+
+        CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
+
+        assertThat(result.isCalculated()).isFalse();
+        assertThat(result.getFailedReason()).isNotBlank();
+    }
+
+    @Test
+    void calculateForTicker_fails_whenPriceNotFound() {
+        when(marketQueryService.findBySymbol("TEST")).thenReturn(Optional.empty());
+
+        CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
+
+        assertThat(result.isCalculated()).isFalse();
+        assertThat(result.getFailedReason()).contains("fiyat");
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private void stubMarketPrice(String price) {
+        when(marketQueryService.findBySymbol("TEST")).thenReturn(Optional.of(
+                new MarketQueryService.MarketSnapshot(
+                        "TEST", "Test A.Ş.", new BigDecimal(price),
+                        BigDecimal.ZERO, "BIST", "STOCK", "TRY", LocalDateTime.now())));
+    }
+
+    private void stubValues(List<CompanyFinancialValue> vals) {
+        when(valueRepository.findByReportId(10L)).thenReturn(vals);
+    }
+
+    private static CompanyFinancialValue value(FinancialItemKey key, String val) {
+        return CompanyFinancialValue.builder()
+                .itemKey(key.name())
+                .value(new BigDecimal(val))
+                .build();
+    }
+}

@@ -11,5 +11,6 @@ public enum SourceName {
     TEFAS,
     YAHOO_FINANCE,
     IS_YATIRIM,
-    BIST
+    BIST,
+    INTERNAL
 }

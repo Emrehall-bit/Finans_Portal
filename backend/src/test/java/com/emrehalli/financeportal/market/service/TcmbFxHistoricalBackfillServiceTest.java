@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -56,8 +56,8 @@ class TcmbFxHistoricalBackfillServiceTest {
     void backfillUsesConfiguredStartDateWhenNoHistoryExists() {
         MarketInstrument sellInstrument = instrument("TCMB:USD:SELL");
 
-        when(instrumentRepository.findByInstrumentCodeIgnoreCase(anyString())).thenReturn(Optional.empty());
-        when(instrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:SELL")).thenReturn(Optional.of(sellInstrument));
+        when(instrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName(anyString(), any(SourceName.class))).thenReturn(Optional.empty());
+        when(instrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName("TCMB:USD:SELL", SourceName.TCMB)).thenReturn(Optional.of(sellInstrument));
         when(priceHistoryRepository.findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampDesc(
                 eq(sellInstrument), eq(IntervalType.ONE_DAY), eq(SourceName.TCMB)
         )).thenReturn(Optional.empty());
@@ -71,8 +71,8 @@ class TcmbFxHistoricalBackfillServiceTest {
                 eq(List.of(sellInstrument)),
                 eq(IntervalType.ONE_DAY),
                 eq(SourceName.TCMB),
-                eq(LocalDate.of(2024, 1, 1).atStartOfDay()),
-                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1))
+                eq(LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC)),
+                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1).toInstant(ZoneOffset.UTC))
         )).thenReturn(List.of());
 
         service.backfill();
@@ -88,11 +88,11 @@ class TcmbFxHistoricalBackfillServiceTest {
     void backfillContinuesFromDayAfterLastRecord() {
         MarketInstrument sellInstrument = instrument("TCMB:USD:SELL");
         MarketPriceHistory sellHistory = MarketPriceHistory.builder()
-                .priceTimestamp(LocalDateTime.of(2024, 1, 5, 0, 0))
+                .priceTimestamp(LocalDate.of(2024, 1, 5).atStartOfDay().toInstant(ZoneOffset.UTC))
                 .build();
 
-        when(instrumentRepository.findByInstrumentCodeIgnoreCase(anyString())).thenReturn(Optional.empty());
-        when(instrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:SELL")).thenReturn(Optional.of(sellInstrument));
+        when(instrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName(anyString(), any(SourceName.class))).thenReturn(Optional.empty());
+        when(instrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName("TCMB:USD:SELL", SourceName.TCMB)).thenReturn(Optional.of(sellInstrument));
         when(priceHistoryRepository.findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampDesc(
                 eq(sellInstrument), eq(IntervalType.ONE_DAY), eq(SourceName.TCMB)
         )).thenReturn(Optional.of(sellHistory));
@@ -106,8 +106,8 @@ class TcmbFxHistoricalBackfillServiceTest {
                 eq(List.of(sellInstrument)),
                 eq(IntervalType.ONE_DAY),
                 eq(SourceName.TCMB),
-                eq(LocalDate.of(2024, 1, 6).atStartOfDay()),
-                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1))
+                eq(LocalDate.of(2024, 1, 6).atStartOfDay().toInstant(ZoneOffset.UTC)),
+                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1).toInstant(ZoneOffset.UTC))
         )).thenReturn(List.of());
 
         service.backfill();
@@ -123,8 +123,8 @@ class TcmbFxHistoricalBackfillServiceTest {
     void backfillSkipsSaveWhenDuplicateExists() {
         MarketInstrument sellInstrument = instrument("TCMB:USD:SELL");
 
-        when(instrumentRepository.findByInstrumentCodeIgnoreCase(anyString())).thenReturn(Optional.empty());
-        when(instrumentRepository.findByInstrumentCodeIgnoreCase("TCMB:USD:SELL")).thenReturn(Optional.of(sellInstrument));
+        when(instrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName(anyString(), any(SourceName.class))).thenReturn(Optional.empty());
+        when(instrumentRepository.findByInstrumentCodeIgnoreCaseAndSourceName("TCMB:USD:SELL", SourceName.TCMB)).thenReturn(Optional.of(sellInstrument));
         when(priceHistoryRepository.findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampDesc(
                 eq(sellInstrument), eq(IntervalType.ONE_DAY), eq(SourceName.TCMB)
         )).thenReturn(Optional.empty());
@@ -145,14 +145,14 @@ class TcmbFxHistoricalBackfillServiceTest {
                 eq(List.of(sellInstrument)),
                 eq(IntervalType.ONE_DAY),
                 eq(SourceName.TCMB),
-                eq(LocalDate.of(2024, 1, 1).atStartOfDay()),
-                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1))
+                eq(LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC)),
+                eq(LocalDate.of(2024, 1, 10).plusDays(1).atStartOfDay().minusNanos(1).toInstant(ZoneOffset.UTC))
         )).thenReturn(List.of(
                 MarketPriceHistory.builder()
                         .instrument(sellInstrument)
                         .intervalType(IntervalType.ONE_DAY)
                         .sourceName(SourceName.TCMB)
-                        .priceTimestamp(LocalDateTime.of(2024, 1, 1, 0, 0))
+                        .priceTimestamp(LocalDate.of(2024, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC))
                         .build()
         ));
 

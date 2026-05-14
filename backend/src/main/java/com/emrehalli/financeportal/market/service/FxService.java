@@ -64,6 +64,9 @@ public class FxService {
             if (rate == null || rate.getSourceName() == null || rate.getCurrencyCode() == null || rate.getCurrencyCode().isBlank()) {
                 continue;
             }
+            if (rate.getSourceName() == SourceName.INTERNAL) {
+                continue;
+            }
 
             String currencyCode = normalizeCode(rate.getCurrencyCode());
             LocalDateTime timestamp = rate.getDataTimestamp() != null ? rate.getDataTimestamp() : LocalDateTime.now();
@@ -251,11 +254,13 @@ public class FxService {
 
         log.debug("[FxService] buildFromDatabase changePercent hesaplaniyor. sourceName={}, currencyCode={}",
                 sourceName, currencyCode);
-        BigDecimal changePercent = calculateChangePercent(
-                sourceName,
-                latestPrices.get(FxPriceType.SELL),
-                instrumentsByType.get(FxPriceType.SELL)
-        );
+        BigDecimal changePercent = sourceName == SourceName.INTERNAL
+                ? BigDecimal.ZERO
+                : calculateChangePercent(
+                        sourceName,
+                        latestPrices.get(FxPriceType.SELL),
+                        instrumentsByType.get(FxPriceType.SELL)
+                );
         log.debug("[FxService] buildFromDatabase changePercent={}", changePercent);
         log.debug("[FxService] FxRateResponse changePercent set ediliyor: {}", changePercent);
 

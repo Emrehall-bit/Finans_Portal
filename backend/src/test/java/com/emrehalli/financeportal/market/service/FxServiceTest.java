@@ -16,11 +16,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -62,7 +66,7 @@ class FxServiceTest {
                 .intervalType(IntervalType.ONE_DAY)
                 .sourceName(SourceName.TCMB)
                 .closePrice(new BigDecimal("40.0000"))
-                .priceTimestamp(LocalDateTime.of(2026, 5, 9, 0, 0))
+                .priceTimestamp(LocalDate.of(2026, 5, 9).atStartOfDay().toInstant(ZoneOffset.UTC))
                 .build();
 
         when(cacheService.getList("fx:source:TCMB", FxRateResponse.class)).thenReturn(List.of());
@@ -74,7 +78,7 @@ class FxServiceTest {
                 eq(sellInstrument),
                 eq(IntervalType.ONE_DAY),
                 eq(SourceName.TCMB),
-                eq(LocalDateTime.of(2026, 5, 10, 0, 0))
+                any(Instant.class)
         )).thenReturn(Optional.of(previousClose));
 
         List<FxRateResponse> result = fxService.getBySource(SourceName.TCMB);
@@ -103,7 +107,7 @@ class FxServiceTest {
                 eq(sellInstrument),
                 eq(IntervalType.ONE_DAY),
                 eq(SourceName.TCMB),
-                eq(LocalDateTime.of(2026, 5, 10, 0, 0))
+                any(Instant.class)
         )).thenReturn(Optional.empty());
 
         List<FxRateResponse> result = fxService.getBySource(SourceName.TCMB);
