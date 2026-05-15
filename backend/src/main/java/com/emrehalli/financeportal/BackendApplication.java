@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal;
 
+import com.emrehalli.financeportal.ai.config.AiProperties;
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
 import com.emrehalli.financeportal.news.provider.finnhub.FinnhubProperties;
 import com.emrehalli.financeportal.news.provider.investing.InvestingNewsProperties;
@@ -16,6 +17,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableAsync
 @EnableCaching
 @EnableConfigurationProperties({
+        AiProperties.class,
         AaNewsProperties.class,
         FinnhubProperties.class,
         InvestingNewsProperties.class,

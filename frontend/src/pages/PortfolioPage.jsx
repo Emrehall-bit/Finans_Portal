@@ -11,6 +11,7 @@ import {
 } from "../api/portfolioApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
+import AiPortfolioCommentaryCard from "../components/ai/AiPortfolioCommentaryCard";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -369,6 +370,8 @@ export default function PortfolioPage() {
                 </section>
               </div>
 
+              <AiPortfolioCommentaryCard portfolio={selectedPortfolio} />
+
               <section className="panel-surface portfolio-management-panel portfolio-table-card portfolio-holdings-section portfolio-detail-panel portfolio-holdings-panel">
                 <div className="panel-head">
                   <div>
@@ -572,4 +575,3 @@ function formatVisibilityStatus(value, t) {
     PUBLIC: t("portfolio.visibilityOptions.PUBLIC"),
   }[value] ?? (value || "-");
 }
-

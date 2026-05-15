@@ -1,0 +1,24 @@
+import axiosClient from "./axiosClient";
+
+const inFlight = new Map();
+
+function deduplicate(key, fn) {
+  if (inFlight.has(key)) return inFlight.get(key);
+  const promise = fn().finally(() => inFlight.delete(key));
+  inFlight.set(key, promise);
+  return promise;
+}
+
+export function getAiTechnicalAnalysis(symbol) {
+  return deduplicate(
+    `technical:${symbol}`,
+    () => axiosClient.get(`/api/v1/ai/technical/${encodeURIComponent(symbol)}`).then((r) => r.data)
+  );
+}
+
+export function getAiFundamentalAnalysis(symbol) {
+  return deduplicate(
+    `fundamental:${symbol}`,
+    () => axiosClient.get(`/api/v1/ai/fundamental/${encodeURIComponent(symbol)}`).then((r) => r.data)
+  );
+}

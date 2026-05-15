@@ -8,6 +8,8 @@ import com.emrehalli.financeportal.company.parser.FinancialItemKey;
 import com.emrehalli.financeportal.company.repository.*;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -27,6 +29,7 @@ class CompanyRatioServiceTest {
     private CompanyFinancialValueRepository valueRepository;
     private CompanyRatioRepository ratioRepository;
     private MarketQueryService marketQueryService;
+    private FinancialQuarterNormalizer quarterNormalizer;
 
     private CompanyRatioService service;
 
@@ -40,9 +43,10 @@ class CompanyRatioServiceTest {
         valueRepository      = mock(CompanyFinancialValueRepository.class);
         ratioRepository      = mock(CompanyRatioRepository.class);
         marketQueryService   = mock(MarketQueryService.class);
+        quarterNormalizer    = mock(FinancialQuarterNormalizer.class);
 
         service = new CompanyRatioService(profileRepository, reportRepository,
-                valueRepository, ratioRepository, marketQueryService);
+                valueRepository, ratioRepository, marketQueryService, quarterNormalizer);
 
         company = CompanyProfile.builder()
                 .id(1L).tickerCode("TEST").companyName("Test A.Ş.")

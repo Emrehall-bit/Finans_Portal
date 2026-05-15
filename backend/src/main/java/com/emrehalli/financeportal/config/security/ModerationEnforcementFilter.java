@@ -45,6 +45,8 @@ public class ModerationEnforcementFilter extends OncePerRequestFilter {
             new AntPathRequestMatcher("/api/v1/news/**", HttpMethod.GET.name()),
             new AntPathRequestMatcher("/api/v1/markets/**", HttpMethod.GET.name()),
             new AntPathRequestMatcher("/api/v1/technical-analysis/**", HttpMethod.GET.name()),
+            new AntPathRequestMatcher("/api/v1/ai/technical/**", HttpMethod.GET.name()),
+            new AntPathRequestMatcher("/api/v1/ai/fundamental/**", HttpMethod.GET.name()),
             new AntPathRequestMatcher("/api/v1/ipos/**", HttpMethod.GET.name()),
             new AntPathRequestMatcher("/api/v1/futures/**", HttpMethod.GET.name())
     );

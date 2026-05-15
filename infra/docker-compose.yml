@@ -67,6 +67,7 @@
     volumes:
       - ./backend/docker/keycloak/realm-import:/opt/keycloak/data/import
       - ./backend/docker/keycloak/providers:/opt/keycloak/providers
+      - ./backend/docker/keycloak/themes:/opt/keycloak/themes
     depends_on:
       keycloak-db-init:
         condition: service_completed_successfully

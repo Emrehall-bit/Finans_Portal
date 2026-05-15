@@ -13,6 +13,7 @@ import {
   markNotificationAsRead,
 } from "../../api/notificationApi";
 import { extractErrorMessage } from "../../api/responseUtils";
+import AiAssistantWidget from "../ai/AiAssistantWidget";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatDateTime, formatNumber } from "../../utils/formatters";
 import {
@@ -750,6 +751,8 @@ export default function AppLayout() {
           </main>
         </div>
       </div>
+
+      <AiAssistantWidget />
 
       {authPromptOpen ? (
         <div className="modal-backdrop" role="presentation" onClick={() => setAuthPromptOpen(false)}>

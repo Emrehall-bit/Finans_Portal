@@ -7,10 +7,13 @@ import { getCompanyFundamentals, getCompanyDisclosures, getCompanyFinancials } f
 import { extractErrorMessage } from "../../api/responseUtils";
 import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../../api/watchlistApi";
 import { useAuth } from "../../auth/AuthContext";
+import AiFundamentalInsightCard from "../ai/AiFundamentalInsightCard";
+import AiTechnicalInsightCard from "../ai/AiTechnicalInsightCard";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import useToast from "../../hooks/useToast";
+import { formatNumber } from "../../utils/formatters";
 import AddToPortfolioModal from "./AddToPortfolioModal";
 import CreateAlertModal from "./CreateAlertModal";
 import InstrumentChartPanel from "./InstrumentChartPanel";
@@ -26,7 +29,6 @@ import {
   buildPresetRange,
   buildStats,
   DEFAULT_INDICATORS,
-  formatSignalLabel,
   formatTrendLabel,
   resolveTrendDirection,
 } from "./marketDetailUtils";
@@ -400,8 +402,24 @@ export default function InstrumentDetailPage() {
     () => formatInstrumentDisplayTitle(normalizedSymbol, quote?.displayName),
     [normalizedSymbol, quote?.displayName],
   );
+  const resolvedInstrumentType = useMemo(
+    () => resolveInstrumentType(quote?.instrumentType || instrumentType, normalizedSymbol),
+    [quote?.instrumentType, instrumentType, normalizedSymbol],
+  );
   const stats = useMemo(() => buildStats(quote, yearStatsHistory), [quote, yearStatsHistory]);
   const latestPrice = quote?.price ?? analysis?.latestPrice ?? null;
+  const aiAvailableData = useMemo(
+    () => ({
+      analysis,
+      chartData,
+      financialReports,
+      fundamentals,
+      newsItems,
+      quote,
+      trendLabel: formatTrendLabel(displayTrendDirection),
+    }),
+    [analysis, chartData, displayTrendDirection, financialReports, fundamentals, newsItems, quote],
+  );
   const quoteUnavailable = !quoteLoading && !quoteError && (!quote || quote.price == null);
   const isFavorite = useMemo(
     () => watchlistItems.some((item) => normalizeCode(item.instrumentCode) === normalizeCode(normalizedSymbol)),
@@ -533,60 +551,36 @@ export default function InstrumentDetailPage() {
                     </div>
                   </div>
 
-                  {analysisLoading ? <LoadingSpinner label={t("instrumentDetail.analysisLoading")} /> : null}
-                  {!analysisLoading && analysisError ? <ErrorMessage message={analysisError} /> : null}
-                  {!analysisLoading && !analysisError && !analysis ? (
-                    <EmptyState title={t("instrumentDetail.analysisEmptyTitle")} description={t("instrumentDetail.analysisEmptyDescription")} />
-                  ) : null}
+                  <div className="instrument-overview-summary">
+                    <div className="instrument-overview-metric">
+                      <span>{t("instrumentDetail.latestPrice")}</span>
+                      <strong>{formatNumber(latestPrice)}</strong>
+                    </div>
+                    <div className="instrument-overview-metric">
+                      <span>Günlük değişim</span>
+                      <strong className={getChangeClass(quote?.changeRate)}>{formatSignedPercent(quote?.changeRate)}</strong>
+                    </div>
+                    <div className="instrument-overview-metric">
+                      <span>{t("instrumentDetail.trend")}</span>
+                      <strong>{analysisLoading ? "Hazırlanıyor" : formatTrendLabel(displayTrendDirection)}</strong>
+                    </div>
+                    <div className="instrument-overview-metric">
+                      <span>{t("instrumentDetail.dataPoints")}</span>
+                      <strong>{analysisLoading ? "-" : formatNumber(chartData.length, 0)}</strong>
+                    </div>
+                  </div>
 
-                  {!analysisLoading && !analysisError && analysis ? (
-                    <>
-                      <div className="instrument-overview-summary">
-                        <div className="instrument-overview-metric">
-                          <span>{t("instrumentDetail.trend")}</span>
-                          <strong>{formatTrendLabel(displayTrendDirection)}</strong>
-                        </div>
-                        <div className="instrument-overview-metric">
-                          <span>{t("instrumentDetail.latestPrice")}</span>
-                          <strong>{latestPrice ?? "-"}</strong>
-                        </div>
-                        <div className="instrument-overview-metric">
-                          <span>{t("instrumentDetail.dataPoints")}</span>
-                          <strong>{chartData.length}</strong>
-                        </div>
-                      </div>
-
-                      <div className="signal-chip-row">
-                        {(analysis.signals ?? []).length > 0 ? (
-                          analysis.signals.map((signal) => (
-                            <span key={signal} className="signal-pill">
-                              {formatSignalLabel(signal)}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="signal-pill neutral">{t("instrumentDetail.noSignal")}</span>
-                        )}
-                      </div>
-
-                      <div className="indicator-value-grid terminal-indicator-grid">
-                        {(analysis.indicatorValues ?? []).length > 0 ? (
-                          analysis.indicatorValues.map((item) => (
-                            <div key={item.indicator} className="indicator-value-card">
-                              <span>{item.indicator}</span>
-                              <strong>{item.value ?? "-"}</strong>
-                            </div>
-                          ))
-                        ) : (
-                          <EmptyState
-                            title={t("instrumentDetail.indicatorsEmptyTitle")}
-                            description={t("instrumentDetail.indicatorsEmptyDescription")}
-                          />
-                        )}
-                      </div>
-                    </>
-                  ) : null}
+                  <div className="instrument-overview-brief">
+                    <strong>Kısa piyasa özeti</strong>
+                    <p>{buildOverviewMarketSummary(quote, displayTrendDirection, chartData.length, analysisLoading)}</p>
+                  </div>
                 </section>
 
+              </section>
+            ) : null}
+
+            {activeTab === "chart" ? (
+              <section className="instrument-overview-stack">
                 <InstrumentChartPanel
                   activeRange={activeRange}
                   onRangeChange={handleRangeChange}
@@ -598,21 +592,15 @@ export default function InstrumentDetailPage() {
                   error={analysisError}
                   chartData={chartData}
                 />
-              </section>
-            ) : null}
 
-            {activeTab === "chart" ? (
-              <InstrumentChartPanel
-                activeRange={activeRange}
-                onRangeChange={handleRangeChange}
-                dateRange={dateRange}
-                onDateRangeChange={handleDateRangeChange}
-                selectedIndicators={selectedIndicators}
-                onToggleIndicator={toggleIndicator}
-                loading={analysisLoading}
-                error={analysisError}
-                chartData={chartData}
-              />
+                {supportsTechnicalAi(resolvedInstrumentType) ? (
+                  <AiTechnicalInsightCard
+                    symbol={displaySymbol}
+                    availableData={aiAvailableData}
+                    highRisk={resolvedInstrumentType === "FUTURES"}
+                  />
+                ) : null}
+              </section>
             ) : null}
 
             {activeTab === "news" ? (
@@ -628,11 +616,17 @@ export default function InstrumentDetailPage() {
             ) : null}
 
             {activeTab === "fundamentals" ? (
-              <InstrumentFundamentalsPanel
-                loading={fundamentalsLoading}
-                error={fundamentalsError}
-                data={fundamentals}
-              />
+              <section className="instrument-overview-stack">
+                <InstrumentFundamentalsPanel
+                  loading={fundamentalsLoading}
+                  error={fundamentalsError}
+                  data={fundamentals}
+                />
+
+                {supportsFundamentalAi(resolvedInstrumentType) ? (
+                  <AiFundamentalInsightCard symbol={displaySymbol} availableData={aiAvailableData} />
+                ) : null}
+              </section>
             ) : null}
 
             {activeTab === "kapDisclosures" ? (
@@ -692,6 +686,69 @@ function normalizeCode(value) {
   }
 
   return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+
+function formatSignedPercent(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return String(value);
+  }
+  return `${numeric >= 0 ? "+" : ""}${formatNumber(numeric, 2)}%`;
+}
+
+function getChangeClass(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric === 0) {
+    return "";
+  }
+  return numeric > 0 ? "market-up" : "market-down";
+}
+
+function buildOverviewMarketSummary(quote, trendDirection, dataPointCount, loading) {
+  if (loading) {
+    return "Piyasa özeti hazırlanıyor; fiyat, günlük değişim ve kısa trend bilgisi yüklendikçe güncellenecek.";
+  }
+
+  const change = Number(quote?.changeRate);
+  const trend = formatTrendLabel(trendDirection).toLocaleLowerCase("tr-TR");
+  const priceText = formatNumber(quote?.price);
+  const dataText = formatNumber(dataPointCount, 0);
+
+  if (Number.isFinite(change) && change > 0) {
+    return `Son fiyat ${priceText}; günlük hareket pozitif. Kısa trend ${trend}, analiz ${dataText} veri noktası üzerinden özetleniyor.`;
+  }
+  if (Number.isFinite(change) && change < 0) {
+    return `Son fiyat ${priceText}; günlük hareket negatif. Kısa trend ${trend}, görünüm ${dataText} veri noktasıyla izleniyor.`;
+  }
+  return `Son fiyat ${priceText}; günlük hareket yatay veya sınırlı. Kısa trend ${trend}, ${dataText} veri noktasıyla özetleniyor.`;
+}
+
+function resolveInstrumentType(value, symbol) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (["STOCK", "CRYPTO", "FUND", "FX", "BOND", "FUTURES"].includes(normalized)) {
+    return normalized;
+  }
+
+  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  if (normalizedSymbol.startsWith("TCMB:") || /^[A-Z]{3}TRY$/.test(normalizedSymbol)) {
+    return "FX";
+  }
+  if (/(USDT|TRY)$/.test(normalizedSymbol) && /^(BTC|ETH|SOL|XRP|BNB|AVAX)/.test(normalizedSymbol)) {
+    return "CRYPTO";
+  }
+
+  return "STOCK";
+}
+
+function supportsTechnicalAi(instrumentType) {
+  return ["STOCK", "CRYPTO", "FUTURES"].includes(String(instrumentType || "").toUpperCase());
+}
+
+function supportsFundamentalAi(instrumentType) {
+  return String(instrumentType || "").toUpperCase() === "STOCK";
 }
 
 function formatInstrumentDisplaySymbol(symbol) {

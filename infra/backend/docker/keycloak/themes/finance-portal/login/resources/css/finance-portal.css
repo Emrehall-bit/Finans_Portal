@@ -1,0 +1,648 @@
+/* =============================================================
+   Finance Portal – Keycloak Premium Login Theme
+   Extends: parent=keycloak  (PatternFly 3 base layout)
+   Targets: all login-flow pages via shared CSS
+   ============================================================= */
+
+/* ── 1. Reset & typography ──────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+    font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── 2. Page background ─────────────────────────────────────── */
+/*
+ * !important required: parent login.css sets dark background-color on
+ * body.login-pf with enough specificity to win without it.
+ */
+html,
+body,
+body.login-pf {
+    background-color: #edf1fb !important;
+    background-image:
+        radial-gradient(ellipse 80% 60% at 10% -10%, rgba(99, 140, 255, 0.18) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 50% at 95% 105%, rgba(80, 200, 160, 0.13) 0%, transparent 50%),
+        linear-gradient(160deg, #f0f4ff 0%, #edf1fb 50%, #eaf0f8 100%) !important;
+    min-height: 100vh;
+    color: #14213f;
+}
+
+/* Subtle analytics grid overlay */
+body.login-pf::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(76, 127, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(76, 127, 255, 0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ── 3. Outer layout — override PatternFly grid ─────────────── */
+.login-pf-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 48px 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.login-pf-page .container-fluid {
+    display: flex;
+    justify-content: center;
+    padding: 0;
+    width: 100%;
+}
+
+.login-pf-page .row {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin: 0;
+}
+
+/* Card column — wider for premium feel */
+.login-pf-page [class*="col-"] {
+    float: none !important;
+    padding: 0;
+    width: 100%;
+    max-width: 500px;
+}
+
+/* ── 4. Hide ONLY the outer realm-name header above the card ── */
+/*
+ * IMPORTANT: Do NOT add .login-pf-header here.
+ * The card's inner <header class="login-pf-header"> also carries that class
+ * and contains our brand block + language switcher. Hiding it with !important
+ * would suppress logo, title and locale nav — even position:fixed children.
+ */
+#kc-header {
+    display: none !important;
+}
+
+/* Explicitly keep the card's inner header visible and clean */
+.card-pf > header {
+    display: block !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* ── 5. Card ─────────────────────────────────────────────────── */
+.card-pf {
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(210, 220, 245, 0.7);
+    border-radius: 28px;
+    box-shadow:
+        0 0 0 1px rgba(76, 127, 255, 0.05),
+        0 4px 8px  rgba(25, 53, 122, 0.04),
+        0 16px 40px rgba(25, 53, 122, 0.09),
+        0 40px 90px rgba(25, 53, 122, 0.07);
+    padding: 48px 52px 44px;
+    width: 100%;
+    margin: 0;
+    position: relative;
+}
+
+/* ── 6. Brand block (logo + "FINANCE PORTAL" text) ──────────── */
+.fp-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 32px;
+    gap: 12px;
+}
+
+.fp-brand-logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 16px rgba(76, 127, 255, 0.28));
+    display: block;
+}
+
+.fp-brand-name {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #0f1f3d;
+    margin: 0;
+    line-height: 1;
+}
+
+/* ── 7. Language switcher — fixed top-right ─────────────────── */
+.fp-locale-nav {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    z-index: 200;
+    display: flex;
+    gap: 3px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(200, 212, 238, 0.65);
+    border-radius: 22px;
+    padding: 4px;
+    box-shadow: 0 2px 12px rgba(25, 53, 122, 0.08);
+}
+
+.fp-locale-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 28px;
+    border-radius: 18px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    color: #55637f;
+    text-decoration: none !important;
+    transition: background 0.18s ease, color 0.18s ease;
+    padding: 0 10px;
+}
+
+.fp-locale-btn:hover {
+    color: #4c7fff;
+    background: rgba(76, 127, 255, 0.08);
+    text-decoration: none !important;
+}
+
+.fp-locale-active {
+    background: linear-gradient(135deg, #4c7fff, #355db8);
+    color: #fff !important;
+    box-shadow: 0 2px 8px rgba(76, 127, 255, 0.28);
+}
+
+.fp-locale-active:hover {
+    color: #fff !important;
+    background: linear-gradient(135deg, #4c7fff, #355db8);
+}
+
+/* ── 8. Form groups & labels ────────────────────────────────── */
+.form-group,
+.fp-field {
+    margin-bottom: 20px;
+}
+
+label,
+.control-label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #6272a0;
+    margin-bottom: 8px;
+}
+
+/* ── 9. Input wrap — unified icon + field appearance ─────────── */
+/*
+ * .fp-input-wrap is our custom wrapper div (from login.ftl).
+ * For the password row it also carries .input-group (Keycloak's class).
+ * Border/bg/radius live on the wrapper; children are stripped.
+ */
+.fp-input-wrap {
+    display: flex;
+    align-items: stretch;
+    border: 1.5px solid rgba(172, 188, 225, 0.55);
+    border-radius: 14px;
+    background: rgba(248, 250, 255, 0.85);
+    overflow: hidden;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+/* ── 10. Input icons ─────────────────────────────────────────── */
+.fp-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    flex-shrink: 0;
+    color: #aab5cc;
+    border-right: 1px solid rgba(172, 188, 225, 0.35);
+    transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.fp-icon svg {
+    display: block;
+    flex-shrink: 0;
+}
+
+/* ── 11. Input field inside wrapper ─────────────────────────── */
+.fp-input-wrap > .form-control,
+.fp-input-wrap > input[type="text"],
+.fp-input-wrap > input[type="password"],
+.fp-input-wrap > input[type="email"] {
+    flex: 1;
+    min-width: 0;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 13px 15px;
+    font-size: 15px;
+    color: #14213f;
+    line-height: 1.5;
+    font-family: inherit;
+}
+
+.fp-input-wrap > input::placeholder {
+    color: #b0bcd4;
+    font-weight: 400;
+}
+
+/* ── 12. Focus state — whole wrapper glows ───────────────────── */
+.fp-input-wrap:focus-within {
+    border-color: #4c7fff !important;
+    box-shadow: 0 0 0 3.5px rgba(76, 127, 255, 0.14) !important;
+    background: #fff !important;
+}
+
+.fp-input-wrap:focus-within .fp-icon {
+    color: #4c7fff;
+    border-right-color: rgba(76, 127, 255, 0.2);
+}
+
+/* Suppress inner input focus ring */
+.fp-input-wrap > .form-control:focus,
+.fp-input-wrap > input:focus {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    background: transparent !important;
+}
+
+/* ── 13. Password toggle button ──────────────────────────────── */
+/*
+ * Keycloak renders: <button class="pf-c-button pf-m-control">
+ * PatternFly styles it as a bordered button-looking element — override all.
+ */
+.fp-input-wrap > button,
+.fp-input-wrap > .pf-c-button {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 46px;
+    padding: 0;
+    border: none !important;
+    border-left: 1px solid rgba(172, 188, 225, 0.35) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    color: #aab5cc;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    transition: color 0.18s ease, background 0.18s ease;
+    outline: none;
+}
+
+.fp-input-wrap > button:hover,
+.fp-input-wrap > .pf-c-button:hover {
+    color: #4c7fff;
+    background: rgba(76, 127, 255, 0.06) !important;
+}
+
+.fp-input-wrap > button:focus,
+.fp-input-wrap > .pf-c-button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Restore FontAwesome eye icons inside toggle (globally hidden below) */
+.fp-input-wrap button .fa,
+.fp-input-wrap button .fas,
+.fp-input-wrap .pf-c-button .fa,
+.fp-input-wrap .pf-c-button .fas {
+    display: inline-block !important;
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* ── 14. Options row (remember me + forgot password) ─────────── */
+.fp-options-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 20px 0 8px;
+    font-size: 14px;
+    flex-wrap: wrap;
+}
+
+/* Custom checkbox */
+.fp-check-label {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+    color: #55637f;
+    user-select: none;
+    line-height: 1;
+}
+
+/* Hide native checkbox — replaced by .fp-check-box */
+.fp-check-label input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.fp-check-box {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    border: 2px solid rgba(172, 188, 225, 0.7);
+    border-radius: 5px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.fp-check-label input[type="checkbox"]:checked ~ .fp-check-box {
+    background: #4c7fff;
+    border-color: #4c7fff;
+}
+
+.fp-check-label input[type="checkbox"]:checked ~ .fp-check-box::after {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 8px;
+    border: 2px solid #fff;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.fp-check-text {
+    font-size: 14px;
+    color: #55637f;
+}
+
+.fp-forgot-link {
+    font-size: 14px;
+    font-weight: 500;
+    color: #4c7fff;
+    text-decoration: none;
+    transition: opacity 0.18s ease;
+    white-space: nowrap;
+}
+
+.fp-forgot-link:hover {
+    opacity: 0.72;
+    text-decoration: underline;
+}
+
+/* ── 15. Submit button ───────────────────────────────────────── */
+.btn-primary,
+#kc-login,
+input[type="submit"].btn-primary,
+button[type="submit"].btn-primary {
+    display: block;
+    width: 100%;
+    padding: 14px 24px;
+    margin-top: 10px;
+    background: linear-gradient(135deg, #4c7fff 0%, #2d52c4 100%);
+    border: none;
+    border-radius: 14px;
+    color: #fff !important;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    text-align: center;
+    box-shadow:
+        0 4px 14px rgba(76, 127, 255, 0.30),
+        0 1px 3px  rgba(76, 127, 255, 0.15);
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.18s ease,
+        opacity 0.18s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    font-family: inherit;
+}
+
+.btn-primary:hover,
+#kc-login:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 8px 24px rgba(76, 127, 255, 0.38),
+        0 2px 6px  rgba(76, 127, 255, 0.18);
+    opacity: 0.96;
+    color: #fff !important;
+    text-decoration: none;
+}
+
+.btn-primary:active,
+#kc-login:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(76, 127, 255, 0.22);
+}
+
+.btn-primary:disabled,
+.btn-primary[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Secondary buttons (back, cancel, etc.) */
+.btn-default,
+.btn-secondary {
+    background: transparent;
+    border: 1.5px solid rgba(76, 127, 255, 0.30);
+    border-radius: 12px;
+    color: #4c7fff;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.btn-default:hover,
+.btn-secondary:hover {
+    background: rgba(76, 127, 255, 0.06);
+    border-color: rgba(76, 127, 255, 0.50);
+    text-decoration: none;
+    color: #4c7fff;
+}
+
+.btn-lg { padding: 13px 28px; font-size: 15px; border-radius: 14px; }
+
+/* ── 16. Alerts ──────────────────────────────────────────────── */
+.alert {
+    border-radius: 12px;
+    padding: 13px 16px 13px 14px;
+    margin-bottom: 22px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    border: none;
+    border-left: 3px solid transparent;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.alert-error,
+.alert-danger {
+    background: rgba(254, 226, 226, 0.75);
+    border-left-color: #ef4444;
+    color: #991b1b;
+}
+
+.alert-info {
+    background: rgba(219, 234, 254, 0.75);
+    border-left-color: #3b82f6;
+    color: #1e40af;
+}
+
+.alert-success {
+    background: rgba(220, 252, 231, 0.75);
+    border-left-color: #22c55e;
+    color: #166534;
+}
+
+.alert-warning {
+    background: rgba(254, 243, 199, 0.75);
+    border-left-color: #f59e0b;
+    color: #92400e;
+}
+
+/* Hide PatternFly/FontAwesome icon spans inside alerts only */
+.alert .pficon,
+.alert > .fa,
+.kc-feedback-text .pficon,
+.kc-feedback-text .fa {
+    display: none !important;
+}
+
+/* ── 17. Field-level error message ───────────────────────────── */
+.fp-field-error {
+    display: block;
+    color: #dc2626;
+    font-size: 12.5px;
+    font-weight: 500;
+    margin-top: 7px;
+    padding-left: 2px;
+    line-height: 1.4;
+}
+
+/* ── 18. Below-card signup row ───────────────────────────────── */
+.fp-signup-row,
+#kc-registration-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 26px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.fp-signup-text {
+    color: #8898b3;
+}
+
+.fp-signup-link {
+    color: #4c7fff;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.18s ease;
+}
+
+.fp-signup-link:hover {
+    opacity: 0.72;
+    text-decoration: underline;
+}
+
+/* ── 19. Dividers ─────────────────────────────────────────────── */
+hr, .separator {
+    border: none;
+    border-top: 1px solid rgba(172, 188, 225, 0.25);
+    margin: 22px 0;
+}
+
+/* ── 20. Links (global fallback) ────────────────────────────── */
+a {
+    color: #4c7fff;
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.18s ease;
+}
+
+a:hover {
+    opacity: 0.75;
+    text-decoration: underline;
+}
+
+/* ── 21. #kc-form-buttons spacing ───────────────────────────── */
+#kc-form-buttons { margin-top: 4px; }
+
+/* ── 22. OTP input (login-otp page) ─────────────────────────── */
+#otp, input[id="otp"] {
+    letter-spacing: 0.2em;
+    font-size: 20px;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* ── 23. Required marker ─────────────────────────────────────── */
+.required { color: #ef4444; margin-left: 2px; }
+
+/* ── 24. Social providers (if enabled) ───────────────────────── */
+#social-providers { margin-top: 16px; }
+
+/* ── 25. Responsive ─────────────────────────────────────────── */
+@media (max-width: 560px) {
+    .card-pf {
+        padding: 36px 24px 32px;
+        border-radius: 22px;
+    }
+
+    .login-pf-page {
+        padding: 24px 12px;
+    }
+
+    .fp-brand-name { font-size: 12px; letter-spacing: 2.5px; }
+
+    .fp-locale-nav {
+        top: 14px;
+        right: 14px;
+    }
+
+    .fp-options-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 380px) {
+    .card-pf { padding: 28px 18px 26px; }
+    .fp-brand-logo { width: 52px; height: 52px; }
+}

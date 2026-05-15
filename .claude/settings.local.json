@@ -12,7 +12,14 @@
       "Bash(mvn test *)",
       "Bash(npm run *)",
       "Bash(Select-String -Pattern \"\\(CompanyProfile|KapDisclosure|CompanyDisclosure|DisclosureSyncResult|SyncResult\\)\")",
-      "Bash(./mvnw test *)"
+      "Bash(./mvnw test *)",
+      "PowerShell(cd \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\"; .\\\\mvnw.cmd compile -q 2>&1 | Where-Object { $_ -notmatch \"^WARNING:\" } | Select-Object -Last 15)",
+      "PowerShell(cd \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\"; .\\\\mvnw.cmd compile -q 2>&1 | Where-Object { $_ -notmatch \"^WARNING:\" })",
+      "Bash(./mvnw.cmd compile *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\infra\\\\backend\\\\docker\\\\keycloak\\\\realm-import\\\\finance-portal-realm.json\")",
+      "Bash(Select-String '\"loginTheme\"')",
+      "Bash(Select-Object -First 20)",
+      "PowerShell(Test-Path *)"
     ]
   }
 }

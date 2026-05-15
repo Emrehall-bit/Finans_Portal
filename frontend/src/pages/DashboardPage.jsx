@@ -8,6 +8,7 @@ import { getPortfolioDetails, getUserPortfolios } from "../api/portfolioApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { getUserWatchlist } from "../api/watchlistApi";
 import { useAuth } from "../auth/AuthContext";
+import AiMarketSummaryCard from "../components/ai/AiMarketSummaryCard";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -207,6 +208,8 @@ export default function DashboardPage() {
 
           <section className="finance-dashboard-grid">
             <div className="finance-dashboard-main">
+              <AiMarketSummaryCard marketQuotes={marketQuotes} newsItems={newsItems} />
+
               <section className="panel-surface finance-dashboard-panel">
                 <div className="panel-head">
                   <div>
@@ -382,4 +385,3 @@ function formatSignedCurrency(value) {
 
   return `${value >= 0 ? "+" : ""}${formatCurrency(value)}`;
 }
-

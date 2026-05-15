@@ -38,3 +38,32 @@ market:
       stock: 40
       futures: 1500
       bond: 1500
+
+ai:
+  enabled: true
+  timeout-seconds: 15
+  max-output-tokens: 1024
+  groq:
+    enabled: true
+    api-key: ${GROQ_API_KEY}
+    model: llama-3.3-70b-versatile
+  gemini:
+    enabled: true
+    api-key: ${GEMINI_API_KEY}
+    model: gemini-2.5-flash
+  routing:
+    chat:
+      primary: GEMINI
+      fallback: GROQ
+    page-analysis:
+      primary: GROQ
+      fallback: GEMINI
+    technical-analysis:
+      primary: GROQ
+      fallback: GEMINI
+    fundamental-analysis:
+      primary: GROQ
+      fallback: GEMINI
+    news-summary:
+      primary: GROQ
+      fallback: GEMINI
