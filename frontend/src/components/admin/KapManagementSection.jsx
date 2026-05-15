@@ -1,5 +1,7 @@
 import { useState } from "react";
 import {
+  backfillCompanyDisclosures,
+  backfillCompanyFinancials,
   calculateCompanyRatios,
   debugFetchCompanyFinancialTable,
   parsePendingReports,
@@ -21,6 +23,9 @@ function kapErrorMessage(err) {
 
 export default function KapManagementSection() {
   const [ticker, setTicker] = useState("THYAO");
+  const [backfillDays, setBackfillDays] = useState("1825");
+  const [financialBackfillStartYear, setFinancialBackfillStartYear] = useState("2021");
+  const [financialBackfillEndYear, setFinancialBackfillEndYear] = useState("2026");
   const [debugYear, setDebugYear] = useState("2025");
   const [debugPeriod, setDebugPeriod] = useState("1");
   const [busyKey, setBusyKey] = useState(null);
@@ -54,10 +59,25 @@ export default function KapManagementSection() {
       onClick: () => run("kap-disclosures-sync", () => syncCompanyDisclosures(t)),
     },
     {
+      key: "kap-disclosures-backfill",
+      label: "KAP Geçmiş Bildirim Backfill",
+      requiresTicker: true,
+      onClick: () => run("kap-disclosures-backfill", () => backfillCompanyDisclosures(t, backfillDays)),
+    },
+    {
       key: "kap-financial-reports-sync",
       label: "Finansal Raporları Senkronize Et",
       requiresTicker: true,
       onClick: () => run("kap-financial-reports-sync", () => syncCompanyFinancialReports(t)),
+    },
+    {
+      key: "kap-financials-backfill",
+      label: "KAP Finansal Backfill",
+      requiresTicker: true,
+      onClick: () => run("kap-financials-backfill", () => backfillCompanyFinancials(t, {
+        startYear: Number(financialBackfillStartYear),
+        endYear: Number(financialBackfillEndYear),
+      })),
     },
     {
       key: "kap-parse-pending",
@@ -124,6 +144,42 @@ export default function KapManagementSection() {
         <input
           type="number"
           className="admin-console-input kap-debug-input"
+          value={backfillDays}
+          onChange={(e) => setBackfillDays(e.target.value)}
+          placeholder="Backfill gün"
+          disabled={isDisabled}
+          min="1"
+          max="3650"
+        />
+      </div>
+
+      <div className="kap-debug-row">
+        <input
+          type="number"
+          className="admin-console-input kap-debug-input"
+          value={financialBackfillStartYear}
+          onChange={(e) => setFinancialBackfillStartYear(e.target.value)}
+          placeholder="Başlangıç yıl"
+          disabled={isDisabled}
+          min="2000"
+          max="2100"
+        />
+        <input
+          type="number"
+          className="admin-console-input kap-debug-input"
+          value={financialBackfillEndYear}
+          onChange={(e) => setFinancialBackfillEndYear(e.target.value)}
+          placeholder="Bitiş yıl"
+          disabled={isDisabled}
+          min="2000"
+          max="2100"
+        />
+      </div>
+
+      <div className="kap-debug-row">
+        <input
+          type="number"
+          className="admin-console-input kap-debug-input"
           value={debugYear}
           onChange={(e) => setDebugYear(e.target.value)}
           placeholder="Yıl"
@@ -160,6 +216,8 @@ export default function KapManagementSection() {
       </div>
 
       {kapError ? <ErrorMessage message={kapError} /> : null}
+
+      {kapResult?.message ? <div className="status-box info">{kapResult.message}</div> : null}
 
       {kapResult ? (
         <pre className="admin-console-result-box">{JSON.stringify(kapResult, null, 2)}</pre>

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -41,6 +42,16 @@ public class CompanyDisclosureSyncService {
 
     @Transactional
     public CompanyDisclosureSyncResponse syncDisclosures(String tickerCode) {
+        return syncDisclosures(tickerCode, 365);
+    }
+
+    @Transactional
+    public CompanyDisclosureSyncResponse backfillDisclosures(String tickerCode, int days) {
+        return syncDisclosures(tickerCode, clampDays(days));
+    }
+
+    @Transactional
+    public CompanyDisclosureSyncResponse syncDisclosures(String tickerCode, int days) {
         CompanyProfile company = profileRepository.findByTickerCodeIgnoreCase(tickerCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Şirket bulunamadı: " + tickerCode));
 
@@ -58,13 +69,13 @@ public class CompanyDisclosureSyncService {
                     .build();
         }
 
-        logger.info("KAP disclosure fetch started. ticker={}, mkkMemberOid={}", tickerCode, company.getMkkMemberOid());
+        logger.info("KAP disclosure fetch started. ticker={}, mkkMemberOid={}, days={}", tickerCode, company.getMkkMemberOid(), days);
 
         KapDisclosureProviderResult providerResult;
         try {
-            providerResult = kapDisclosureProvider.fetchDisclosures(company.getMkkMemberOid());
+            providerResult = kapDisclosureProvider.fetchDisclosures(company.getMkkMemberOid(), days);
         } catch (Exception e) {
-            logger.error("KAP fetch failed. ticker={}, mkkMemberOid={}", tickerCode, company.getMkkMemberOid(), e);
+            logger.error("KAP fetch failed. ticker={}, mkkMemberOid={}, days={}", tickerCode, company.getMkkMemberOid(), days, e);
             return CompanyDisclosureSyncResponse.builder()
                     .tickerCode(tickerCode)
                     .fetchedCount(0)
@@ -79,6 +90,16 @@ public class CompanyDisclosureSyncService {
 
         List<KapDisclosureDto> fetched = providerResult.disclosures();
         List<DisclosureFailedItemDto> allFailedItems = new ArrayList<>(providerResult.failedItems());
+        OffsetDateTime oldestPublishedAt = fetched.stream()
+                .map(KapDisclosureDto::getPublishedAt)
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+        OffsetDateTime newestPublishedAt = fetched.stream()
+                .map(KapDisclosureDto::getPublishedAt)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
 
         int savedCount = 0;
         int updatedCount = 0;
@@ -131,8 +152,9 @@ public class CompanyDisclosureSyncService {
 
         int totalFetched = fetched.size() + providerResult.failedItems().size();
 
-        logger.info("KAP disclosure sync done. ticker={}, fetched={}, saved={}, updated={}, dupes={}, failed={}",
-                tickerCode, totalFetched, savedCount, updatedCount, duplicateSkippedCount, allFailedItems.size());
+        logger.info("KAP disclosure sync done. ticker={}, mkkMemberOid={}, days={}, fetched={}, saved={}, updated={}, dupes={}, failed={}, oldestPublishedAt={}, newestPublishedAt={}",
+                tickerCode, company.getMkkMemberOid(), days, totalFetched, savedCount, updatedCount,
+                duplicateSkippedCount, allFailedItems.size(), oldestPublishedAt, newestPublishedAt);
 
         return CompanyDisclosureSyncResponse.builder()
                 .tickerCode(tickerCode)
@@ -141,6 +163,8 @@ public class CompanyDisclosureSyncService {
                 .updatedCount(updatedCount)
                 .duplicateSkippedCount(duplicateSkippedCount)
                 .failedCount(allFailedItems.size())
+                .oldestPublishedAt(oldestPublishedAt)
+                .newestPublishedAt(newestPublishedAt)
                 .failedItems(allFailedItems.isEmpty() ? null : allFailedItems)
                 .message("Sync tamamlandı.")
                 .build();
@@ -219,5 +243,12 @@ public class CompanyDisclosureSyncService {
         }
 
         return changed;
+    }
+
+    private int clampDays(int days) {
+        if (days < 1) {
+            return 365;
+        }
+        return Math.min(days, 3650);
     }
 }

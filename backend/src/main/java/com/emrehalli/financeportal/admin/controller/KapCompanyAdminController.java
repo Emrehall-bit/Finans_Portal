@@ -6,6 +6,7 @@ import com.emrehalli.financeportal.company.service.CompanyDisclosureSyncService;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -23,6 +24,17 @@ public class KapCompanyAdminController {
     @PostMapping("/{ticker}/disclosures/sync")
     public ApiResponse<CompanyDisclosureSyncResponse> syncDisclosures(@PathVariable String ticker) {
         CompanyDisclosureSyncResponse result = syncService.syncDisclosures(ticker);
+        return ApiResponse.<CompanyDisclosureSyncResponse>builder()
+                .success(true)
+                .data(result)
+                .message(result.getMessage())
+                .build();
+    }
+
+    @PostMapping("/{ticker}/disclosures/backfill")
+    public ApiResponse<CompanyDisclosureSyncResponse> backfillDisclosures(@PathVariable String ticker,
+                                                                          @RequestParam(defaultValue = "365") int days) {
+        CompanyDisclosureSyncResponse result = syncService.backfillDisclosures(ticker, days);
         return ApiResponse.<CompanyDisclosureSyncResponse>builder()
                 .success(true)
                 .data(result)

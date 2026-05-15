@@ -1179,9 +1179,10 @@
       "netMargin": "Net Margin",
       "roe": "ROE",
       "roa": "ROA",
-      "revenueGrowth": "Revenue Growth",
-      "netProfitGrowth": "Net Profit Growth",
-      "assetGrowth": "Asset Growth",
+      "revenueGrowth": "Annual Revenue Growth (YoY)",
+      "netProfitGrowth": "Annual Net Profit Growth (YoY)",
+      "assetGrowth": "Annual Asset Growth (YoY)",
+      "growthTooltip": "Calculated against the same quarter of the previous year.",
       "priceAtCalc": "Price at calc",
       "calculatedAt": "Last calculated"
     },

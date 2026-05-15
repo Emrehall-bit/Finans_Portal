@@ -24,7 +24,7 @@ public class KapDisclosureProvider {
     private static final ZoneId KAP_ZONE = ZoneId.of("Europe/Istanbul");
     private static final DateTimeFormatter PUBLISH_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
     private static final String KAP_API_URL =
-            "https://kap.org.tr/tr/api/company-detail/sgbf-data/{oid}/ALL/365";
+            "https://kap.org.tr/tr/api/company-detail/sgbf-data/{oid}/ALL/{days}";
     private static final String KAP_DISCLOSURE_URL_PREFIX = "https://www.kap.org.tr/tr/Bildirim/";
 
     private final RestClient restClient;
@@ -34,27 +34,31 @@ public class KapDisclosureProvider {
     }
 
     public KapDisclosureProviderResult fetchDisclosures(String mkkMemberOid) {
+        return fetchDisclosures(mkkMemberOid, 365);
+    }
+
+    public KapDisclosureProviderResult fetchDisclosures(String mkkMemberOid, int days) {
         if (mkkMemberOid == null || mkkMemberOid.isBlank()) {
             return new KapDisclosureProviderResult(List.of(), List.of());
         }
 
-        logger.info("KAP SGBF fetch started. mkkMemberOid={}", mkkMemberOid);
+        logger.info("KAP SGBF fetch started. mkkMemberOid={}, days={}", mkkMemberOid, days);
 
         KapSgbfItem[] rawItems;
         try {
             rawItems = restClient.get()
-                    .uri(KAP_API_URL, mkkMemberOid)
+                    .uri(KAP_API_URL, mkkMemberOid, days)
                     .header("Accept", "application/json")
                     .header("User-Agent", "Mozilla/5.0 (compatible; FinancePortal/1.0)")
                     .retrieve()
                     .body(KapSgbfItem[].class);
         } catch (Exception e) {
-            logger.error("KAP SGBF API call failed. mkkMemberOid={}", mkkMemberOid, e);
+            logger.error("KAP SGBF API call failed. mkkMemberOid={}, days={}", mkkMemberOid, days, e);
             throw e;
         }
 
         if (rawItems == null || rawItems.length == 0) {
-            logger.info("KAP SGBF returned empty result. mkkMemberOid={}", mkkMemberOid);
+            logger.info("KAP SGBF returned empty result. mkkMemberOid={}, days={}", mkkMemberOid, days);
             return new KapDisclosureProviderResult(List.of(), List.of());
         }
 
@@ -68,8 +72,8 @@ public class KapDisclosureProvider {
             mapItem(item.getDisclosureBasic(), disclosures, failedItems);
         }
 
-        logger.info("KAP SGBF parse complete. mkkMemberOid={}, total={}, parsed={}, failed={}",
-                mkkMemberOid, rawItems.length, disclosures.size(), failedItems.size());
+        logger.info("KAP SGBF parse complete. mkkMemberOid={}, days={}, total={}, parsed={}, failed={}",
+                mkkMemberOid, days, rawItems.length, disclosures.size(), failedItems.size());
 
         return new KapDisclosureProviderResult(disclosures, failedItems);
     }

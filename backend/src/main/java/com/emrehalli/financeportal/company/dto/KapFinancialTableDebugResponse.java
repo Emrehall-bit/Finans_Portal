@@ -17,4 +17,5 @@ public class KapFinancialTableDebugResponse {
     private Integer xlsxByteSize;
     private Map<String, Object> payload;
     private String errorBody;
+    private String message;
 }

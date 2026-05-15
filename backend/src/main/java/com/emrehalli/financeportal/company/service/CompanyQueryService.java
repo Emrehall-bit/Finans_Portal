@@ -10,8 +10,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,17 +26,20 @@ public class CompanyQueryService {
     private final CompanyFinancialValueRepository valueRepository;
     private final CompanyRatioRepository ratioRepository;
     private final CompanyDisclosureRepository disclosureRepository;
+    private final FinancialQuarterNormalizer quarterNormalizer;
 
     public CompanyQueryService(CompanyProfileRepository profileRepository,
                                CompanyFinancialReportRepository reportRepository,
                                CompanyFinancialValueRepository valueRepository,
                                CompanyRatioRepository ratioRepository,
-                               CompanyDisclosureRepository disclosureRepository) {
+                               CompanyDisclosureRepository disclosureRepository,
+                               FinancialQuarterNormalizer quarterNormalizer) {
         this.profileRepository = profileRepository;
         this.reportRepository = reportRepository;
         this.valueRepository = valueRepository;
         this.ratioRepository = ratioRepository;
         this.disclosureRepository = disclosureRepository;
+        this.quarterNormalizer = quarterNormalizer;
     }
 
     public List<CompanyProfileResponse> listActiveCompanies() {
@@ -58,8 +64,15 @@ public class CompanyQueryService {
                 .findByReportIdIn(reportIds)
                 .stream()
                 .collect(Collectors.groupingBy(v -> v.getReport().getId()));
+        Map<String, CompanyFinancialValue> valueByPeriodAndItem = buildValueComparisonIndex(reports, valuesByReportId);
+        Map<Long, CompanyFinancialReport> reportById = reports.stream()
+                .collect(Collectors.toMap(CompanyFinancialReport::getId, report -> report));
         return reports.stream()
-                .map(r -> toReportResponse(r, valuesByReportId.getOrDefault(r.getId(), List.of())))
+                .map(r -> toReportResponse(
+                        r,
+                        valuesByReportId.getOrDefault(r.getId(), List.of()),
+                        valueByPeriodAndItem,
+                        reportById))
                 .toList();
     }
 
@@ -91,12 +104,15 @@ public class CompanyQueryService {
                 .market(c.getMarket())
                 .kapCompanyId(c.getKapCompanyId())
                 .mkkMemberOid(c.getMkkMemberOid())
+                .sharesOutstanding(c.getSharesOutstanding())
                 .active(c.isActive())
                 .build();
     }
 
     private CompanyFinancialReportResponse toReportResponse(CompanyFinancialReport r,
-                                                            List<CompanyFinancialValue> values) {
+                                                            List<CompanyFinancialValue> values,
+                                                            Map<String, CompanyFinancialValue> valueByPeriodAndItem,
+                                                            Map<Long, CompanyFinancialReport> reportById) {
         return CompanyFinancialReportResponse.builder()
                 .reportId(r.getId())
                 .periodYear(r.getPeriodYear())
@@ -106,19 +122,76 @@ public class CompanyQueryService {
                 .parseStatus(r.getParseStatus())
                 .sourceUrl(r.getSourceUrl())
                 .lastCheckedAt(r.getLastCheckedAt())
-                .values(values.stream().map(this::toValueItem).toList())
+                .values(values.stream().map(v -> toValueItem(v, r, valueByPeriodAndItem, reportById)).toList())
                 .build();
     }
 
-    private FinancialValueItemResponse toValueItem(CompanyFinancialValue v) {
-        return FinancialValueItemResponse.builder()
+    private FinancialValueItemResponse toValueItem(CompanyFinancialValue v,
+                                                   CompanyFinancialReport report,
+                                                   Map<String, CompanyFinancialValue> valueByPeriodAndItem,
+                                                   Map<Long, CompanyFinancialReport> reportById) {
+        FinancialValueItemResponse.FinancialValueItemResponseBuilder builder = FinancialValueItemResponse.builder()
                 .itemKey(v.getItemKey())
                 .rawLabel(v.getRawLabel())
                 .value(v.getValue())
                 .currency(v.getCurrency())
                 .unitMultiplier(v.getUnitMultiplier())
-                .currentPeriod(v.isCurrentPeriod())
-                .build();
+                .currentPeriod(v.isCurrentPeriod());
+
+        CompanyFinancialValue comparisonValue = valueByPeriodAndItem.get(comparisonValueKey(report, v.getItemKey()));
+        BigDecimal changePercent = calculateChangePercent(v, comparisonValue);
+        if (comparisonValue != null && changePercent != null) {
+            CompanyFinancialReport comparisonReport = reportById.get(comparisonValue.getReport().getId());
+            builder.comparisonAvailable(true)
+                    .comparisonPeriod(formatPeriod(comparisonReport))
+                    .changePercent(changePercent);
+        } else {
+            builder.comparisonAvailable(false);
+        }
+        return builder.build();
+    }
+
+    private Map<String, CompanyFinancialValue> buildValueComparisonIndex(List<CompanyFinancialReport> reports,
+                                                                         Map<Long, List<CompanyFinancialValue>> valuesByReportId) {
+        Map<String, CompanyFinancialValue> index = new HashMap<>();
+        for (CompanyFinancialReport report : reports) {
+            for (CompanyFinancialValue value : valuesByReportId.getOrDefault(report.getId(), List.of())) {
+                index.put(valueKey(report, value.getItemKey()), value);
+            }
+        }
+        return index;
+    }
+
+    private String comparisonValueKey(CompanyFinancialReport report, String itemKey) {
+        Integer year = report.getPeriodYear() != null ? report.getPeriodYear() - 1 : null;
+        return valueKey(year, periodToken(report), itemKey);
+    }
+
+    private String valueKey(CompanyFinancialReport report, String itemKey) {
+        return valueKey(report.getPeriodYear(), periodToken(report), itemKey);
+    }
+
+    private String valueKey(Integer year, String periodToken, String itemKey) {
+        return year + ":" + periodToken + ":" + itemKey;
+    }
+
+    private String periodToken(CompanyFinancialReport report) {
+        if (report == null) return "UNKNOWN";
+        if (report.getReportType() != null) {
+            return report.getReportType().name();
+        }
+        return report.getPeriodQuarter() != null ? "Q" + report.getPeriodQuarter() : "UNKNOWN";
+    }
+
+    private BigDecimal calculateChangePercent(CompanyFinancialValue current, CompanyFinancialValue previous) {
+        if (current == null || previous == null) return null;
+        BigDecimal currentValue = quarterNormalizer.effectiveValue(current);
+        BigDecimal previousValue = quarterNormalizer.effectiveValue(previous);
+        if (currentValue == null || previousValue == null || previousValue.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+        return currentValue.subtract(previousValue)
+                .divide(previousValue.abs(), 6, RoundingMode.HALF_UP);
     }
 
     private CompanyDisclosureResponse toDisclosureResponse(CompanyDisclosure d) {
@@ -161,8 +234,11 @@ public class CompanyQueryService {
                 .roe(ratio.getRoe())
                 .roa(ratio.getRoa())
                 .revenueGrowth(ratio.getRevenueGrowth())
+                .revenueGrowthLabel(ratio.getRevenueGrowthLabel())
                 .netProfitGrowth(ratio.getNetProfitGrowth())
+                .netProfitGrowthLabel(ratio.getNetProfitGrowthLabel())
                 .assetGrowth(ratio.getAssetGrowth())
+                .assetGrowthLabel(ratio.getAssetGrowthLabel())
                 .healthLabel(ratio.getHealthLabel())
                 .build();
     }

@@ -7772,9 +7772,132 @@ html[data-theme] button.sidebar-register-button:focus-visible,
   width: 100%;
 }
 
+.instrument-fundamentals-panel {
+  display: grid;
+  gap: 20px;
+  overflow: hidden;
+}
+
+.instrument-fundamentals-panel .panel-head {
+  margin-bottom: 0;
+}
+
+.instrument-fundamentals-panel .panel-head h3 {
+  line-height: 1.2;
+}
+
+.fundamentals-meta-grid,
+.fundamentals-footer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.fundamentals-footer-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fundamentals-meta-card {
+  min-width: 0;
+  min-height: 104px;
+  padding: 18px 20px;
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(76, 127, 255, 0.06), rgba(255, 255, 255, 0.88)),
+    rgba(248, 250, 252, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  display: grid;
+  align-content: center;
+  gap: 10px;
+}
+
+.fundamentals-meta-card span,
+.fundamentals-ratio-label {
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.fundamentals-meta-card strong {
+  min-width: 0;
+  color: var(--text-main);
+  font-size: clamp(1rem, 1.4vw, 1.32rem);
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.instrument-fundamentals-panel .terminal-indicator-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.fundamentals-ratio-card {
+  min-width: 0;
+  min-height: 78px;
+  padding: 16px 20px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.fundamentals-ratio-card[title] {
+  cursor: help;
+}
+
+.fundamentals-ratio-label {
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.fundamentals-ratio-value {
+  min-width: 0;
+  color: var(--text-main);
+  font-size: clamp(1.05rem, 1.4vw, 1.36rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.fundamentals-health-row {
+  display: flex;
+  align-items: center;
+}
+
+.fundamentals-health-pill {
+  padding-inline: 16px;
+  min-height: 42px;
+  box-shadow: 0 10px 22px rgba(34, 176, 125, 0.12);
+}
+
 .financial-period-stack {
   display: grid;
   gap: 16px;
+}
+
+.financial-overview-section {
+  display: grid;
+  gap: 12px;
+}
+
+.financial-section-title {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.financial-section-title h4 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1rem;
+}
+
+.financial-section-title span {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .financial-summary-grid {
@@ -7806,8 +7929,9 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 
 .financial-summary-card {
   display: grid;
-  gap: 6px;
-  min-height: 112px;
+  gap: 8px;
+  min-height: 104px;
+  align-content: center;
   padding: 16px;
 }
 
@@ -7830,12 +7954,41 @@ html[data-theme] button.sidebar-register-button:focus-visible,
   line-height: 1.25;
 }
 
+.financial-summary-compare {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.financial-summary-compare.value-positive {
+  color: #15803d;
+  background: rgba(34, 176, 125, 0.13);
+}
+
+.financial-summary-compare.value-negative {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.11);
+}
+
 .financial-period-block {
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 8px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.68);
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+}
+
+.financial-period-block[open] {
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .financial-period-head {
@@ -7845,11 +7998,50 @@ html[data-theme] button.sidebar-register-button:focus-visible,
   gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  cursor: pointer;
+  list-style: none;
+}
+
+.financial-period-head::-webkit-details-marker {
+  display: none;
+}
+
+.financial-period-head::after {
+  content: "+";
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(76, 127, 255, 0.1);
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.financial-period-block[open] .financial-period-head::after {
+  content: "-";
+}
+
+.financial-period-head > div {
+  display: grid;
+  gap: 4px;
 }
 
 .financial-period-head h4 {
   margin: 0;
   font-size: 1rem;
+}
+
+.financial-period-head span {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.financial-period-source {
+  margin-left: auto;
 }
 
 .financial-period-empty {
@@ -7860,13 +8052,12 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 
 .financial-values-table-wrap {
   overflow-x: auto;
-  max-height: 520px;
 }
 
 .financial-values-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 860px;
+  min-width: 560px;
 }
 
 .financial-values-table th,
@@ -7907,6 +8098,68 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 
 .financial-values-table td:first-child {
   font-weight: 700;
+}
+
+.financial-value-final {
+  color: var(--text-main);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.financial-value-final.value-negative {
+  color: #dc2626;
+}
+
+.financial-source-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(76, 127, 255, 0.08);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.financial-source-link:hover {
+  background: rgba(76, 127, 255, 0.14);
+}
+
+.financial-source-empty {
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.financial-group-grid {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.financial-group-card {
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.financial-group-card h5 {
+  margin: 0;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.financial-footnote {
+  margin: 0;
+  padding-top: 2px;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .value-positive,
@@ -7962,6 +8215,10 @@ html[data-theme] button.sidebar-register-button:focus-visible,
   font-style: italic;
 }
 
+.fundamentals-ratio-card .muted-value {
+  color: var(--text-soft);
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -8013,12 +8270,20 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 }
 
 @media (max-width: 980px) {
+  .fundamentals-meta-grid,
+  .fundamentals-footer-grid,
   .financial-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .instrument-fundamentals-panel .terminal-indicator-grid {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 560px) {
+  .fundamentals-meta-grid,
+  .fundamentals-footer-grid,
   .financial-summary-grid {
     grid-template-columns: 1fr;
   }

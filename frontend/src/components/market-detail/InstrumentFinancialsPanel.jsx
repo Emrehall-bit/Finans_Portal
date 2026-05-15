@@ -3,29 +3,40 @@ import { useTranslation } from "react-i18next";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
-import { formatCompactFinancialValue, formatFinancialEquation, formatTurkishNumber } from "../../utils/formatters";
+import { formatCompactFinancialValue, formatFinancialEquation } from "../../utils/formatters";
 
-const DISPLAY_ITEMS = [
-  "HASILAT",
-  "NET_DONEM_KARI",
-  "OZKAYNAKLAR",
+const INCOME_KEYS = ["HASILAT", "BRUT_KAR", "ESAS_FAALIYET_KARI", "FAVOK", "NET_DONEM_KARI"];
+const BALANCE_KEYS = [
   "TOPLAM_VARLIKLAR",
+  "OZKAYNAKLAR",
   "TOPLAM_KAYNAKLAR",
+  "TOPLAM_YUKUMLULUKLER",
+  "KISA_VADELI_YUKUMLULUKLER",
+  "UZUN_VADELI_YUKUMLULUKLER",
+  "ODENMIS_SERMAYE",
 ];
+const DISPLAY_ITEMS = [...INCOME_KEYS, ...BALANCE_KEYS];
 
 const ITEM_LABELS = {
   HASILAT: "Hasılat",
+  BRUT_KAR: "Brüt Kar",
+  ESAS_FAALIYET_KARI: "Esas Faaliyet Karı",
+  FAVOK: "FAVÖK",
   NET_DONEM_KARI: "Net Dönem Karı",
-  OZKAYNAKLAR: "Özkaynaklar",
   TOPLAM_VARLIKLAR: "Toplam Varlıklar",
+  OZKAYNAKLAR: "Özkaynaklar",
   TOPLAM_KAYNAKLAR: "Toplam Kaynaklar",
+  TOPLAM_YUKUMLULUKLER: "Toplam Yükümlülükler",
+  KISA_VADELI_YUKUMLULUKLER: "Kısa Vadeli Yükümlülükler",
+  UZUN_VADELI_YUKUMLULUKLER: "Uzun Vadeli Yükümlülükler",
+  ODENMIS_SERMAYE: "Ödenmiş Sermaye",
 };
 
 const SUMMARY_ITEMS = [
-  { key: "HASILAT", label: "Son Hasılat" },
-  { key: "NET_DONEM_KARI", label: "Son Net Kar" },
-  { key: "OZKAYNAKLAR", label: "Son Özkaynak" },
-  { key: "TOPLAM_VARLIKLAR", label: "Son Varlıklar" },
+  { key: "HASILAT", label: "Hasılat" },
+  { key: "NET_DONEM_KARI", label: "Net Dönem Karı" },
+  { key: "OZKAYNAKLAR", label: "Özkaynaklar" },
+  { key: "TOPLAM_VARLIKLAR", label: "Toplam Varlıklar" },
 ];
 
 export default function InstrumentFinancialsPanel({ loading, error, reports }) {
@@ -58,73 +69,104 @@ export default function InstrumentFinancialsPanel({ loading, error, reports }) {
         />
       ) : (
         <>
-          <div className="financial-summary-grid">
-            {summary.map((item) => (
-              <div key={item.key} className={`financial-summary-card ${item.change?.className ?? "value-neutral"}`}>
-                <span>{item.label}</span>
-                <strong>{item.display}</strong>
-                <small>
-                  {item.period}
-                  {item.change ? <ChangeBadge change={item.change} /> : null}
-                </small>
-              </div>
-            ))}
-          </div>
+          <section className="financial-overview-section" aria-label="Finansal Özet">
+            <div className="financial-section-title">
+              <h4>Finansal Özet</h4>
+              <span>{summary.period}</span>
+            </div>
+            <div className="financial-summary-grid">
+              {summary.items.map((item) => (
+                <div key={item.key} className="financial-summary-card">
+                  <span>{item.label}</span>
+                  <strong className={item.isNegative ? "value-negative" : ""}>{item.display}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
 
           <div className="financial-period-stack">
-            {reportModels.map((reportModel) => (
+            {reportModels.map((reportModel, index) => (
               <FinancialPeriod
                 key={reportModel.report.reportId ?? `${reportModel.report.periodYear}-${reportModel.report.periodQuarter}`}
                 reportModel={reportModel}
+                defaultOpen={index === 0}
               />
             ))}
           </div>
+
+          <p className="financial-footnote">
+            Finansal veriler KAP kaynaklıdır. KAP'ın kümülatif dönem verileri gerektiğinde çeyreklik karşılaştırma
+            için normalize edilmiştir.
+          </p>
         </>
       )}
     </section>
   );
 }
 
-function FinancialPeriod({ reportModel }) {
+function FinancialPeriod({ reportModel, defaultOpen }) {
   const { report, values } = reportModel;
+  const groups = useMemo(() => groupFinancialValues(values), [values]);
 
   return (
-    <section className="financial-period-block">
-      <div className="financial-period-head">
-        <h4>{formatPeriod(report)}</h4>
-        {report?.parseStatus ? <span className={`status-badge ${String(report.parseStatus).toLowerCase()}`}>{report.parseStatus}</span> : null}
-      </div>
+    <details className="financial-period-block" open={defaultOpen}>
+      <summary className="financial-period-head">
+        <div>
+          <h4>{formatPeriod(report)}</h4>
+          <span>{values.length} kalem</span>
+        </div>
+        <span className="financial-period-source">
+          <SourceLink sourceUrl={report?.sourceUrl} />
+        </span>
+      </summary>
 
       {values.length === 0 ? (
         <FinancialEmptyState title="Finansal kalem yok" description="Bu dönem için finansal kalem bulunamadı." compact />
       ) : (
-        <div className="financial-values-table-wrap">
-          <table className="financial-values-table">
-            <thead>
-              <tr>
-                <th>Kalem</th>
-                <th>Değer</th>
-                <th>Değişim</th>
-                <th>Para Birimi</th>
-                <th>Çarpan</th>
-                <th>Ham Etiket</th>
-              </tr>
-            </thead>
-            <tbody>
-              {values.map((item) => (
-                <tr key={item.itemKey}>
-                  <td>{ITEM_LABELS[item.itemKey] ?? item.itemKey ?? "-"}</td>
-                  <td className={item.change?.className ?? ""}>{formatMultipliedValue(item)}</td>
-                  <td>{item.change ? <ChangeBadge change={item.change} /> : <span className="financial-change-empty">-</span>}</td>
-                  <td>{item.currency ?? "-"}</td>
-                  <td>{formatTurkishNumber(item.unitMultiplier ?? 1, 0)}</td>
-                  <td>{item.rawLabel ?? "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="financial-group-grid">
+          {groups.map((group) => (
+            <FinancialGroup key={group.title} group={group} report={report} />
+          ))}
         </div>
       )}
+    </details>
+  );
+}
+
+function FinancialGroup({ group, report }) {
+  if (group.items.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="financial-group-card">
+      <h5>{group.title}</h5>
+      <div className="financial-values-table-wrap">
+        <table className="financial-values-table">
+          <thead>
+            <tr>
+              <th>Kalem</th>
+              <th>Değer</th>
+              <th>Para Birimi</th>
+              <th>Kaynak</th>
+            </tr>
+          </thead>
+          <tbody>
+            {group.items.map((item) => (
+              <tr key={item.itemKey} title={buildValueTooltip(item)}>
+                <td>{ITEM_LABELS[item.itemKey] ?? item.itemKey ?? "-"}</td>
+                <td className={`financial-value-final ${isNegativeValue(item.total) ? "value-negative" : ""}`}>
+                  {formatFinalValue(item)}
+                </td>
+                <td>{item.currency ?? "-"}</td>
+                <td>
+                  <SourceLink sourceUrl={report?.sourceUrl} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
@@ -141,38 +183,53 @@ function buildDisplayValues(values) {
 }
 
 function buildReportModels(reports) {
-  return reports.map((report, index) => {
-    const previous = reports[index + 1];
-    const previousValues = new Map((previous?.values ?? []).map((item) => [item.itemKey, item]));
-    const values = buildDisplayValues(report?.values).map((item) => {
-      const currentTotal = getFinancialTotal(item);
-      const previousTotal = getFinancialTotal(previousValues.get(item.itemKey));
-      return {
-        ...item,
-        total: currentTotal,
-        change: buildChange(currentTotal, previousTotal),
-      };
-    });
+  return reports.map((report) => {
+    const values = buildDisplayValues(report?.values).map((item) => ({
+      ...item,
+      total: getFinancialTotal(item),
+    }));
     return { report, values };
   });
 }
 
 function buildSummary(reportModels) {
   const latest = reportModels.find((model) => model.values.length > 0);
-  const values = new Map((latest?.values ?? []).map((item) => [item.itemKey, item]));
-  return SUMMARY_ITEMS.map((summaryItem) => {
-    const value = values.get(summaryItem.key);
-    const equation = value
-      ? formatFinancialEquation(value.value, value.unitMultiplier ?? 1, value.currency ?? "TRY")
-      : { total: null };
-    return {
-      ...summaryItem,
-      total: equation.total,
-      display: equation.total === null ? "-" : formatCompactFinancialValue(equation.total, value?.currency ?? "TRY"),
-      period: latest ? formatPeriod(latest.report) : "-",
-      change: value?.change ?? null,
-    };
+  const latestValues = new Map((latest?.values ?? []).map((item) => [item.itemKey, item]));
+
+  return {
+    period: latest ? formatPeriod(latest.report) : "-",
+    items: SUMMARY_ITEMS.map((summaryItem) => {
+      const value = latestValues.get(summaryItem.key);
+      const hasValue = value?.total !== null && value?.total !== undefined;
+      return {
+        ...summaryItem,
+        display: hasValue ? formatCompactFinancialValue(value.total, value?.currency ?? "TRY") : "Veri Yok",
+        isNegative: hasValue ? isNegativeValue(value.total) : false,
+      };
+    }),
+  };
+}
+
+function groupFinancialValues(values) {
+  const income = [];
+  const balance = [];
+  const other = [];
+
+  values.forEach((item) => {
+    if (INCOME_KEYS.includes(item.itemKey)) {
+      income.push(item);
+    } else if (BALANCE_KEYS.includes(item.itemKey)) {
+      balance.push(item);
+    } else {
+      other.push(item);
+    }
   });
+
+  return [
+    { title: "Gelir Tablosu", items: income },
+    { title: "Bilanço", items: balance },
+    { title: "Diğer", items: other },
+  ].filter((group) => group.items.length > 0);
 }
 
 function sortReports(reports) {
@@ -191,14 +248,17 @@ function periodRank(report) {
 function formatPeriod(report) {
   if (!report) return "-";
   const year = report.periodYear ?? "-";
-  if (report.reportType === "ANNUAL") return `${year}/Annual`;
+  if (report.reportType === "ANNUAL") return `${year}/Yıllık`;
   if (report.reportType) return `${year}/${report.reportType}`;
-  if (Number(report.periodQuarter) === 4) return `${year}/Annual`;
+  if (Number(report.periodQuarter) === 4) return `${year}/Yıllık`;
   return report.periodQuarter ? `${year}/Q${report.periodQuarter}` : String(year);
 }
 
-function formatMultipliedValue(item) {
-  return formatFinancialEquation(item?.value, item?.unitMultiplier ?? 1, item?.currency ?? "TRY").label;
+function formatFinalValue(item) {
+  if (item?.total === null || item?.total === undefined) {
+    return "-";
+  }
+  return formatCompactFinancialValue(item.total, item?.currency ?? "TRY");
 }
 
 function getFinancialTotal(item) {
@@ -206,34 +266,27 @@ function getFinancialTotal(item) {
   return formatFinancialEquation(item?.value, item?.unitMultiplier ?? 1, item?.currency ?? "TRY").total;
 }
 
-function buildChange(currentTotal, previousTotal) {
-  const current = Number(currentTotal);
-  const previous = Number(previousTotal);
-  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
-  const diff = current - previous;
-  if (diff === 0) {
-    return { className: "value-neutral", arrow: "•", label: "0,0%" };
-  }
-  if (previous === 0) {
-    return { className: diff > 0 ? "value-positive" : "value-negative", arrow: diff > 0 ? "▲" : "▼", label: "" };
-  }
-  const percent = (diff / Math.abs(previous)) * 100;
-  return {
-    className: diff > 0 ? "value-positive" : "value-negative",
-    arrow: diff > 0 ? "▲" : "▼",
-    label: `${diff > 0 ? "+" : ""}${percent.toLocaleString("tr-TR", {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    })}%`,
-  };
+function isNegativeValue(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric < 0;
 }
 
-function ChangeBadge({ change }) {
+function buildValueTooltip(item) {
+  const rawValue = item?.value ?? "-";
+  const unitMultiplier = item?.unitMultiplier ?? 1;
+  const rawLabel = item?.rawLabel ?? "-";
+  return `Ham değer: ${rawValue} | Çarpan: ${unitMultiplier} | Ham etiket: ${rawLabel}`;
+}
+
+function SourceLink({ sourceUrl }) {
+  if (!sourceUrl) {
+    return <span className="financial-source-empty">-</span>;
+  }
+
   return (
-    <span className={`financial-change-badge ${change.className}`}>
-      <span aria-hidden="true">{change.arrow}</span>
-      {change.label ? <span>{change.label}</span> : null}
-    </span>
+    <a className="financial-source-link" href={sourceUrl} target="_blank" rel="noreferrer">
+      KAP
+    </a>
   );
 }
 

@@ -21,7 +21,17 @@ public interface CompanyFinancialReportRepository extends JpaRepository<CompanyF
 
     boolean existsByCompanyIdAndPeriodYearAndPeriodQuarterAndReportType(Long companyId, Integer periodYear, Integer periodQuarter, ReportType reportType);
 
+    Optional<CompanyFinancialReport> findByCompanyIdAndPeriodYearAndPeriodQuarterAndReportType(Long companyId, Integer periodYear, Integer periodQuarter, ReportType reportType);
+
+    boolean existsByCompanyIdAndPeriodYearAndPeriodQuarter(Long companyId, Integer periodYear, Integer periodQuarter);
+
     List<CompanyFinancialReport> findByCompanyTickerCodeIgnoreCaseAndParseStatus(String tickerCode, ParseStatus parseStatus);
+
+    Optional<CompanyFinancialReport> findTopByCompanyIdAndPeriodYearAndPeriodQuarterAndParseStatusOrderByPublishedAtDescIdDesc(
+            Long companyId,
+            Integer periodYear,
+            Integer periodQuarter,
+            ParseStatus parseStatus);
 
     @Modifying
     @Query("UPDATE CompanyFinancialReport r SET r.parseStatus = :status, r.lastCheckedAt = :checkedAt WHERE r.id = :id")

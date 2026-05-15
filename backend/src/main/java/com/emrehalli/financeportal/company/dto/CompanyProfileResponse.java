@@ -3,6 +3,8 @@ package com.emrehalli.financeportal.company.dto;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
+
 @Getter
 @Builder
 public class CompanyProfileResponse {
@@ -13,5 +15,6 @@ public class CompanyProfileResponse {
     private String market;
     private String kapCompanyId;
     private String mkkMemberOid;
+    private BigDecimal sharesOutstanding;
     private boolean active;
 }

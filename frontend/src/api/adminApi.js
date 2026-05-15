@@ -103,6 +103,13 @@ export async function syncCompanyDisclosures(ticker) {
   return normalizeApiResponse(response);
 }
 
+export async function backfillCompanyDisclosures(ticker, days = 1825) {
+  const params = new URLSearchParams();
+  params.set("days", String(days));
+  const response = await axiosClient.post(`/api/v1/admin/companies/${encodeURIComponent(ticker)}/disclosures/backfill?${params.toString()}`);
+  return normalizeApiResponse(response);
+}
+
 export async function syncCompanyFinancialReports(ticker) {
   const response = await axiosClient.post(`/api/v1/admin/companies/${encodeURIComponent(ticker)}/financial-reports/sync`);
   return normalizeApiResponse(response);
@@ -126,6 +133,11 @@ export async function debugFetchCompanyFinancialTable(ticker, year = "2025", per
   params.set("year", String(year));
   params.set("period", String(period));
   const response = await axiosClient.post(`/api/v1/admin/companies/${encodeURIComponent(ticker)}/financial-table/debug-fetch?${params.toString()}`);
+  return normalizeApiResponse(response);
+}
+
+export async function backfillCompanyFinancials(ticker, payload) {
+  const response = await axiosClient.post(`/api/v1/admin/companies/${encodeURIComponent(ticker)}/financials/backfill`, payload);
   return normalizeApiResponse(response);
 }
 

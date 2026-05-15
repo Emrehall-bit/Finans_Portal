@@ -39,17 +39,20 @@ public class CompanyRatioService {
     private final CompanyFinancialValueRepository valueRepository;
     private final CompanyRatioRepository ratioRepository;
     private final MarketQueryService marketQueryService;
+    private final FinancialQuarterNormalizer quarterNormalizer;
 
     public CompanyRatioService(CompanyProfileRepository profileRepository,
                                CompanyFinancialReportRepository reportRepository,
                                CompanyFinancialValueRepository valueRepository,
                                CompanyRatioRepository ratioRepository,
-                               MarketQueryService marketQueryService) {
+                               MarketQueryService marketQueryService,
+                               FinancialQuarterNormalizer quarterNormalizer) {
         this.profileRepository = profileRepository;
         this.reportRepository = reportRepository;
         this.valueRepository = valueRepository;
         this.ratioRepository = ratioRepository;
         this.marketQueryService = marketQueryService;
+        this.quarterNormalizer = quarterNormalizer;
     }
 
     // -------------------------------------------------------------------------
@@ -115,24 +118,36 @@ public class CompanyRatioService {
         BigDecimal toplamVarliklar    = get(values, FinancialItemKey.TOPLAM_VARLIKLAR);
         BigDecimal toplamKaynaklar    = get(values, FinancialItemKey.TOPLAM_KAYNAKLAR);
         BigDecimal toplamYukumlulukler= get(values, FinancialItemKey.TOPLAM_YUKUMLULUKLER);
-        BigDecimal odenmisSermeye     = get(values, FinancialItemKey.ODENMIS_SERMAYE);
+        BigDecimal kisaVadeliYukumlulukler = get(values, FinancialItemKey.KISA_VADELI_YUKUMLULUKLER);
+        BigDecimal uzunVadeliYukumlulukler = get(values, FinancialItemKey.UZUN_VADELI_YUKUMLULUKLER);
+        BigDecimal toplamBorc = sum(kisaVadeliYukumlulukler, uzunVadeliYukumlulukler);
+        BigDecimal quarterlyHasilat = quarterNormalizer.getQuarterlyValue(company.getId(), FinancialItemKey.HASILAT, report.getPeriodYear(), report.getPeriodQuarter());
+        BigDecimal quarterlyBrutKar = quarterNormalizer.getQuarterlyValue(company.getId(), FinancialItemKey.BRUT_KAR, report.getPeriodYear(), report.getPeriodQuarter());
+        BigDecimal quarterlyNetDonemKari = quarterNormalizer.getQuarterlyValue(company.getId(), FinancialItemKey.NET_DONEM_KARI, report.getPeriodYear(), report.getPeriodQuarter());
+        BigDecimal ttmNetDonemKari = quarterNormalizer.getTtmValue(company.getId(), FinancialItemKey.NET_DONEM_KARI, report.getPeriodYear(), report.getPeriodQuarter());
 
-        BigDecimal marketCap  = multiply(price, odenmisSermeye);
-        BigDecimal peRatio    = computePeRatio(marketCap, netDonemKari);
+        BigDecimal marketCap  = multiply(price, company.getSharesOutstanding());
+        BigDecimal peRatio    = computePeRatio(marketCap, ttmNetDonemKari);
         BigDecimal pbRatio    = divide(marketCap, ozkaynaklar);
-        BigDecimal debtToEq   = divide(toplamYukumlulukler, ozkaynaklar);
-        BigDecimal grossMargin= divide(brutKar, hasilat);
-        BigDecimal netMargin  = divide(netDonemKari, hasilat);
+        BigDecimal debtToEq   = divide(toplamBorc != null ? toplamBorc : toplamYukumlulukler, ozkaynaklar);
+        BigDecimal grossMargin= divide(quarterlyBrutKar, quarterlyHasilat);
+        BigDecimal netMargin  = divide(quarterlyNetDonemKari, quarterlyHasilat);
         BigDecimal roe        = divide(netDonemKari, ozkaynaklar);
         BigDecimal roa        = divide(netDonemKari, toplamVarliklar);
 
         BigDecimal revGrowth     = null;
         BigDecimal netProfGrowth = null;
         BigDecimal assetGrowth   = null;
+        BigDecimal prevYearQuarterlyHasilat = quarterNormalizer.getQuarterlyValue(company.getId(), FinancialItemKey.HASILAT, safeSubtract(report.getPeriodYear(), 1), report.getPeriodQuarter());
+        BigDecimal prevYearQuarterlyNetProfit = quarterNormalizer.getQuarterlyValue(company.getId(), FinancialItemKey.NET_DONEM_KARI, safeSubtract(report.getPeriodYear(), 1), report.getPeriodQuarter());
+        GrowthResult netProfitGrowth = netProfitGrowthResult(quarterlyNetDonemKari, prevYearQuarterlyNetProfit);
+        revGrowth = growth(quarterlyHasilat, prevYearQuarterlyHasilat);
+        netProfGrowth = netProfitGrowth.value();
+        String revenueGrowthLabel = null;
+        String netProfitGrowthLabel = netProfitGrowth.label();
+        String assetGrowthLabel = null;
         if (!prevValues.isEmpty()) {
-            revGrowth     = growth(hasilat,         get(prevValues, FinancialItemKey.HASILAT));
-            netProfGrowth = growth(netDonemKari,    get(prevValues, FinancialItemKey.NET_DONEM_KARI));
-            assetGrowth   = growth(toplamVarliklar, get(prevValues, FinancialItemKey.TOPLAM_VARLIKLAR));
+            assetGrowth = growth(toplamVarliklar, get(prevValues, FinancialItemKey.TOPLAM_VARLIKLAR));
         }
 
         logger.info("Ratio asset metrics. ticker={}, reportId={}, currentAssets={}, totalResources={}, previousAssets={}, calculatedRoa={}, calculatedAssetGrowth={}",
@@ -143,6 +158,28 @@ public class CompanyRatioService {
                 get(prevValues, FinancialItemKey.TOPLAM_VARLIKLAR),
                 roa,
                 assetGrowth);
+        logger.info("Ratio valuation metrics. ticker={}, reportId={}, price={}, sharesOutstanding={}, marketCap={}, netProfit={}, ttmNetProfit={}, equity={}, shortTermLiabilities={}, longTermLiabilities={}, totalDebt={}, grossProfit={}, revenue={}, quarterlyGrossProfit={}, quarterlyRevenue={}, peRatio={}, pbRatio={}, debtToEquity={}, grossMargin={}, revenueGrowth={}, netProfitGrowth={}",
+                company.getTickerCode(),
+                report.getId(),
+                price,
+                company.getSharesOutstanding(),
+                marketCap,
+                netDonemKari,
+                ttmNetDonemKari,
+                ozkaynaklar,
+                kisaVadeliYukumlulukler,
+                uzunVadeliYukumlulukler,
+                toplamBorc,
+                brutKar,
+                hasilat,
+                quarterlyBrutKar,
+                quarterlyHasilat,
+                peRatio,
+                pbRatio,
+                debtToEq,
+                grossMargin,
+                revGrowth,
+                netProfGrowth);
 
         String healthLabel = computeHealthLabel(debtToEq, netMargin, roe);
         OffsetDateTime now = OffsetDateTime.now();
@@ -161,8 +198,11 @@ public class CompanyRatioService {
         ratio.setRoe(roe);
         ratio.setRoa(roa);
         ratio.setRevenueGrowth(revGrowth);
+        ratio.setRevenueGrowthLabel(revenueGrowthLabel);
         ratio.setNetProfitGrowth(netProfGrowth);
+        ratio.setNetProfitGrowthLabel(netProfitGrowthLabel);
         ratio.setAssetGrowth(assetGrowth);
+        ratio.setAssetGrowthLabel(assetGrowthLabel);
         ratio.setHealthLabel(healthLabel);
         ratio.setCalculatedAt(now);
         ratioRepository.save(ratio);
@@ -183,8 +223,11 @@ public class CompanyRatioService {
                 .roe(roe)
                 .roa(roa)
                 .revenueGrowth(revGrowth)
+                .revenueGrowthLabel(revenueGrowthLabel)
                 .netProfitGrowth(netProfGrowth)
+                .netProfitGrowthLabel(netProfitGrowthLabel)
                 .assetGrowth(assetGrowth)
+                .assetGrowthLabel(assetGrowthLabel)
                 .healthLabel(healthLabel)
                 .calculatedAt(now)
                 .build();
@@ -207,6 +250,11 @@ public class CompanyRatioService {
         return a.multiply(b).setScale(SCALE, ROUNDING);
     }
 
+    BigDecimal sum(BigDecimal a, BigDecimal b) {
+        if (a == null && b == null) return null;
+        return (a != null ? a : BigDecimal.ZERO).add(b != null ? b : BigDecimal.ZERO);
+    }
+
     BigDecimal computePeRatio(BigDecimal marketCap, BigDecimal netProfit) {
         if (netProfit == null || netProfit.compareTo(BigDecimal.ZERO) <= 0) return null;
         return divide(marketCap, netProfit);
@@ -218,6 +266,29 @@ public class CompanyRatioService {
             return null;
         }
         return current.divide(previous, SCALE, ROUNDING).subtract(BigDecimal.ONE);
+    }
+
+    GrowthResult netProfitGrowthResult(BigDecimal current, BigDecimal previous) {
+        if (current == null || previous == null
+                || previous.compareTo(BigDecimal.ZERO) <= 0) {
+            if (current != null && previous != null
+                    && previous.compareTo(BigDecimal.ZERO) <= 0
+                    && current.compareTo(BigDecimal.ZERO) > 0) {
+                return new GrowthResult(null, "Kârlılığa Geçti");
+            }
+            return new GrowthResult(null, null);
+        }
+        if (current.compareTo(BigDecimal.ZERO) < 0) {
+            return new GrowthResult(null, "Zarara Geçti");
+        }
+        if (current.compareTo(BigDecimal.ZERO) <= 0) {
+            return new GrowthResult(null, null);
+        }
+        return new GrowthResult(current.divide(previous, SCALE, ROUNDING).subtract(BigDecimal.ONE), null);
+    }
+
+    private Integer safeSubtract(Integer value, int amount) {
+        return value != null ? value - amount : null;
     }
 
     String computeHealthLabel(BigDecimal debtToEquity, BigDecimal netMargin, BigDecimal roe) {
@@ -244,8 +315,12 @@ public class CompanyRatioService {
     private Map<String, BigDecimal> loadValueMap(Long reportId) {
         return valueRepository.findByReportId(reportId).stream()
                 .filter(v -> v.getValue() != null)
-                .collect(Collectors.toMap(CompanyFinancialValue::getItemKey, CompanyFinancialValue::getValue,
+                .collect(Collectors.toMap(CompanyFinancialValue::getItemKey, this::scaledValue,
                         (existing, replacement) -> existing));
+    }
+
+    private BigDecimal scaledValue(CompanyFinancialValue value) {
+        return quarterNormalizer.effectiveValue(value);
     }
 
     private BigDecimal get(Map<String, BigDecimal> map, FinancialItemKey key) {
@@ -275,5 +350,8 @@ public class CompanyRatioService {
                 .calculated(false)
                 .failedReason(reason)
                 .build();
+    }
+
+    record GrowthResult(BigDecimal value, String label) {
     }
 }

@@ -56,11 +56,20 @@ public class CompanyRatio {
     @Column(name = "revenue_growth", precision = 10, scale = 6)
     private BigDecimal revenueGrowth;
 
+    @Column(name = "revenue_growth_label", length = 80)
+    private String revenueGrowthLabel;
+
     @Column(name = "net_profit_growth", precision = 10, scale = 6)
     private BigDecimal netProfitGrowth;
 
+    @Column(name = "net_profit_growth_label", length = 80)
+    private String netProfitGrowthLabel;
+
     @Column(name = "asset_growth", precision = 10, scale = 6)
     private BigDecimal assetGrowth;
+
+    @Column(name = "asset_growth_label", length = 80)
+    private String assetGrowthLabel;
 
     @Column(name = "health_label", length = 50)
     private String healthLabel;

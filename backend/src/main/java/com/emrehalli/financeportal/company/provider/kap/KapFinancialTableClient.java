@@ -62,7 +62,10 @@ public class KapFinancialTableClient {
     private static final Map<String, FinancialItemKey> ITEM_KEY_BY_CODE = Map.of(
             "ifrs-full_Revenue", FinancialItemKey.HASILAT,
             "ifrs-full_ProfitLoss", FinancialItemKey.NET_DONEM_KARI,
-            "ifrs-full_Equity", FinancialItemKey.OZKAYNAKLAR
+            "ifrs-full_Equity", FinancialItemKey.OZKAYNAKLAR,
+            "ifrs-full_GrossProfit", FinancialItemKey.BRUT_KAR,
+            "ifrs-full_CurrentLiabilities", FinancialItemKey.KISA_VADELI_YUKUMLULUKLER,
+            "ifrs-full_NoncurrentLiabilities", FinancialItemKey.UZUN_VADELI_YUKUMLULUKLER
     );
 
     private static final Map<FinancialItemKey, List<String>> ITEM_KEY_BY_LABEL = Map.of(
@@ -70,12 +73,25 @@ public class KapFinancialTableClient {
             FinancialItemKey.NET_DONEM_KARI, List.of("net dönem karı", "net donem kari", "net dönem kârı", "profit loss"),
             FinancialItemKey.OZKAYNAKLAR, List.of("toplam özkaynaklar", "toplam ozkaynaklar", "özkaynaklar", "ozkaynaklar", "equity"),
             FinancialItemKey.TOPLAM_VARLIKLAR, List.of("toplam varlıklar", "toplam varliklar"),
-            FinancialItemKey.TOPLAM_KAYNAKLAR, List.of("toplam kaynaklar")
+            FinancialItemKey.TOPLAM_KAYNAKLAR, List.of("toplam kaynaklar"),
+            FinancialItemKey.BRUT_KAR, List.of("brüt kar", "brut kar", "brüt kar zarar", "brut kar zarar", "brüt esas faaliyet karı", "brut esas faaliyet kari", "gross profit"),
+            FinancialItemKey.KISA_VADELI_YUKUMLULUKLER, List.of("toplam kısa vadeli yükümlülükler", "toplam kisa vadeli yukumlulukler", "kısa vadeli yükümlülükler toplamı", "kisa vadeli yukumlulukler toplami"),
+            FinancialItemKey.UZUN_VADELI_YUKUMLULUKLER, List.of("toplam uzun vadeli yükümlülükler", "toplam uzun vadeli yukumlulukler", "uzun vadeli yükümlülükler toplamı", "uzun vadeli yukumlulukler toplami")
     );
 
-    private static final List<String> ITEM_CODES = List.of(
+    private static final List<String> LEGACY_ITEM_CODES = List.of(
             "ifrs-full_EquityAndLiabilities",
             "ifrs-full_Assets",
+            "ifrs-full_ProfitLoss",
+            "ifrs-full_Equity",
+            "ifrs-full_Revenue"
+    );
+    private static final List<String> EXTENDED_ITEM_CODES = List.of(
+            "ifrs-full_EquityAndLiabilities",
+            "ifrs-full_Assets",
+            "ifrs-full_CurrentLiabilities",
+            "ifrs-full_NoncurrentLiabilities",
+            "ifrs-full_GrossProfit",
             "ifrs-full_ProfitLoss",
             "ifrs-full_Equity",
             "ifrs-full_Revenue"
@@ -94,7 +110,8 @@ public class KapFinancialTableClient {
         Map<String, Object> payload = buildPayload(
                 report.getCompany(),
                 report.getPeriodYear() != null ? String.valueOf(report.getPeriodYear()) : null,
-                mapPeriod(report.getPeriodQuarter()));
+                mapPeriod(report.getPeriodQuarter()),
+                EXTENDED_ITEM_CODES);
         String rawJson = toJson(payload);
         String cookieHeader = startSession();
         logger.info("KAP compareItems request payload. reportId={}, rawJson={}, headerNames={}",
@@ -112,7 +129,22 @@ public class KapFinancialTableClient {
                     e.getStatusCode().value(),
                     e.getResponseHeaders() != null ? e.getResponseHeaders().getFirst(HttpHeaders.CONTENT_TYPE) : null,
                     e.getResponseBodyAsString());
-            throw e;
+            if (!e.getStatusCode().is4xxClientError()) {
+                throw e;
+            }
+            payload = buildPayload(
+                    report.getCompany(),
+                    report.getPeriodYear() != null ? String.valueOf(report.getPeriodYear()) : null,
+                    mapPeriod(report.getPeriodQuarter()),
+                    LEGACY_ITEM_CODES);
+            rawJson = toJson(payload);
+            logger.info("KAP compareItems retrying with legacy item list. reportId={}, rawJson={}", report.getId(), rawJson);
+            response = restClient.post()
+                    .uri(COMPARE_ITEMS_URL)
+                    .headers(headers -> applyPostHeaders(headers, cookieHeader))
+                    .body(rawJson)
+                    .retrieve()
+                    .toEntity(byte[].class);
         }
 
         byte[] xlsx = response.getBody() != null ? response.getBody() : new byte[0];
@@ -124,8 +156,51 @@ public class KapFinancialTableClient {
         return parseWorkbook(xlsx, contentType);
     }
 
+    public KapFinancialBackfillTableResult fetchFinancialBackfill(CompanyProfile company, List<String> years, String period) {
+        Map<String, Object> payload = buildPayload(company, years, period, EXTENDED_ITEM_CODES);
+        String rawJson = toJson(payload);
+        String cookieHeader = startSession();
+        logger.info("KAP compareItems backfill request payload. ticker={}, rawJson={}, headerNames={}",
+                company.getTickerCode(), rawJson, postHeaderNames());
+        ResponseEntity<byte[]> response;
+        try {
+            response = restClient.post()
+                    .uri(COMPARE_ITEMS_URL)
+                    .headers(headers -> applyPostHeaders(headers, cookieHeader))
+                    .body(rawJson)
+                    .retrieve()
+                    .toEntity(byte[].class);
+        } catch (RestClientResponseException e) {
+            logger.warn("KAP compareItems backfill POST failed. status={}, contentType={}, responseBody={}",
+                    e.getStatusCode().value(),
+                    e.getResponseHeaders() != null ? e.getResponseHeaders().getFirst(HttpHeaders.CONTENT_TYPE) : null,
+                    e.getResponseBodyAsString());
+            if (!e.getStatusCode().is4xxClientError()) {
+                throw e;
+            }
+            payload = buildPayload(company, years, period, LEGACY_ITEM_CODES);
+            rawJson = toJson(payload);
+            logger.info("KAP compareItems backfill retrying with legacy item list. ticker={}, rawJson={}",
+                    company.getTickerCode(), rawJson);
+            response = restClient.post()
+                    .uri(COMPARE_ITEMS_URL)
+                    .headers(headers -> applyPostHeaders(headers, cookieHeader))
+                    .body(rawJson)
+                    .retrieve()
+                    .toEntity(byte[].class);
+        }
+
+        byte[] xlsx = response.getBody() != null ? response.getBody() : new byte[0];
+        String contentType = response.getHeaders().getContentType() != null
+                ? response.getHeaders().getContentType().toString()
+                : null;
+        logger.info("KAP compareItems backfill response. status={}, contentType={}, xlsxByteSize={}",
+                response.getStatusCode().value(), contentType, xlsx.length);
+        return parseBackfillWorkbook(xlsx, contentType);
+    }
+
     public KapFinancialTableDebugResponse debugFetch(CompanyProfile company, String year, String period) {
-        Map<String, Object> payload = buildPayload(company, year, period);
+        Map<String, Object> payload = buildPayload(company, year, period, EXTENDED_ITEM_CODES);
         String rawJson = toJson(payload);
         logger.info("KAP compareItems debug request payload. ticker={}, rawJson={}, headerNames={}",
                 company.getTickerCode(), rawJson, postHeaderNames());
@@ -263,14 +338,18 @@ public class KapFinancialTableClient {
         return names;
     }
 
-    private Map<String, Object> buildPayload(CompanyProfile company, String year, String period) {
+    private Map<String, Object> buildPayload(CompanyProfile company, String year, String period, List<String> itemCodes) {
+        return buildPayload(company, List.of(year), period, itemCodes);
+    }
+
+    private Map<String, Object> buildPayload(CompanyProfile company, List<String> years, String period, List<String> itemCodes) {
         Map<String, Object> payload = new LinkedHashMap<>();
         putIfPresent(payload, "companyType", COMPANY_TYPE);
         putStringListIfPresent(payload, "mkkMemberIdList", company.getMkkMemberOid());
         putStringListIfPresent(payload, "mkkMemberTitleList", kapTitle(company.getCompanyName()));
-        putStringListIfPresent(payload, "yearList", year);
+        putIfPresent(payload, "yearList", years);
         putStringListIfPresent(payload, "periodList", period);
-        putIfPresent(payload, "itemIdList", ITEM_CODES);
+        putIfPresent(payload, "itemIdList", itemCodes);
         putIfPresent(payload, "sectors", List.of(SECTOR));
         return payload;
     }
@@ -347,6 +426,30 @@ public class KapFinancialTableClient {
                     String.join("\n", previewRows));
         } catch (Exception e) {
             throw new IllegalStateException("XLSX parse failed: " + e.getMessage(), e);
+        }
+    }
+
+    private KapFinancialBackfillTableResult parseBackfillWorkbook(byte[] xlsx, String contentType) {
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(xlsx))) {
+            FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+            List<SheetDebugInfo> sheetInfos = inspectSheets(workbook, evaluator);
+            List<String> sheetNames = sheetInfos.stream().map(SheetDebugInfo::sheetName).toList();
+            Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+            if (sheet == null) {
+                return new KapFinancialBackfillTableResult(xlsx.length, contentType, null, sheetNames, 0, List.of());
+            }
+            List<ParsedFinancialRow> rows = parseColumnarExportRows(sheet, evaluator);
+            logger.info("KAP XLSX backfill parse. sheetName={}, scannedRowCount={}, parsedRows={}",
+                    sheet.getSheetName(), sheet.getPhysicalNumberOfRows(), rows.size());
+            return new KapFinancialBackfillTableResult(
+                    xlsx.length,
+                    contentType,
+                    sheet.getSheetName(),
+                    sheetNames,
+                    sheet.getPhysicalNumberOfRows(),
+                    rows);
+        } catch (Exception e) {
+            throw new IllegalStateException("XLSX backfill parse failed: " + e.getMessage(), e);
         }
     }
 
@@ -489,6 +592,94 @@ public class KapFinancialTableClient {
         return Optional.of(items);
     }
 
+    private List<ParsedFinancialRow> parseColumnarExportRows(Sheet sheet, FormulaEvaluator evaluator) {
+        FinancialHeaderMatch headerMatch = null;
+        for (Row row : sheet) {
+            FinancialHeaderMatch candidate = detectFinancialHeader(sheet, row, evaluator);
+            if (candidate.itemColumns().isEmpty()) {
+                continue;
+            }
+            if (headerMatch == null || candidate.itemColumns().size() > headerMatch.itemColumns().size()) {
+                headerMatch = candidate;
+            }
+        }
+        if (headerMatch == null) {
+            return List.of();
+        }
+
+        Integer yearColumn = findHeaderColumn(headerMatch, "yil");
+        Integer periodColumn = findHeaderColumn(headerMatch, "periyot");
+        if (yearColumn == null || periodColumn == null) {
+            logger.warn("KAP XLSX backfill missing year/period columns. sheetName={}, detectedHeaders={}",
+                    sheet.getSheetName(), headerMatch.detectedHeaders());
+            return List.of();
+        }
+
+        List<ParsedFinancialRow> rows = new ArrayList<>();
+        for (int i = headerMatch.headerRow().getRowNum() + 1; i <= sheet.getLastRowNum(); i++) {
+            Row dataRow = sheet.getRow(i);
+            if (dataRow == null || dataRow.getPhysicalNumberOfCells() == 0) {
+                continue;
+            }
+            Integer year = parseIntegerCell(sheet, dataRow.getCell(yearColumn), evaluator);
+            Integer period = parseIntegerCell(sheet, dataRow.getCell(periodColumn), evaluator);
+            if (year == null || period == null) {
+                continue;
+            }
+
+            int unitMultiplier = 1;
+            String currency = "TRY";
+            if (headerMatch.unitColumn() != null) {
+                String unitText = cellText(sheet, dataRow.getCell(headerMatch.unitColumn()), evaluator);
+                unitMultiplier = parseUnitMultiplier(unitText);
+                currency = parseCurrency(unitText);
+            }
+
+            Map<FinancialItemKey, ParsedFinancialItem> items = new EnumMap<>(FinancialItemKey.class);
+            for (Map.Entry<FinancialItemKey, Integer> entry : headerMatch.itemColumns().entrySet()) {
+                Optional<BigDecimal> value = parseKapExportValue(sheet, dataRow.getCell(entry.getValue()), evaluator);
+                if (value.isPresent()) {
+                    FinancialItemKey key = entry.getKey();
+                    items.put(key, new ParsedFinancialItem(
+                            key,
+                            headerMatch.rawLabels().getOrDefault(key, key.name()),
+                            value.get(),
+                            currency,
+                            unitMultiplier));
+                }
+            }
+            if (!items.isEmpty()) {
+                rows.add(new ParsedFinancialRow(year, period, items));
+            }
+        }
+        return rows;
+    }
+
+    private Integer findHeaderColumn(FinancialHeaderMatch headerMatch, String normalizedNeedle) {
+        for (Map.Entry<String, Integer> entry : headerMatch.headerColumns().entrySet()) {
+            if (normalizeTurkish(entry.getKey()).contains(normalizedNeedle)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    private Integer parseIntegerCell(Sheet sheet, Cell cell, FormulaEvaluator evaluator) {
+        String text = cellText(sheet, cell, evaluator);
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String digits = text.replaceAll("[^0-9]", "");
+        if (digits.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(digits);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private FinancialHeaderMatch detectFinancialHeader(Sheet sheet, Row row, FormulaEvaluator evaluator) {
         Map<FinancialItemKey, Integer> itemColumns = new EnumMap<>(FinancialItemKey.class);
         Map<FinancialItemKey, String> rawLabels = new EnumMap<>(FinancialItemKey.class);
@@ -549,6 +740,20 @@ public class KapFinancialTableClient {
         }
         if (normalized.contains("toplam kaynaklar")) {
             return Optional.of(FinancialItemKey.TOPLAM_KAYNAKLAR);
+        }
+        if (normalized.contains("brut kar zarar")
+                || normalized.equals("brut kar")
+                || normalized.contains("brut esas faaliyet kari")
+                || normalized.contains("gross profit")) {
+            return Optional.of(FinancialItemKey.BRUT_KAR);
+        }
+        if (normalized.contains("toplam kisa vadeli yukumlulukler")
+                || normalized.contains("kisa vadeli yukumlulukler toplami")) {
+            return Optional.of(FinancialItemKey.KISA_VADELI_YUKUMLULUKLER);
+        }
+        if (normalized.contains("toplam uzun vadeli yukumlulukler")
+                || normalized.contains("uzun vadeli yukumlulukler toplami")) {
+            return Optional.of(FinancialItemKey.UZUN_VADELI_YUKUMLULUKLER);
         }
         return Optional.empty();
     }
@@ -639,6 +844,10 @@ public class KapFinancialTableClient {
         if (cell == null || cell.getCellType() == CellType.BLANK || cell.getCellType() == CellType.BOOLEAN) {
             return Optional.empty();
         }
+        Optional<BigDecimal> formattedValue = parseKapExportDecimal(cellText(sheet, cell, evaluator));
+        if (formattedValue.isPresent()) {
+            return formattedValue;
+        }
         if (cell.getCellType() == CellType.NUMERIC || cell.getCellType() == CellType.FORMULA) {
             try {
                 return Optional.of(BigDecimal.valueOf(cell.getCellType() == CellType.FORMULA
@@ -662,7 +871,7 @@ public class KapFinancialTableClient {
 
         if (s.contains(",")) {
             s = s.replace(".", "").replace(",", ".");
-        } else if (s.chars().filter(ch -> ch == '.').count() > 1) {
+        } else {
             s = s.replace(".", "");
         }
 
@@ -810,6 +1019,19 @@ public class KapFinancialTableClient {
     }
 
     public record ParsedFinancialItem(FinancialItemKey itemKey, String rawLabel, BigDecimal value, String currency, int unitMultiplier) {
+    }
+
+    public record ParsedFinancialRow(Integer year, Integer period, Map<FinancialItemKey, ParsedFinancialItem> items) {
+    }
+
+    public record KapFinancialBackfillTableResult(
+            int xlsxByteSize,
+            String contentType,
+            String sheetName,
+            List<String> workbookSheetNames,
+            int scannedRowCount,
+            List<ParsedFinancialRow> rows
+    ) {
     }
 
     private record RowMatch(FinancialItemKey itemKey, String rawLabel, BigDecimal value) {

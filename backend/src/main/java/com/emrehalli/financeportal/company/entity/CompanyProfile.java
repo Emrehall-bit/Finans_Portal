@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.company.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -38,6 +39,9 @@ public class CompanyProfile {
 
     @Column(name = "mkk_member_oid", length = 100)
     private String mkkMemberOid;
+
+    @Column(name = "shares_outstanding", precision = 30, scale = 4)
+    private BigDecimal sharesOutstanding;
 
     @Builder.Default
     @Column(nullable = false)

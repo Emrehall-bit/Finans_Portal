@@ -25,8 +25,11 @@ public class CompanyRatioCalculationResponse {
     private BigDecimal roe;
     private BigDecimal roa;
     private BigDecimal revenueGrowth;
+    private String revenueGrowthLabel;
     private BigDecimal netProfitGrowth;
+    private String netProfitGrowthLabel;
     private BigDecimal assetGrowth;
+    private String assetGrowthLabel;
     private String healthLabel;
     private OffsetDateTime calculatedAt;
 }

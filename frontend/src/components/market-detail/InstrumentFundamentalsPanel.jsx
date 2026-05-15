@@ -4,6 +4,7 @@ import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 
 const NO_DATA = "Veri Yok";
+const INSUFFICIENT_DATA = "Yeterli veri yok";
 
 function fmtRatio(value, decimals = 2) {
   if (value === null || value === undefined) return NO_DATA;
@@ -55,21 +56,21 @@ export default function InstrumentFundamentalsPanel({ loading, error, data }) {
       </div>
 
       {data && (
-        <div className="instrument-overview-summary" style={{ marginBottom: "1rem" }}>
+        <div className="fundamentals-meta-grid">
           {data.companyName && (
-            <div className="instrument-overview-metric">
+            <div className="fundamentals-meta-card">
               <span>{t("instrumentDetail.fundamentals.companyName")}</span>
               <strong>{data.companyName}</strong>
             </div>
           )}
           {data.latestReportPeriod && (
-            <div className="instrument-overview-metric">
+            <div className="fundamentals-meta-card">
               <span>{t("instrumentDetail.fundamentals.period")}</span>
               <strong>{data.latestReportPeriod}</strong>
             </div>
           )}
           {data.parseStatus && (
-            <div className="instrument-overview-metric">
+            <div className="fundamentals-meta-card">
               <span>{t("instrumentDetail.fundamentals.parseStatus")}</span>
               <strong>{data.parseStatus}</strong>
             </div>
@@ -92,26 +93,41 @@ export default function InstrumentFundamentalsPanel({ loading, error, data }) {
             <RatioCard label={t("instrumentDetail.fundamentals.netMargin")} value={fmtPercent(data.netMargin)} rawValue={data.netMargin} />
             <RatioCard label={t("instrumentDetail.fundamentals.roe")} value={fmtPercent(data.roe)} rawValue={data.roe} />
             <RatioCard label={t("instrumentDetail.fundamentals.roa")} value={fmtPercent(data.roa, 2, { floorTiny: true })} rawValue={data.roa} />
-            <RatioCard label={t("instrumentDetail.fundamentals.revenueGrowth")} value={fmtPercent(data.revenueGrowth)} rawValue={data.revenueGrowth} />
-            <RatioCard label={t("instrumentDetail.fundamentals.netProfitGrowth")} value={fmtPercent(data.netProfitGrowth)} rawValue={data.netProfitGrowth} />
-            <RatioCard label={t("instrumentDetail.fundamentals.assetGrowth")} value={fmtPercent(data.assetGrowth)} rawValue={data.assetGrowth} />
+            <RatioCard
+              label={t("instrumentDetail.fundamentals.revenueGrowth")}
+              value={fmtGrowth(data.revenueGrowth, data.revenueGrowthLabel)}
+              rawValue={data.revenueGrowth}
+              tooltip={t("instrumentDetail.fundamentals.growthTooltip")}
+            />
+            <RatioCard
+              label={t("instrumentDetail.fundamentals.netProfitGrowth")}
+              value={fmtGrowth(data.netProfitGrowth, data.netProfitGrowthLabel)}
+              rawValue={data.netProfitGrowth}
+              tooltip={t("instrumentDetail.fundamentals.growthTooltip")}
+            />
+            <RatioCard
+              label={t("instrumentDetail.fundamentals.assetGrowth")}
+              value={fmtGrowth(data.assetGrowth, data.assetGrowthLabel)}
+              rawValue={data.assetGrowth}
+              tooltip={t("instrumentDetail.fundamentals.growthTooltip")}
+            />
           </div>
 
           {data.healthLabel && (
-            <div style={{ marginTop: "1rem" }}>
-              <span className="signal-pill">{data.healthLabel}</span>
+            <div className="fundamentals-health-row">
+              <span className="signal-pill fundamentals-health-pill">{data.healthLabel}</span>
             </div>
           )}
 
-          <div className="instrument-overview-summary" style={{ marginTop: "1rem" }}>
+          <div className="fundamentals-footer-grid">
             {data.priceAtCalc != null && (
-              <div className="instrument-overview-metric">
+              <div className="fundamentals-meta-card">
                 <span>{t("instrumentDetail.fundamentals.priceAtCalc")}</span>
                 <strong>{fmtRatio(data.priceAtCalc, 4)}</strong>
               </div>
             )}
             {data.calculatedAt && (
-              <div className="instrument-overview-metric">
+              <div className="fundamentals-meta-card">
                 <span>{t("instrumentDetail.fundamentals.calculatedAt")}</span>
                 <strong>{fmtDate(data.calculatedAt)}</strong>
               </div>
@@ -123,15 +139,20 @@ export default function InstrumentFundamentalsPanel({ loading, error, data }) {
   );
 }
 
-function RatioCard({ label, value, rawValue }) {
-  const isNoData = value === NO_DATA;
+function RatioCard({ label, value, rawValue, tooltip }) {
+  const isNoData = value === NO_DATA || value === INSUFFICIENT_DATA;
   const sentiment = resolveSentiment(rawValue);
   return (
-    <div className={`indicator-value-card fundamentals-ratio-card ${sentiment}`}>
-      <span>{label}</span>
-      <strong className={isNoData ? "muted-value" : undefined}>{value}</strong>
+    <div className={`indicator-value-card fundamentals-ratio-card ${sentiment}`} title={tooltip}>
+      <span className="fundamentals-ratio-label">{label}</span>
+      <strong className={`fundamentals-ratio-value ${isNoData ? "muted-value" : ""}`}>{value}</strong>
     </div>
   );
+}
+
+function fmtGrowth(value, label) {
+  if (value === null || value === undefined) return label || INSUFFICIENT_DATA;
+  return fmtPercent(value);
 }
 
 function resolveSentiment(value) {

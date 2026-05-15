@@ -14,7 +14,7 @@ public class FinancialItemDictionary {
                 "Hasılat", "Satış Gelirleri", "Net Satışlar", "Revenue"
         ));
         ALIASES.put(FinancialItemKey.BRUT_KAR, List.of(
-                "Brüt Kâr", "Brüt Kar", "Gross Profit"
+                "Brüt Kâr", "Brüt Kar", "Brüt Kar (Zarar)", "Brüt Esas Faaliyet Karı", "Gross Profit"
         ));
         ALIASES.put(FinancialItemKey.ESAS_FAALIYET_KARI, List.of(
                 "Esas Faaliyet Kârı", "Esas Faaliyet Karı", "EBIT", "Operating Income"
@@ -38,6 +38,12 @@ public class FinancialItemDictionary {
         ));
         ALIASES.put(FinancialItemKey.TOPLAM_YUKUMLULUKLER, List.of(
                 "Toplam Yükümlülükler", "Toplam Borçlar", "Total Liabilities"
+        ));
+        ALIASES.put(FinancialItemKey.KISA_VADELI_YUKUMLULUKLER, List.of(
+                "Toplam Kısa Vadeli Yükümlülükler", "Kısa Vadeli Yükümlülükler Toplamı"
+        ));
+        ALIASES.put(FinancialItemKey.UZUN_VADELI_YUKUMLULUKLER, List.of(
+                "Toplam Uzun Vadeli Yükümlülükler", "Uzun Vadeli Yükümlülükler Toplamı"
         ));
         ALIASES.put(FinancialItemKey.ODENMIS_SERMAYE, List.of(
                 "Ödenmiş Sermaye", "Çıkarılmış Sermaye", "Paid-in Capital"

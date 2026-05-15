@@ -1,11 +1,15 @@
 package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
+import com.emrehalli.financeportal.company.dto.FinancialBackfillRequest;
+import com.emrehalli.financeportal.company.dto.FinancialBackfillResponse;
 import com.emrehalli.financeportal.company.dto.FinancialReportSyncResponse;
 import com.emrehalli.financeportal.company.dto.KapFinancialTableDebugResponse;
+import com.emrehalli.financeportal.company.service.CompanyFinancialBackfillService;
 import com.emrehalli.financeportal.company.service.CompanyFinancialReportSyncService;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,15 +21,29 @@ import java.util.List;
 public class KapFinancialAdminController {
 
     private final CompanyFinancialReportSyncService syncService;
+    private final CompanyFinancialBackfillService backfillService;
 
-    public KapFinancialAdminController(CompanyFinancialReportSyncService syncService) {
+    public KapFinancialAdminController(CompanyFinancialReportSyncService syncService,
+                                       CompanyFinancialBackfillService backfillService) {
         this.syncService = syncService;
+        this.backfillService = backfillService;
     }
 
     @PostMapping("/{ticker}/financial-reports/sync")
     public ApiResponse<FinancialReportSyncResponse> syncReports(@PathVariable String ticker) {
         FinancialReportSyncResponse result = syncService.syncReportsForTicker(ticker);
         return ApiResponse.<FinancialReportSyncResponse>builder()
+                .success(true)
+                .data(result)
+                .message(result.getMessage())
+                .build();
+    }
+
+    @PostMapping("/{ticker}/financials/backfill")
+    public ApiResponse<FinancialBackfillResponse> backfillFinancials(@PathVariable String ticker,
+                                                                     @RequestBody(required = false) FinancialBackfillRequest request) {
+        FinancialBackfillResponse result = backfillService.backfill(ticker, request);
+        return ApiResponse.<FinancialBackfillResponse>builder()
                 .success(true)
                 .data(result)
                 .message(result.getMessage())
@@ -63,7 +81,9 @@ public class KapFinancialAdminController {
         return ApiResponse.<KapFinancialTableDebugResponse>builder()
                 .success(result.isSuccess())
                 .data(result)
-                .message(result.isSuccess() ? "KAP compareItems debug fetch başarılı." : "KAP compareItems debug fetch başarısız.")
+                .message(result.getMessage() != null
+                        ? result.getMessage()
+                        : result.isSuccess() ? "KAP compareItems debug fetch başarılı." : "KAP compareItems debug fetch başarısız.")
                 .build();
     }
 

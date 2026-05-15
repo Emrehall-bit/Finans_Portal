@@ -1179,9 +1179,10 @@
       "netMargin": "Net Marj",
       "roe": "ROE",
       "roa": "ROA",
-      "revenueGrowth": "Satış Büyümesi",
-      "netProfitGrowth": "Net Kar Büyümesi",
-      "assetGrowth": "Aktif Büyümesi",
+      "revenueGrowth": "Yıllık Satış Büyümesi (YoY)",
+      "netProfitGrowth": "Yıllık Net Kar Büyümesi (YoY)",
+      "assetGrowth": "Yıllık Aktif Büyümesi (YoY)",
+      "growthTooltip": "Geçen yılın aynı çeyreğine göre hesaplanır.",
       "priceAtCalc": "Hesaplama fiyatı",
       "calculatedAt": "Son hesaplama"
     },

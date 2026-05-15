@@ -62,6 +62,7 @@ public class CompanyFinancialReportSyncService {
 
         int savedReports = 0;
         int duplicateSkipped = 0;
+        List<String> createdPeriods = new ArrayList<>();
 
         for (KapFinancialReportDto dto : candidates) {
             try {
@@ -82,6 +83,7 @@ public class CompanyFinancialReportSyncService {
                         .createdAt(OffsetDateTime.now())
                         .build());
                 savedReports++;
+                createdPeriods.add(dto.getPeriodYear() + "/Q" + dto.getPeriodQuarter());
             } catch (Exception e) {
                 logger.warn("Report save failed. ticker={}, year={}, q={}", tickerCode,
                         dto.getPeriodYear(), dto.getPeriodQuarter(), e);
@@ -89,8 +91,8 @@ public class CompanyFinancialReportSyncService {
         }
 
         int totalDiscovered = candidates.size() + providerResult.skippedReasons().size();
-        logger.info("Report sync done. ticker={}, financial={}, saved={}, dupes={}, skipped={}",
-                tickerCode, totalDiscovered, savedReports, duplicateSkipped, skippedReasons.size());
+        logger.info("Report sync done. ticker={}, foundFinancialDisclosureCount={}, saved={}, dupes={}, skipped={}, createdPeriods={}",
+                tickerCode, totalDiscovered, savedReports, duplicateSkipped, skippedReasons.size(), createdPeriods);
 
         return FinancialReportSyncResponse.builder()
                 .tickerCode(tickerCode)
@@ -213,7 +215,19 @@ public class CompanyFinancialReportSyncService {
 
     public KapFinancialTableDebugResponse debugFetchFinancialTable(String tickerCode, String year, String period) {
         CompanyProfile company = requireCompany(tickerCode);
-        return financialTableClient.debugFetch(company, year, period);
+        KapFinancialTableDebugResponse result = financialTableClient.debugFetch(company, year, period);
+        if (result.isSuccess() && !reportExists(company, year, period)) {
+            return KapFinancialTableDebugResponse.builder()
+                    .success(result.isSuccess())
+                    .httpStatus(result.getHttpStatus())
+                    .contentType(result.getContentType())
+                    .xlsxByteSize(result.getXlsxByteSize())
+                    .payload(result.getPayload())
+                    .errorBody(result.getErrorBody())
+                    .message("Bu dönem için company_financial_reports kaydı bulunmuyor. Önce Finansal Raporları Senkronize Et çalıştırın.")
+                    .build();
+        }
+        return result;
     }
 
     // -------------------------------------------------------------------------
@@ -223,6 +237,17 @@ public class CompanyFinancialReportSyncService {
     private CompanyProfile requireCompany(String tickerCode) {
         return profileRepository.findByTickerCodeIgnoreCase(tickerCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Şirket bulunamadı: " + tickerCode));
+    }
+
+    private boolean reportExists(CompanyProfile company, String year, String period) {
+        try {
+            return reportRepository.existsByCompanyIdAndPeriodYearAndPeriodQuarter(
+                    company.getId(),
+                    Integer.parseInt(year),
+                    Integer.parseInt(period));
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private void sleepBetweenCompanies(int index, int total, String ticker) {
