@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.market.scheduler;
 
+import com.emrehalli.financeportal.common.logging.SchedulerLogSupport;
 import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
 import com.emrehalli.financeportal.market.provider.stock.IsYatirimStockHistoryProvider;
 import com.emrehalli.financeportal.market.provider.stock.dto.StockHistoryDto;
@@ -31,9 +32,14 @@ public class StockHistoryScheduler {
 
     @Scheduled(cron = "0 30 19 * * MON-FRI")
     public void fetch() {
+        SchedulerLogSupport.Run run = SchedulerLogSupport.start("StockHistoryScheduler.fetch");
         LocalDate today = LocalDate.now();
+        int processedCount = 0;
+        int successCount = 0;
+        int failedCount = 0;
 
         for (String symbol : bistSymbolRegistry.getAllSymbols()) {
+            processedCount++;
             try {
                 Optional<LocalDate> latestDate = marketPriceHistoryRepository.findTopDateBySymbolOrderByDateDesc(symbol);
                 if (latestDate.isEmpty()) {
@@ -48,7 +54,9 @@ public class StockHistoryScheduler {
 
                 List<StockHistoryDto> history = isYatirimStockHistoryProvider.fetchHistory(symbol, startDate, today);
                 stockService.saveHistory(symbol, history);
+                successCount++;
             } catch (Exception exception) {
+                failedCount++;
                 log.warn("Failed to fetch stock history for symbol={}", symbol, exception);
             }
 
@@ -57,8 +65,10 @@ public class StockHistoryScheduler {
             } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
                 log.warn("Stock history scheduler interrupted during rate-limit delay.", exception);
+                run.log(log, processedCount, successCount, failedCount + 1, exception);
                 return;
             }
         }
+        run.log(log, processedCount, successCount, failedCount);
     }
 }

@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.market.provider.stock;
 
 import com.emrehalli.financeportal.config.MarketProperties;
+import com.emrehalli.financeportal.common.logging.SensitiveDataMasker;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.exception.DataProviderException;
 import com.emrehalli.financeportal.market.provider.MarketDataProvider;
@@ -48,7 +49,7 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
 
     @Override
     public List<StockPriceDto> fetch() {
-        log.error(">>> YAHOO FETCH CALLED, cookie={}, crumb={}",
+        log.debug("Yahoo Finance fetch called. cookieConfigured={}, crumbConfigured={}",
                 props.getProviders().getYahoo().getCookie() != null ? "SET" : "NULL",
                 props.getProviders().getYahoo().getCrumb() != null ? "SET" : "NULL");
         try {
@@ -94,23 +95,26 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
         headers.set(HttpHeaders.COOKIE, cookie);
 
         try {
-            log.error(">>> YAHOO URL: {}", url);
+            log.debug("Yahoo Finance request URL: {}", SensitiveDataMasker.maskUri(url));
             ResponseEntity<String> response;
             try {
-                log.error(">>> BEFORE EXCHANGE");
+                log.debug("Yahoo Finance request exchange starting");
                 response = restTemplate.exchange(
                         url,
                         HttpMethod.GET,
                         new HttpEntity<>(headers),
                         String.class
                 );
-                log.error(">>> AFTER EXCHANGE: {}", response.getStatusCode());
+                log.debug("Yahoo Finance request exchange completed. status={}", response.getStatusCode());
             } catch (Throwable t) {
-                log.error(">>> EXCHANGE EXCEPTION: {}", t.getClass().getName() + ": " + t.getMessage());
+                log.debug("Yahoo Finance exchange exception. type={}, message={}", t.getClass().getName(), t.getMessage());
                 throw new DataProviderException("exchange failed", t);
             }
-            log.error(">>> YAHOO RESPONSE STATUS: {}", response.getStatusCode());
-            log.error(">>> YAHOO RESPONSE BODY: {}", response.getBody() != null ? response.getBody() : "null");
+            log.debug("Yahoo Finance response status: {}", response.getStatusCode());
+            if (log.isDebugEnabled()) {
+                log.debug("Yahoo Finance response body preview: {}",
+                        response.getBody() != null ? SensitiveDataMasker.truncate(response.getBody(), 1000) : "null");
+            }
 
             String responseBody = response.getBody();
             if (responseBody == null || responseBody.isBlank()) {

@@ -22,3 +22,13 @@ export function getAiFundamentalAnalysis(symbol) {
     () => axiosClient.get(`/api/v1/ai/fundamental/${encodeURIComponent(symbol)}`).then((r) => r.data)
   );
 }
+
+/**
+ * Chat is not cached — every call hits the AI provider directly.
+ * Uses a 30-second timeout to accommodate AI response latency.
+ */
+export function postAiChat(message, context = null) {
+  return axiosClient
+    .post("/api/v1/ai/chat", { message, context }, { timeout: 30000 })
+    .then((r) => r.data);
+}

@@ -241,6 +241,23 @@ export default function AppLayout() {
     };
   }, [isAuthenticated, userId]);
 
+  const aiContext = useMemo(() => {
+    const path = location.pathname;
+    const params = new URLSearchParams(location.search);
+    const marketDetailMatch = path.match(/^\/markets\/([^/]+)$/);
+    if (marketDetailMatch) {
+      return {
+        type: "INSTRUMENT_DETAIL",
+        symbol: decodeURIComponent(marketDetailMatch[1]).toUpperCase(),
+        instrumentType: (params.get("type") || "").toUpperCase() || null,
+        screenName: "InstrumentDetail",
+      };
+    }
+    if (path === "/dashboard") return { type: "DASHBOARD", screenName: "Dashboard" };
+    if (path === "/markets") return { type: "MARKET_OVERVIEW", screenName: "Markets" };
+    return null;
+  }, [location.pathname, location.search]);
+
   const tapeItems = useMemo(() => {
     if (!tickerQuotes.length) {
       return [];
@@ -752,7 +769,7 @@ export default function AppLayout() {
         </div>
       </div>
 
-      <AiAssistantWidget />
+      <AiAssistantWidget aiContext={aiContext} />
 
       {authPromptOpen ? (
         <div className="modal-backdrop" role="presentation" onClick={() => setAuthPromptOpen(false)}>

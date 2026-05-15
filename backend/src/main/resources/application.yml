@@ -46,13 +46,10 @@ spring:
 
 logging:
   level:
-    com.emrehalli.financeportal.news.provider.finnhub.client: DEBUG
-    com.emrehalli.financeportal.news.provider.aa: DEBUG
-    org.hibernate.SQL: WARN
-    org.hibernate.orm.jdbc.bind: WARN
-    org.springframework.security: DEBUG
-    org.springframework.security.oauth2: DEBUG
-    com.emrehalli.financeportal.market: DEBUG
+    root: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: OFF
+    org.hibernate.orm.jdbc.bind: OFF
 management:
   endpoints:
     web:

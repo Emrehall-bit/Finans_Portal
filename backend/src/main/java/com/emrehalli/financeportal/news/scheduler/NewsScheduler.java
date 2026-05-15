@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.news.scheduler;
 
 import com.emrehalli.financeportal.common.exception.ProviderRateLimitException;
+import com.emrehalli.financeportal.common.logging.SchedulerLogSupport;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.provider.investing.InvestingNewsProperties;
@@ -51,9 +52,13 @@ public class NewsScheduler {
             return;
         }
 
+        SchedulerLogSupport.Run run = SchedulerLogSupport.start("NewsScheduler." + trigger + "." + providerType.name());
         try {
             logger.info("{} {} news sync started", capitalize(trigger), providerType.name());
             NewsSyncResponseDto result = newsService.syncProvider(providerType);
+            int processedCount = result.getFetchedCount();
+            int successCount = result.getSavedCount() + result.getExistingCount();
+            int failedCount = result.getInvalidCount();
             logger.info(
                     "{} {} sync completed. provider: {}, fetched: {}, saved: {}, existing: {}, invalid: {}",
                     capitalize(trigger),
@@ -64,10 +69,13 @@ public class NewsScheduler {
                     result.getExistingCount(),
                     result.getInvalidCount()
             );
+            run.log(logger, processedCount, successCount, failedCount);
         } catch (ProviderRateLimitException e) {
             logger.warn("{} {} sync rate limited: {}", capitalize(trigger), providerType.name(), e.getMessage());
+            run.log(logger, 1, 0, 1, e);
         } catch (Exception e) {
             logger.error("{} {} sync failed", capitalize(trigger), providerType.name(), e);
+            run.log(logger, 1, 0, 1, e);
         }
     }
 

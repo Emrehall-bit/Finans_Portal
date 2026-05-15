@@ -18,7 +18,7 @@
     "$resolver": "thread",
     "field": "name"
   },
-  "serviceName": "finance-portal-backend",
+  "service": "finance-portal-backend",
   "message": {
     "$resolver": "message",
     "stringified": true
@@ -55,6 +55,10 @@
     "$resolver": "mdc",
     "key": "status"
   },
+  "statusCode": {
+    "$resolver": "mdc",
+    "key": "statusCode"
+  },
   "durationMs": {
     "$resolver": "mdc",
     "key": "durationMs"
@@ -62,6 +66,50 @@
   "path": {
     "$resolver": "mdc",
     "key": "path"
+  },
+  "schedulerName": {
+    "$resolver": "mdc",
+    "key": "schedulerName"
+  },
+  "startedAt": {
+    "$resolver": "mdc",
+    "key": "startedAt"
+  },
+  "finishedAt": {
+    "$resolver": "mdc",
+    "key": "finishedAt"
+  },
+  "processedCount": {
+    "$resolver": "mdc",
+    "key": "processedCount"
+  },
+  "successCount": {
+    "$resolver": "mdc",
+    "key": "successCount"
+  },
+  "failedCount": {
+    "$resolver": "mdc",
+    "key": "failedCount"
+  },
+  "provider": {
+    "$resolver": "mdc",
+    "key": "provider"
+  },
+  "endpoint": {
+    "$resolver": "mdc",
+    "key": "endpoint"
+  },
+  "responseTimeMs": {
+    "$resolver": "mdc",
+    "key": "responseTimeMs"
+  },
+  "retryCount": {
+    "$resolver": "mdc",
+    "key": "retryCount"
+  },
+  "errorMessage": {
+    "$resolver": "mdc",
+    "key": "errorMessage"
   },
   "providerName": {
     "$resolver": "mdc",
@@ -82,6 +130,10 @@
   "exceptionClass": {
     "$resolver": "exception",
     "field": "className"
+  },
+  "exceptionType": {
+    "$resolver": "mdc",
+    "key": "exceptionType"
   },
   "exception": {
     "$resolver": "exception",

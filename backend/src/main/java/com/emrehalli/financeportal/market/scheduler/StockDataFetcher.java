@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.market.scheduler;
 
+import com.emrehalli.financeportal.common.logging.SchedulerLogSupport;
 import com.emrehalli.financeportal.market.provider.stock.StockProviderChain;
 import com.emrehalli.financeportal.market.provider.stock.dto.StockPriceDto;
 import com.emrehalli.financeportal.market.service.StockService;
@@ -23,20 +24,27 @@ public class StockDataFetcher {
 
     @Scheduled(fixedRateString = "${market.scheduler.stock-rate-ms:1800000}")
     public void fetch() {
-        System.out.println(">>> FETCH CALLED <<<");
-        log.error(">>> FETCH CALLED <<<");
+        SchedulerLogSupport.Run run = SchedulerLogSupport.start("StockDataFetcher.fetch");
+        int processedCount = 0;
+        int successCount = 0;
         try {
             List<?> result = stockProviderChain.fetch();
+            processedCount = result.size();
             if (result.isEmpty()) {
                 log.warn("Stock provider chain returned no stock data during market hours.");
+                run.log(log, 0, 0, 0);
                 return;
             }
-            stockService.saveAll(result.stream()
+            List<StockPriceDto> prices = result.stream()
                     .filter(StockPriceDto.class::isInstance)
                     .map(StockPriceDto.class::cast)
-                    .toList());
+                    .toList();
+            stockService.saveAll(prices);
+            successCount = prices.size();
+            run.log(log, processedCount, successCount, processedCount - successCount);
         } catch (Exception exception) {
             log.error("Failed to fetch stock data.", exception);
+            run.log(log, processedCount, successCount, processedCount == 0 ? 1 : processedCount - successCount, exception);
         }
     }
 }

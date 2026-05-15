@@ -19,7 +19,8 @@
       "Bash(Get-Content \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\infra\\\\backend\\\\docker\\\\keycloak\\\\realm-import\\\\finance-portal-realm.json\")",
       "Bash(Select-String '\"loginTheme\"')",
       "Bash(Select-Object -First 20)",
-      "PowerShell(Test-Path *)"
+      "PowerShell(Test-Path *)",
+      "PowerShell(cd C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend; .\\\\mvnw compile 2>&1 | Select-String \"ERROR|error:|BUILD|WARNING: A term\" | Where-Object { $_ -notmatch \"WARNING: A term\" } | Select-Object -Last 20)"
     ]
   }
 }

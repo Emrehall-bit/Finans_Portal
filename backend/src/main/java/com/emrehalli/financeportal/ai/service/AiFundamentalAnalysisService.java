@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.ai.service;
 
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse;
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse.FinancialHealth;
+import com.emrehalli.financeportal.ai.prompt.FundamentalAnalysisPromptBuilder;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
 import com.emrehalli.financeportal.company.dto.CompanyFinancialReportResponse;
 import com.emrehalli.financeportal.company.dto.CompanyFundamentalsResponse;
@@ -29,13 +30,16 @@ public class AiFundamentalAnalysisService {
     private final CompanyQueryService companyQueryService;
     private final AiGenerationService aiGenerationService;
     private final AiResponseCacheService aiResponseCacheService;
+    private final FundamentalAnalysisPromptBuilder promptBuilder;
 
     public AiFundamentalAnalysisService(CompanyQueryService companyQueryService,
                                         AiGenerationService aiGenerationService,
-                                        AiResponseCacheService aiResponseCacheService) {
+                                        AiResponseCacheService aiResponseCacheService,
+                                        FundamentalAnalysisPromptBuilder promptBuilder) {
         this.companyQueryService = companyQueryService;
         this.aiGenerationService = aiGenerationService;
         this.aiResponseCacheService = aiResponseCacheService;
+        this.promptBuilder = promptBuilder;
     }
 
     public AiFundamentalAnalysisResponse getFundamentalComment(String symbol) {
@@ -61,7 +65,9 @@ public class AiFundamentalAnalysisService {
             LatestFinancials latestFinancials = extractLatestFinancials(companyQueryService.getFinancials(normalizedSymbol));
             AiFundamentalAnalysisResponse ruleBased = fromFundamentals(normalizedSymbol, fundamentals, latestFinancials);
             AiGenerationService.EnhancedResult<AiFundamentalAnalysisResponse> enhanced =
-                    aiGenerationService.enhanceFundamental(buildFundamentalPrompt(normalizedSymbol, fundamentals, latestFinancials, ruleBased), ruleBased);
+                    aiGenerationService.enhanceFundamental(
+                            promptBuilder.build(normalizedSymbol, fundamentals, latestFinancials.revenue(), latestFinancials.netProfit()),
+                            ruleBased);
             Duration ttl = enhanced.fromLlm() ? CACHE_TTL : FALLBACK_CACHE_TTL;
             String summarySnippet = enhanced.response().summary();
             logger.info("AI fundamental computed. symbol={}, source={}, provider={}, ttlMinutes={}, summaryPreview={}",
@@ -287,53 +293,6 @@ public class AiFundamentalAnalysisService {
         );
     }
 
-    private String buildFundamentalPrompt(String symbol,
-                                          CompanyFundamentalsResponse fundamentals,
-                                          LatestFinancials latestFinancials,
-                                          AiFundamentalAnalysisResponse ruleBased) {
-        // Not: %% → prompt'a literal % gönderir. Java .formatted() içinde % özel karakterdir;
-        // prompt örneklerindeki yüzde işaretleri %% ile escape edilmelidir.
-        return """
-                Sadece JSON döndür. Markdown yok. Açıklama yok. Türkçe yaz.
-                Sadece verilen sayısal verilere dayan. Değeri "-" olan alanlar için yorum üretme.
-                Finansal analist diliyle yaz; muğlak ve klişe ifadelerden kaçın. Rakam varsa kullan.
-
-                KURALLAR:
-                summary: 2-3 cümle. 1. cümle genel finansal sağlık durumunu özetle. 2. cümle en belirgin güç veya riski belirt. İsteğe bağlı 3. cümle değerleme veya büyüme perspektifi ekle.
-                strengths: 2-3 madde. Her madde tek cümle, finansal analist diliyle ve rakamla destekli (örn. "ROE %%18.5 ile özkaynak verimliliği güçlü; sektör ortalamasının üzerinde seyrediyor."). Veri yoksa yalnızca veri olan güçleri yaz.
-                weaknesses: 1-2 madde. Spesifik oran ile destekle (örn. "Net marj %%3.2 ile operasyonel verimlilik baskı altında."). Belirgin zayıflık yoksa "Mevcut verilerle belirgin zayıflık saptanmıyor." yaz.
-                risks: 1-2 madde. Veri destekli yaz (örn. "D/E 2.4x ile finansal kaldıraç yüksek; faiz artış dönemlerinde borç servisi baskısı oluşabilir."). Veri yoksa "Makro koşullar ve sektör döngüsü ana risk faktörleri." yaz.
-                growthComment: 2-3 cümle. Hasılat ve net kâr büyümesini rakamla yorumla; büyümenin kalitesini ve sürdürülebilirliğini değerlendir.
-                financialHealth: Sadece STRONG, STABLE, WATCH veya RISKY.
-
-                {"summary":"2-3 cümle özet","strengths":["güç 1","güç 2","güç 3"],"weaknesses":["zayıflık 1","zayıflık 2"],"risks":["risk 1","risk 2"],"growthComment":"büyüme yorumu","financialHealth":"STABLE"}
-
-                Veri: symbol=%s, period=%s, revenue=%s, netProfit=%s, revenueGrowth=%s(%s), netProfitGrowth=%s(%s), assetGrowth=%s(%s), roe=%s, roa=%s, pe=%s, pb=%s, debtToEquity=%s, grossMargin=%s, netMargin=%s.
-                """.formatted(
-                symbol,
-                nullSafe(fundamentals.getLatestReportPeriod()),
-                valueText(latestFinancials.revenue()),
-                valueText(latestFinancials.netProfit()),
-                valueText(fundamentals.getRevenueGrowth()),
-                nullSafe(fundamentals.getRevenueGrowthLabel()),
-                valueText(fundamentals.getNetProfitGrowth()),
-                nullSafe(fundamentals.getNetProfitGrowthLabel()),
-                valueText(fundamentals.getAssetGrowth()),
-                nullSafe(fundamentals.getAssetGrowthLabel()),
-                valueText(fundamentals.getRoe()),
-                valueText(fundamentals.getRoa()),
-                valueText(fundamentals.getPeRatio()),
-                valueText(fundamentals.getPbRatio()),
-                valueText(fundamentals.getDebtToEquity()),
-                valueText(fundamentals.getGrossMargin()),
-                valueText(fundamentals.getNetMargin())
-        );
-    }
-
-    private String valueText(BigDecimal value) {
-        return value == null ? "-" : value.stripTrailingZeros().toPlainString();
-    }
-
     private String growthText(String label, BigDecimal value, String fallbackLabel) {
         if (fallbackLabel != null && !fallbackLabel.isBlank()) {
             return label + ": " + fallbackLabel + ".";
@@ -380,10 +339,6 @@ public class AiFundamentalAnalysisService {
     private String formatPercent(BigDecimal value) {
         if (value == null) return "-";
         return value.multiply(BigDecimal.valueOf(100)).stripTrailingZeros().toPlainString() + "%";
-    }
-
-    private String nullSafe(String value) {
-        return value != null ? value : "-";
     }
 
     private String normalizeSymbol(String symbol) {

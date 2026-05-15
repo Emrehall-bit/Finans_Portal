@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.market.provider.fund;
 
+import com.emrehalli.financeportal.common.logging.LoggingConstants;
+import com.emrehalli.financeportal.common.logging.StructuredLogContext;
 import com.emrehalli.financeportal.config.MarketProperties;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.exception.DataProviderException;
@@ -125,6 +127,7 @@ public class TefasProvider implements MarketDataProvider {
     }
 
     public List<TefasFundListResponseItem> fetchAllFunds() {
+        long startedAt = System.nanoTime();
         try {
             initSession();
             TefasFundListRequest requestPayload = new TefasFundListRequest();
@@ -156,12 +159,14 @@ public class TefasProvider implements MarketDataProvider {
 
             if (response == null) {
                 log.error("TEFAS fund list response is null.");
+                logProviderCall(LIST_ENDPOINT, startedAt, false, null);
                 return Collections.emptyList();
             }
 
             if (response.getErrorCode() != null) {
                 log.error("TEFAS fund list request failed. errorCode={}, errorMessage={}",
                         response.getErrorCode(), response.getErrorMessage());
+                logProviderCall(LIST_ENDPOINT, startedAt, false, null);
                 return Collections.emptyList();
             }
 
@@ -178,14 +183,17 @@ public class TefasProvider implements MarketDataProvider {
                     .filter(item -> Boolean.TRUE.equals(item.getTefasDurum()))
                     .toList();
             log.info("TEFAS fund list fetched, count: {}", result.size());
+            logProviderCall(LIST_ENDPOINT, startedAt, true, null);
             return result;
         } catch (Exception exception) {
             log.error("Failed to fetch TEFAS fund list.", exception);
+            logProviderCall(LIST_ENDPOINT, startedAt, false, exception);
             throw new DataProviderException("Failed to fetch TEFAS fund list", exception);
         }
     }
 
     public List<TefasFundPriceResponseItem> fetchFundHistory(String fonKodu, int periyod) {
+        long startedAt = System.nanoTime();
         try {
             initSession();
             TefasFundPriceRequest requestPayload = new TefasFundPriceRequest(fonKodu, "TR", periyod);
@@ -216,18 +224,23 @@ public class TefasProvider implements MarketDataProvider {
 
             if (response == null) {
                 log.error("TEFAS fund price response is null. fonKodu={}, periyod={}", fonKodu, periyod);
+                logProviderCall(PRICE_ENDPOINT, startedAt, false, null);
                 return Collections.emptyList();
             }
 
             if (response.getErrorCode() != null) {
                 log.error("TEFAS fund price request failed. fonKodu={}, periyod={}, errorCode={}, errorMessage={}",
                         fonKodu, periyod, response.getErrorCode(), response.getErrorMessage());
+                logProviderCall(PRICE_ENDPOINT, startedAt, false, null);
                 return Collections.emptyList();
             }
 
-            return response.getResultList() == null ? Collections.emptyList() : response.getResultList();
+            List<TefasFundPriceResponseItem> result = response.getResultList() == null ? Collections.emptyList() : response.getResultList();
+            logProviderCall(PRICE_ENDPOINT, startedAt, true, null);
+            return result;
         } catch (Exception exception) {
             log.error("Failed to fetch TEFAS fund history. fonKodu={}, periyod={}", fonKodu, periyod, exception);
+            logProviderCall(PRICE_ENDPOINT, startedAt, false, exception);
             return Collections.emptyList();
         }
     }
@@ -286,6 +299,24 @@ public class TefasProvider implements MarketDataProvider {
             });
         } catch (Exception exception) {
             throw new DataProviderException("Failed TEFAS POST request to " + url, exception);
+        }
+    }
+
+    private void logProviderCall(String endpoint, long startedAt, boolean success, Exception exception) {
+        long responseTimeMs = (System.nanoTime() - startedAt) / 1_000_000;
+        try (StructuredLogContext ignored = StructuredLogContext.open()
+                .put(LoggingConstants.PROVIDER_KEY, "TEFAS")
+                .put(LoggingConstants.ENDPOINT_KEY, endpoint)
+                .put(LoggingConstants.RESPONSE_TIME_MS_KEY, responseTimeMs)
+                .put(LoggingConstants.SUCCESS_KEY, success)
+                .put(LoggingConstants.RETRY_COUNT_KEY, 0)) {
+            if (success) {
+                log.info("External provider call completed");
+            } else if (exception == null) {
+                log.error("External provider call failed");
+            } else {
+                log.error("External provider call failed", exception);
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse.Financia
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.AiSignal;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.RiskLevel;
+import com.emrehalli.financeportal.ai.postprocess.AiResponsePostProcessor;
 import com.emrehalli.financeportal.ai.provider.AiResponse;
 import com.emrehalli.financeportal.ai.provider.AiTaskType;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class AiGenerationService {
@@ -26,10 +28,14 @@ public class AiGenerationService {
     private static final int SUMMARY_PREVIEW_LIMIT = 100;
 
     private final AiGatewayService aiGatewayService;
+    private final AiResponsePostProcessor postProcessor;
     private final ObjectMapper objectMapper;
 
-    public AiGenerationService(AiGatewayService aiGatewayService, ObjectMapper objectMapper) {
+    public AiGenerationService(AiGatewayService aiGatewayService,
+                               AiResponsePostProcessor postProcessor,
+                               ObjectMapper objectMapper) {
         this.aiGatewayService = aiGatewayService;
+        this.postProcessor = postProcessor;
         this.objectMapper = objectMapper;
     }
 
@@ -53,9 +59,9 @@ public class AiGenerationService {
             JsonNode root = parseJson(aiResponse.content());
             AiTechnicalAnalysisResponse result = new AiTechnicalAnalysisResponse(
                     fallback.symbol(),
-                    textOrFallback(root, "summary", fallback.summary()),
-                    textOrFallback(root, "trendComment", fallback.trendComment()),
-                    textOrFallback(root, "momentumComment", fallback.momentumComment()),
+                    postProcessor.process(textOrFallback(root, "summary", fallback.summary()), AiTaskType.TECHNICAL_ANALYSIS),
+                    postProcessor.process(textOrFallback(root, "trendComment", fallback.trendComment()), AiTaskType.TECHNICAL_ANALYSIS),
+                    postProcessor.process(textOrFallback(root, "momentumComment", fallback.momentumComment()), AiTaskType.TECHNICAL_ANALYSIS),
                     enumOrFallback(root, "riskLevel", RiskLevel.class, fallback.riskLevel()),
                     enumOrFallback(root, "signal", AiSignal.class, fallback.signal()),
                     fallback.disclaimer()
@@ -84,11 +90,11 @@ public class AiGenerationService {
             JsonNode root = parseJson(aiResponse.content());
             AiFundamentalAnalysisResponse result = new AiFundamentalAnalysisResponse(
                     fallback.symbol(),
-                    textOrFallback(root, "summary", fallback.summary()),
-                    stringListOrFallback(root, "strengths", fallback.strengths()),
-                    stringListOrFallback(root, "weaknesses", fallback.weaknesses()),
-                    stringListOrFallback(root, "risks", fallback.risks()),
-                    textOrFallback(root, "growthComment", fallback.growthComment()),
+                    postProcessor.process(textOrFallback(root, "summary", fallback.summary()), AiTaskType.FUNDAMENTAL_ANALYSIS),
+                    processStringList(stringListOrFallback(root, "strengths", fallback.strengths()), AiTaskType.FUNDAMENTAL_ANALYSIS),
+                    processStringList(stringListOrFallback(root, "weaknesses", fallback.weaknesses()), AiTaskType.FUNDAMENTAL_ANALYSIS),
+                    processStringList(stringListOrFallback(root, "risks", fallback.risks()), AiTaskType.FUNDAMENTAL_ANALYSIS),
+                    postProcessor.process(textOrFallback(root, "growthComment", fallback.growthComment()), AiTaskType.FUNDAMENTAL_ANALYSIS),
                     enumOrFallback(root, "financialHealth", FinancialHealth.class, fallback.financialHealth()),
                     fallback.disclaimer()
             );
@@ -103,6 +109,13 @@ public class AiGenerationService {
     }
 
     // ── Helpers ───────────────────────────────────────────────────
+
+    private List<String> processStringList(List<String> items, AiTaskType taskType) {
+        return items.stream()
+                .map(item -> postProcessor.process(item, taskType))
+                .filter(item -> !item.isBlank())
+                .collect(Collectors.toList());
+    }
 
     private String providerLabel(AiResponse response) {
         String name = response.provider().name().toLowerCase(Locale.ROOT);

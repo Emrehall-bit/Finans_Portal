@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.ai.service;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.AiSignal;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.RiskLevel;
+import com.emrehalli.financeportal.ai.prompt.TechnicalAnalysisPromptBuilder;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.enums.TechnicalSignal;
@@ -32,13 +33,16 @@ public class AiTechnicalAnalysisService {
     private final TechnicalAnalysisService technicalAnalysisService;
     private final AiGenerationService aiGenerationService;
     private final AiResponseCacheService aiResponseCacheService;
+    private final TechnicalAnalysisPromptBuilder promptBuilder;
 
     public AiTechnicalAnalysisService(TechnicalAnalysisService technicalAnalysisService,
                                       AiGenerationService aiGenerationService,
-                                      AiResponseCacheService aiResponseCacheService) {
+                                      AiResponseCacheService aiResponseCacheService,
+                                      TechnicalAnalysisPromptBuilder promptBuilder) {
         this.technicalAnalysisService = technicalAnalysisService;
         this.aiGenerationService = aiGenerationService;
         this.aiResponseCacheService = aiResponseCacheService;
+        this.promptBuilder = promptBuilder;
     }
 
     public AiTechnicalAnalysisResponse getTechnicalComment(String symbol) {
@@ -59,7 +63,7 @@ public class AiTechnicalAnalysisService {
             TechnicalAnalysisResult analysis = technicalAnalysisService.analyze(normalizedSymbol, from, to, DEFAULT_INDICATORS);
             AiTechnicalAnalysisResponse ruleBased = fromTechnicalAnalysis(normalizedSymbol, analysis);
             AiGenerationService.EnhancedResult<AiTechnicalAnalysisResponse> enhanced =
-                    aiGenerationService.enhanceTechnical(buildTechnicalPrompt(normalizedSymbol, analysis, ruleBased), ruleBased);
+                    aiGenerationService.enhanceTechnical(promptBuilder.build(normalizedSymbol, analysis), ruleBased);
             Duration ttl = enhanced.fromLlm() ? CACHE_TTL : FALLBACK_CACHE_TTL;
             String summarySnippet = enhanced.response().summary();
             logger.info("AI technical computed. symbol={}, source={}, provider={}, ttlMinutes={}, summaryPreview={}",
@@ -217,44 +221,6 @@ public class AiTechnicalAnalysisService {
                 signal,
                 DISCLAIMER
         );
-    }
-
-    private String buildTechnicalPrompt(String symbol, TechnicalAnalysisResult analysis, AiTechnicalAnalysisResponse ruleBased) {
-        BigDecimal rsi = analysis.indicatorValues().get(IndicatorType.RSI14);
-        BigDecimal sma7 = analysis.indicatorValues().get(IndicatorType.SMA7);
-        BigDecimal sma20 = analysis.indicatorValues().get(IndicatorType.SMA20);
-        BigDecimal sma50 = analysis.indicatorValues().get(IndicatorType.SMA50);
-
-        return """
-                Sadece JSON döndür. Markdown yok. Açıklama yok. Türkçe yaz.
-                Aşağıdaki verilere dayan; veri yoksa ("-") o konuya girmeden geç.
-                Finansal analist diliyle yaz; muğlak ve klişe ifadelerden kaçın.
-
-                KURALLAR:
-                summary: 2-3 cümle. 1. cümle mevcut fiyat/trend durumunu özetle. 2. cümle öne çıkan momentum sinyalini belirt. İsteğe bağlı 3. cümle kısa vadeli risk veya fırsat vurgula.
-                trendComment: 1-2 cümle. Fiyatın hareketli ortalamalarla ilişkisini ve trend yönünü açıkla. Rakam varsa kullan.
-                momentumComment: 1-2 cümle. RSI seviyesini yorumla; aşırı alım/satım veya nötr bölge belirt. Trend ile tutarlı ol.
-                riskLevel: Sadece LOW, MEDIUM veya HIGH.
-                signal: Sadece POSITIVE, NEUTRAL, NEGATIVE veya RISKY.
-
-                {"summary":"2-3 cümle özet","trendComment":"trend yorumu","momentumComment":"momentum yorumu","riskLevel":"MEDIUM","signal":"NEUTRAL"}
-
-                Veri: symbol=%s, price=%s, trend=%s, signals=%s, rsi=%s, sma7=%s, sma20=%s, sma50=%s.
-                Sinyal kuralları: RSI>70 aşırı alım→RISKY, RSI<30 aşırı satım→RISKY, ABOVE_SMA20→POSITIVE eğilim, BELOW_SMA20→NEGATIVE eğilim.
-                """.formatted(
-                symbol,
-                valueText(analysis.latestPrice()),
-                analysis.trendDirection(),
-                analysis.signals(),
-                valueText(rsi),
-                valueText(sma7),
-                valueText(sma20),
-                valueText(sma50)
-        );
-    }
-
-    private String valueText(BigDecimal value) {
-        return value == null ? "-" : value.stripTrailingZeros().toPlainString();
     }
 
     private boolean isRsiAbove(BigDecimal rsi, int threshold) {

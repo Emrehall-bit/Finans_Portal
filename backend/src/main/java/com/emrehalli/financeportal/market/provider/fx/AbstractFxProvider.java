@@ -10,6 +10,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -63,8 +64,14 @@ public abstract class AbstractFxProvider {
             return rates;
         } catch (DataProviderException exception) {
             throw exception;
+        } catch (HttpStatusCodeException exception) {
+            log.warn("FX provider request failed. provider={}, statusCode={}, errorMessage={}",
+                    sourceName, exception.getStatusCode().value(), exception.getMessage());
+            log.debug("FX provider request failed with stacktrace. provider={}", sourceName, exception);
+            throw new DataProviderException("Failed to fetch FX data from " + sourceName, exception);
         } catch (Exception exception) {
-            log.error("Failed to fetch FX data from {}", sourceName, exception);
+            log.warn("FX provider request failed. provider={}, errorMessage={}", sourceName, exception.getMessage());
+            log.debug("FX provider request failed with stacktrace. provider={}", sourceName, exception);
             throw new DataProviderException("Failed to fetch FX data from " + sourceName, exception);
         }
     }

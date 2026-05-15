@@ -191,50 +191,81 @@ public class GlobalExceptionHandler {
 
     private void logException(String event, Exception exception, HttpServletRequest request, boolean includeStackTrace) {
         String requestId = currentRequestId();
-        String path = request != null ? request.getRequestURI() : null;
+        String uri = request != null ? request.getRequestURI() : null;
         String method = request != null ? request.getMethod() : null;
+        int status = resolveStatus(exception);
 
-        if (path != null) {
-            LoggingContext.put(LoggingConstants.PATH_KEY, path);
+        if (uri != null) {
+            LoggingContext.put(LoggingConstants.URI_KEY, uri);
         }
         if (method != null) {
             LoggingContext.put(LoggingConstants.METHOD_KEY, method);
         }
+        LoggingContext.put(LoggingConstants.REQUEST_ID_KEY, requestId);
+        LoggingContext.put(LoggingConstants.EXCEPTION_TYPE_KEY, exception.getClass().getSimpleName());
+        LoggingContext.put(LoggingConstants.STATUS_KEY, String.valueOf(status));
 
         try {
             if (includeStackTrace) {
                 logger.error(
-                        "{}: exceptionClass={}, message={}, method={}, path={}, requestId={}",
+                        "{}: exceptionType={}, message={}, method={}, uri={}, status={}, requestId={}",
                         event,
                         exception.getClass().getSimpleName(),
                         exception.getMessage(),
                         method,
-                        path,
+                        uri,
+                        status,
                         requestId,
                         exception
                 );
             } else {
-                logger.warn(
-                        "{}: exceptionClass={}, message={}, method={}, path={}, requestId={}",
+                logger.error(
+                        "{}: exceptionType={}, message={}, method={}, uri={}, status={}, requestId={}",
                         event,
                         exception.getClass().getSimpleName(),
                         exception.getMessage(),
                         method,
-                        path,
+                        uri,
+                        status,
                         requestId
                 );
             }
         } finally {
-            if (path != null) {
-                LoggingContext.remove(LoggingConstants.PATH_KEY);
+            if (uri != null) {
+                LoggingContext.remove(LoggingConstants.URI_KEY);
             }
             if (method != null) {
                 LoggingContext.remove(LoggingConstants.METHOD_KEY);
             }
+            LoggingContext.remove(LoggingConstants.EXCEPTION_TYPE_KEY);
+            LoggingContext.remove(LoggingConstants.STATUS_KEY);
         }
     }
 
     private String currentRequestId() {
         return LoggingContext.get(LoggingConstants.REQUEST_ID_KEY);
+    }
+
+    private int resolveStatus(Exception exception) {
+        if (exception instanceof ResourceNotFoundException || exception instanceof NoResourceFoundException
+                || exception instanceof InstrumentNotFoundException) {
+            return HttpStatus.NOT_FOUND.value();
+        }
+        if (exception instanceof BadRequestException || exception instanceof IllegalArgumentException
+                || exception instanceof MethodArgumentNotValidException
+                || exception instanceof MethodArgumentTypeMismatchException
+                || exception instanceof HttpMessageNotReadableException) {
+            return HttpStatus.BAD_REQUEST.value();
+        }
+        if (exception instanceof DuplicateResourceException) {
+            return HttpStatus.CONFLICT.value();
+        }
+        if (exception instanceof ProviderRateLimitException) {
+            return HttpStatus.TOO_MANY_REQUESTS.value();
+        }
+        if (exception instanceof ResponseStatusException responseStatusException) {
+            return responseStatusException.getStatusCode().value();
+        }
+        return HttpStatus.INTERNAL_SERVER_ERROR.value();
     }
 }

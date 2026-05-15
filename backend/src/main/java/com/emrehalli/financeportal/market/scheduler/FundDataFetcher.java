@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.market.scheduler;
 
+import com.emrehalli.financeportal.common.logging.SchedulerLogSupport;
 import com.emrehalli.financeportal.market.provider.fund.TefasProvider;
 import com.emrehalli.financeportal.market.provider.fund.dto.FundNavDto;
 import com.emrehalli.financeportal.market.service.FundService;
@@ -27,16 +28,24 @@ public class FundDataFetcher {
     }
 
     public FundFetchResult fetchNow() {
+        SchedulerLogSupport.Run run = SchedulerLogSupport.start("FundDataFetcher.fetch");
+        int processedCount = 0;
+        int successCount = 0;
         try {
             List<FundNavDto> funds = tefasProvider.fetch();
+            processedCount = funds.size();
             if (funds.isEmpty()) {
                 log.warn("TEFAS fund fetcher received no fund NAV data. saveAll skipped.");
+                run.log(log, 0, 0, 0);
                 return new FundFetchResult(0, 0);
             }
             fundService.saveAll(funds);
+            successCount = funds.size();
+            run.log(log, processedCount, successCount, 0);
             return new FundFetchResult(funds.size(), funds.size());
         } catch (Exception exception) {
             log.error("Failed to fetch fund NAV data from TEFAS", exception);
+            run.log(log, processedCount, successCount, processedCount == 0 ? 1 : processedCount - successCount, exception);
             throw exception;
         }
     }

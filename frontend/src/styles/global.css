@@ -8312,6 +8312,36 @@ html[data-theme] button.sidebar-register-button:focus-visible,
   font-size: 0.68rem;
 }
 
+.ai-assistant-spinner {
+  animation: ai-spin 0.9s linear infinite;
+  display: inline-block;
+}
+
+@keyframes ai-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ai-assistant-form button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ai-assistant-form input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-assistant-message.ai.typing {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+.ai-assistant-message.error {
+  color: #c0392b;
+  opacity: 0.85;
+}
+
 .financial-period-stack {
   display: grid;
   gap: 16px;

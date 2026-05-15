@@ -148,8 +148,7 @@ public class GroqAiClient implements LlmClient {
                 "messages", List.of(Map.of("role", "user", "content", prompt)),
                 "temperature", 0.7,
                 "top_p", 0.9,
-                "max_tokens", Math.max(256, properties.getMaxOutputTokens()),
-                "response_format", Map.of("type", "json_object")
+                "max_tokens", Math.max(256, properties.getMaxOutputTokens())
         );
     }
 

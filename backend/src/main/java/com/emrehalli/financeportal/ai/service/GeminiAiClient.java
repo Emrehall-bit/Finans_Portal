@@ -145,8 +145,7 @@ public class GeminiAiClient implements LlmClient {
                 "generationConfig", Map.of(
                         "temperature", 0.7,
                         "topP", 0.9,
-                        "maxOutputTokens", Math.max(256, properties.getMaxOutputTokens()),
-                        "responseMimeType", "application/json"
+                        "maxOutputTokens", Math.max(256, properties.getMaxOutputTokens())
                 )
         );
     }
