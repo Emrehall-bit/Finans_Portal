@@ -54,6 +54,8 @@ public class AiProperties {
         private RouteConfig pageAnalysis         = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
         private RouteConfig technicalAnalysis    = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
         private RouteConfig fundamentalAnalysis  = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
+        private RouteConfig companyComparison    = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
+        private RouteConfig portfolioAnalysis    = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
         private RouteConfig newsSummary          = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
         private RouteConfig newsImpactAnalysis   = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
 
@@ -63,6 +65,8 @@ public class AiProperties {
                 case PAGE_ANALYSIS        -> pageAnalysis;
                 case TECHNICAL_ANALYSIS   -> technicalAnalysis;
                 case FUNDAMENTAL_ANALYSIS -> fundamentalAnalysis;
+                case COMPANY_COMPARISON   -> companyComparison;
+                case PORTFOLIO_ANALYSIS   -> portfolioAnalysis;
                 case NEWS_SUMMARY         -> newsSummary;
                 case NEWS_IMPACT_ANALYSIS -> newsImpactAnalysis;
             };
@@ -76,6 +80,10 @@ public class AiProperties {
         public void setTechnicalAnalysis(RouteConfig technicalAnalysis) { this.technicalAnalysis = technicalAnalysis; }
         public RouteConfig getFundamentalAnalysis() { return fundamentalAnalysis; }
         public void setFundamentalAnalysis(RouteConfig fundamentalAnalysis) { this.fundamentalAnalysis = fundamentalAnalysis; }
+        public RouteConfig getCompanyComparison() { return companyComparison; }
+        public void setCompanyComparison(RouteConfig companyComparison) { this.companyComparison = companyComparison; }
+        public RouteConfig getPortfolioAnalysis() { return portfolioAnalysis; }
+        public void setPortfolioAnalysis(RouteConfig portfolioAnalysis) { this.portfolioAnalysis = portfolioAnalysis; }
         public RouteConfig getNewsSummary() { return newsSummary; }
         public void setNewsSummary(RouteConfig newsSummary) { this.newsSummary = newsSummary; }
         public RouteConfig getNewsImpactAnalysis() { return newsImpactAnalysis; }

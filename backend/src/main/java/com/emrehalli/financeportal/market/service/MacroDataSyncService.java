@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -58,6 +59,18 @@ public class MacroDataSyncService {
     @Transactional
     public MacroSyncResult syncCurrentAccountFromTcmb(String startDate, String endDate) {
         return syncSeries(TcmbMacroSeries.currentAccount(startDate, endDate));
+    }
+
+    @Transactional
+    public Map<String, MacroSyncResult> syncAllFromTcmb() {
+        Map<String, MacroSyncResult> results = new LinkedHashMap<>();
+        results.put("CPI", syncCpiFromTcmb("01-10-2013", "01-04-2026"));
+        results.put("PPI", syncPpiFromTcmb("01-10-2013", "01-04-2026"));
+        results.put("POLICY_RATE", syncPolicyRateFromTcmb("01-09-2013", "01-03-2026"));
+        results.put("LABOR_MARKET", syncLaborMarketFromTcmb("01-09-2013", "01-03-2026"));
+        results.put("CONSUMER_CONFIDENCE", syncConsumerConfidenceFromTcmb("01-09-2013", "01-03-2026"));
+        results.put("CURRENT_ACCOUNT", syncCurrentAccountFromTcmb("01-09-2013", "01-03-2026"));
+        return results;
     }
 
     private MacroSyncResult syncSeries(MacroSeriesRequest request) {

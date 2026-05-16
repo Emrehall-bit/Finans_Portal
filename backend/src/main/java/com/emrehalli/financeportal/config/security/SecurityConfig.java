@@ -66,6 +66,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/technical/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/fundamental/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/unified/**").hasAnyRole("USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ai/compare-analysis").hasAnyRole("USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ai/portfolio-analysis/{portfolioId}").access(resourceAccessManager::canAccessPremiumPortfolioAi)
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/news-impact/**").hasAnyRole("USER_PREMIUM", "ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/ai/cache/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/ai/cache").hasRole("ADMIN")

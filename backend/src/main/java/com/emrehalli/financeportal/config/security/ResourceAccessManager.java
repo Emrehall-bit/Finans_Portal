@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.user.repository.UserRepository;
 import com.emrehalli.financeportal.watchlist.repository.WatchlistRepository;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.stereotype.Component;
@@ -65,6 +66,25 @@ public class ResourceAccessManager {
         return new AuthorizationDecision(granted);
     }
 
+    public AuthorizationDecision canAccessPremiumPortfolioAi(Supplier<Authentication> authentication,
+                                                             RequestAuthorizationContext context) {
+        Authentication auth = authentication.get();
+        if (hasRole(auth, "ROLE_ADMIN")) {
+            return new AuthorizationDecision(true);
+        }
+
+        boolean premium = hasRole(auth, "ROLE_USER_PREMIUM");
+        String keycloakId = extractSubject(auth);
+        Long portfolioId = parseId(context.getVariables(), "portfolioId");
+
+        boolean granted = premium
+                && keycloakId != null
+                && portfolioId != null
+                && portfolioRepository.existsByIdAndUserKeycloakId(portfolioId, keycloakId);
+
+        return new AuthorizationDecision(granted);
+    }
+
     private String extractSubject(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return null;
@@ -89,6 +109,15 @@ public class ResourceAccessManager {
         } catch (NumberFormatException ex) {
             return null;
         }
+    }
+
+    private boolean hasRole(Authentication authentication, String role) {
+        if (authentication == null || authentication.getAuthorities() == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(role::equals);
     }
 }
 

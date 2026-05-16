@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/admin/markets/macro")
 @RequiredArgsConstructor
@@ -55,5 +57,10 @@ public class MacroAdminController {
             @RequestParam(defaultValue = "01-09-2013") String startDate,
             @RequestParam(defaultValue = "01-03-2026") String endDate) {
         return macroDataSyncService.syncCurrentAccountFromTcmb(startDate, endDate);
+    }
+
+    @PostMapping("/tcmb/sync-all")
+    public Map<String, MacroSyncResult> syncAll() {
+        return macroDataSyncService.syncAllFromTcmb();
     }
 }

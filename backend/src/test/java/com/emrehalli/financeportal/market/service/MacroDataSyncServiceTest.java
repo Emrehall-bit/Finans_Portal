@@ -15,7 +15,9 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -154,6 +156,31 @@ class MacroDataSyncServiceTest {
         assertThat(result.saved()).isEqualTo(0);
         assertThat(result.duplicates()).isEqualTo(0);
         assertThat(result.skipped()).isEqualTo(0);
+    }
+
+    @Test
+    void syncAllFromTcmb_returnsAllMacroResults() {
+        when(indicatorRepository.findByCode(any())).thenReturn(Optional.of(cpiIndicator));
+        when(tcmbMacroProvider.fetchSeries(any())).thenReturn(List.of());
+
+        Map<String, MacroSyncResult> result = service.syncAllFromTcmb();
+
+        assertThat(result).isInstanceOf(LinkedHashMap.class);
+        assertThat(result.keySet()).containsExactly(
+                "CPI",
+                "PPI",
+                "POLICY_RATE",
+                "LABOR_MARKET",
+                "CONSUMER_CONFIDENCE",
+                "CURRENT_ACCOUNT"
+        );
+        assertThat(result.values()).allSatisfy(item -> {
+            assertThat(item.fetched()).isZero();
+            assertThat(item.saved()).isZero();
+            assertThat(item.duplicates()).isZero();
+            assertThat(item.skipped()).isZero();
+        });
+        verify(tcmbMacroProvider, times(6)).fetchSeries(any(MacroSeriesRequest.class));
     }
 
     private List<MacroObservationParseResult> cpiObservations(String period, LocalDate date) {
