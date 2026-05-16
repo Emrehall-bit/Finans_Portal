@@ -26,6 +26,7 @@ import {
   Users,
   Shield,
   Lock,
+  TrendingUp,
 } from "lucide-react";
 
 const PRIORITY_SYMBOLS = [
@@ -97,6 +98,11 @@ export default function AppLayout() {
       to: "/markets",
       label: t("nav.markets"),
       icon: LineChart,
+    },
+    {
+      to: "/economy",
+      label: t("nav.economy"),
+      icon: TrendingUp,
     },
     {
       to: "/portfolio",
@@ -255,6 +261,7 @@ export default function AppLayout() {
     }
     if (path === "/dashboard") return { type: "DASHBOARD", screenName: "Dashboard" };
     if (path === "/markets") return { type: "MARKET_OVERVIEW", screenName: "Markets" };
+    if (path === "/economy") return { type: "ECONOMY_OVERVIEW", screenName: "Economy" };
     return null;
   }, [location.pathname, location.search]);
 

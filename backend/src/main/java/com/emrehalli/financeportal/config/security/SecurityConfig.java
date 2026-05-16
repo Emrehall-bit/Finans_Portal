@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.config.security;
 
+import com.emrehalli.financeportal.common.logging.AuditActivityFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,13 +18,19 @@ public class SecurityConfig {
     private final KeycloakJwtAuthenticationConverter keycloakJwtAuthenticationConverter;
     private final ResourceAccessManager resourceAccessManager;
     private final ModerationEnforcementFilter moderationEnforcementFilter;
+    private final AiPremiumAccessDeniedHandler aiPremiumAccessDeniedHandler;
+    private final AuditActivityFilter auditActivityFilter;
 
     public SecurityConfig(KeycloakJwtAuthenticationConverter keycloakJwtAuthenticationConverter,
                           ResourceAccessManager resourceAccessManager,
-                          ModerationEnforcementFilter moderationEnforcementFilter) {
+                          ModerationEnforcementFilter moderationEnforcementFilter,
+                          AiPremiumAccessDeniedHandler aiPremiumAccessDeniedHandler,
+                          AuditActivityFilter auditActivityFilter) {
         this.keycloakJwtAuthenticationConverter = keycloakJwtAuthenticationConverter;
         this.resourceAccessManager = resourceAccessManager;
         this.moderationEnforcementFilter = moderationEnforcementFilter;
+        this.aiPremiumAccessDeniedHandler = aiPremiumAccessDeniedHandler;
+        this.auditActivityFilter = auditActivityFilter;
     }
 
     @Bean
@@ -56,10 +63,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/technical-analysis/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/ai/technical/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/ai/fundamental/**").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/ai/cache/**").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/ai/cache").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ai/technical/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ai/fundamental/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ai/unified/**").hasAnyRole("USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ai/news-impact/**").hasAnyRole("USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/ai/cache/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/ai/cache").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/companies/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/ipos/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/futures/**").permitAll()
@@ -94,9 +103,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/simulations/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
 
                         .anyRequest().authenticated())
+                .exceptionHandling(ex -> ex.accessDeniedHandler(aiPremiumAccessDeniedHandler))
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .bearerTokenResolver(guestSafeBearerTokenResolver())
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakJwtAuthenticationConverter)))
+                .addFilterAfter(auditActivityFilter, BearerTokenAuthenticationFilter.class)
                 .addFilterAfter(moderationEnforcementFilter, BearerTokenAuthenticationFilter.class);
 
         return http.build();

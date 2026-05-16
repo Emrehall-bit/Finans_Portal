@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { MessageSquare, Minimize2, Send, Sparkles, Loader2 } from "lucide-react";
 import { postAiChat } from "../../api/aiApi";
 
@@ -14,6 +15,7 @@ const INITIAL_MESSAGE = {
 };
 
 export default function AiAssistantWidget({ aiContext = null }) {
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
@@ -50,6 +52,8 @@ export default function AiAssistantWidget({ aiContext = null }) {
       setLoading(false);
     }
   }
+
+  if (pathname === "/economy") return null;
 
   if (!open) {
     return (

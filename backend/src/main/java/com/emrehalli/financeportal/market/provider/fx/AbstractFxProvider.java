@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.market.provider.fx;
 
+import com.emrehalli.financeportal.common.logging.SensitiveDataMasker;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.exception.DataProviderException;
 import com.emrehalli.financeportal.market.provider.fx.dto.FxRateDto;
@@ -66,11 +67,12 @@ public abstract class AbstractFxProvider {
             throw exception;
         } catch (HttpStatusCodeException exception) {
             log.warn("FX provider request failed. provider={}, statusCode={}, errorMessage={}",
-                    sourceName, exception.getStatusCode().value(), exception.getMessage());
+                    sourceName, exception.getStatusCode().value(), "HTTP " + exception.getStatusCode().value() + " " + exception.getStatusText());
             log.debug("FX provider request failed with stacktrace. provider={}", sourceName, exception);
             throw new DataProviderException("Failed to fetch FX data from " + sourceName, exception);
         } catch (Exception exception) {
-            log.warn("FX provider request failed. provider={}, errorMessage={}", sourceName, exception.getMessage());
+            log.warn("FX provider request failed. provider={}, errorMessage={}",
+                    sourceName, SensitiveDataMasker.truncate(exception.getMessage(), 500));
             log.debug("FX provider request failed with stacktrace. provider={}", sourceName, exception);
             throw new DataProviderException("Failed to fetch FX data from " + sourceName, exception);
         }

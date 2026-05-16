@@ -1,0 +1,154 @@
+{
+  "index_patterns": [
+    "finance-portal-logs-*"
+  ],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "dynamic": true,
+      "date_detection": true,
+      "numeric_detection": false,
+      "properties": {
+        "timestamp": {
+          "type": "date"
+        },
+        "@timestamp": {
+          "type": "date"
+        },
+        "level": {
+          "type": "keyword"
+        },
+        "service": {
+          "type": "keyword"
+        },
+        "log_type": {
+          "type": "keyword"
+        },
+        "requestId": {
+          "type": "keyword"
+        },
+        "username": {
+          "type": "keyword"
+        },
+        "role": {
+          "type": "keyword"
+        },
+        "action": {
+          "type": "keyword"
+        },
+        "resourceType": {
+          "type": "keyword"
+        },
+        "resourceId": {
+          "type": "keyword"
+        },
+        "ipAddress": {
+          "type": "ip",
+          "ignore_malformed": true
+        },
+        "userAgent": {
+          "type": "keyword",
+          "ignore_above": 1024
+        },
+        "success": {
+          "type": "boolean"
+        },
+        "traceId": {
+          "type": "keyword"
+        },
+        "spanId": {
+          "type": "keyword"
+        },
+        "logger": {
+          "type": "keyword"
+        },
+        "thread": {
+          "type": "keyword"
+        },
+        "method": {
+          "type": "keyword"
+        },
+        "uri": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text"
+            }
+          }
+        },
+        "status": {
+          "type": "keyword"
+        },
+        "statusCode": {
+          "type": "integer",
+          "coerce": true,
+          "ignore_malformed": true
+        },
+        "durationMs": {
+          "type": "long",
+          "coerce": true,
+          "ignore_malformed": true
+        },
+        "responseTimeMs": {
+          "type": "long",
+          "coerce": true,
+          "ignore_malformed": true
+        },
+        "retryCount": {
+          "type": "integer",
+          "coerce": true,
+          "ignore_malformed": true
+        },
+        "processedCount": {
+          "type": "long",
+          "coerce": true,
+          "ignore_malformed": true
+        },
+        "successCount": {
+          "type": "long",
+          "coerce": true,
+          "ignore_malformed": true
+        },
+        "failedCount": {
+          "type": "long",
+          "coerce": true,
+          "ignore_malformed": true
+        },
+        "provider": {
+          "type": "keyword"
+        },
+        "endpoint": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text"
+            }
+          }
+        },
+        "schedulerName": {
+          "type": "keyword"
+        },
+        "exceptionType": {
+          "type": "keyword"
+        },
+        "message": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 1024
+            }
+          }
+        }
+      }
+    }
+  },
+  "priority": 100,
+  "_meta": {
+    "service": "finance-portal",
+    "description": "Finance Portal structured log mapping template"
+  }
+}

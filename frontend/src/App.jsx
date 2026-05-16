@@ -5,6 +5,7 @@ import AnalysisPage from "./pages/AnalysisPage";
 import AdminDataPage from "./pages/AdminDataPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import DashboardPage from "./pages/DashboardPage";
+import EconomyPage from "./pages/EconomyPage";
 import LoginPage from "./pages/LoginPage";
 import MarketDetailPage from "./pages/MarketDetailPage";
 import MarketsPage from "./pages/MarketsPage";
@@ -28,6 +29,7 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/markets" element={<MarketsPage />} />
         <Route path="/markets/:symbol" element={<MarketDetailPage />} />
+        <Route path="/economy" element={<EconomyPage />} />
         <Route path="/news" element={<NewsPage />} />
         <Route path="/news/:id" element={<NewsDetailPage />} />
         <Route element={<ProtectedRoute />}>

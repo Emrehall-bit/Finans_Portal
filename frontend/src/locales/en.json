@@ -38,7 +38,8 @@
     "admin": "Admin Panel",
     "adminData": "Data Operations",
     "adminUsers": "User Management",
-    "authBadge": "Login"
+    "authBadge": "Login",
+    "economy": "Economy"
   },
   "layout": {
     "brandEyebrow": "Market Terminal",
@@ -323,6 +324,9 @@
       "historyError": "Failed to load historical data.",
       "historyEmptyTitle": "No historical data found",
       "historyEmptyDescription": "No records were returned for the selected indicator.",
+      "period": "Period",
+      "change": "Change",
+      "unit": "Unit",
       "columns": {
         "date": "Date",
         "value": "Value"
@@ -620,7 +624,9 @@
       "liveEyebrow": "Live Data Operations",
       "liveTitle": "Live data operations",
       "historyEyebrow": "Historical Data / Backfill",
-      "historyTitle": "Backfill operations"
+      "historyTitle": "Backfill operations",
+      "macroEyebrow": "Macro Data Sync",
+      "macroTitle": "TCMB macro indicator sync"
     },
     "fundFetch": {
       "running": "Fetching TEFAS fund data...",
@@ -710,6 +716,42 @@
         "title": "TEFAS Test Connection",
         "description": "Call the TEFAS list endpoint and verify the first returned fund.",
         "action": "Test Connection"
+      },
+      "macroCpi": {
+        "eyebrow": "Inflation",
+        "title": "CPI Sync",
+        "description": "Sync CPI (consumer price index) data from TCMB EVDS.",
+        "action": "CPI Sync"
+      },
+      "macroPpi": {
+        "eyebrow": "Producer Inflation",
+        "title": "PPI Sync",
+        "description": "Sync PPI (producer price index) data from TCMB EVDS.",
+        "action": "PPI Sync"
+      },
+      "macroPolicyRate": {
+        "eyebrow": "Monetary Policy",
+        "title": "Policy Rate Sync",
+        "description": "Sync central bank policy rate data from TCMB EVDS.",
+        "action": "Policy Rate Sync"
+      },
+      "macroLaborMarket": {
+        "eyebrow": "Labor Market",
+        "title": "Labor Market Sync",
+        "description": "Sync unemployment and labor force participation data from TCMB EVDS.",
+        "action": "Labor Market Sync"
+      },
+      "macroConsumerConfidence": {
+        "eyebrow": "Consumer Confidence",
+        "title": "Consumer Confidence Sync",
+        "description": "Sync consumer confidence index data from TCMB EVDS.",
+        "action": "Consumer Confidence Sync"
+      },
+      "macroCurrentAccount": {
+        "eyebrow": "Current Account",
+        "title": "Current Account Sync",
+        "description": "Sync current account balance data from TCMB EVDS.",
+        "action": "Current Account Sync"
       }
     },
     "stockHistory": {
@@ -1247,5 +1289,134 @@
     "yearRange": "52-week range",
     "dataSource": "Data source",
     "lastUpdate": "Last update"
+  },
+  "economy": {
+    "eyebrow": "Macroeconomics",
+    "title": "Economic Indicators",
+    "description": "Turkish macroeconomic data from TCMB EVDS: inflation, policy rate, labour market and current account.",
+    "loadError": "Failed to load data.",
+    "noData": "No data available for this series.",
+    "latestValue": "Latest",
+    "period": "Period",
+    "source": "Source: TCMB EVDS",
+    "indicators": {
+      "CPI_TR": "CPI",
+      "PPI_TR": "PPI",
+      "POLICY_RATE_TR": "Policy Rate",
+      "UNEMPLOYMENT_TR": "Unemployment Rate",
+      "LABOR_FORCE_PARTICIPATION_TR": "Labour Force Participation",
+      "CONSUMER_CONFIDENCE_TR": "Consumer Confidence",
+      "CURRENT_ACCOUNT_TR": "Current Account"
+    },
+    "valueTypes": {
+      "MONTHLY_CHANGE": "Monthly Change",
+      "YEARLY_CHANGE": "Annual Change",
+      "POLICY_RATE": "Policy Rate",
+      "UNEMPLOYMENT_RATE": "Unemployment Rate",
+      "LABOR_FORCE_PARTICIPATION_RATE": "Participation Rate",
+      "CONSUMER_CONFIDENCE_INDEX": "Confidence Index",
+      "CURRENT_ACCOUNT_BALANCE": "Current Balance"
+    },
+    "units": {
+      "PERCENT": "%",
+      "INDEX": "Index",
+      "USD": "M$",
+      "TRY": "TRY"
+    },
+    "cards": {
+      "cpiYearly": "CPI Annual",
+      "ppiYearly": "PPI Annual",
+      "policyRate": "Policy Rate",
+      "unemployment": "Unemployment"
+    },
+    "tableTitle": "Macro Indicators",
+    "viewMode": {
+      "label": "View",
+      "table": "Table",
+      "chart": "Chart"
+    },
+    "table": {
+      "indicator": "Indicator",
+      "lastPeriod": "Latest Period",
+      "lastValue": "Latest Value",
+      "prevPeriod": "Previous Period",
+      "prevValue": "Previous Value",
+      "change": "Change",
+      "unit": "Unit",
+      "source": "Source",
+      "tcmbSource": "TCMB EVDS",
+      "historyEyebrow": "Historical Data",
+      "historyDate": "Date",
+      "historyValue": "Value",
+      "historyUnit": "Unit",
+      "historyValueType": "Value Type",
+      "historySource": "Source",
+      "noHistory": "No data found for this indicator.",
+      "clickHint": "Click a row to view its historical data."
+    },
+    "overview": {
+      "eyebrow": "Market Overview",
+      "title": "Economic Outlook",
+      "summaryTitle": "Economy Summary",
+      "impactsTitle": "Potential Market Impacts",
+      "noData": "Not enough data to generate a summary."
+    },
+    "kpi": {
+      "lastValue": "Last Value",
+      "prevPeriod": "Prev. Period",
+      "change": "Change"
+    },
+    "filter": {
+      "range12M": "Last 12M",
+      "range24M": "Last 24M",
+      "rangeALL": "All",
+      "csvDownload": "Download CSV"
+    },
+    "chartNoData": "Not enough data for chart",
+    "dateCol": "Date",
+    "chart": {
+      "trendTitle": "Last 24M Trend",
+      "legend": {
+        "YEARLY_CHANGE": "Annual",
+        "MONTHLY_CHANGE": "Monthly",
+        "UNEMPLOYMENT_RATE": "Unemployment",
+        "LABOR_FORCE_PARTICIPATION_RATE": "Participation"
+      }
+    },
+    "groups": {
+      "CPI": {
+        "label": "CPI",
+        "title": "Consumer Price Index",
+        "col0": "CPI (Annual % Change)",
+        "col1": "CPI (Monthly % Change)"
+      },
+      "PPI": {
+        "label": "PPI",
+        "title": "Domestic Producer Price Index",
+        "col0": "PPI (Annual % Change)",
+        "col1": "PPI (Monthly % Change)"
+      },
+      "POLICY_RATE": {
+        "label": "Policy Rate",
+        "title": "Central Bank Policy Rate",
+        "col0": "Policy Rate (%)"
+      },
+      "LABOR": {
+        "label": "Labour Market",
+        "title": "Labour Market",
+        "col0": "Unemployment Rate (%)",
+        "col1": "Labour Participation (%)"
+      },
+      "CONSUMER_CONFIDENCE": {
+        "label": "Cons. Confidence",
+        "title": "Consumer Confidence Index",
+        "col0": "Consumer Confidence Index"
+      },
+      "CURRENT_ACCOUNT": {
+        "label": "Curr. Account",
+        "title": "Current Account Balance",
+        "col0": "Curr. Account (M$)"
+      }
+    }
   }
 }

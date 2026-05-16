@@ -111,9 +111,11 @@ class AiResponsePostProcessorTest {
 
     @Test
     void process_truncatesLongTextAtSentenceBoundary() {
+        // Sentences must be unique so deduplication step doesn't collapse them before truncation
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 30; i++) {
-            sb.append("Bu bir teknik analiz cümlesidir ve fiyat hareketlerini gösterir. ");
+            sb.append("Bu bir teknik analiz cümlesidir ve fiyat hareketlerini gösterir, sıra ")
+              .append(i + 1).append(". ");
         }
         sb.append("Bu cümle asla görünmemeli çünkü limit aşıldı");
         String result = processor.process(sb.toString(), AiTaskType.TECHNICAL_ANALYSIS);

@@ -38,7 +38,8 @@
     "admin": "Admin Paneli",
     "adminData": "Veri İşlemleri",
     "adminUsers": "Kullanıcı Yönetimi",
-    "authBadge": "Giriş"
+    "authBadge": "Giriş",
+    "economy": "Ekonomi"
   },
   "layout": {
     "brandEyebrow": "Market Terminal",
@@ -323,6 +324,9 @@
       "historyError": "Tarihsel veri yüklenemedi.",
       "historyEmptyTitle": "Tarihsel veri bulunamadı",
       "historyEmptyDescription": "Seçili gösterge için kayıt dönmedi.",
+      "period": "Dönem",
+      "change": "Değişim",
+      "unit": "Birim",
       "columns": {
         "date": "Tarih",
         "value": "Değer"
@@ -620,7 +624,9 @@
       "liveEyebrow": "Canlı Veri İşlemleri",
       "liveTitle": "Canlı veri operasyonları",
       "historyEyebrow": "Geçmiş Veri / Backfill",
-      "historyTitle": "Backfill operasyonları"
+      "historyTitle": "Backfill operasyonları",
+      "macroEyebrow": "Makro Veri Senkronu",
+      "macroTitle": "TCMB makro gösterge senkronu"
     },
     "fundFetch": {
       "running": "TEFAS fon verisi çekiliyor...",
@@ -710,6 +716,42 @@
         "title": "TEFAS Test Connection",
         "description": "TEFAS liste endpointine bağlan ve ilk fon bilgisini doğrula.",
         "action": "Bağlantıyı Test Et"
+      },
+      "macroCpi": {
+        "eyebrow": "Enflasyon",
+        "title": "CPI Sync",
+        "description": "TCMB EVDS'den CPI (TÜFE) verilerini senkronize et.",
+        "action": "CPI Sync"
+      },
+      "macroPpi": {
+        "eyebrow": "Üretici Enflasyonu",
+        "title": "PPI Sync",
+        "description": "TCMB EVDS'den PPI (ÜFE) verilerini senkronize et.",
+        "action": "PPI Sync"
+      },
+      "macroPolicyRate": {
+        "eyebrow": "Faiz Politikası",
+        "title": "Politika Faizi Sync",
+        "description": "TCMB EVDS'den politika faizi verilerini senkronize et.",
+        "action": "Politika Faizi Sync"
+      },
+      "macroLaborMarket": {
+        "eyebrow": "İşgücü Piyasası",
+        "title": "Labor Market Sync",
+        "description": "TCMB EVDS'den işsizlik ve işgücüne katılım oranı verilerini senkronize et.",
+        "action": "İşgücü Sync"
+      },
+      "macroConsumerConfidence": {
+        "eyebrow": "Tüketici Güveni",
+        "title": "Consumer Confidence Sync",
+        "description": "TCMB EVDS'den tüketici güven endeksi verilerini senkronize et.",
+        "action": "Tüketici Güven Sync"
+      },
+      "macroCurrentAccount": {
+        "eyebrow": "Cari Denge",
+        "title": "Current Account Sync",
+        "description": "TCMB EVDS'den cari hesap dengesi verilerini senkronize et.",
+        "action": "Cari Denge Sync"
       }
     },
     "stockHistory": {
@@ -1247,5 +1289,134 @@
     "yearRange": "52 hafta aralığı",
     "dataSource": "Veri kaynağı",
     "lastUpdate": "Son güncelleme"
+  },
+  "economy": {
+    "eyebrow": "Makroekonomi",
+    "title": "Ekonomik Göstergeler",
+    "description": "TCMB EVDS kaynaklı Türkiye makroekonomik verileri: enflasyon, politika faizi, işgücü ve dış denge.",
+    "loadError": "Veriler yüklenemedi.",
+    "noData": "Bu seri için henüz veri yok.",
+    "latestValue": "Son Değer",
+    "period": "Dönem",
+    "source": "Kaynak: TCMB EVDS",
+    "indicators": {
+      "CPI_TR": "TÜFE",
+      "PPI_TR": "Yİ-ÜFE",
+      "POLICY_RATE_TR": "Politika Faizi",
+      "UNEMPLOYMENT_TR": "İşsizlik Oranı",
+      "LABOR_FORCE_PARTICIPATION_TR": "İşgücüne Katılım",
+      "CONSUMER_CONFIDENCE_TR": "Tüketici Güveni",
+      "CURRENT_ACCOUNT_TR": "Cari İşlemler"
+    },
+    "valueTypes": {
+      "MONTHLY_CHANGE": "Aylık Değişim",
+      "YEARLY_CHANGE": "Yıllık Değişim",
+      "POLICY_RATE": "Politika Faizi",
+      "UNEMPLOYMENT_RATE": "İşsizlik Oranı",
+      "LABOR_FORCE_PARTICIPATION_RATE": "Katılım Oranı",
+      "CONSUMER_CONFIDENCE_INDEX": "Güven Endeksi",
+      "CURRENT_ACCOUNT_BALANCE": "Cari Denge"
+    },
+    "units": {
+      "PERCENT": "%",
+      "INDEX": "Endeks",
+      "USD": "M$",
+      "TRY": "TL"
+    },
+    "cards": {
+      "cpiYearly": "TÜFE Yıllık",
+      "ppiYearly": "Yİ-ÜFE Yıllık",
+      "policyRate": "Politika Faizi",
+      "unemployment": "İşsizlik"
+    },
+    "tableTitle": "Makro Göstergeler",
+    "viewMode": {
+      "label": "Görünüm",
+      "table": "Tablo",
+      "chart": "Grafik"
+    },
+    "table": {
+      "indicator": "Gösterge",
+      "lastPeriod": "Son Dönem",
+      "lastValue": "Son Değer",
+      "prevPeriod": "Önceki Dönem",
+      "prevValue": "Önceki Değer",
+      "change": "Değişim",
+      "unit": "Birim",
+      "source": "Kaynak",
+      "tcmbSource": "TCMB EVDS",
+      "historyEyebrow": "Tarihsel Veri",
+      "historyDate": "Tarih",
+      "historyValue": "Değer",
+      "historyUnit": "Birim",
+      "historyValueType": "Değer Tipi",
+      "historySource": "Kaynak",
+      "noHistory": "Bu gösterge için veri bulunamadı.",
+      "clickHint": "Tarihsel veriyi görmek için bir satıra tıklayın."
+    },
+    "overview": {
+      "eyebrow": "Genel Değerlendirme",
+      "title": "Ekonomik Görünüm",
+      "summaryTitle": "Ekonomi Özeti",
+      "impactsTitle": "Piyasaya Olası Etkiler",
+      "noData": "Özet oluşturmak için yeterli veri bulunamadı."
+    },
+    "kpi": {
+      "lastValue": "Son Değer",
+      "prevPeriod": "Önceki Dönem",
+      "change": "Değişim"
+    },
+    "filter": {
+      "range12M": "Son 12 Ay",
+      "range24M": "Son 24 Ay",
+      "rangeALL": "Tümü",
+      "csvDownload": "CSV İndir"
+    },
+    "chartNoData": "Grafik için yeterli veri yok",
+    "dateCol": "Tarih",
+    "chart": {
+      "trendTitle": "Son 24 Ay Trend",
+      "legend": {
+        "YEARLY_CHANGE": "Yıllık",
+        "MONTHLY_CHANGE": "Aylık",
+        "UNEMPLOYMENT_RATE": "İşsizlik",
+        "LABOR_FORCE_PARTICIPATION_RATE": "Katılım"
+      }
+    },
+    "groups": {
+      "CPI": {
+        "label": "TÜFE",
+        "title": "Fiyat Endeksi (Tüketici Fiyatları)",
+        "col0": "TÜFE (Yıllık % Değişim)",
+        "col1": "TÜFE (Aylık % Değişim)"
+      },
+      "PPI": {
+        "label": "ÜFE",
+        "title": "Yurt İçi Üretici Fiyat Endeksi",
+        "col0": "ÜFE (Yıllık % Değişim)",
+        "col1": "ÜFE (Aylık % Değişim)"
+      },
+      "POLICY_RATE": {
+        "label": "Politika Faizi",
+        "title": "Merkez Bankası Politika Faizi",
+        "col0": "Politika Faizi (%)"
+      },
+      "LABOR": {
+        "label": "İşgücü",
+        "title": "İşgücü Piyasası",
+        "col0": "İşsizlik Oranı (%)",
+        "col1": "İşgücüne Katılım (%)"
+      },
+      "CONSUMER_CONFIDENCE": {
+        "label": "Tüketici Güven",
+        "title": "Tüketici Güven Endeksi",
+        "col0": "Tüketici Güven Endeksi"
+      },
+      "CURRENT_ACCOUNT": {
+        "label": "Cari Denge",
+        "title": "Cari İşlemler Hesabı",
+        "col0": "Cari Denge (M$)"
+      }
+    }
   }
 }

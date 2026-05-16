@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 import { getNewsDetail } from "../api/newsApi";
+import AiNewsImpactCard from "../components/ai/AiNewsImpactCard";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
@@ -87,6 +88,10 @@ export default function NewsDetailPage() {
             description={t("newsDetail.languageMismatchDescription")}
           />
         </section>
+      ) : null}
+
+      {!loading && !error && item && (!item.language || item.language === selectedLanguage) ? (
+        <AiNewsImpactCard newsId={item.id} />
       ) : null}
 
       {!loading && !error && item && (!item.language || item.language === selectedLanguage) ? (

@@ -44,7 +44,7 @@ public class AiResponsePostProcessor {
     private String applyDisclaimerPolicy(String text, AiTaskType taskType) {
         return switch (taskType) {
             case CHAT -> disclaimerCleaner.deduplicateInChat(text);
-            case TECHNICAL_ANALYSIS, FUNDAMENTAL_ANALYSIS, PAGE_ANALYSIS, NEWS_SUMMARY ->
+            case TECHNICAL_ANALYSIS, FUNDAMENTAL_ANALYSIS, PAGE_ANALYSIS, NEWS_SUMMARY, NEWS_IMPACT_ANALYSIS ->
                     disclaimerCleaner.removeFromBody(text);
         };
     }

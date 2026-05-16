@@ -11,9 +11,9 @@
             <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json" />
         </Console>
 
-        <RollingFile name="FileAppender"
-                     fileName="${logDir}/app.log"
-                     filePattern="${logDir}/app-%d{yyyy-MM-dd}-%i.log.gz">
+        <RollingFile name="ApplicationFile"
+                     fileName="${logDir}/application.log"
+                     filePattern="${logDir}/archive/application-%d{yyyy-MM-dd}-%i.log.gz">
             <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json" />
             <Policies>
                 <TimeBasedTriggeringPolicy />
@@ -22,9 +22,43 @@
             <DefaultRolloverStrategy max="10" />
         </RollingFile>
 
-        <RollingFile name="JsonFile"
-                     fileName="${logDir}/finance-portal/finance-portal-backend.json"
-                     filePattern="${logDir}/finance-portal/finance-portal-backend-%d{yyyy-MM-dd}-%i.json.gz">
+        <RollingFile name="ErrorFile"
+                     fileName="${logDir}/error.log"
+                     filePattern="${logDir}/archive/error-%d{yyyy-MM-dd}-%i.log.gz">
+            <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY" />
+            <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json" />
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="10" />
+        </RollingFile>
+
+        <RollingFile name="AccessFile"
+                     fileName="${logDir}/access.log"
+                     filePattern="${logDir}/archive/access-%d{yyyy-MM-dd}-%i.log.gz">
+            <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json" />
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="10" />
+        </RollingFile>
+
+        <RollingFile name="AuditFile"
+                     fileName="${logDir}/audit.log"
+                     filePattern="${logDir}/archive/audit-%d{yyyy-MM-dd}-%i.log.gz">
+            <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json" />
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="10" />
+        </RollingFile>
+
+        <RollingFile name="SchedulerFile"
+                     fileName="${logDir}/scheduler.log"
+                     filePattern="${logDir}/archive/scheduler-%d{yyyy-MM-dd}-%i.log.gz">
             <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json" />
             <Policies>
                 <TimeBasedTriggeringPolicy />
@@ -38,21 +72,61 @@
         <Logger name="org.springframework.web" level="info" additivity="true" />
         <Logger name="org.hibernate.SQL" level="off" additivity="false" />
         <Logger name="org.hibernate.orm.jdbc.bind" level="off" additivity="false" />
+        <Logger name="com.emrehalli.financeportal.common.logging.HttpRequestLoggingFilter" level="info" additivity="false">
+            <AppenderRef ref="ConsoleJson" />
+            <AppenderRef ref="AccessFile" />
+            <AppenderRef ref="ErrorFile" />
+        </Logger>
+        <Logger name="com.emrehalli.financeportal.admin.service.AdminAuditLogService" level="info" additivity="true">
+            <AppenderRef ref="AuditFile" />
+        </Logger>
+        <Logger name="AUDIT" level="info" additivity="false">
+            <AppenderRef ref="ConsoleJson" />
+            <AppenderRef ref="AuditFile" />
+            <AppenderRef ref="ErrorFile" />
+        </Logger>
+        <Logger name="com.emrehalli.financeportal.alert.scheduler" level="info" additivity="true">
+            <AppenderRef ref="SchedulerFile" />
+        </Logger>
+        <Logger name="com.emrehalli.financeportal.market.scheduler" level="info" additivity="true">
+            <AppenderRef ref="SchedulerFile" />
+        </Logger>
+        <Logger name="com.emrehalli.financeportal.news.scheduler" level="info" additivity="true">
+            <AppenderRef ref="SchedulerFile" />
+        </Logger>
+        <Logger name="com.emrehalli.financeportal.market.service.TcmbFxHistoryBackfillAsyncService" level="info" additivity="true">
+            <AppenderRef ref="SchedulerFile" />
+        </Logger>
+        <Logger name="com.emrehalli.financeportal.market.service.StockHistoryBackfillAsyncService" level="info" additivity="true">
+            <AppenderRef ref="SchedulerFile" />
+        </Logger>
+        <Logger name="com.emrehalli.financeportal.market.service.TefasFundBackfillAsyncService" level="info" additivity="true">
+            <AppenderRef ref="SchedulerFile" />
+        </Logger>
+        <Logger name="com.emrehalli.financeportal.market.service.TcmbFxHistoricalBackfillService" level="info" additivity="true">
+            <AppenderRef ref="SchedulerFile" />
+        </Logger>
+        <Logger name="com.emrehalli.financeportal.market.service.TefasFundHistoricalBackfillService" level="info" additivity="true">
+            <AppenderRef ref="SchedulerFile" />
+        </Logger>
+        <Logger name="com.emrehalli.financeportal.company.service.CompanyFinancialBackfillService" level="info" additivity="true">
+            <AppenderRef ref="SchedulerFile" />
+        </Logger>
 
         <SpringProfile name="local">
             <Logger name="com.emrehalli.financeportal" level="debug" additivity="true" />
             <Root level="info">
                 <AppenderRef ref="ConsoleJson" />
-                <AppenderRef ref="FileAppender" />
-                <AppenderRef ref="JsonFile" />
+                <AppenderRef ref="ApplicationFile" />
+                <AppenderRef ref="ErrorFile" />
             </Root>
         </SpringProfile>
 
         <SpringProfile name="!local">
             <Root level="info">
                 <AppenderRef ref="ConsoleJson" />
-                <AppenderRef ref="FileAppender" />
-                <AppenderRef ref="JsonFile" />
+                <AppenderRef ref="ApplicationFile" />
+                <AppenderRef ref="ErrorFile" />
             </Root>
         </SpringProfile>
     </Loggers>

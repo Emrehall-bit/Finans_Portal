@@ -9,6 +9,7 @@ import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../../a
 import { useAuth } from "../../auth/AuthContext";
 import AiFundamentalInsightCard from "../ai/AiFundamentalInsightCard";
 import AiTechnicalInsightCard from "../ai/AiTechnicalInsightCard";
+import AiUnifiedAnalysisCard from "../ai/AiUnifiedAnalysisCard";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -543,6 +544,13 @@ export default function InstrumentDetailPage() {
           <div className="instrument-detail-main-column">
             {activeTab === "overview" ? (
               <section className="instrument-overview-stack">
+                {supportsTechnicalAi(resolvedInstrumentType) ? (
+                  <AiUnifiedAnalysisCard
+                    symbol={displaySymbol}
+                    instrumentType={resolvedInstrumentType}
+                  />
+                ) : null}
+
                 <section className="panel-surface instrument-overview-card">
                   <div className="panel-head">
                     <div>

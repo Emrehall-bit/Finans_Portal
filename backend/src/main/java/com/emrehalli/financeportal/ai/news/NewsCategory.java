@@ -1,0 +1,19 @@
+package com.emrehalli.financeportal.ai.news;
+
+public enum NewsCategory {
+    TCMB,
+    FED,
+    INFLATION,
+    INTEREST_RATE,
+    OIL_ENERGY,
+    EARNINGS,
+    DIVIDEND,
+    MERGER_ACQUISITION,
+    DEFENSE,
+    AVIATION,
+    BANKING,
+    CRYPTO,
+    REGULATION,
+    INVESTMENT,
+    GENERAL
+}

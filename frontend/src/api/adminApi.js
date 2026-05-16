@@ -151,6 +151,36 @@ export async function syncAllCompanyDisclosures() {
   return normalizeApiResponse(response);
 }
 
+export async function triggerMacroCpiSync() {
+  const response = await axiosClient.post("/api/v1/admin/markets/macro/tcmb/cpi/sync");
+  return normalizeApiResponse(response);
+}
+
+export async function triggerMacroPpiSync() {
+  const response = await axiosClient.post("/api/v1/admin/markets/macro/tcmb/ppi/sync");
+  return normalizeApiResponse(response);
+}
+
+export async function triggerMacroPolicyRateSync() {
+  const response = await axiosClient.post("/api/v1/admin/markets/macro/tcmb/policy-rate/sync");
+  return normalizeApiResponse(response);
+}
+
+export async function triggerMacroLaborMarketSync() {
+  const response = await axiosClient.post("/api/v1/admin/markets/macro/tcmb/labor-market/sync");
+  return normalizeApiResponse(response);
+}
+
+export async function triggerMacroConsumerConfidenceSync() {
+  const response = await axiosClient.post("/api/v1/admin/markets/macro/tcmb/consumer-confidence/sync");
+  return normalizeApiResponse(response);
+}
+
+export async function triggerMacroCurrentAccountSync() {
+  const response = await axiosClient.post("/api/v1/admin/markets/macro/tcmb/current-account/sync");
+  return normalizeApiResponse(response);
+}
+
 export async function getAdminAuditLogs(params = {}) {
   const searchParams = new URLSearchParams();
 

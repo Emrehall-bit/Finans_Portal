@@ -1,0 +1,281 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Finance Portal Backend
+    folder: Finance Portal
+    interval: 1m
+    rules:
+      - uid: finance-portal-backend-down
+        title: Backend DOWN
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: up{job="finance-portal-backend"} == 0
+              instant: true
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: B
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                  type: query
+              refId: C
+        noDataState: Alerting
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: Finance Portal backend is down
+          panel: Backend Status
+        labels:
+          severity: critical
+          service: finance-portal-backend
+
+      - uid: finance-portal-http-5xx
+        title: HTTP 5xx Error
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) > 0
+              instant: true
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: B
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: Backend is returning HTTP 5xx responses
+          panel: 5xx Error Rate
+        labels:
+          severity: warning
+          service: finance-portal-backend
+
+      - uid: finance-portal-high-response-time
+        title: High Average Response Time
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: |
+                (
+                  sum(rate(http_server_requests_seconds_sum[5m]))
+                  /
+                  sum(rate(http_server_requests_seconds_count[5m]))
+                ) > 2
+              instant: true
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: B
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: Average API response time is above 2 seconds
+          panel: Average Response Time (ms)
+        labels:
+          severity: warning
+          service: finance-portal-backend
+
+      - uid: finance-portal-jvm-heap-high
+        title: High JVM Heap Usage
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: |
+                sum(jvm_memory_used_bytes{area="heap"})
+                /
+                sum(jvm_memory_max_bytes{area="heap"})
+                > 0.85
+              instant: true
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: B
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: JVM heap usage is above 85 percent
+          panel: JVM Heap Used
+        labels:
+          severity: warning
+          service: finance-portal-backend
+
+      - uid: finance-portal-hikari-pending
+        title: Hikari Pending Connections
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: hikaricp_connections_pending > 0
+              instant: true
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: B
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: Hikari has pending database connections
+          panel: Hikari Pending Connections
+        labels:
+          severity: warning
+          service: finance-portal-backend

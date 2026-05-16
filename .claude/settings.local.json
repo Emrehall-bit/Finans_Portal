@@ -20,7 +20,21 @@
       "Bash(Select-String '\"loginTheme\"')",
       "Bash(Select-Object -First 20)",
       "PowerShell(Test-Path *)",
-      "PowerShell(cd C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend; .\\\\mvnw compile 2>&1 | Select-String \"ERROR|error:|BUILD|WARNING: A term\" | Where-Object { $_ -notmatch \"WARNING: A term\" } | Select-Object -Last 20)"
+      "PowerShell(cd C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend; .\\\\mvnw compile 2>&1 | Select-String \"ERROR|error:|BUILD|WARNING: A term\" | Where-Object { $_ -notmatch \"WARNING: A term\" } | Select-Object -Last 20)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\" -Recurse -Directory)",
+      "Bash(Select-Object -First 30)",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\" -Name)",
+      "Bash(Select-String -Pattern \"^[^.]*$\")",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\components\" -Directory | ForEach-Object { $_.Name })",
+      "Bash(xargs grep -l \"market-page-hero\\\\|market-category-pills\\\\|market-tab\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/actuator/health)",
+      "Bash(curl -s -X POST \"http://localhost:8080/api/v1/admin/markets/macro/tcmb/cpi/sync\" -H \"Content-Type: application/json\")",
+      "Bash(curl -s -X POST \"http://localhost:8080/api/v1/admin/markets/macro/tcmb/ppi/sync\" -H \"Content-Type: application/json\")",
+      "Bash(curl *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('access_token','ERROR:'+str\\(d\\)\\)[:80]\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); t=d.get\\('access_token',''\\); print\\('OK' if t else 'FAIL:'+str\\(d\\)[:200]\\)\")",
+      "Bash(npx vite *)",
+      "Bash(xargs grep -l \"syncCpi\\\\|syncPpi\\\\|MacroDataSyncService\")"
     ]
   }
 }

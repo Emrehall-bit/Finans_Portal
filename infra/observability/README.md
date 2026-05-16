@@ -1,56 +1,76 @@
-﻿# Observability Faz 2 ve 3
+# Observability
 
-Local development icin Prometheus, Grafana, OpenSearch, OpenSearch Dashboards ve log shipper kurulumu `infra/docker-compose.yml` icinden yonetilir.
+Finance Portal observability stack contains Prometheus, Grafana, Fluent Bit, OpenSearch, and OpenSearch Dashboards.
 
-## Calistirma
+## Run
 
 ```powershell
 cd infra
 docker compose up -d
 ```
 
-## Adresler
+## URLs
 
 - Prometheus: http://localhost:9090
+- Prometheus targets: http://localhost:9090/targets
 - Grafana: http://localhost:3001
-- Backend metrics: http://localhost:8080/actuator/prometheus
 - OpenSearch: http://localhost:9200
 - OpenSearch Dashboards: http://localhost:5601
+- Local backend metrics: http://localhost:8080/actuator/prometheus
 
-## Giris Bilgileri
+## Grafana
 
-- Grafana kullanici adi: `admin`
-- Grafana sifre: `admin`
+- Username: `admin`
+- Password: `admin`
+- Datasource provisioning: `grafana/provisioning/datasources`
+- Dashboard provisioning: `grafana/provisioning/dashboards`
+- Dashboard exports: `dashboards`
+- Provisioned dashboard: `Finance Portal Overview`
 
-## Notlar
+## Prometheus
 
-- Prometheus, backend container icindeki `backend:8080/actuator/prometheus` endpointini scrape eder.
-- Grafana datasource provisioning ile Prometheus'u otomatik ekler.
-- Dashboard provisioning ile `Finance Portal Backend` dashboard'u otomatik yuklenir.
-- Backend JSON log dosyasi host uzerinde `backend/logs/finance-portal/finance-portal-backend.json` olarak yazilir.
-- Fluent Bit bu JSON log dosyasini okuyup OpenSearch'e aktarir.
-- OpenSearch tarafinda log index pattern'i `finance-portal-logs-*` olarak kullanilabilir.
-- OpenSearch Dashboards operasyonel log gorunumleri icin `infra/observability/opensearch-dashboards/README.md` ve `queries.md` dosyalarini kullan.
+Development config:
 
-## OpenSearch Sorun Giderme
-
-OpenSearch container konfig degisikligi sonrasi temiz yeniden baslatma icin:
-
-```powershell
-docker compose down -v
-docker compose up -d
-docker ps
-curl http://localhost:9200
+```text
+prometheus/prometheus.yml -> host.docker.internal:8080/actuator/prometheus
 ```
 
-## OpenSearch Dashboards Operasyonel Kullanim
+Dockerized backend config:
 
-- `ERROR Logs`: exception ve kritik hata takibi
-- `WARN + ERROR`: anormal durumlarin erken fark edilmesi
-- `HTTP 404 / 5xx Tracking`: hatali endpoint ve backend exception analizi
-- `Slow Requests`: yavas endpointleri bulma
-- `Provider Failures`: BINANCE, EVDS, TEFAS ve benzeri provider problemlerini izleme
-- `requestId Search Flow`: tek request'in access log, business log ve exception akislarini bir arada inceleme
+```text
+prometheus/prometheus-docker.yml -> backend:8080/actuator/prometheus
+```
 
-Hazir sorgular:
-- `infra/observability/opensearch-dashboards/queries.md`
+Alert rule templates:
+
+```text
+prometheus/rules/finance-portal-alerts.yml
+```
+
+## Logs
+
+Local backend log directory:
+
+```text
+backend/logs
+```
+
+Project-root `logs` is not used.
+
+Fluent Bit reads backend log files from:
+
+```text
+/var/log/finance-portal/*.log
+```
+
+OpenSearch index pattern:
+
+```text
+finance-portal-logs-*
+```
+
+Detailed usage notes are in:
+
+```text
+docs/observability.md
+```

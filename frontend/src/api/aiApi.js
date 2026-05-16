@@ -23,6 +23,24 @@ export function getAiFundamentalAnalysis(symbol) {
   );
 }
 
+export function getAiUnifiedAnalysis(symbol, type = "STOCK") {
+  return deduplicate(
+    `unified:${symbol}`,
+    () => axiosClient
+      .get(`/api/v1/ai/unified/${encodeURIComponent(symbol)}`, { params: { type } })
+      .then((r) => r.data)
+  );
+}
+
+export function getAiNewsImpactAnalysis(newsId) {
+  return deduplicate(
+    `news-impact:${newsId}`,
+    () => axiosClient
+      .get(`/api/v1/ai/news-impact/${encodeURIComponent(newsId)}`)
+      .then((r) => r.data)
+  );
+}
+
 /**
  * Chat is not cached — every call hits the AI provider directly.
  * Uses a 30-second timeout to accommodate AI response latency.

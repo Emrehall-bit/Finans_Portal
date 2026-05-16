@@ -50,19 +50,21 @@ public class AiProperties {
     }
 
     public static class RoutingProperties {
-        private RouteConfig chat                = new RouteConfig(AiProviderType.GEMINI, AiProviderType.GROQ);
-        private RouteConfig pageAnalysis        = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
-        private RouteConfig technicalAnalysis   = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
-        private RouteConfig fundamentalAnalysis = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
-        private RouteConfig newsSummary         = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
+        private RouteConfig chat                 = new RouteConfig(AiProviderType.GEMINI, AiProviderType.GROQ);
+        private RouteConfig pageAnalysis         = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
+        private RouteConfig technicalAnalysis    = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
+        private RouteConfig fundamentalAnalysis  = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
+        private RouteConfig newsSummary          = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
+        private RouteConfig newsImpactAnalysis   = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
 
         public RouteConfig getForTask(AiTaskType taskType) {
             return switch (taskType) {
-                case CHAT               -> chat;
-                case PAGE_ANALYSIS      -> pageAnalysis;
-                case TECHNICAL_ANALYSIS -> technicalAnalysis;
+                case CHAT                 -> chat;
+                case PAGE_ANALYSIS        -> pageAnalysis;
+                case TECHNICAL_ANALYSIS   -> technicalAnalysis;
                 case FUNDAMENTAL_ANALYSIS -> fundamentalAnalysis;
-                case NEWS_SUMMARY       -> newsSummary;
+                case NEWS_SUMMARY         -> newsSummary;
+                case NEWS_IMPACT_ANALYSIS -> newsImpactAnalysis;
             };
         }
 
@@ -76,6 +78,8 @@ public class AiProperties {
         public void setFundamentalAnalysis(RouteConfig fundamentalAnalysis) { this.fundamentalAnalysis = fundamentalAnalysis; }
         public RouteConfig getNewsSummary() { return newsSummary; }
         public void setNewsSummary(RouteConfig newsSummary) { this.newsSummary = newsSummary; }
+        public RouteConfig getNewsImpactAnalysis() { return newsImpactAnalysis; }
+        public void setNewsImpactAnalysis(RouteConfig newsImpactAnalysis) { this.newsImpactAnalysis = newsImpactAnalysis; }
     }
 
     // ── Top-level getters/setters ─────────────────────────────────

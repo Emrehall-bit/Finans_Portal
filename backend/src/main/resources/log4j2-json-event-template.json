@@ -23,6 +23,10 @@
     "$resolver": "message",
     "stringified": true
   },
+  "log_type": {
+    "$resolver": "mdc",
+    "key": "log_type"
+  },
   "requestId": {
     "$resolver": "mdc",
     "key": "requestId"
@@ -38,6 +42,26 @@
   "userId": {
     "$resolver": "mdc",
     "key": "userId"
+  },
+  "username": {
+    "$resolver": "mdc",
+    "key": "username"
+  },
+  "role": {
+    "$resolver": "mdc",
+    "key": "role"
+  },
+  "action": {
+    "$resolver": "mdc",
+    "key": "action"
+  },
+  "resourceType": {
+    "$resolver": "mdc",
+    "key": "resourceType"
+  },
+  "resourceId": {
+    "$resolver": "mdc",
+    "key": "resourceId"
   },
   "method": {
     "$resolver": "mdc",
@@ -66,6 +90,14 @@
   "path": {
     "$resolver": "mdc",
     "key": "path"
+  },
+  "ipAddress": {
+    "$resolver": "mdc",
+    "key": "ipAddress"
+  },
+  "userAgent": {
+    "$resolver": "mdc",
+    "key": "userAgent"
   },
   "schedulerName": {
     "$resolver": "mdc",
@@ -110,6 +142,22 @@
   "errorMessage": {
     "$resolver": "mdc",
     "key": "errorMessage"
+  },
+  "auditLogId": {
+    "$resolver": "mdc",
+    "key": "auditLogId"
+  },
+  "actorUserId": {
+    "$resolver": "mdc",
+    "key": "actorUserId"
+  },
+  "targetUserId": {
+    "$resolver": "mdc",
+    "key": "targetUserId"
+  },
+  "auditAction": {
+    "$resolver": "mdc",
+    "key": "auditAction"
   },
   "providerName": {
     "$resolver": "mdc",

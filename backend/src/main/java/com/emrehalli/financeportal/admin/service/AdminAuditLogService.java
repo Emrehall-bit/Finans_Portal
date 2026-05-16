@@ -4,6 +4,9 @@ import com.emrehalli.financeportal.admin.dto.AdminAuditLogResponseDto;
 import com.emrehalli.financeportal.admin.entity.AdminAuditLog;
 import com.emrehalli.financeportal.admin.enums.AdminAuditAction;
 import com.emrehalli.financeportal.admin.repository.AdminAuditLogRepository;
+import com.emrehalli.financeportal.common.logging.StructuredLogContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AdminAuditLogService {
 
+    private static final Logger logger = LogManager.getLogger(AdminAuditLogService.class);
+
     private final AdminAuditLogRepository adminAuditLogRepository;
 
     public AdminAuditLogService(AdminAuditLogRepository adminAuditLogRepository) {
@@ -23,13 +28,22 @@ public class AdminAuditLogService {
 
     @Transactional
     public void log(Long actorUserId, Long targetUserId, AdminAuditAction action, String description, String metadata) {
-        adminAuditLogRepository.save(AdminAuditLog.builder()
+        AdminAuditLog saved = adminAuditLogRepository.save(AdminAuditLog.builder()
                 .actorUserId(actorUserId)
                 .targetUserId(targetUserId)
                 .action(action)
                 .description(normalize(description))
                 .metadata(normalize(metadata))
                 .build());
+
+        try (StructuredLogContext ignored = StructuredLogContext.open()
+                .put("auditLogId", saved.getId())
+                .put("actorUserId", actorUserId)
+                .put("targetUserId", targetUserId)
+                .put("auditAction", action)
+                .put("success", true)) {
+            logger.info("Admin audit action recorded");
+        }
     }
 
     @Transactional(readOnly = true)

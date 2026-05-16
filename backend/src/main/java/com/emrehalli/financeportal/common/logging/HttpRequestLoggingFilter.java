@@ -76,6 +76,7 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
             LoggingContext.put(LoggingConstants.URI_KEY, requestWrapper.getRequestURI());
             LoggingContext.put(LoggingConstants.STATUS_KEY, String.valueOf(responseWrapper.getStatus()));
             LoggingContext.put(LoggingConstants.DURATION_MS_KEY, String.valueOf(durationMs));
+            LoggingContext.put(LoggingConstants.LOG_TYPE_KEY, "access");
             String userId = resolveUserId();
             if (userId != null) {
                 LoggingContext.put(LoggingConstants.USER_ID_KEY, userId);
@@ -93,6 +94,7 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
             LoggingContext.remove(LoggingConstants.QUERY_STRING_KEY);
             LoggingContext.remove(LoggingConstants.STATUS_KEY);
             LoggingContext.remove(LoggingConstants.DURATION_MS_KEY);
+            LoggingContext.remove(LoggingConstants.LOG_TYPE_KEY);
             LoggingContext.remove(LoggingConstants.USER_ID_KEY);
         }
     }

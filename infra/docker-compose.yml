@@ -88,11 +88,11 @@
       REDIS_DATABASE: 0
       KEYCLOAK_ISSUER_URI: http://localhost:8081/realms/finance-portal
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/finance-portal/protocol/openid-connect/certs
-      LOG_PATH: /logs
+      LOG_PATH: /var/log/finance-portal
     ports:
       - "8080:8080"
     volumes:
-      - ../backend/logs:/logs
+      - ../backend/logs:/var/log/finance-portal
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,6 +121,7 @@
       - "9090:9090"
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     depends_on:
       - backend
@@ -137,7 +138,7 @@
     volumes:
       - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./observability/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
@@ -175,7 +176,8 @@
     volumes:
       - ./observability/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
       - ./observability/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
-      - ../backend/logs/finance-portal:/var/log/finance-portal:ro
+      - ../backend/logs:/var/log/finance-portal:ro
+      - fluent_bit_state:/fluent-bit/state
     depends_on:
       - opensearch
       - backend
@@ -186,4 +188,5 @@ volumes:
   prometheus_data:
   grafana_data:
   opensearch_data:
+  fluent_bit_state:
 

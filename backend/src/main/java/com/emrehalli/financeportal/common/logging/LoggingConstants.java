@@ -4,7 +4,15 @@ public final class LoggingConstants {
 
     public static final String REQUEST_ID_HEADER = "X-Request-Id";
     public static final String REQUEST_ID_KEY = "requestId";
+    public static final String LOG_TYPE_KEY = "log_type";
     public static final String USER_ID_KEY = "userId";
+    public static final String USERNAME_KEY = "username";
+    public static final String ROLE_KEY = "role";
+    public static final String ACTION_KEY = "action";
+    public static final String RESOURCE_TYPE_KEY = "resourceType";
+    public static final String RESOURCE_ID_KEY = "resourceId";
+    public static final String IP_ADDRESS_KEY = "ipAddress";
+    public static final String USER_AGENT_KEY = "userAgent";
     public static final String METHOD_KEY = "method";
     public static final String URI_KEY = "uri";
     public static final String QUERY_STRING_KEY = "queryString";
