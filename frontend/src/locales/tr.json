@@ -5,6 +5,7 @@
       "PAYMENT_PENDING": "Ödeme Bekleniyor",
       "ACTIVE": "Premium Aktif",
       "PAYMENT_FAILED": "Ödeme Başarısız",
+      "CANCELLATION_REQUESTED": "İptal Talebi Oluşturuldu",
       "CANCELLED": "İptal Edildi"
     }
   },
@@ -954,6 +955,7 @@
       "pendingDesc": "Ödeme talebiniz admin onayı bekliyor.",
       "upgrade": "Premium'a Geç",
       "cancel": "Talebi İptal Et",
+      "cancelActive": "Premium'u İptal Et",
       "upgradeSuccess": "Premium talebi oluşturuldu.",
       "cancelSuccess": "Talep iptal edildi.",
       "upgradeError": "İşlem sırasında hata oluştu.",

@@ -5,6 +5,7 @@
       "PAYMENT_PENDING": "Awaiting Payment",
       "ACTIVE": "Premium Active",
       "PAYMENT_FAILED": "Payment Failed",
+      "CANCELLATION_REQUESTED": "Cancellation Requested",
       "CANCELLED": "Cancelled"
     }
   },
@@ -954,6 +955,7 @@
       "pendingDesc": "Your payment request is awaiting admin approval.",
       "upgrade": "Go Premium",
       "cancel": "Cancel Request",
+      "cancelActive": "Cancel Premium",
       "upgradeSuccess": "Premium request created.",
       "cancelSuccess": "Request cancelled.",
       "upgradeError": "An error occurred.",

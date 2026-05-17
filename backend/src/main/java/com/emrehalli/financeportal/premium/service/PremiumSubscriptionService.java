@@ -75,15 +75,24 @@ public class PremiumSubscriptionService {
         User user = userService.getCurrentAuthenticatedUserEntity();
         PremiumSubscription subscription = premiumSubscriptionRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Premium subscription not found"));
-        if (!subscription.getStatus().isPending()) {
-            throw new BadRequestException("Only pending premium upgrade requests can be cancelled");
-        }
 
-        try {
-            workflowService.signalCancel(subscription);
-        } catch (IllegalStateException e) {
-            logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscription.getId());
-            cancelUpgradeInternal(subscription.getId());
+        if (subscription.getStatus().isPending()) {
+            if (workflowService.hasActiveInstance(subscription.getProcessInstanceId())) {
+                workflowService.signalCancel(subscription);
+            } else {
+                logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscription.getId());
+                cancelUpgradeInternal(subscription.getId());
+            }
+        } else if (subscription.getStatus() == PremiumSubscriptionStatus.ACTIVE) {
+            if (workflowService.hasActiveInstance(subscription.getProcessInstanceId())) {
+                workflowService.signalActiveCancellation(subscription);
+            } else {
+                logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscription.getId());
+                markCancellationRequested(subscription.getId());
+                cancelActivePremiumInternal(subscription.getId());
+            }
+        } else {
+            throw new BadRequestException("Premium subscription cannot be cancelled in its current state: " + subscription.getStatus());
         }
 
         PremiumSubscription updated = premiumSubscriptionRepository.findById(subscription.getId())
@@ -98,9 +107,9 @@ public class PremiumSubscriptionService {
             throw new BadRequestException("Payment success can only be applied to pending subscriptions");
         }
 
-        try {
+        if (workflowService.hasActiveInstance(subscription.getProcessInstanceId())) {
             workflowService.signalPaymentOutcome(subscription, true);
-        } catch (IllegalStateException e) {
+        } else {
             logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscriptionId);
             activatePremium(subscriptionId);
         }
@@ -116,9 +125,9 @@ public class PremiumSubscriptionService {
             throw new BadRequestException("Payment fail can only be applied to pending subscriptions");
         }
 
-        try {
+        if (workflowService.hasActiveInstance(subscription.getProcessInstanceId())) {
             workflowService.signalPaymentOutcome(subscription, false);
-        } catch (IllegalStateException e) {
+        } else {
             logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscriptionId);
             markPaymentFailed(subscriptionId);
         }
@@ -178,6 +187,24 @@ public class PremiumSubscriptionService {
         subscription.setCancelledAt(LocalDateTime.now());
         premiumSubscriptionRepository.save(subscription);
         logger.info("Premium workflow completed. subscriptionId={}, status=CANCELLED", subscriptionId);
+    }
+
+    @Transactional
+    public void markCancellationRequested(Long subscriptionId) {
+        PremiumSubscription subscription = getSubscriptionEntity(subscriptionId);
+        subscription.setStatus(PremiumSubscriptionStatus.CANCELLATION_REQUESTED);
+        premiumSubscriptionRepository.save(subscription);
+        logger.info("Premium workflow state entered. subscriptionId={}, status=CANCELLATION_REQUESTED", subscriptionId);
+    }
+
+    @Transactional
+    public void cancelActivePremiumInternal(Long subscriptionId) {
+        PremiumSubscription subscription = getSubscriptionEntity(subscriptionId);
+        subscription.setStatus(PremiumSubscriptionStatus.CANCELLED);
+        subscription.setCancelledAt(LocalDateTime.now());
+        premiumSubscriptionRepository.save(subscription);
+        userService.updateUserRoleForSystem(subscription.getUser(), UserRole.USER, "premium-active-cancellation");
+        logger.info("Premium active subscription cancelled. subscriptionId={}, userId={}", subscriptionId, subscription.getUser().getId());
     }
 
     @Transactional(readOnly = true)

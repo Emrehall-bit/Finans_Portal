@@ -25,6 +25,7 @@ public class PremiumUpgradeWorkflowService {
     private static final String PROCESS_ID = "premium-upgrade-process";
     private static final String PAYMENT_SIGNAL = "premium-payment-outcome";
     private static final String CANCEL_SIGNAL = "premium-cancel-requested";
+    private static final String ACTIVE_CANCEL_SIGNAL = "premium-active-cancel-requested";
 
     private final PremiumSubscriptionService premiumSubscriptionService;
     private final KieSession kieSession;
@@ -70,6 +71,22 @@ public class PremiumUpgradeWorkflowService {
         kieSession.dispose();
     }
 
+    public void signalActiveCancellation(PremiumSubscription subscription) {
+        synchronized (kieSession) {
+            getActiveInstance(subscription);
+            kieSession.signalEvent(ACTIVE_CANCEL_SIGNAL, subscription.getId(), subscription.getProcessInstanceId());
+            logger.info("Premium workflow active cancellation signalled. subscriptionId={}, processInstanceId={}",
+                    subscription.getId(), subscription.getProcessInstanceId());
+        }
+    }
+
+    public boolean hasActiveInstance(Long processInstanceId) {
+        if (processInstanceId == null) return false;
+        synchronized (kieSession) {
+            return kieSession.getProcessInstance(processInstanceId) instanceof WorkflowProcessInstance;
+        }
+    }
+
     private WorkflowProcessInstance getActiveInstance(PremiumSubscription subscription) {
         if (subscription.getProcessInstanceId() == null) {
             throw new IllegalStateException("Premium workflow instance id is missing");
@@ -102,11 +119,13 @@ public class PremiumUpgradeWorkflowService {
                 Long subscriptionId = number.longValue();
                 String nodeName = event.getNodeInstance().getNodeName();
                 switch (nodeName) {
-                    case "PREMIUM_REQUESTED" -> premiumSubscriptionService.markPremiumRequested(subscriptionId);
-                    case "PAYMENT_PENDING" -> premiumSubscriptionService.markPaymentPending(subscriptionId);
-                    case "ACTIVE" -> premiumSubscriptionService.activatePremium(subscriptionId);
-                    case "PAYMENT_FAILED" -> premiumSubscriptionService.markPaymentFailed(subscriptionId);
-                    case "CANCELLED" -> premiumSubscriptionService.cancelUpgradeInternal(subscriptionId);
+                    case "PREMIUM_REQUESTED"      -> premiumSubscriptionService.markPremiumRequested(subscriptionId);
+                    case "PAYMENT_PENDING"        -> premiumSubscriptionService.markPaymentPending(subscriptionId);
+                    case "ACTIVE"                 -> premiumSubscriptionService.activatePremium(subscriptionId);
+                    case "PAYMENT_FAILED"         -> premiumSubscriptionService.markPaymentFailed(subscriptionId);
+                    case "CANCELLED"              -> premiumSubscriptionService.cancelUpgradeInternal(subscriptionId);
+                    case "CANCELLATION_REQUESTED" -> premiumSubscriptionService.markCancellationRequested(subscriptionId);
+                    case "CANCELLED_FROM_ACTIVE"  -> premiumSubscriptionService.cancelActivePremiumInternal(subscriptionId);
                     default -> {
                     }
                 }

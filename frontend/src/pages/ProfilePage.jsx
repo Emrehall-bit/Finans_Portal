@@ -363,7 +363,16 @@ export default function ProfilePage() {
                 )}
 
                 <div className="actions-row" style={{ marginTop: 14 }}>
-                  {!premiumStatus?.premiumActive && (
+                  {premiumStatus?.premiumActive ? (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={premiumWorking}
+                      onClick={handlePremiumCancel}
+                    >
+                      {premiumWorking ? "..." : t("profile.premium.cancelActive")}
+                    </button>
+                  ) : (
                     premiumStatus?.status === "PAYMENT_PENDING" || premiumStatus?.status === "PREMIUM_REQUESTED"
                       ? (
                         <button

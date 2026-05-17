@@ -5,6 +5,7 @@ public enum PremiumSubscriptionStatus {
     PAYMENT_PENDING,
     PAYMENT_FAILED,
     ACTIVE,
+    CANCELLATION_REQUESTED,
     CANCELLED;
 
     public boolean isTerminal() {
@@ -13,5 +14,9 @@ public enum PremiumSubscriptionStatus {
 
     public boolean isPending() {
         return this == PREMIUM_REQUESTED || this == PAYMENT_PENDING;
+    }
+
+    public boolean isCancellationPending() {
+        return this == CANCELLATION_REQUESTED;
     }
 }
