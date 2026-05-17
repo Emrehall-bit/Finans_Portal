@@ -39,7 +39,8 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\" -Recurse -File | Where-Object {$_.Name -match \"remium\"})",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\" -Recurse -File | Where-Object {$_.Name -match \"remium|Premium\"})",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -File -Name \"*SecurityConfig*\" -o *Security.java)",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -File | Where-Object {$_.Name -match \"Security\" -or $_.Name -match \"Config\"} | Select-Object FullName | Sort-Object FullName)"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -File | Where-Object {$_.Name -match \"Security\" -or $_.Name -match \"Config\"} | Select-Object FullName | Sort-Object FullName)",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }

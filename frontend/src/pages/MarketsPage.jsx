@@ -14,7 +14,7 @@ import useToast from "../hooks/useToast";
 import { formatNumber } from "../utils/formatters";
 import { getCountryCodeForInstrument } from "../utils/currencyToCountryMap";
 
-const CATEGORY_OPTIONS = ["FX", "CRYPTO", "STOCK", "FUND", "FUTURES", "BOND"];
+const CATEGORY_OPTIONS = ["FX", "CRYPTO", "STOCK", "FUND", "FUTURES", "BOND", "INDEX", "COMMODITY"];
 
 
 const FUND_RETURN_COLUMNS = [
@@ -639,7 +639,7 @@ function FavoriteStarButton({ active, disabled, onToggle }) {
 function classifyCategory(item, fallbackCategory) {
   const type = normalizeText(item?.instrumentType);
   if (type === "FOREX" || type === "CURRENCY") return "FX";
-  return ["CRYPTO", "FX", "STOCK", "FUND", "FUTURES", "BOND"].includes(type) ? type : fallbackCategory;
+  return ["CRYPTO", "FX", "STOCK", "FUND", "FUTURES", "BOND", "INDEX", "COMMODITY"].includes(type) ? type : fallbackCategory;
 }
 
 function sortQuotes(left, right, sortBy) {

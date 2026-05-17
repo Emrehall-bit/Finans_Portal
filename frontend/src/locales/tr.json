@@ -317,7 +317,9 @@
       "FUND": "Fon",
       "FUTURES": "Vadeli",
       "BOND": "Tahvil/Bono",
-      "MACRO": "Makro"
+      "MACRO": "Makro",
+      "INDEX": "Endeks",
+      "COMMODITY": "Emtia"
     },
     "macro": {
       "eyebrow": "Makro Göstergeler",

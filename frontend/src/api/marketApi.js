@@ -148,6 +148,16 @@ export async function getMarketsByType(type) {
     return normalizeArrayPayload(data).map(mapBondQuote);
   }
 
+  if (type === "INDEX") {
+    const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/indexes`);
+    return normalizeArrayPayload(data).map(mapIndexQuote);
+  }
+
+  if (type === "COMMODITY") {
+    const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/commodities`);
+    return normalizeArrayPayload(data).map(mapCommodityQuote);
+  }
+
   const { data } = await axiosClient.get(
     `${API_CONFIG.ENDPOINTS.markets}/type/${encodeURIComponent(type)}`,
   );
@@ -345,6 +355,36 @@ function mapBondQuote(item) {
     buyRate: null,
     sellRate: null,
     code: item.bondCode,
+  };
+}
+
+function mapIndexQuote(item) {
+  return {
+    symbol: item.symbol,
+    displayName: item.name ?? item.symbol,
+    price: item.price,
+    changeRate: item.changeRate ?? null,
+    source: item.source ?? "YAHOO_FINANCE",
+    instrumentType: item.instrumentType || "INDEX",
+    dataTimestamp: item.updatedAt,
+    buyRate: null,
+    sellRate: null,
+    code: item.symbol,
+  };
+}
+
+function mapCommodityQuote(item) {
+  return {
+    symbol: item.symbol,
+    displayName: item.name ?? item.symbol,
+    price: item.price,
+    changeRate: item.changeRate ?? null,
+    source: item.source ?? "YAHOO_FINANCE",
+    instrumentType: item.instrumentType || "COMMODITY",
+    dataTimestamp: item.updatedAt,
+    buyRate: null,
+    sellRate: null,
+    code: item.symbol,
   };
 }
 

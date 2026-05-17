@@ -317,7 +317,9 @@
       "FUND": "Fund",
       "FUTURES": "Futures",
       "BOND": "Bond / T-bill",
-      "MACRO": "Macro"
+      "MACRO": "Macro",
+      "INDEX": "Index",
+      "COMMODITY": "Commodity"
     },
     "macro": {
       "eyebrow": "Macro Indicators",

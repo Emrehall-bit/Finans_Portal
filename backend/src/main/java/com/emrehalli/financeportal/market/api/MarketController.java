@@ -224,6 +224,7 @@ public class MarketController {
             case CRYPTO -> SourceName.BINANCE;
             case STOCK -> SourceName.BIST;
             case FX -> parseSourceFromSymbol(symbol);
+            case INDEX, COMMODITY -> SourceName.YAHOO_FINANCE;
             default -> null;
         };
     }

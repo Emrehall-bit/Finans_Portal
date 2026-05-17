@@ -9,5 +9,7 @@ public enum InstrumentType {
     FUND,
     STOCK,
     FUTURES,
-    BOND
+    BOND,
+    INDEX,
+    COMMODITY
 }

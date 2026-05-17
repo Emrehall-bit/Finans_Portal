@@ -69,5 +69,7 @@ public class MarketProperties {
         private long stock = 40;
         private long futures = 1500;
         private long bond = 1500;
+        private long index = 40;
+        private long commodity = 40;
     }
 }
