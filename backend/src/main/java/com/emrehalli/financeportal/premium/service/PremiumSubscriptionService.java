@@ -79,7 +79,13 @@ public class PremiumSubscriptionService {
             throw new BadRequestException("Only pending premium upgrade requests can be cancelled");
         }
 
-        workflowService.signalCancel(subscription);
+        try {
+            workflowService.signalCancel(subscription);
+        } catch (IllegalStateException e) {
+            logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscription.getId());
+            cancelUpgradeInternal(subscription.getId());
+        }
+
         PremiumSubscription updated = premiumSubscriptionRepository.findById(subscription.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Premium subscription not found"));
         return toResponse(updated);
@@ -91,7 +97,14 @@ public class PremiumSubscriptionService {
         if (!subscription.getStatus().isPending()) {
             throw new BadRequestException("Payment success can only be applied to pending subscriptions");
         }
-        workflowService.signalPaymentOutcome(subscription, true);
+
+        try {
+            workflowService.signalPaymentOutcome(subscription, true);
+        } catch (IllegalStateException e) {
+            logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscriptionId);
+            activatePremium(subscriptionId);
+        }
+
         PremiumSubscription updated = getSubscriptionEntity(subscriptionId);
         return toResponse(updated);
     }
@@ -102,7 +115,14 @@ public class PremiumSubscriptionService {
         if (!subscription.getStatus().isPending()) {
             throw new BadRequestException("Payment fail can only be applied to pending subscriptions");
         }
-        workflowService.signalPaymentOutcome(subscription, false);
+
+        try {
+            workflowService.signalPaymentOutcome(subscription, false);
+        } catch (IllegalStateException e) {
+            logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscriptionId);
+            markPaymentFailed(subscriptionId);
+        }
+
         PremiumSubscription updated = getSubscriptionEntity(subscriptionId);
         return toResponse(updated);
     }
