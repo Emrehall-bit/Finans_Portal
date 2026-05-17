@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             targetNamespace="http://www.jboss.org/drools">
+
+    <process id="premium-upgrade-process" name="Premium Upgrade Process" isExecutable="true">
+        <property id="subscriptionId" name="subscriptionId" itemSubjectRef="xsd:long"/>
+        <property id="paymentSuccess" name="paymentSuccess" itemSubjectRef="xsd:boolean"/>
+
+        <startEvent id="StartEvent_1" name="Start"/>
+
+        <scriptTask id="Task_Requested" name="PREMIUM_REQUESTED" scriptFormat="http://www.java.com/java">
+            <script><![CDATA[]]></script>
+        </scriptTask>
+
+        <scriptTask id="Task_PaymentPending" name="PAYMENT_PENDING" scriptFormat="http://www.java.com/java">
+            <script><![CDATA[]]></script>
+        </scriptTask>
+
+        <eventBasedGateway id="Gateway_Wait" name="Wait Payment Or Cancel" gatewayDirection="Diverging"/>
+
+        <intermediateCatchEvent id="Catch_PaymentOutcome" name="Payment Outcome">
+            <signalEventDefinition signalRef="premium-payment-outcome"/>
+        </intermediateCatchEvent>
+
+        <exclusiveGateway id="Gateway_Result" name="Payment Success?" gatewayDirection="Diverging" default="Flow_Fail"/>
+
+        <scriptTask id="Task_Active" name="ACTIVE" scriptFormat="http://www.java.com/java">
+            <script><![CDATA[]]></script>
+        </scriptTask>
+
+        <scriptTask id="Task_Failed" name="PAYMENT_FAILED" scriptFormat="http://www.java.com/java">
+            <script><![CDATA[]]></script>
+        </scriptTask>
+
+        <intermediateCatchEvent id="Catch_Cancel" name="Cancel Requested">
+            <signalEventDefinition signalRef="premium-cancel-requested"/>
+        </intermediateCatchEvent>
+
+        <scriptTask id="Task_Cancelled" name="CANCELLED" scriptFormat="http://www.java.com/java">
+            <script><![CDATA[]]></script>
+        </scriptTask>
+
+        <endEvent id="End_Active" name="Active End"/>
+        <endEvent id="End_Failed" name="Failed End"/>
+        <endEvent id="End_Cancelled" name="Cancelled End"/>
+
+        <sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_Requested"/>
+        <sequenceFlow id="Flow_2" sourceRef="Task_Requested" targetRef="Task_PaymentPending"/>
+        <sequenceFlow id="Flow_3" sourceRef="Task_PaymentPending" targetRef="Gateway_Wait"/>
+        <sequenceFlow id="Flow_4" sourceRef="Gateway_Wait" targetRef="Catch_PaymentOutcome"/>
+        <sequenceFlow id="Flow_5" sourceRef="Gateway_Wait" targetRef="Catch_Cancel"/>
+        <sequenceFlow id="Flow_6" sourceRef="Catch_PaymentOutcome" targetRef="Gateway_Result"/>
+        <sequenceFlow id="Flow_7" sourceRef="Gateway_Result" targetRef="Task_Active">
+            <conditionExpression><![CDATA[return paymentSuccess == true;]]></conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_Fail" sourceRef="Gateway_Result" targetRef="Task_Failed"/>
+        <sequenceFlow id="Flow_9" sourceRef="Task_Active" targetRef="End_Active"/>
+        <sequenceFlow id="Flow_10" sourceRef="Task_Failed" targetRef="End_Failed"/>
+        <sequenceFlow id="Flow_11" sourceRef="Catch_Cancel" targetRef="Task_Cancelled"/>
+        <sequenceFlow id="Flow_12" sourceRef="Task_Cancelled" targetRef="End_Cancelled"/>
+    </process>
+</definitions>

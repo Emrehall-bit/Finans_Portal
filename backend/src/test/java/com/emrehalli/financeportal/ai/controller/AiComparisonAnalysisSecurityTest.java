@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.ai.access.AiFeatureAccessService;
 import com.emrehalli.financeportal.ai.comparison.ComparisonAnalysisResponse;
 import com.emrehalli.financeportal.ai.comparison.ComparisonAnalysisResponse.DataQuality;
 import com.emrehalli.financeportal.ai.comparison.ComparisonAnalysisService;
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.logging.AuditActivityFilter;
 import com.emrehalli.financeportal.config.security.AiPremiumAccessDeniedHandler;
@@ -79,7 +80,8 @@ class AiComparisonAnalysisSecurityTest {
         when(comparisonAnalysisService.getComparisonAnalysis("THYAO", "PGSUS"))
                 .thenReturn(new ComparisonAnalysisResponse(
                         "THYAO", "PGSUS", "summary", "technical", "fundamental", "risk",
-                        List.of(), List.of(), List.of(), List.of(), "final", DataQuality.PARTIAL, "groq", false
+                        List.of(), List.of(), List.of(), List.of(), "final", DataQuality.PARTIAL, "groq", false,
+                        AiResponseMetadata.fromAiResponse(new com.emrehalli.financeportal.ai.provider.AiResponse("{}", com.emrehalli.financeportal.ai.provider.AiProviderType.GROQ, false, "llama", 1L), DataQuality.PARTIAL.name())
                 ));
     }
 

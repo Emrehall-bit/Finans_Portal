@@ -3,8 +3,11 @@ package com.emrehalli.financeportal.ai.service;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.AiSignal;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.RiskLevel;
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.prompt.TechnicalAnalysisPromptBuilder;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
+import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
+import com.emrehalli.financeportal.ai.provider.AiTaskType;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.enums.TechnicalSignal;
 import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
@@ -34,25 +37,34 @@ public class AiTechnicalAnalysisService {
     private final AiGenerationService aiGenerationService;
     private final AiResponseCacheService aiResponseCacheService;
     private final TechnicalAnalysisPromptBuilder promptBuilder;
+    private final AiResponseLogHelper responseLogHelper;
 
     public AiTechnicalAnalysisService(TechnicalAnalysisService technicalAnalysisService,
                                       AiGenerationService aiGenerationService,
                                       AiResponseCacheService aiResponseCacheService,
-                                      TechnicalAnalysisPromptBuilder promptBuilder) {
+                                      TechnicalAnalysisPromptBuilder promptBuilder,
+                                      AiResponseLogHelper responseLogHelper) {
         this.technicalAnalysisService = technicalAnalysisService;
         this.aiGenerationService = aiGenerationService;
         this.aiResponseCacheService = aiResponseCacheService;
         this.promptBuilder = promptBuilder;
+        this.responseLogHelper = responseLogHelper;
     }
 
     public AiTechnicalAnalysisResponse getTechnicalComment(String symbol) {
         String normalizedSymbol = normalizeSymbol(symbol);
         String cacheKey = "ai:technical:" + normalizedSymbol;
         try {
-            return aiResponseCacheService.getOrComputeWithDynamicTtl(cacheKey, AiTechnicalAnalysisResponse.class, () -> computeTechnicalComment(normalizedSymbol));
+            LookupResult<AiTechnicalAnalysisResponse> lookup = aiResponseCacheService.getOrComputeWithDynamicTtlStatus(
+                    cacheKey, AiTechnicalAnalysisResponse.class, () -> computeTechnicalComment(normalizedSymbol));
+            AiTechnicalAnalysisResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
+            responseLogHelper.log(AiTaskType.TECHNICAL_ANALYSIS, response.metadata());
+            return response;
         } catch (Exception exception) {
             logger.warn("AI technical endpoint critical failure, returning fallback. symbol={}, reason={}", normalizedSymbol, exception.getMessage());
-            return dataLimitedFallback(normalizedSymbol);
+            AiTechnicalAnalysisResponse response = dataLimitedFallback(normalizedSymbol);
+            responseLogHelper.log(AiTaskType.TECHNICAL_ANALYSIS, response.metadata());
+            return response;
         }
     }
 
@@ -69,7 +81,7 @@ public class AiTechnicalAnalysisService {
             logger.info("AI technical computed. symbol={}, source={}, provider={}, ttlMinutes={}, summaryPreview={}",
                     normalizedSymbol,
                     enhanced.fromLlm() ? "LLM_SUCCESS" : "RULE_BASED_FALLBACK",
-                    enhanced.provider(),
+                    enhanced.metadata() != null ? enhanced.metadata().providerUsed() : null,
                     ttl.toMinutes(),
                     summarySnippet != null && summarySnippet.length() > 100 ? summarySnippet.substring(0, 100) : summarySnippet);
             return new CachedValue<>(enhanced.response(), ttl);
@@ -101,7 +113,8 @@ public class AiTechnicalAnalysisService {
                 momentumComment,
                 riskLevel,
                 signal,
-                DISCLAIMER
+                DISCLAIMER,
+                AiResponseMetadata.deterministic("FULL")
         );
     }
 
@@ -219,7 +232,27 @@ public class AiTechnicalAnalysisService {
                 "RSI verisi üretilemedi; momentum nötr kabul edilmeli ve yeni veri beklenmelidir.",
                 riskLevel,
                 signal,
-                DISCLAIMER
+                DISCLAIMER,
+                AiResponseMetadata.deterministic("LOW")
+        );
+    }
+
+    private AiTechnicalAnalysisResponse withCacheHit(AiTechnicalAnalysisResponse response, boolean cacheHit) {
+        if (response == null) {
+            return null;
+        }
+        AiResponseMetadata metadata = response.metadata() != null
+                ? response.metadata().withCacheHit(cacheHit)
+                : AiResponseMetadata.deterministic("LOW").withCacheHit(cacheHit);
+        return new AiTechnicalAnalysisResponse(
+                response.symbol(),
+                response.summary(),
+                response.trendComment(),
+                response.momentumComment(),
+                response.riskLevel(),
+                response.signal(),
+                response.disclaimer(),
+                metadata
         );
     }
 

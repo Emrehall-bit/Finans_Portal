@@ -84,7 +84,7 @@ export default function AdminAuditLogsSection() {
           description={t("admin.auditLogs.emptyDescription")}
         />
       ) : (
-        <div className="admin-users-table-shell">
+        <div className="admin-users-table-shell admin-audit-table-shell">
           <table className="admin-users-table admin-audit-table">
             <thead>
               <tr>

@@ -57,3 +57,8 @@ export async function unblockUser(userId, payload) {
   const response = await axiosClient.patch(`/api/v1/admin/users/${userId}/unblock`, payload);
   return normalizeApiResponse(response).data ?? null;
 }
+
+export async function deleteCurrentUserAccount() {
+  const response = await axiosClient.delete(`${API_CONFIG.ENDPOINTS.users}/me`);
+  return normalizeApiResponse(response);
+}

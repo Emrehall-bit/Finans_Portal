@@ -1,15 +1,21 @@
 import { useEffect, useState } from "react";
 import { getAiTechnicalAnalysis } from "../../api/aiApi";
+import { useAuth } from "../../auth/AuthContext";
 import AiCard from "./AiCard";
+import AiLockedCard from "./AiLockedCard";
+import AiResponseMeta from "./AiResponseMeta";
 
 export default function AiTechnicalInsightCard({ symbol, availableData = {}, highRisk = false }) {
+  const { isAuthenticated } = useAuth();
   const requestSymbol = availableData.quote?.symbol || availableData.quote?.code || symbol;
   const [comment, setComment] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const isGuest = !isAuthenticated;
+
   useEffect(() => {
-    if (!requestSymbol) {
+    if (!requestSymbol || isGuest) {
       setComment(null);
       setError("");
       setLoading(false);
@@ -29,7 +35,7 @@ export default function AiTechnicalInsightCard({ symbol, availableData = {}, hig
       } catch {
         if (active) {
           setComment(null);
-          setError("AI teknik yorum şu anda üretilemedi.");
+          setError("AI teknik yorum su anda uretilemedi.");
         }
       } finally {
         if (active) {
@@ -43,11 +49,24 @@ export default function AiTechnicalInsightCard({ symbol, availableData = {}, hig
     return () => {
       active = false;
     };
-  }, [requestSymbol]);
+  }, [isGuest, requestSymbol]);
+
+  if (isGuest) {
+    return (
+      <AiLockedCard
+        featureName="AI Teknik Gorunum"
+        description={`${symbol || "Varlik"} icin kisa AI teknik yorumunu gormek uzere giris yapin.`}
+      />
+    );
+  }
 
   return (
-    <AiCard title="AI Teknik Görünüm" subtitle={`${symbol || "Varlık"} için backend destekli teknik yorum`}>
-      {loading ? <p className="ai-state-message">AI teknik analiz hazırlanıyor...</p> : null}
+    <AiCard
+      title="AI Teknik Gorunum"
+      subtitle={`${symbol || "Varlik"} icin backend destekli teknik yorum`}
+      footer={comment ? <AiResponseMeta metadata={comment.metadata} /> : null}
+    >
+      {loading ? <p className="ai-state-message">AI teknik analiz hazirlaniyor...</p> : null}
       {!loading && error ? <p className="ai-state-message error">{error}</p> : null}
       {!loading && !error && comment ? (
         <>
@@ -68,7 +87,7 @@ export default function AiTechnicalInsightCard({ symbol, availableData = {}, hig
             </li>
             {highRisk ? (
               <li>
-                <strong>Uyarı:</strong> Vadeli işlemler kaldıraç nedeniyle yüksek risk taşır.
+                <strong>Uyari:</strong> Vadeli islemler kaldirac nedeniyle yuksek risk tasir.
               </li>
             ) : null}
           </ul>
@@ -89,16 +108,16 @@ function AiMiniMetric({ label, value, tone = "" }) {
 
 function formatRisk(value) {
   return {
-    LOW: "Düşük",
+    LOW: "Dusuk",
     MEDIUM: "Orta",
-    HIGH: "Yüksek",
+    HIGH: "Yuksek",
   }[value] ?? "-";
 }
 
 function formatSignal(value) {
   return {
     POSITIVE: "Pozitif",
-    NEUTRAL: "Nötr",
+    NEUTRAL: "Notr",
     NEGATIVE: "Negatif",
     RISKY: "Riskli",
   }[value] ?? "-";

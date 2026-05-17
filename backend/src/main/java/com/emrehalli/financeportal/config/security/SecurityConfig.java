@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/technical-analysis/**").permitAll()
+                        .requestMatchers("/api/v1/premium/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/technical/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/fundamental/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/unified/**").hasAnyRole("USER_PREMIUM", "ADMIN")

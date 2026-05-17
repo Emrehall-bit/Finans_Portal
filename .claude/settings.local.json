@@ -34,7 +34,12 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('access_token','ERROR:'+str\\(d\\)\\)[:80]\\)\")",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); t=d.get\\('access_token',''\\); print\\('OK' if t else 'FAIL:'+str\\(d\\)[:200]\\)\")",
       "Bash(npx vite *)",
-      "Bash(xargs grep -l \"syncCpi\\\\|syncPpi\\\\|MacroDataSyncService\")"
+      "Bash(xargs grep -l \"syncCpi\\\\|syncPpi\\\\|MacroDataSyncService\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\" -Recurse -File -Filter \"*remium*\")",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\" -Recurse -File | Where-Object {$_.Name -match \"remium\"})",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\" -Recurse -File | Where-Object {$_.Name -match \"remium|Premium\"})",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -File -Name \"*SecurityConfig*\" -o *Security.java)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -File | Where-Object {$_.Name -match \"Security\" -or $_.Name -match \"Config\"} | Select-Object FullName | Sort-Object FullName)"
     ]
   }
 }

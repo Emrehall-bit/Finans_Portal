@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.ai.unified;
 
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse;
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse;
 import com.emrehalli.financeportal.ai.postprocess.AiResponsePostProcessor;
 import com.emrehalli.financeportal.ai.provider.AiResponse;
@@ -9,6 +10,8 @@ import com.emrehalli.financeportal.ai.service.AiFundamentalAnalysisService;
 import com.emrehalli.financeportal.ai.service.AiGatewayService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
+import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
+import com.emrehalli.financeportal.ai.service.AiResponseLogHelper;
 import com.emrehalli.financeportal.ai.service.AiTechnicalAnalysisService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,6 +47,7 @@ public class UnifiedAiAnalysisService {
     private final AiResponseCacheService       cacheService;
     private final AiResponsePostProcessor      postProcessor;
     private final ObjectMapper                 objectMapper;
+    private final AiResponseLogHelper          responseLogHelper;
 
     public UnifiedAiAnalysisService(AiTechnicalAnalysisService technicalService,
                                     AiFundamentalAnalysisService fundamentalService,
@@ -52,7 +56,8 @@ public class UnifiedAiAnalysisService {
                                     AiGatewayService aiGatewayService,
                                     AiResponseCacheService cacheService,
                                     AiResponsePostProcessor postProcessor,
-                                    ObjectMapper objectMapper) {
+                                    ObjectMapper objectMapper,
+                                    AiResponseLogHelper responseLogHelper) {
         this.technicalService   = technicalService;
         this.fundamentalService = fundamentalService;
         this.assembler          = assembler;
@@ -61,17 +66,23 @@ public class UnifiedAiAnalysisService {
         this.cacheService       = cacheService;
         this.postProcessor      = postProcessor;
         this.objectMapper       = objectMapper;
+        this.responseLogHelper  = responseLogHelper;
     }
 
     public UnifiedAnalysisResponse getUnifiedAnalysis(String symbol, String instrumentType) {
         String key = "ai:unified:" + normalize(symbol);
         try {
-            return cacheService.getOrComputeWithDynamicTtl(
+            LookupResult<UnifiedAnalysisResponse> lookup = cacheService.getOrComputeWithDynamicTtlStatus(
                     key, UnifiedAnalysisResponse.class,
                     () -> compute(normalize(symbol), instrumentType));
+            UnifiedAnalysisResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
+            responseLogHelper.log(AiTaskType.PAGE_ANALYSIS, response.metadata());
+            return response;
         } catch (Exception e) {
             logger.warn("Unified AI endpoint critical failure. symbol={}, reason={}", symbol, e.getMessage());
-            return emptyFallback(normalize(symbol));
+            UnifiedAnalysisResponse response = emptyFallback(normalize(symbol));
+            responseLogHelper.log(AiTaskType.PAGE_ANALYSIS, response.metadata());
+            return response;
         }
     }
 
@@ -138,7 +149,15 @@ public class UnifiedAiAnalysisService {
 
         String provider = aiResponse.provider().name().toLowerCase(Locale.ROOT);
         return new CachedValue<>(
-                new UnifiedAnalysisResponse(symbol, summary, highlights, risks, provider, aiResponse.fallbackUsed()),
+                new UnifiedAnalysisResponse(
+                        symbol,
+                        summary,
+                        highlights,
+                        risks,
+                        provider,
+                        aiResponse.fallbackUsed(),
+                        AiResponseMetadata.fromAiResponse(aiResponse, "COMPLETE")
+                ),
                 CACHE_TTL
         );
     }
@@ -165,7 +184,7 @@ public class UnifiedAiAnalysisService {
         List<String> risks = ctx.fundamentalRisks().isEmpty()
                 ? List.of()
                 : ctx.fundamentalRisks().subList(0, Math.min(2, ctx.fundamentalRisks().size()));
-        return new UnifiedAnalysisResponse(symbol, summary, List.of(), risks, "rule-based", true);
+        return new UnifiedAnalysisResponse(symbol, summary, List.of(), risks, null, false, AiResponseMetadata.deterministic("PARTIAL"));
     }
 
     private UnifiedAnalysisResponse emptyFallback(String symbol) {
@@ -174,8 +193,27 @@ public class UnifiedAiAnalysisService {
                 "Birleşik AI analizi şu an hazırlanamıyor; teknik ve temel analiz kartlarını ayrı inceleyebilirsiniz.",
                 List.of(),
                 List.of(),
-                "rule-based",
-                false
+                null,
+                false,
+                AiResponseMetadata.deterministic("LOW")
+        );
+    }
+
+    private UnifiedAnalysisResponse withCacheHit(UnifiedAnalysisResponse response, boolean cacheHit) {
+        if (response == null) {
+            return null;
+        }
+        AiResponseMetadata metadata = response.metadata() != null
+                ? response.metadata().withCacheHit(cacheHit)
+                : AiResponseMetadata.deterministic("LOW").withCacheHit(cacheHit);
+        return new UnifiedAnalysisResponse(
+                response.symbol(),
+                response.summary(),
+                response.highlights(),
+                response.risks(),
+                response.provider(),
+                response.fallbackUsed(),
+                metadata
         );
     }
 

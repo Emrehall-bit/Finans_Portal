@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.ai.comparison;
 
 import com.emrehalli.financeportal.ai.comparison.ComparisonAnalysisContext.InstrumentSnapshot;
 import com.emrehalli.financeportal.ai.comparison.ComparisonAnalysisResponse.DataQuality;
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse.FinancialHealth;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.AiSignal;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.RiskLevel;
@@ -11,6 +12,8 @@ import com.emrehalli.financeportal.ai.provider.AiTaskType;
 import com.emrehalli.financeportal.ai.service.AiGatewayService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
+import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
+import com.emrehalli.financeportal.ai.service.AiResponseLogHelper;
 import com.emrehalli.financeportal.company.dto.CompanyFinancialReportResponse;
 import com.emrehalli.financeportal.company.dto.CompanyFundamentalsResponse;
 import com.emrehalli.financeportal.company.dto.FinancialValueItemResponse;
@@ -52,6 +55,7 @@ public class ComparisonAnalysisService {
     private final AiResponseCacheService cacheService;
     private final AiResponsePostProcessor postProcessor;
     private final ObjectMapper objectMapper;
+    private final AiResponseLogHelper responseLogHelper;
 
     public ComparisonAnalysisService(TechnicalAnalysisService technicalAnalysisService,
                                      CompanyQueryService companyQueryService,
@@ -59,7 +63,8 @@ public class ComparisonAnalysisService {
                                      AiGatewayService aiGatewayService,
                                      AiResponseCacheService cacheService,
                                      AiResponsePostProcessor postProcessor,
-                                     ObjectMapper objectMapper) {
+                                     ObjectMapper objectMapper,
+                                     AiResponseLogHelper responseLogHelper) {
         this.technicalAnalysisService = technicalAnalysisService;
         this.companyQueryService = companyQueryService;
         this.promptBuilder = promptBuilder;
@@ -67,6 +72,7 @@ public class ComparisonAnalysisService {
         this.cacheService = cacheService;
         this.postProcessor = postProcessor;
         this.objectMapper = objectMapper;
+        this.responseLogHelper = responseLogHelper;
     }
 
     public ComparisonAnalysisResponse getComparisonAnalysis(String leftSymbol, String rightSymbol) {
@@ -78,16 +84,21 @@ public class ComparisonAnalysisService {
         String cacheKey = "ai:comparison-analysis:" + normalizedPair;
 
         try {
-            return cacheService.getOrComputeWithDynamicTtl(
+            LookupResult<ComparisonAnalysisResponse> lookup = cacheService.getOrComputeWithDynamicTtlStatus(
                     cacheKey,
                     ComparisonAnalysisResponse.class,
                     () -> compute(left, right)
             );
+            ComparisonAnalysisResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
+            responseLogHelper.log(AiTaskType.COMPANY_COMPARISON, response.metadata());
+            return response;
         } catch (ResponseStatusException exception) {
             throw exception;
         } catch (Exception exception) {
             logger.warn("AI comparison endpoint critical failure. pair={}, reason={}", normalizedPair, exception.getMessage());
-            return deterministicFallback(buildUnavailableSnapshot(left), buildUnavailableSnapshot(right), DataQuality.LIMITED);
+            ComparisonAnalysisResponse response = deterministicFallback(buildUnavailableSnapshot(left), buildUnavailableSnapshot(right), DataQuality.LIMITED);
+            responseLogHelper.log(AiTaskType.COMPANY_COMPARISON, response.metadata());
+            return response;
         }
     }
 
@@ -141,7 +152,8 @@ public class ComparisonAnalysisService {
                 processText(root, "finalComment", fallback.finalComment()),
                 fallback.dataQuality(),
                 providerUsed,
-                aiResponse.fallbackUsed()
+                aiResponse.fallbackUsed(),
+                AiResponseMetadata.fromAiResponse(aiResponse, fallback.dataQuality().name())
         );
     }
 
@@ -295,8 +307,35 @@ public class ComparisonAnalysisService {
                 mergeStrengths(right.technicalWeaknesses(), right.fundamentalWeaknesses()),
                 buildFinalComment(left, right, dataQuality),
                 dataQuality,
-                "rule-based",
-                true
+                null,
+                false,
+                AiResponseMetadata.deterministic(dataQuality.name())
+        );
+    }
+
+    private ComparisonAnalysisResponse withCacheHit(ComparisonAnalysisResponse response, boolean cacheHit) {
+        if (response == null) {
+            return null;
+        }
+        AiResponseMetadata metadata = response.metadata() != null
+                ? response.metadata().withCacheHit(cacheHit)
+                : AiResponseMetadata.deterministic(response.dataQuality().name()).withCacheHit(cacheHit);
+        return new ComparisonAnalysisResponse(
+                response.leftSymbol(),
+                response.rightSymbol(),
+                response.summary(),
+                response.technicalComparison(),
+                response.fundamentalComparison(),
+                response.riskComparison(),
+                response.strengthsLeft(),
+                response.strengthsRight(),
+                response.weaknessesLeft(),
+                response.weaknessesRight(),
+                response.finalComment(),
+                response.dataQuality(),
+                response.providerUsed(),
+                response.fallbackUsed(),
+                metadata
         );
     }
 

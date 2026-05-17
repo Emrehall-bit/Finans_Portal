@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.ai.service;
 
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse;
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse.FinancialHealth;
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.AiSignal;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.RiskLevel;
@@ -43,14 +44,14 @@ public class AiGenerationService {
      * Wraps the enhanced DTO with source metadata so callers can determine the correct cache TTL.
      * fromLlm=true means the LLM JSON was successfully parsed and used to populate the response.
      */
-    public record EnhancedResult<T>(T response, boolean fromLlm, String provider) {}
+    public record EnhancedResult<T>(T response, boolean fromLlm, AiResponseMetadata metadata) {}
 
     public EnhancedResult<AiTechnicalAnalysisResponse> enhanceTechnical(
             String prompt, AiTechnicalAnalysisResponse fallback) {
 
         Optional<AiResponse> generated = aiGatewayService.generate(AiTaskType.TECHNICAL_ANALYSIS, prompt);
         if (generated.isEmpty()) {
-            return new EnhancedResult<>(fallback, false, "rule-based");
+            return new EnhancedResult<>(fallback, false, AiResponseMetadata.deterministic("LOW"));
         }
 
         AiResponse aiResponse = generated.get();
@@ -64,15 +65,16 @@ public class AiGenerationService {
                     postProcessor.process(textOrFallback(root, "momentumComment", fallback.momentumComment()), AiTaskType.TECHNICAL_ANALYSIS),
                     enumOrFallback(root, "riskLevel", RiskLevel.class, fallback.riskLevel()),
                     enumOrFallback(root, "signal", AiSignal.class, fallback.signal()),
-                    fallback.disclaimer()
+                    fallback.disclaimer(),
+                    AiResponseMetadata.fromAiResponse(aiResponse, fallback.metadata() != null ? fallback.metadata().dataQuality() : "FULL")
             );
             logger.info("LLM technical parse succeeded. provider={}, fallback={}, summaryPreview={}",
                     providerLabel, aiResponse.fallbackUsed(), summaryPreview(result.summary()));
-            return new EnhancedResult<>(result, true, providerLabel);
+            return new EnhancedResult<>(result, true, result.metadata());
         } catch (Exception exception) {
             logger.warn("LLM technical parse failed, rule-based activated. provider={}, reason={}, responsePreview={}",
                     providerLabel, exception.getMessage(), preview(aiResponse.content()));
-            return new EnhancedResult<>(fallback, false, "rule-based");
+            return new EnhancedResult<>(fallback, false, fallback.metadata());
         }
     }
 
@@ -81,7 +83,7 @@ public class AiGenerationService {
 
         Optional<AiResponse> generated = aiGatewayService.generate(AiTaskType.FUNDAMENTAL_ANALYSIS, prompt);
         if (generated.isEmpty()) {
-            return new EnhancedResult<>(fallback, false, "rule-based");
+            return new EnhancedResult<>(fallback, false, AiResponseMetadata.deterministic("LOW"));
         }
 
         AiResponse aiResponse = generated.get();
@@ -96,15 +98,16 @@ public class AiGenerationService {
                     processStringList(stringListOrFallback(root, "risks", fallback.risks()), AiTaskType.FUNDAMENTAL_ANALYSIS),
                     postProcessor.process(textOrFallback(root, "growthComment", fallback.growthComment()), AiTaskType.FUNDAMENTAL_ANALYSIS),
                     enumOrFallback(root, "financialHealth", FinancialHealth.class, fallback.financialHealth()),
-                    fallback.disclaimer()
+                    fallback.disclaimer(),
+                    AiResponseMetadata.fromAiResponse(aiResponse, fallback.metadata() != null ? fallback.metadata().dataQuality() : "FULL")
             );
             logger.info("LLM fundamental parse succeeded. provider={}, fallback={}, summaryPreview={}",
                     providerLabel, aiResponse.fallbackUsed(), summaryPreview(result.summary()));
-            return new EnhancedResult<>(result, true, providerLabel);
+            return new EnhancedResult<>(result, true, result.metadata());
         } catch (Exception exception) {
             logger.warn("LLM fundamental parse failed, rule-based activated. provider={}, reason={}, responsePreview={}",
                     providerLabel, exception.getMessage(), preview(aiResponse.content()));
-            return new EnhancedResult<>(fallback, false, "rule-based");
+            return new EnhancedResult<>(fallback, false, fallback.metadata());
         }
     }
 

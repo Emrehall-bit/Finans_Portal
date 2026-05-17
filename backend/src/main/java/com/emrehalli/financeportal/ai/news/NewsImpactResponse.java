@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.ai.news;
 
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
+
 import java.util.List;
 
 public record NewsImpactResponse(
@@ -11,5 +13,6 @@ public record NewsImpactResponse(
         String riskLevel,
         List<String> highlights,
         String provider,
-        boolean fallbackUsed
+        boolean fallbackUsed,
+        AiResponseMetadata metadata
 ) {}

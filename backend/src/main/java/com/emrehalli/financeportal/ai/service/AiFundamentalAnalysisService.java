@@ -2,8 +2,11 @@ package com.emrehalli.financeportal.ai.service;
 
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse;
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse.FinancialHealth;
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.prompt.FundamentalAnalysisPromptBuilder;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
+import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
+import com.emrehalli.financeportal.ai.provider.AiTaskType;
 import com.emrehalli.financeportal.company.dto.CompanyFinancialReportResponse;
 import com.emrehalli.financeportal.company.dto.CompanyFundamentalsResponse;
 import com.emrehalli.financeportal.company.dto.FinancialValueItemResponse;
@@ -31,25 +34,34 @@ public class AiFundamentalAnalysisService {
     private final AiGenerationService aiGenerationService;
     private final AiResponseCacheService aiResponseCacheService;
     private final FundamentalAnalysisPromptBuilder promptBuilder;
+    private final AiResponseLogHelper responseLogHelper;
 
     public AiFundamentalAnalysisService(CompanyQueryService companyQueryService,
                                         AiGenerationService aiGenerationService,
                                         AiResponseCacheService aiResponseCacheService,
-                                        FundamentalAnalysisPromptBuilder promptBuilder) {
+                                        FundamentalAnalysisPromptBuilder promptBuilder,
+                                        AiResponseLogHelper responseLogHelper) {
         this.companyQueryService = companyQueryService;
         this.aiGenerationService = aiGenerationService;
         this.aiResponseCacheService = aiResponseCacheService;
         this.promptBuilder = promptBuilder;
+        this.responseLogHelper = responseLogHelper;
     }
 
     public AiFundamentalAnalysisResponse getFundamentalComment(String symbol) {
         String normalizedSymbol = normalizeSymbol(symbol);
         String cacheKey = "ai:fundamental:" + normalizedSymbol;
         try {
-            return aiResponseCacheService.getOrComputeWithDynamicTtl(cacheKey, AiFundamentalAnalysisResponse.class, () -> computeFundamentalComment(normalizedSymbol));
+            LookupResult<AiFundamentalAnalysisResponse> lookup = aiResponseCacheService.getOrComputeWithDynamicTtlStatus(
+                    cacheKey, AiFundamentalAnalysisResponse.class, () -> computeFundamentalComment(normalizedSymbol));
+            AiFundamentalAnalysisResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
+            responseLogHelper.log(AiTaskType.FUNDAMENTAL_ANALYSIS, response.metadata());
+            return response;
         } catch (Exception exception) {
             logger.warn("AI fundamental endpoint critical failure, returning fallback. symbol={}, reason={}", normalizedSymbol, exception.getMessage());
-            return dataLimitedFallback(normalizedSymbol);
+            AiFundamentalAnalysisResponse response = dataLimitedFallback(normalizedSymbol);
+            responseLogHelper.log(AiTaskType.FUNDAMENTAL_ANALYSIS, response.metadata());
+            return response;
         }
     }
 
@@ -73,7 +85,7 @@ public class AiFundamentalAnalysisService {
             logger.info("AI fundamental computed. symbol={}, source={}, provider={}, ttlMinutes={}, summaryPreview={}",
                     normalizedSymbol,
                     enhanced.fromLlm() ? "LLM_SUCCESS" : "RULE_BASED_FALLBACK",
-                    enhanced.provider(),
+                    enhanced.metadata() != null ? enhanced.metadata().providerUsed() : null,
                     ttl.toMinutes(),
                     summarySnippet != null && summarySnippet.length() > 100 ? summarySnippet.substring(0, 100) : summarySnippet);
             return new CachedValue<>(enhanced.response(), ttl);
@@ -101,7 +113,8 @@ public class AiFundamentalAnalysisService {
                 risks,
                 growthComment,
                 health,
-                DISCLAIMER
+                DISCLAIMER,
+                AiResponseMetadata.deterministic("FULL")
         );
     }
 
@@ -289,7 +302,8 @@ public class AiFundamentalAnalysisService {
                 List.of("Eksik finansal veri nedeniyle kârlılık, borçluluk ve büyüme görünümü teyit edilemiyor."),
                 "Büyüme yorumu için yeterli karşılaştırmalı dönem verisi yok.",
                 health,
-                DISCLAIMER
+                DISCLAIMER,
+                AiResponseMetadata.deterministic("INSUFFICIENT")
         );
     }
 
@@ -346,6 +360,26 @@ public class AiFundamentalAnalysisService {
             return "-";
         }
         return symbol.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private AiFundamentalAnalysisResponse withCacheHit(AiFundamentalAnalysisResponse response, boolean cacheHit) {
+        if (response == null) {
+            return null;
+        }
+        AiResponseMetadata metadata = response.metadata() != null
+                ? response.metadata().withCacheHit(cacheHit)
+                : AiResponseMetadata.deterministic("INSUFFICIENT").withCacheHit(cacheHit);
+        return new AiFundamentalAnalysisResponse(
+                response.symbol(),
+                response.summary(),
+                response.strengths(),
+                response.weaknesses(),
+                response.risks(),
+                response.growthComment(),
+                response.financialHealth(),
+                response.disclaimer(),
+                metadata
+        );
     }
 
     private record LatestFinancials(BigDecimal revenue, BigDecimal netProfit) {

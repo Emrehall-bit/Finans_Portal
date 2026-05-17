@@ -1,21 +1,24 @@
 import { useRef, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { MessageSquare, Minimize2, Send, Sparkles, Loader2 } from "lucide-react";
+import { MessageSquare, Minimize2, Send, Sparkles, Loader2, Lock } from "lucide-react";
 import { postAiChat } from "../../api/aiApi";
+import { useAuth } from "../../auth/AuthContext";
+import AiResponseMeta from "./AiResponseMeta";
 
 const SUGGESTIONS = [
-  "THYAO için teknik özet",
-  "BIST 100 genel görünümü",
-  "Portföyümün riski nedir?",
+  "THYAO icin teknik ozet",
+  "BIST 100 genel gorunumu",
+  "Portfoyumun riski nedir?",
 ];
 
 const INITIAL_MESSAGE = {
   role: "ai",
-  text: "Merhaba! Finans Portalı AI asistanına hoş geldiniz. Hisse, piyasa veya portföyünüz hakkında soru sorabilirsiniz.",
+  text: "Merhaba! Finans Portali AI asistanina hos geldiniz. Hisse, piyasa veya portfoyunuz hakkinda soru sorabilirsiniz.",
 };
 
 export default function AiAssistantWidget({ aiContext = null }) {
   const { pathname } = useLocation();
+  const { isAuthenticated, login } = useAuth();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
@@ -30,6 +33,10 @@ export default function AiAssistantWidget({ aiContext = null }) {
 
   async function sendMessage(text) {
     const nextText = text.trim();
+    if (!isAuthenticated) {
+      login();
+      return;
+    }
     if (!nextText || loading) return;
 
     setMessages((prev) => [...prev, { role: "user", text: nextText }]);
@@ -38,13 +45,13 @@ export default function AiAssistantWidget({ aiContext = null }) {
 
     try {
       const data = await postAiChat(nextText, aiContext);
-      setMessages((prev) => [...prev, { role: "ai", text: data.reply }]);
+      setMessages((prev) => [...prev, { role: "ai", text: data.reply, metadata: data.metadata }]);
     } catch {
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          text: "Şu an yanıt üretilemiyor, lütfen daha sonra tekrar deneyin.",
+          text: "Su an yanit uretilemiyor, lutfen daha sonra tekrar deneyin.",
           error: true,
         },
       ]);
@@ -61,7 +68,7 @@ export default function AiAssistantWidget({ aiContext = null }) {
         type="button"
         className="ai-assistant-fab"
         onClick={() => setOpen(true)}
-        aria-label="AI Asistanı aç"
+        aria-label="AI Asistani ac"
       >
         <Sparkles size={23} aria-hidden="true" />
       </button>
@@ -83,31 +90,46 @@ export default function AiAssistantWidget({ aiContext = null }) {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          aria-label="AI Asistanı küçült"
+          aria-label="AI Asistani kucult"
         >
           <Minimize2 size={16} aria-hidden="true" />
         </button>
       </header>
 
       <div className="ai-assistant-messages">
-        {messages.map((message, index) => (
+        {!isAuthenticated ? (
+          <div className="ai-assistant-locked-state">
+            <span className="ai-assistant-locked-icon" aria-hidden="true">
+              <Lock size={16} />
+            </span>
+            <strong>Bu ozelligi kullanmak icin giris yapmalisiniz.</strong>
+            <button type="button" className="ai-premium-gate-button" onClick={() => login()}>
+              Giris Yap
+            </button>
+          </div>
+        ) : null}
+
+        {isAuthenticated ? messages.map((message, index) => (
           <div
             key={`${message.role}-${index}`}
             className={`ai-assistant-message ${message.role}${message.error ? " error" : ""}`}
           >
-            {message.text}
+            <div>{message.text}</div>
+            {message.role === "ai" && message.metadata ? (
+              <AiResponseMeta metadata={message.metadata} />
+            ) : null}
           </div>
-        ))}
+        )) : null}
 
-        {loading && (
+        {isAuthenticated && loading ? (
           <div className="ai-assistant-message ai typing">
-            <Loader2 size={14} className="ai-assistant-spinner" aria-label="Yanıt bekleniyor" />
+            <Loader2 size={14} className="ai-assistant-spinner" aria-label="Yanit bekleniyor" />
           </div>
-        )}
+        ) : null}
 
-        {messages.length <= 1 && !loading ? (
+        {isAuthenticated && messages.length <= 1 && !loading ? (
           <div className="ai-assistant-suggestions">
-            <span>Öneriler</span>
+            <span>Oneriler</span>
             {SUGGESTIONS.map((suggestion) => (
               <button
                 key={suggestion}
@@ -134,11 +156,11 @@ export default function AiAssistantWidget({ aiContext = null }) {
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="Bir şey sorun..."
-            disabled={loading}
+            placeholder={isAuthenticated ? "Bir sey sorun..." : "Giris yaparak AI sohbeti baslatin"}
+            disabled={loading || !isAuthenticated}
             aria-label="Mesaj"
           />
-          <button type="submit" aria-label="Gönder" disabled={loading || !input.trim()}>
+          <button type="submit" aria-label="Gonder" disabled={loading || !input.trim() || !isAuthenticated}>
             {loading ? (
               <Loader2 size={16} className="ai-assistant-spinner" aria-hidden="true" />
             ) : (
@@ -146,7 +168,7 @@ export default function AiAssistantWidget({ aiContext = null }) {
             )}
           </button>
         </div>
-        <small>Yatırım tavsiyesi değildir; yalnızca veri analizidir.</small>
+        <small>Yatirim tavsiyesi degildir; yalnizca veri analizidir.</small>
       </form>
     </aside>
   );

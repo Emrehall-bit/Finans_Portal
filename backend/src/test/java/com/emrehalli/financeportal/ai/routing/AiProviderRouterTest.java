@@ -82,6 +82,16 @@ class AiProviderRouterTest {
     }
 
     @Test
+    void portfolioAnalysis_primaryIsGroq() {
+        assertThat(router.getPrimary(AiTaskType.PORTFOLIO_ANALYSIS).getType()).isEqualTo(AiProviderType.GROQ);
+    }
+
+    @Test
+    void portfolioAnalysis_fallbackIsGemini() {
+        assertThat(router.getFallback(AiTaskType.PORTFOLIO_ANALYSIS).getType()).isEqualTo(AiProviderType.GEMINI);
+    }
+
+    @Test
     void newsSummary_primaryIsGroq() {
         assertThat(router.getPrimary(AiTaskType.NEWS_SUMMARY).getType()).isEqualTo(AiProviderType.GROQ);
     }

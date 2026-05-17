@@ -156,6 +156,29 @@ public class UserService {
     }
 
     @Transactional
+    public User updateUserRoleForSystem(User user, UserRole role, String reason) {
+        User persistedUser = getUserEntityById(user.getId());
+        UserRole previousRole = persistedUser.getRole();
+        persistedUser.setRole(role);
+        User updatedUser = userRepository.save(persistedUser);
+        adminAuditLogService.log(
+                null,
+                updatedUser.getId(),
+                AdminAuditAction.USER_ROLE_CHANGED,
+                "User role changed by system",
+                "reason=" + reason + ",previousRole=" + previousRole + ",newRole=" + updatedUser.getRole()
+        );
+        return updatedUser;
+    }
+
+    @Transactional
+    public void deleteCurrentUserAccount() {
+        CurrentUser currentUser = currentUserResolver.resolve();
+        User user = findOrCreateCurrentUser(currentUser);
+        userRepository.delete(user);
+    }
+
+    @Transactional
     public User getCurrentAuthenticatedUserEntity() {
         CurrentUser currentUser = currentUserResolver.resolve();
         return findOrCreateCurrentUser(currentUser);
@@ -367,6 +390,5 @@ public class UserService {
         }
     }
 }
-
 
 

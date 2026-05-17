@@ -10,7 +10,8 @@ public record AiFundamentalAnalysisResponse(
         List<String> risks,
         String growthComment,
         FinancialHealth financialHealth,
-        String disclaimer
+        String disclaimer,
+        AiResponseMetadata metadata
 ) {
     public enum FinancialHealth {
         STRONG,

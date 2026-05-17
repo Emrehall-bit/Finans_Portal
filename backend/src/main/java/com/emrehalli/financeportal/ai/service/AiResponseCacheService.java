@@ -34,10 +34,14 @@ public class AiResponseCacheService {
     }
 
     public <T> T getOrComputeWithDynamicTtl(String key, Class<T> type, Supplier<CachedValue<T>> supplier) {
+        return getOrComputeWithDynamicTtlStatus(key, type, supplier).value();
+    }
+
+    public <T> LookupResult<T> getOrComputeWithDynamicTtlStatus(String key, Class<T> type, Supplier<CachedValue<T>> supplier) {
         T cached = fromRedis(key, type);
         if (cached != null) {
             logger.info("AI cache hit. key={}", key);
-            return cached;
+            return new LookupResult<>(cached, true);
         }
 
         Object lock = locks.computeIfAbsent(key, ignored -> new Object());
@@ -46,7 +50,7 @@ public class AiResponseCacheService {
                 T latest = fromRedis(key, type);
                 if (latest != null) {
                     logger.info("AI cache hit. key={}", key);
-                    return latest;
+                    return new LookupResult<>(latest, true);
                 }
 
                 logger.info("AI cache miss, computing. key={}", key);
@@ -55,7 +59,7 @@ public class AiResponseCacheService {
                     toRedis(key, computed.value(), computed.ttl());
                     logger.info("AI cache stored. key={}, ttlMinutes={}", key, computed.ttl().toMinutes());
                 }
-                return computed == null ? null : computed.value();
+                return new LookupResult<>(computed == null ? null : computed.value(), false);
             }
         } finally {
             locks.remove(key, lock);
@@ -106,4 +110,5 @@ public class AiResponseCacheService {
     }
 
     public record CachedValue<T>(T value, Duration ttl) {}
+    public record LookupResult<T>(T value, boolean cacheHit) {}
 }

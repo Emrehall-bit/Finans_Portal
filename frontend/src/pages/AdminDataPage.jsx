@@ -11,12 +11,7 @@ import {
   getTcmbHistoryBackfillStatus,
   getTcmbSyncStatus,
   triggerBinanceHistoryFetch,
-  triggerMacroCpiSync,
-  triggerMacroConsumerConfidenceSync,
-  triggerMacroCurrentAccountSync,
-  triggerMacroLaborMarketSync,
-  triggerMacroPolicyRateSync,
-  triggerMacroPpiSync,
+  triggerMacroSyncAll,
   triggerStockFetch,
   triggerStockHistoryBackfill,
   triggerTefasFundFetch,
@@ -341,69 +336,31 @@ export default function AdminDataPage() {
             }),
           ),
       },
-      {
-        key: "macro-cpi",
-        group: "macro",
-        eyebrow: t("admin.cards.macroCpi.eyebrow"),
-        title: t("admin.cards.macroCpi.title"),
-        description: t("admin.cards.macroCpi.description"),
-        actionLabel: t("admin.cards.macroCpi.action"),
-        onClick: () => runAction("macro-cpi", triggerMacroCpiSync),
-      },
-      {
-        key: "macro-ppi",
-        group: "macro",
-        eyebrow: t("admin.cards.macroPpi.eyebrow"),
-        title: t("admin.cards.macroPpi.title"),
-        description: t("admin.cards.macroPpi.description"),
-        actionLabel: t("admin.cards.macroPpi.action"),
-        onClick: () => runAction("macro-ppi", triggerMacroPpiSync),
-      },
-      {
-        key: "macro-policy-rate",
-        group: "macro",
-        eyebrow: t("admin.cards.macroPolicyRate.eyebrow"),
-        title: t("admin.cards.macroPolicyRate.title"),
-        description: t("admin.cards.macroPolicyRate.description"),
-        actionLabel: t("admin.cards.macroPolicyRate.action"),
-        onClick: () => runAction("macro-policy-rate", triggerMacroPolicyRateSync),
-      },
-      {
-        key: "macro-labor-market",
-        group: "macro",
-        eyebrow: t("admin.cards.macroLaborMarket.eyebrow"),
-        title: t("admin.cards.macroLaborMarket.title"),
-        description: t("admin.cards.macroLaborMarket.description"),
-        actionLabel: t("admin.cards.macroLaborMarket.action"),
-        onClick: () => runAction("macro-labor-market", triggerMacroLaborMarketSync),
-      },
-      {
-        key: "macro-consumer-confidence",
-        group: "macro",
-        eyebrow: t("admin.cards.macroConsumerConfidence.eyebrow"),
-        title: t("admin.cards.macroConsumerConfidence.title"),
-        description: t("admin.cards.macroConsumerConfidence.description"),
-        actionLabel: t("admin.cards.macroConsumerConfidence.action"),
-        onClick: () => runAction("macro-consumer-confidence", triggerMacroConsumerConfidenceSync),
-      },
-      {
-        key: "macro-current-account",
-        group: "macro",
-        eyebrow: t("admin.cards.macroCurrentAccount.eyebrow"),
-        title: t("admin.cards.macroCurrentAccount.title"),
-        description: t("admin.cards.macroCurrentAccount.description"),
-        actionLabel: t("admin.cards.macroCurrentAccount.action"),
-        onClick: () => runAction("macro-current-account", triggerMacroCurrentAccountSync),
-      },
     ],
     [binanceDays, tefasFundCode, tefasPeriod, t],
   );
+
+  const runMacroSyncAll = async () => {
+    if (!lockActions()) return;
+    setBusyKey("macro-all");
+    setError("");
+    setResult(null);
+    setCompletedJobKey(null);
+    try {
+      const response = await triggerMacroSyncAll();
+      setResult(response ?? null);
+    } catch (err) {
+      setError(extractErrorMessage(err, t("admin.actionError")));
+    } finally {
+      setBusyKey((c) => (c === "macro-all" ? null : c));
+      unlockActions();
+    }
+  };
 
   const isBusy = useMemo(() => (key) => busyKey === key, [busyKey]);
   const controlsDisabled = actionsLocked || busyKey !== null || jobProgress?.running === true;
   const liveOperationCards = useMemo(() => actionCards.filter((card) => card.group === "live"), [actionCards]);
   const historyOperationCards = useMemo(() => actionCards.filter((card) => card.group === "history"), [actionCards]);
-  const macroOperationCards = useMemo(() => actionCards.filter((card) => card.group === "macro"), [actionCards]);
   const operationStatusLabel = error
     ? t("admin.metrics.status.error")
     : jobProgress?.running
@@ -835,7 +792,24 @@ export default function AdminDataPage() {
           </div>
         </div>
         <div className="admin-console-grid admin-grid">
-          {macroOperationCards.map(renderOperationCard)}
+          <article className="admin-console-card admin-operation-card panel-surface">
+            <div className="admin-console-card-copy">
+              <div className="admin-operation-card-head">
+                <p className="eyebrow">{t("admin.cards.macroSyncAll.eyebrow")}</p>
+              </div>
+              <h3>{t("admin.cards.macroSyncAll.title")}</h3>
+              <p>{t("admin.cards.macroSyncAll.description")}</p>
+            </div>
+            <button
+              type="button"
+              className="admin-console-button"
+              disabled={controlsDisabled}
+              onClick={runMacroSyncAll}
+            >
+              <span className="admin-console-button-glow" />
+              <span>{isBusy("macro-all") ? t("admin.running") : t("admin.cards.macroSyncAll.action")}</span>
+            </button>
+          </article>
         </div>
       </section>
 

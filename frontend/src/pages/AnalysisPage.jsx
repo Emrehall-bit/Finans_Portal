@@ -28,6 +28,7 @@ export default function AnalysisPage() {
   const [comparison, setComparison] = useState(null);
   const [comparisonLoading, setComparisonLoading] = useState(false);
   const [comparisonError, setComparisonError] = useState("");
+  const [comparisonMode, setComparisonMode] = useState("normalized");
 
   useEffect(() => {
     let active = true;
@@ -245,6 +246,8 @@ export default function AnalysisPage() {
                 loading={comparisonLoading}
                 error={comparisonError}
                 comparison={comparison}
+                mode={comparisonMode}
+                onModeChange={setComparisonMode}
               />
             </div>
 

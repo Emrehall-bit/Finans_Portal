@@ -28,7 +28,7 @@ export {
   resolveTrendDirection,
 };
 
-export function buildComparisonData(series = []) {
+export function buildComparisonData(series = [], mode = "normalized") {
   const grouped = new Map();
 
   series.forEach((item) => {
@@ -38,7 +38,7 @@ export function buildComparisonData(series = []) {
         grouped.set(key, { date: key });
       }
 
-      grouped.get(key)[item.symbol] = toNumeric(point.normalizedValue);
+      grouped.get(key)[item.symbol] = toNumeric(mode === "price" ? point.close : point.normalizedValue);
     });
   });
 

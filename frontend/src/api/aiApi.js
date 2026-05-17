@@ -41,10 +41,33 @@ export function getAiNewsImpactAnalysis(newsId) {
   );
 }
 
+export function getAiComparisonAnalysis(left, right) {
+  const pair = [left, right]
+    .map((value) => String(value || "").trim().toUpperCase())
+    .sort()
+    .join("-");
+
+  return deduplicate(
+    `compare-analysis:${pair}`,
+    () => axiosClient
+      .get("/api/v1/ai/compare-analysis", { params: { left, right } })
+      .then((r) => r.data)
+  );
+}
+
 /**
  * Chat is not cached — every call hits the AI provider directly.
  * Uses a 30-second timeout to accommodate AI response latency.
  */
+export function getPortfolioAiAnalysis(portfolioId) {
+  return deduplicate(
+    `portfolio-analysis:${portfolioId}`,
+    () => axiosClient
+      .get(`/api/v1/ai/portfolio-analysis/${encodeURIComponent(portfolioId)}`)
+      .then((r) => r.data)
+  );
+}
+
 export function postAiChat(message, context = null) {
   return axiosClient
     .post("/api/v1/ai/chat", { message, context }, { timeout: 30000 })

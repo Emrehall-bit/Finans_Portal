@@ -181,6 +181,11 @@ export async function triggerMacroCurrentAccountSync() {
   return normalizeApiResponse(response);
 }
 
+export async function triggerMacroSyncAll() {
+  const response = await axiosClient.post("/api/v1/admin/markets/macro/tcmb/sync-all");
+  return normalizeApiResponse(response);
+}
+
 export async function getAdminAuditLogs(params = {}) {
   const searchParams = new URLSearchParams();
 

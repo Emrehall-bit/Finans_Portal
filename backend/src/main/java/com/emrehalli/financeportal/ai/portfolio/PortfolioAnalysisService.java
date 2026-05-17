@@ -2,12 +2,15 @@ package com.emrehalli.financeportal.ai.portfolio;
 
 import com.emrehalli.financeportal.ai.portfolio.PortfolioAnalysisContext.PositionSnapshot;
 import com.emrehalli.financeportal.ai.portfolio.PortfolioAnalysisResponse.DataQuality;
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.postprocess.AiResponsePostProcessor;
 import com.emrehalli.financeportal.ai.provider.AiResponse;
 import com.emrehalli.financeportal.ai.provider.AiTaskType;
 import com.emrehalli.financeportal.ai.service.AiGatewayService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
+import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
+import com.emrehalli.financeportal.ai.service.AiResponseLogHelper;
 import com.emrehalli.financeportal.portfolio.dto.PortfolioHoldingDto;
 import com.emrehalli.financeportal.portfolio.dto.PortfolioSummaryResponse;
 import com.emrehalli.financeportal.portfolio.entity.Portfolio;
@@ -48,6 +51,7 @@ public class PortfolioAnalysisService {
     private final AiResponseCacheService cacheService;
     private final AiResponsePostProcessor postProcessor;
     private final ObjectMapper objectMapper;
+    private final AiResponseLogHelper responseLogHelper;
 
     public PortfolioAnalysisService(PortfolioService portfolioService,
                                     PortfolioHoldingService portfolioHoldingService,
@@ -55,7 +59,8 @@ public class PortfolioAnalysisService {
                                     AiGatewayService aiGatewayService,
                                     AiResponseCacheService cacheService,
                                     AiResponsePostProcessor postProcessor,
-                                    ObjectMapper objectMapper) {
+                                    ObjectMapper objectMapper,
+                                    AiResponseLogHelper responseLogHelper) {
         this.portfolioService = portfolioService;
         this.portfolioHoldingService = portfolioHoldingService;
         this.promptBuilder = promptBuilder;
@@ -63,6 +68,7 @@ public class PortfolioAnalysisService {
         this.cacheService = cacheService;
         this.postProcessor = postProcessor;
         this.objectMapper = objectMapper;
+        this.responseLogHelper = responseLogHelper;
     }
 
     public PortfolioAnalysisResponse getPortfolioAnalysis(Long portfolioId) {
@@ -73,14 +79,19 @@ public class PortfolioAnalysisService {
         String cacheKey = buildCacheKey(portfolio, holdings);
 
         try {
-            return cacheService.getOrComputeWithDynamicTtl(
+            LookupResult<PortfolioAnalysisResponse> lookup = cacheService.getOrComputeWithDynamicTtlStatus(
                     cacheKey,
                     PortfolioAnalysisResponse.class,
                     () -> compute(portfolio, holdings, summary)
             );
+            PortfolioAnalysisResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
+            responseLogHelper.log(AiTaskType.PORTFOLIO_ANALYSIS, response.metadata());
+            return response;
         } catch (Exception exception) {
             logger.warn("AI portfolio endpoint critical failure. portfolioId={}, reason={}", portfolioId, exception.getMessage());
-            return deterministicFallback(buildContext(portfolio, holdings, summary));
+            PortfolioAnalysisResponse response = deterministicFallback(buildContext(portfolio, holdings, summary));
+            responseLogHelper.log(AiTaskType.PORTFOLIO_ANALYSIS, response.metadata());
+            return response;
         }
     }
 
@@ -313,8 +324,9 @@ public class PortfolioAnalysisService {
                 context.suggestions(),
                 buildFinalComment(context),
                 context.dataQuality(),
-                "rule-based",
-                true
+                null,
+                false,
+                AiResponseMetadata.deterministic(context.dataQuality().name())
         );
     }
 
@@ -339,7 +351,8 @@ public class PortfolioAnalysisService {
                 processText(root, "finalComment", fallback.finalComment()),
                 fallback.dataQuality(),
                 providerUsed,
-                aiResponse.fallbackUsed()
+                aiResponse.fallbackUsed(),
+                AiResponseMetadata.fromAiResponse(aiResponse, fallback.dataQuality().name())
         );
     }
 
@@ -501,5 +514,34 @@ public class PortfolioAnalysisService {
 
     private String formatMoney(BigDecimal value) {
         return value == null ? "-" : value.setScale(2, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private PortfolioAnalysisResponse withCacheHit(PortfolioAnalysisResponse response, boolean cacheHit) {
+        if (response == null) {
+            return null;
+        }
+        AiResponseMetadata metadata = response.metadata() != null
+                ? response.metadata().withCacheHit(cacheHit)
+                : AiResponseMetadata.deterministic(response.dataQuality().name()).withCacheHit(cacheHit);
+        return new PortfolioAnalysisResponse(
+                response.portfolioId(),
+                response.portfolioName(),
+                response.totalValue(),
+                response.totalProfitLoss(),
+                response.totalProfitLossPercent(),
+                response.summary(),
+                response.allocationComment(),
+                response.riskComment(),
+                response.diversificationComment(),
+                response.strongestPositions(),
+                response.weakestPositions(),
+                response.riskSignals(),
+                response.suggestions(),
+                response.finalComment(),
+                response.dataQuality(),
+                response.providerUsed(),
+                response.fallbackUsed(),
+                metadata
+        );
     }
 }

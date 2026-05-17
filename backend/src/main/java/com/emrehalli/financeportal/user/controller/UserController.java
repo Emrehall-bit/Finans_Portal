@@ -41,6 +41,16 @@ public class UserController {
                 .message(appMessageSource.get("user.profile.updated"))
                 .build();
     }
+
+    @DeleteMapping("/me")
+    public ApiResponse<Void> deleteCurrentUserAccount() {
+        userService.deleteCurrentUserAccount();
+
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .message("Account deleted successfully")
+                .build();
+    }
 }
 
 

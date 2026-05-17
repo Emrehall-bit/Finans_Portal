@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.ai.comparison;
 
 import com.emrehalli.financeportal.ai.comparison.ComparisonAnalysisResponse.DataQuality;
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.postprocess.AiDisclaimerCleaner;
 import com.emrehalli.financeportal.ai.postprocess.AiResponsePostProcessor;
 import com.emrehalli.financeportal.ai.postprocess.TurkishFinancialTextCleaner;
@@ -9,6 +10,7 @@ import com.emrehalli.financeportal.ai.provider.AiResponse;
 import com.emrehalli.financeportal.ai.provider.AiTaskType;
 import com.emrehalli.financeportal.ai.service.AiGatewayService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService;
+import com.emrehalli.financeportal.ai.service.AiResponseLogHelper;
 import com.emrehalli.financeportal.company.dto.CompanyFundamentalsResponse;
 import com.emrehalli.financeportal.company.service.CompanyQueryService;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
@@ -65,7 +67,8 @@ class ComparisonAnalysisServiceTest {
                 aiGatewayService,
                 cacheService,
                 postProcessor,
-                new ObjectMapper()
+                new ObjectMapper(),
+                mock(AiResponseLogHelper.class)
         );
     }
 
@@ -73,24 +76,25 @@ class ComparisonAnalysisServiceTest {
     void cacheKey_isNormalizedIndependentlyOfRequestOrder() {
         ComparisonAnalysisResponse canned = new ComparisonAnalysisResponse(
                 "PGSUS", "THYAO", "summary", "technical", "fundamental", "risk",
-                List.of(), List.of(), List.of(), List.of(), "final", DataQuality.PARTIAL, "rule-based", true
+                List.of(), List.of(), List.of(), List.of(), "final", DataQuality.PARTIAL, null, false,
+                AiResponseMetadata.deterministic(DataQuality.PARTIAL.name())
         );
-        when(cacheService.getOrComputeWithDynamicTtl(anyString(), eq(ComparisonAnalysisResponse.class), any()))
-                .thenReturn(canned);
+        when(cacheService.getOrComputeWithDynamicTtlStatus(anyString(), eq(ComparisonAnalysisResponse.class), any()))
+                .thenReturn(new AiResponseCacheService.LookupResult<>(canned, false));
 
         service.getComparisonAnalysis("thyao", "pgsus");
         service.getComparisonAnalysis("PGSUS", "THYAO");
 
-        verify(cacheService, times(2)).getOrComputeWithDynamicTtl(eq("ai:comparison-analysis:PGSUS-THYAO"), eq(ComparisonAnalysisResponse.class), any());
+        verify(cacheService, times(2)).getOrComputeWithDynamicTtlStatus(eq("ai:comparison-analysis:PGSUS-THYAO"), eq(ComparisonAnalysisResponse.class), any());
     }
 
     @Test
     void missingData_usesDeterministicFallback() {
-        when(cacheService.getOrComputeWithDynamicTtl(anyString(), eq(ComparisonAnalysisResponse.class), any()))
+        when(cacheService.getOrComputeWithDynamicTtlStatus(anyString(), eq(ComparisonAnalysisResponse.class), any()))
                 .thenAnswer(invocation -> {
                     var supplier = (java.util.function.Supplier<?>) invocation.getArgument(2);
                     var cached = (AiResponseCacheService.CachedValue<?>) supplier.get();
-                    return cached.value();
+                    return new AiResponseCacheService.LookupResult<>(cached.value(), false);
                 });
         when(technicalAnalysisService.analyze(anyString(), any(), any(), anyString()))
                 .thenThrow(new IllegalStateException("no technical data"));
@@ -101,8 +105,8 @@ class ComparisonAnalysisServiceTest {
 
         ComparisonAnalysisResponse result = service.getComparisonAnalysis("BTC", "ETH");
 
-        assertThat(result.providerUsed()).isEqualTo("rule-based");
-        assertThat(result.fallbackUsed()).isTrue();
+        assertThat(result.metadata().deterministicFallbackUsed()).isTrue();
+        assertThat(result.metadata().aiEnhanced()).isFalse();
         assertThat(result.dataQuality()).isEqualTo(DataQuality.LIMITED);
         assertThat(result.summary()).contains("BTC").contains("ETH");
     }
@@ -157,11 +161,11 @@ class ComparisonAnalysisServiceTest {
     }
 
     private ComparisonAnalysisResponse invokeThroughCache(String left, String right) {
-        when(cacheService.getOrComputeWithDynamicTtl(anyString(), eq(ComparisonAnalysisResponse.class), any()))
+        when(cacheService.getOrComputeWithDynamicTtlStatus(anyString(), eq(ComparisonAnalysisResponse.class), any()))
                 .thenAnswer(invocation -> {
                     var supplier = (java.util.function.Supplier<?>) invocation.getArgument(2);
                     var cached = (AiResponseCacheService.CachedValue<?>) supplier.get();
-                    return cached.value();
+                    return new AiResponseCacheService.LookupResult<>(cached.value(), false);
                 });
         when(promptBuilder.build(any())).thenReturn("prompt");
         return service.getComparisonAnalysis(left, right);

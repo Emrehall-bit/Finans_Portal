@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.config.security;
 
 import com.emrehalli.financeportal.user.entity.UserRole;
+import com.emrehalli.financeportal.user.repository.UserRepository;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -19,6 +20,12 @@ import java.util.Set;
 
 @Component
 public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
+
+    private final UserRepository userRepository;
+
+    public KeycloakJwtAuthenticationConverter(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
@@ -47,13 +54,20 @@ public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, Abstra
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                 .forEach(authorities::add);
 
+        resolveLocalRole(jwt)
+                .map(UserRole::name)
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                .ifPresent(authorities::add);
+
         return authorities;
     }
 
     public UserRole extractRole(Jwt jwt) {
-        return extractRealmRoles(jwt).stream()
+        return java.util.stream.Stream.concat(
+                        extractRealmRoles(jwt).stream()
                 .map(this::toUserRole)
-                .flatMap(Optional::stream)
+                .flatMap(Optional::stream),
+                        resolveLocalRole(jwt).stream())
                 .max(Comparator.comparingInt(this::rolePriority))
                 .orElse(UserRole.USER);
     }
@@ -102,5 +116,21 @@ public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, Abstra
             case USER -> 2;
             case GUEST -> 1;
         };
+    }
+
+    private Optional<UserRole> resolveLocalRole(Jwt jwt) {
+        String subject = jwt.getSubject();
+        if (subject != null && !subject.isBlank()) {
+            Optional<UserRole> bySubject = userRepository.findByKeycloakId(subject).map(user -> user.getRole());
+            if (bySubject.isPresent()) {
+                return bySubject;
+            }
+        }
+
+        String email = jwt.getClaimAsString("email");
+        if (email != null && !email.isBlank()) {
+            return userRepository.findByEmail(email.trim().toLowerCase()).map(user -> user.getRole());
+        }
+        return Optional.empty();
     }
 }

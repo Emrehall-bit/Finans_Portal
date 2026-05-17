@@ -1,15 +1,21 @@
 import { useEffect, useState } from "react";
 import { getAiFundamentalAnalysis } from "../../api/aiApi";
+import { useAuth } from "../../auth/AuthContext";
 import AiCard from "./AiCard";
+import AiLockedCard from "./AiLockedCard";
+import AiResponseMeta from "./AiResponseMeta";
 
 export default function AiFundamentalInsightCard({ symbol, availableData = {} }) {
+  const { isAuthenticated } = useAuth();
   const requestSymbol = availableData.quote?.symbol || availableData.quote?.code || symbol;
   const [comment, setComment] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const isGuest = !isAuthenticated;
+
   useEffect(() => {
-    if (!requestSymbol) {
+    if (!requestSymbol || isGuest) {
       setComment(null);
       setError("");
       setLoading(false);
@@ -29,7 +35,7 @@ export default function AiFundamentalInsightCard({ symbol, availableData = {} })
       } catch {
         if (active) {
           setComment(null);
-          setError("AI finansal değerlendirme şu anda üretilemedi.");
+          setError("AI finansal degerlendirme su anda uretilemedi.");
         }
       } finally {
         if (active) {
@@ -43,30 +49,43 @@ export default function AiFundamentalInsightCard({ symbol, availableData = {} })
     return () => {
       active = false;
     };
-  }, [requestSymbol]);
+  }, [isGuest, requestSymbol]);
+
+  if (isGuest) {
+    return (
+      <AiLockedCard
+        featureName="AI Finansal Degerlendirme"
+        description={`${symbol || "Sirket"} icin temel AI yorumunu gormek uzere giris yapin.`}
+      />
+    );
+  }
 
   return (
-    <AiCard title="AI Finansal Değerlendirme" subtitle={`${symbol || "Şirket"} için backend destekli finansal yorum`}>
-      {loading ? <p className="ai-state-message">AI finansal değerlendirme hazırlanıyor...</p> : null}
+    <AiCard
+      title="AI Finansal Degerlendirme"
+      subtitle={`${symbol || "Sirket"} icin backend destekli finansal yorum`}
+      footer={comment ? <AiResponseMeta metadata={comment.metadata} /> : null}
+    >
+      {loading ? <p className="ai-state-message">AI finansal degerlendirme hazirlaniyor...</p> : null}
       {!loading && error ? <p className="ai-state-message error">{error}</p> : null}
       {!loading && !error && comment ? (
         <>
           <p>{comment.summary}</p>
 
           <div className="ai-metric-strip">
-            <AiMiniMetric label="Sağlık" value={formatHealth(comment.financialHealth)} tone={healthTone(comment.financialHealth)} />
-            <AiMiniMetric label="Güçlü Yan" value={String(comment.strengths?.length ?? 0)} />
+            <AiMiniMetric label="Saglik" value={formatHealth(comment.financialHealth)} tone={healthTone(comment.financialHealth)} />
+            <AiMiniMetric label="Guclu Yan" value={String(comment.strengths?.length ?? 0)} />
             <AiMiniMetric label="Risk" value={String(comment.risks?.length ?? 0)} tone={(comment.risks?.length ?? 0) > 1 ? "is-risky" : ""} />
           </div>
 
           <div className="ai-fundamental-grid">
-            <AiList title="Güçlü Yanlar" items={comment.strengths} />
-            <AiList title="Zayıf Yanlar" items={comment.weaknesses} />
+            <AiList title="Guclu Yanlar" items={comment.strengths} />
+            <AiList title="Zayif Yanlar" items={comment.weaknesses} />
             <AiList title="Riskler" items={comment.risks} />
           </div>
 
           <p>
-            <strong>Büyüme:</strong> {comment.growthComment || "Yeterli büyüme verisi yok."}
+            <strong>Buyume:</strong> {comment.growthComment || "Yeterli buyume verisi yok."}
           </p>
         </>
       ) : null}
@@ -99,9 +118,9 @@ function AiList({ title, items }) {
 
 function formatHealth(value) {
   return {
-    STRONG: "Güçlü",
+    STRONG: "Guclu",
     STABLE: "Dengeli",
-    WATCH: "İzle",
+    WATCH: "Izle",
     RISKY: "Riskli",
   }[value] ?? "-";
 }

@@ -17,18 +17,38 @@ import { buildComparisonData, formatAxisNumber } from "./analysisUtils";
 
 const COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2"];
 
-export default function AnalysisComparisonPanel({ loading, error, comparison }) {
+export default function AnalysisComparisonPanel({ loading, error, comparison, mode = "normalized", onModeChange }) {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
   const series = comparison?.series ?? [];
-  const chartData = buildComparisonData(series);
+  const chartData = buildComparisonData(series, mode);
 
   return (
     <section className="panel-surface analysis-lab-panel">
       <div className="panel-head">
         <div>
           <p className="eyebrow">{t("analysis.comparison.eyebrow")}</p>
-          <h3>{t("analysis.comparison.title")}</h3>
+          <h3>{mode === "price" ? t("analysis.comparison.priceTitle") : t("analysis.comparison.title")}</h3>
+        </div>
+        <div className="market-segmented-tabs" role="tablist" aria-label={t("analysis.comparison.modeLabel")}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "normalized"}
+            className={`market-segmented-tab ${mode === "normalized" ? "active" : ""}`}
+            onClick={() => onModeChange?.("normalized")}
+          >
+            {t("analysis.comparison.normalized")}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "price"}
+            className={`market-segmented-tab ${mode === "price" ? "active" : ""}`}
+            onClick={() => onModeChange?.("price")}
+          >
+            {t("analysis.comparison.price")}
+          </button>
         </div>
       </div>
 
@@ -83,9 +103,13 @@ function ComparisonTooltip({ active, payload, label, chartTheme }) {
       {payload.map((item) => (
         <div key={item.dataKey} className="chart-tooltip-row">
           <span>{item.name}</span>
-          <strong>{formatAxisNumber(item.value)}</strong>
+          <strong>{formatComparisonValue(item.value)}</strong>
         </div>
       ))}
     </div>
   );
+}
+
+function formatComparisonValue(value) {
+  return formatAxisNumber(value);
 }

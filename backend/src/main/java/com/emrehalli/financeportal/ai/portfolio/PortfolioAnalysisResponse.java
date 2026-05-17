@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.ai.portfolio;
 
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -20,7 +22,8 @@ public record PortfolioAnalysisResponse(
         String finalComment,
         DataQuality dataQuality,
         String providerUsed,
-        boolean fallbackUsed
+        boolean fallbackUsed,
+        AiResponseMetadata metadata
 ) {
     public enum DataQuality {
         COMPLETE,

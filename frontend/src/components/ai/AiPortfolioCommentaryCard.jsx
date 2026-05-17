@@ -1,7 +1,10 @@
 import AiCard from "./AiCard";
+import AiLockedCard from "./AiLockedCard";
+import { useAuth } from "../../auth/AuthContext";
 import { formatCurrency, formatNumber, formatPercent } from "../../utils/formatters";
 
 export default function AiPortfolioCommentaryCard({ portfolio }) {
+  const { isAuthenticated, isPremium } = useAuth();
   const holdings = Array.isArray(portfolio?.holdings) ? portfolio.holdings : [];
   const summary = portfolio?.summary ?? {};
   const totalValue = toNumber(summary.currentValue ?? summary.totalCurrentValue);
@@ -16,6 +19,25 @@ export default function AiPortfolioCommentaryCard({ portfolio }) {
       : topWeight > 20
         ? "orta"
         : "dengeli";
+
+  if (!isAuthenticated) {
+    return (
+      <AiLockedCard
+        featureName="AI Portföy Yorumu"
+        description="Portföy dağılımı ve risk yorumunu görmek için giriş yapın."
+      />
+    );
+  }
+
+  if (!isPremium) {
+    return (
+      <AiLockedCard
+        featureName="AI Portföy Yorumu"
+        description="Portföy dağılımı ve risk değerlendirmesi premium kullanıcılar için geçerlidir."
+        requiresPremium
+      />
+    );
+  }
 
   return (
     <AiCard title="AI Portföy Yorumu" subtitle="Pozisyon dağılımı ve risk değerlendirmesi">

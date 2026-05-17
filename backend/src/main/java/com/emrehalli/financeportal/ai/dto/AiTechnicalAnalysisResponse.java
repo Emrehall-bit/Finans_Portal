@@ -7,7 +7,8 @@ public record AiTechnicalAnalysisResponse(
         String momentumComment,
         RiskLevel riskLevel,
         AiSignal signal,
-        String disclaimer
+        String disclaimer,
+        AiResponseMetadata metadata
 ) {
     public enum RiskLevel {
         LOW,

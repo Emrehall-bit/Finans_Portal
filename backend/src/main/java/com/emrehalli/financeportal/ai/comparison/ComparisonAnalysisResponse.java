@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.ai.comparison;
 
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
+
 import java.util.List;
 
 public record ComparisonAnalysisResponse(
@@ -16,7 +18,8 @@ public record ComparisonAnalysisResponse(
         String finalComment,
         DataQuality dataQuality,
         String providerUsed,
-        boolean fallbackUsed
+        boolean fallbackUsed,
+        AiResponseMetadata metadata
 ) {
     public enum DataQuality {
         COMPLETE,

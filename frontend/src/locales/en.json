@@ -1,4 +1,13 @@
 {
+  "premium": {
+    "status": {
+      "PREMIUM_REQUESTED": "Request Created",
+      "PAYMENT_PENDING": "Awaiting Payment",
+      "ACTIVE": "Premium Active",
+      "PAYMENT_FAILED": "Payment Failed",
+      "CANCELLED": "Cancelled"
+    }
+  },
   "common": {
     "language": "Language",
     "turkish": "Türkçe",
@@ -433,9 +442,13 @@
     "comparison": {
       "eyebrow": "Comparison",
       "title": "Normalized performance",
+      "priceTitle": "Price comparison",
       "loading": "Loading comparison...",
       "emptyTitle": "No comparison data found",
-      "emptyDescription": "A comparison appears once at least two instruments are selected."
+      "emptyDescription": "A comparison appears once at least two instruments are selected.",
+      "modeLabel": "Comparison mode",
+      "normalized": "Normalized",
+      "price": "Price"
     },
     "insight": {
       "eyebrow": "Indicators",
@@ -717,41 +730,11 @@
         "description": "Call the TEFAS list endpoint and verify the first returned fund.",
         "action": "Test Connection"
       },
-      "macroCpi": {
-        "eyebrow": "Inflation",
-        "title": "CPI Sync",
-        "description": "Sync CPI (consumer price index) data from TCMB EVDS.",
-        "action": "CPI Sync"
-      },
-      "macroPpi": {
-        "eyebrow": "Producer Inflation",
-        "title": "PPI Sync",
-        "description": "Sync PPI (producer price index) data from TCMB EVDS.",
-        "action": "PPI Sync"
-      },
-      "macroPolicyRate": {
-        "eyebrow": "Monetary Policy",
-        "title": "Policy Rate Sync",
-        "description": "Sync central bank policy rate data from TCMB EVDS.",
-        "action": "Policy Rate Sync"
-      },
-      "macroLaborMarket": {
-        "eyebrow": "Labor Market",
-        "title": "Labor Market Sync",
-        "description": "Sync unemployment and labor force participation data from TCMB EVDS.",
-        "action": "Labor Market Sync"
-      },
-      "macroConsumerConfidence": {
-        "eyebrow": "Consumer Confidence",
-        "title": "Consumer Confidence Sync",
-        "description": "Sync consumer confidence index data from TCMB EVDS.",
-        "action": "Consumer Confidence Sync"
-      },
-      "macroCurrentAccount": {
-        "eyebrow": "Current Account",
-        "title": "Current Account Sync",
-        "description": "Sync current account balance data from TCMB EVDS.",
-        "action": "Current Account Sync"
+      "macroSyncAll": {
+        "eyebrow": "Macroeconomics",
+        "title": "Sync All Macro Data",
+        "description": "Simultaneously sync all macroeconomic indicators from TCMB EVDS: CPI, PPI, Policy Rate, Labour Market, Consumer Confidence, Current Account.",
+        "action": "Sync All"
       }
     },
     "stockHistory": {
@@ -829,6 +812,8 @@
         "tempBlock": "Temp Block",
         "permBlock": "Perm Block",
         "unblock": "Unblock",
+        "removeTempBlock": "Remove Temp Block",
+        "removePermBlock": "Remove Perm Block",
         "tempBlockEyebrow": "Temporary Block",
         "permBlockEyebrow": "Permanent Block",
         "unblockEyebrow": "Remove Block",
@@ -876,7 +861,27 @@
       "submit": "Send Global Announcement",
       "submitting": "Sending...",
       "success": "Broadcast notification sent.",
-      "error": "Failed to send broadcast notification."
+      "error": "Failed to send broadcast notification.",
+      "openButton": "Send Broadcast"
+    },
+    "premium": {
+      "eyebrow": "Premium",
+      "title": "Premium Management",
+      "description": "Review and approve or reject pending premium payment requests.",
+      "loading": "Loading requests...",
+      "loadError": "Failed to load premium requests.",
+      "approveError": "Failed to approve request.",
+      "rejectError": "Failed to reject request.",
+      "emptyTitle": "No Pending Requests",
+      "emptyDescription": "There are no pending premium payment requests.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "columns": {
+        "user": "User",
+        "requestedAt": "Requested At",
+        "status": "Status",
+        "actions": "Actions"
+      }
     },
     "auditLogs": {
       "eyebrow": "Admin Audit Logs",
@@ -938,7 +943,43 @@
     "systemDefault": "System default",
     "themeNote": "Theme selection is applied immediately and stored on the device. Profile preference can later be connected to the backend preference flow.",
     "activeTheme": "Active theme:",
+    "contactNote": "For issues or feedback, please reach us at",
+    "contactNoteSuffix": ".",
+    "premium": {
+      "eyebrow": "Membership",
+      "title": "Premium Membership",
+      "plan": "Plan",
+      "expiresAt": "Expires",
+      "noSubscription": "You have no active premium subscription.",
+      "pendingDesc": "Your payment request is awaiting admin approval.",
+      "upgrade": "Go Premium",
+      "cancel": "Cancel Request",
+      "upgradeSuccess": "Premium request created.",
+      "cancelSuccess": "Request cancelled.",
+      "upgradeError": "An error occurred.",
+      "cancelError": "Failed to cancel request."
+    },
     "saving": "Saving...",
+    "danger": {
+      "eyebrow": "Danger Zone",
+      "title": "Account Management",
+      "freeze": {
+        "title": "Freeze Account",
+        "description": "Temporarily disable your account. Contact support to reactivate it.",
+        "action": "Freeze Account"
+      },
+      "delete": {
+        "title": "Delete Account",
+        "description": "This action is irreversible. All your data will be permanently deleted.",
+        "action": "Delete Account",
+        "confirmTitle": "Permanently delete account",
+        "confirmDescription": "This cannot be undone. Type \"onaylıyorum.\" below to continue.",
+        "confirmLabel": "Confirmation phrase",
+        "confirmAction": "Permanently Delete My Account",
+        "deleting": "Deleting...",
+        "error": "Failed to delete account, please try again."
+      }
+    },
     "saveChanges": "Save changes",
     "community": {
       "eyebrow": "Community",

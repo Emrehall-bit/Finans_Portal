@@ -3,11 +3,13 @@ package com.emrehalli.financeportal.ai.controller;
 import com.emrehalli.financeportal.ai.context.AiContextEnricher;
 import com.emrehalli.financeportal.ai.dto.AiChatRequest;
 import com.emrehalli.financeportal.ai.dto.AiChatResponse;
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.postprocess.AiResponsePostProcessor;
 import com.emrehalli.financeportal.ai.prompt.ChatPromptBuilder;
 import com.emrehalli.financeportal.ai.provider.AiResponse;
 import com.emrehalli.financeportal.ai.provider.AiTaskType;
 import com.emrehalli.financeportal.ai.service.AiGatewayService;
+import com.emrehalli.financeportal.ai.service.AiResponseLogHelper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
@@ -27,35 +29,40 @@ public class AiChatController {
 
     private static final Logger logger = LogManager.getLogger(AiChatController.class);
     private static final String UNAVAILABLE_REPLY =
-            "Şu an yanıt üretilemiyor, lütfen daha sonra tekrar deneyin.";
+            "Su an yanit uretilemiyor, lutfen daha sonra tekrar deneyin.";
 
     private final AiGatewayService aiGatewayService;
     private final ChatPromptBuilder chatPromptBuilder;
     private final AiContextEnricher contextEnricher;
     private final AiResponsePostProcessor postProcessor;
     private final ObjectMapper objectMapper;
+    private final AiResponseLogHelper responseLogHelper;
 
     public AiChatController(AiGatewayService aiGatewayService,
                             ChatPromptBuilder chatPromptBuilder,
                             AiContextEnricher contextEnricher,
                             AiResponsePostProcessor postProcessor,
-                            ObjectMapper objectMapper) {
+                            ObjectMapper objectMapper,
+                            AiResponseLogHelper responseLogHelper) {
         this.aiGatewayService = aiGatewayService;
         this.chatPromptBuilder = chatPromptBuilder;
         this.contextEnricher = contextEnricher;
         this.postProcessor = postProcessor;
         this.objectMapper = objectMapper;
+        this.responseLogHelper = responseLogHelper;
     }
 
-    /**
-     * Chat endpoint. No cache — every request goes to the provider.
-     * Routing: primary GEMINI, fallback GROQ (configured in AiProperties).
-     */
     @PostMapping("/chat")
     public ResponseEntity<AiChatResponse> chat(@RequestBody AiChatRequest request) {
         if (request.message() == null || request.message().isBlank()) {
-            return ResponseEntity.badRequest()
-                    .body(new AiChatResponse("Mesaj boş olamaz.", null, false));
+            AiChatResponse response = new AiChatResponse(
+                    "Mesaj bos olamaz.",
+                    null,
+                    false,
+                    AiResponseMetadata.deterministic("LOW")
+            );
+            responseLogHelper.log(AiTaskType.CHAT, response.metadata());
+            return ResponseEntity.badRequest().body(response);
         }
 
         logger.info("AI chat request. messageLength={}, contextType={}",
@@ -66,10 +73,16 @@ public class AiChatController {
         String prompt = chatPromptBuilder.build(request.message(), contextBlock);
 
         Optional<AiResponse> response = aiGatewayService.generate(AiTaskType.CHAT, prompt);
-
         if (response.isEmpty()) {
             logger.warn("AI chat: no response from any provider.");
-            return ResponseEntity.ok(new AiChatResponse(UNAVAILABLE_REPLY, null, false));
+            AiChatResponse chatResponse = new AiChatResponse(
+                    UNAVAILABLE_REPLY,
+                    null,
+                    false,
+                    AiResponseMetadata.deterministic("LOW")
+            );
+            responseLogHelper.log(AiTaskType.CHAT, chatResponse.metadata());
+            return ResponseEntity.ok(chatResponse);
         }
 
         AiResponse aiResponse = response.get();
@@ -78,20 +91,16 @@ public class AiChatController {
         logger.info("AI chat success. provider={}, fallback={}, replyLength={}",
                 aiResponse.provider(), aiResponse.fallbackUsed(), reply.length());
 
-        return ResponseEntity.ok(new AiChatResponse(
+        AiChatResponse chatResponse = new AiChatResponse(
                 reply,
                 aiResponse.provider().name().toLowerCase(Locale.ROOT),
-                aiResponse.fallbackUsed()
-        ));
+                aiResponse.fallbackUsed(),
+                AiResponseMetadata.fromAiResponse(aiResponse, "FULL")
+        );
+        responseLogHelper.log(AiTaskType.CHAT, chatResponse.metadata());
+        return ResponseEntity.ok(chatResponse);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────
-
-    /**
-     * Extracts the "reply" field from the provider's JSON response.
-     * Falls back to the raw content string if JSON parsing fails —
-     * so the endpoint is robust even if the provider ignores the JSON instruction.
-     */
     private String extractReply(String content) {
         if (content == null || content.isBlank()) {
             return UNAVAILABLE_REPLY;
@@ -111,10 +120,9 @@ public class AiChatController {
                     return reply.trim();
                 }
             }
-        } catch (Exception e) {
-            logger.debug("Chat reply JSON parse skipped, using raw content. reason={}", e.getMessage());
+        } catch (Exception exception) {
+            logger.debug("Chat reply JSON parse skipped, using raw content. reason={}", exception.getMessage());
         }
         return content.trim();
     }
-
 }

@@ -1,4 +1,13 @@
 {
+  "premium": {
+    "status": {
+      "PREMIUM_REQUESTED": "Talep Oluşturuldu",
+      "PAYMENT_PENDING": "Ödeme Bekleniyor",
+      "ACTIVE": "Premium Aktif",
+      "PAYMENT_FAILED": "Ödeme Başarısız",
+      "CANCELLED": "İptal Edildi"
+    }
+  },
   "common": {
     "language": "Dil",
     "turkish": "Türkçe",
@@ -433,9 +442,13 @@
     "comparison": {
       "eyebrow": "Karşılaştırma",
       "title": "Normalize performans",
+      "priceTitle": "Fiyat karşılaştırması",
       "loading": "Karşılaştırma yükleniyor...",
       "emptyTitle": "Karşılaştırma verisi bulunamadı",
-      "emptyDescription": "En az iki enstrüman seçildiğinde karşılaştırma oluşur."
+      "emptyDescription": "En az iki enstrüman seçildiğinde karşılaştırma oluşur.",
+      "modeLabel": "Karşılaştırma modu",
+      "normalized": "Normalize",
+      "price": "Fiyat"
     },
     "insight": {
       "eyebrow": "İndikatörler",
@@ -717,41 +730,11 @@
         "description": "TEFAS liste endpointine bağlan ve ilk fon bilgisini doğrula.",
         "action": "Bağlantıyı Test Et"
       },
-      "macroCpi": {
-        "eyebrow": "Enflasyon",
-        "title": "CPI Sync",
-        "description": "TCMB EVDS'den CPI (TÜFE) verilerini senkronize et.",
-        "action": "CPI Sync"
-      },
-      "macroPpi": {
-        "eyebrow": "Üretici Enflasyonu",
-        "title": "PPI Sync",
-        "description": "TCMB EVDS'den PPI (ÜFE) verilerini senkronize et.",
-        "action": "PPI Sync"
-      },
-      "macroPolicyRate": {
-        "eyebrow": "Faiz Politikası",
-        "title": "Politika Faizi Sync",
-        "description": "TCMB EVDS'den politika faizi verilerini senkronize et.",
-        "action": "Politika Faizi Sync"
-      },
-      "macroLaborMarket": {
-        "eyebrow": "İşgücü Piyasası",
-        "title": "Labor Market Sync",
-        "description": "TCMB EVDS'den işsizlik ve işgücüne katılım oranı verilerini senkronize et.",
-        "action": "İşgücü Sync"
-      },
-      "macroConsumerConfidence": {
-        "eyebrow": "Tüketici Güveni",
-        "title": "Consumer Confidence Sync",
-        "description": "TCMB EVDS'den tüketici güven endeksi verilerini senkronize et.",
-        "action": "Tüketici Güven Sync"
-      },
-      "macroCurrentAccount": {
-        "eyebrow": "Cari Denge",
-        "title": "Current Account Sync",
-        "description": "TCMB EVDS'den cari hesap dengesi verilerini senkronize et.",
-        "action": "Cari Denge Sync"
+      "macroSyncAll": {
+        "eyebrow": "Makro Ekonomi",
+        "title": "Tüm Makro Verileri Güncelle",
+        "description": "TCMB EVDS'den tüm makroekonomik göstergeleri eş zamanlı senkronize et: TÜFE, ÜFE, Politika Faizi, İşgücü Piyasası, Tüketici Güveni, Cari Denge.",
+        "action": "Tümünü Güncelle"
       }
     },
     "stockHistory": {
@@ -829,6 +812,8 @@
         "tempBlock": "Geçici Blok",
         "permBlock": "Kalıcı Blok",
         "unblock": "Engeli Kaldır",
+        "removeTempBlock": "Geçici Engeli Kaldır",
+        "removePermBlock": "Kalıcı Engeli Kaldır",
         "tempBlockEyebrow": "Geçici Blok",
         "permBlockEyebrow": "Kalıcı Blok",
         "unblockEyebrow": "Engeli Kaldır",
@@ -876,7 +861,27 @@
       "submit": "Global Duyuru Gönder",
       "submitting": "Gönderiliyor...",
       "success": "Global duyuru gönderildi.",
-      "error": "Global duyuru gönderilemedi."
+      "error": "Global duyuru gönderilemedi.",
+      "openButton": "Genel Duyuru Gönder"
+    },
+    "premium": {
+      "eyebrow": "Premium",
+      "title": "Premium İşlemleri",
+      "description": "Ödeme bekleyen premium taleplerini onaylayın veya reddedin.",
+      "loading": "Talepler yükleniyor...",
+      "loadError": "Premium talepler yüklenemedi.",
+      "approveError": "Onaylama sırasında hata oluştu.",
+      "rejectError": "Reddetme sırasında hata oluştu.",
+      "emptyTitle": "Bekleyen Talep Yok",
+      "emptyDescription": "Onay bekleyen premium talebi bulunmuyor.",
+      "approve": "Onayla",
+      "reject": "Reddet",
+      "columns": {
+        "user": "Kullanıcı",
+        "requestedAt": "Talep Tarihi",
+        "status": "Durum",
+        "actions": "İşlem"
+      }
     },
     "auditLogs": {
       "eyebrow": "Admin İşlem Logları",
@@ -938,7 +943,43 @@
     "systemDefault": "Sistem varsayılanı",
     "themeNote": "Tema seçimi anında uygulanır ve cihazda saklanır. Profil tercihi daha sonra backend preference akışına bağlanabilir.",
     "activeTheme": "Aktif tema:",
+    "contactNote": "Sorun ya da görüşlerinizi bildirmek için",
+    "contactNoteSuffix": "adresinden bizlere ulaşabilirsiniz.",
+    "premium": {
+      "eyebrow": "Üyelik",
+      "title": "Premium Üyelik",
+      "plan": "Plan",
+      "expiresAt": "Geçerlilik",
+      "noSubscription": "Aktif premium aboneliğiniz bulunmuyor.",
+      "pendingDesc": "Ödeme talebiniz admin onayı bekliyor.",
+      "upgrade": "Premium'a Geç",
+      "cancel": "Talebi İptal Et",
+      "upgradeSuccess": "Premium talebi oluşturuldu.",
+      "cancelSuccess": "Talep iptal edildi.",
+      "upgradeError": "İşlem sırasında hata oluştu.",
+      "cancelError": "İptal sırasında hata oluştu."
+    },
     "saving": "Kaydediliyor...",
+    "danger": {
+      "eyebrow": "Tehlikeli Alan",
+      "title": "Hesap Yönetimi",
+      "freeze": {
+        "title": "Hesabı Dondur",
+        "description": "Hesabınızı geçici olarak devre dışı bırakabilirsiniz. Destek ekibiyle iletişime geçerek yeniden açtırabilirsiniz.",
+        "action": "Hesabı Dondur"
+      },
+      "delete": {
+        "title": "Hesabı Sil",
+        "description": "Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinir.",
+        "action": "Hesabı Sil",
+        "confirmTitle": "Hesabı kalıcı olarak sil",
+        "confirmDescription": "Bu işlem geri alınamaz. Devam etmek için aşağıya \"onaylıyorum.\" yazın.",
+        "confirmLabel": "Onay ifadesi",
+        "confirmAction": "Hesabımı Kalıcı Sil",
+        "deleting": "Siliniyor...",
+        "error": "Hesap silinemedi, lütfen tekrar deneyin."
+      }
+    },
     "saveChanges": "Değişiklikleri kaydet",
     "community": {
       "eyebrow": "Topluluk",

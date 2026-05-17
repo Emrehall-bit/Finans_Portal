@@ -13,6 +13,7 @@ import {
   updatePortfolioHolding,
 } from "../api/portfolioApi";
 import { extractErrorMessage } from "../api/responseUtils";
+import AiPortfolioAnalysisCard from "../components/ai/AiPortfolioAnalysisCard";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -389,6 +390,11 @@ export default function PortfolioDetailPage() {
               <SummaryCard title={t("portfolioDetail.cards.pricedHoldings")} value={`${formatNumber(valuationReadyCount, 0)} / ${formatNumber(holdings.length, 0)}`} subtitle={t("portfolioDetail.cards.pricedHoldingsSubtitle")} tone="cool" />
               <SummaryCard title={t("portfolioDetail.cards.missingPriceCount")} value={formatNumber(summary?.missingPriceCount, 0)} subtitle={t("portfolioDetail.cards.missingPriceCountSubtitle")} tone="warm" />
             </div>
+            <AiPortfolioAnalysisCard
+              portfolioId={portfolioInfo?.portfolioId || portfolioId}
+              portfolioName={portfolioInfo?.portfolioName}
+              holdingsCount={holdings.length}
+            />
           </section>
 
           <section className="portfolio-workbench-grid">

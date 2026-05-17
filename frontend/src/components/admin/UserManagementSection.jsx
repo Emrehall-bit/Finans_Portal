@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  activateUser,
-  deactivateUser,
   getAllUsers,
   getUserById,
   getUserModeration,
@@ -16,10 +14,7 @@ import { formatDateTime } from "../../utils/formatters";
 import { useAuth } from "../../auth/AuthContext";
 import SendUserNotificationModal from "./SendUserNotificationModal";
 import ModerationActionModal from "./ModerationActionModal";
-
-function formatBoolean(value, t) {
-  return value ? t("admin.users.values.active") : t("admin.users.values.passive");
-}
+import BroadcastNotificationModal from "./BroadcastNotificationModal";
 
 function formatRole(value) {
   return value || "-";
@@ -42,11 +37,11 @@ export default function UserManagementSection() {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [processingUserId, setProcessingUserId] = useState(null);
   const [processingRoleUserId, setProcessingRoleUserId] = useState(null);
   const [processingModerationUserId, setProcessingModerationUserId] = useState(null);
   const [notificationUser, setNotificationUser] = useState(null);
   const [moderationModal, setModerationModal] = useState({ mode: null, user: null });
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [moderationByUserId, setModerationByUserId] = useState({});
   const [listError, setListError] = useState("");
   const [listSuccess, setListSuccess] = useState("");
@@ -141,29 +136,6 @@ export default function UserManagementSection() {
     setSelectedUser((current) => (current?.id === updatedUser.id ? updatedUser : current));
   }, []);
 
-  const handleStatusToggle = useCallback(
-    async (user) => {
-      setProcessingUserId(user.id);
-      setListError("");
-      setListSuccess("");
-      setDetailError("");
-
-      try {
-        const updatedUser = user.active ? await deactivateUser(user.id) : await activateUser(user.id);
-        applyUpdatedUser(updatedUser);
-      } catch (error) {
-        const message = extractErrorMessage(error, t("admin.users.statusUpdateError"));
-        setListError(message);
-        if (selectedUserId === user.id) {
-          setDetailError(message);
-        }
-      } finally {
-        setProcessingUserId(null);
-      }
-    },
-    [applyUpdatedUser, selectedUserId, t],
-  );
-
   const handleRoleToggle = useCallback(
     async (user) => {
       const nextRole = user.role === "ADMIN" ? "USER" : "ADMIN";
@@ -235,6 +207,10 @@ export default function UserManagementSection() {
               count: usersPage?.totalElements ?? users.length,
             })}
           </span>
+          <button type="button" className="admin-console-button" onClick={() => setBroadcastOpen(true)}>
+            <span className="admin-console-button-glow" />
+            <span>{t("admin.broadcast.openButton")}</span>
+          </button>
           <button type="button" className="admin-console-button admin-users-refresh" onClick={loadUsers}>
             <span className="admin-console-button-glow" />
             <span>{t("common.refresh")}</span>
@@ -261,9 +237,6 @@ export default function UserManagementSection() {
                   <tr>
                     <th>{t("admin.users.columns.email")}</th>
                     <th>{t("admin.users.columns.fullName")}</th>
-                    <th>{t("admin.users.columns.role")}</th>
-                    <th>{t("admin.users.columns.moderation")}</th>
-                    <th>{t("admin.users.columns.active")}</th>
                     <th>{t("admin.users.columns.lastLogin")}</th>
                     <th>{t("admin.users.columns.createdAt")}</th>
                     <th>{t("admin.users.columns.detail")}</th>
@@ -277,14 +250,10 @@ export default function UserManagementSection() {
                     return (
                     <tr key={user.id} className={selectedUserId === user.id ? "admin-users-row-active" : ""}>
                       <td>{user.email || "-"}</td>
-                      <td>{user.fullName || "-"}</td>
-                      <td>{formatRole(user.role)}</td>
                       <td>
-                        <span className={`admin-users-moderation-badge ${String(moderation?.status ?? "ACTIVE").toLowerCase().replace("_", "-")}`}>
-                          {formatModerationStatus(moderation?.status ?? "ACTIVE", t)}
-                        </span>
+                        <span className="admin-users-fullname">{user.fullName || "-"}</span>
+                        <span className="admin-users-role-tag">{formatRole(user.role)}</span>
                       </td>
-                      <td>{formatBoolean(user.active, t)}</td>
                       <td>{formatDateTime(user.lastLoginAt)}</td>
                       <td>{formatDateTime(user.createdAt)}</td>
                       <td>
@@ -295,18 +264,6 @@ export default function UserManagementSection() {
                             onClick={() => loadUserDetail(user.id)}
                           >
                             {t("common.detail")}
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-users-status-button"
-                            disabled={processingUserId === user.id}
-                            onClick={() => handleStatusToggle(user)}
-                          >
-                            {processingUserId === user.id
-                              ? t("admin.users.updating")
-                              : user.active
-                                ? t("admin.users.deactivate")
-                                : t("admin.users.activate")}
                           </button>
                           <button
                             type="button"
@@ -327,30 +284,46 @@ export default function UserManagementSection() {
                           >
                             {t("admin.users.sendNotification")}
                           </button>
-                          <button
-                            type="button"
-                            className="admin-users-temp-block-button"
-                            disabled={processingModerationUserId === user.id || isSelf}
-                            onClick={() => openModerationModal("temp", user)}
-                          >
-                            {t("admin.users.moderation.tempBlock")}
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-users-perm-block-button"
-                            disabled={processingModerationUserId === user.id || isSelf}
-                            onClick={() => openModerationModal("perm", user)}
-                          >
-                            {t("admin.users.moderation.permBlock")}
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-users-unblock-button"
-                            disabled={processingModerationUserId === user.id || isSelf}
-                            onClick={() => openModerationModal("unblock", user)}
-                          >
-                            {t("admin.users.moderation.unblock")}
-                          </button>
+                          {moderation?.status !== "TEMP_BLOCKED" && moderation?.status !== "PERM_BLOCKED" && (
+                            <button
+                              type="button"
+                              className="admin-users-temp-block-button"
+                              disabled={processingModerationUserId === user.id || isSelf}
+                              onClick={() => openModerationModal("temp", user)}
+                            >
+                              {t("admin.users.moderation.tempBlock")}
+                            </button>
+                          )}
+                          {moderation?.status !== "TEMP_BLOCKED" && moderation?.status !== "PERM_BLOCKED" && (
+                            <button
+                              type="button"
+                              className="admin-users-perm-block-button"
+                              disabled={processingModerationUserId === user.id || isSelf}
+                              onClick={() => openModerationModal("perm", user)}
+                            >
+                              {t("admin.users.moderation.permBlock")}
+                            </button>
+                          )}
+                          {moderation?.status === "TEMP_BLOCKED" && (
+                            <button
+                              type="button"
+                              className="admin-users-unblock-button"
+                              disabled={processingModerationUserId === user.id || isSelf}
+                              onClick={() => openModerationModal("unblock", user)}
+                            >
+                              {t("admin.users.moderation.removeTempBlock")}
+                            </button>
+                          )}
+                          {moderation?.status === "PERM_BLOCKED" && (
+                            <button
+                              type="button"
+                              className="admin-users-unblock-button"
+                              disabled={processingModerationUserId === user.id || isSelf}
+                              onClick={() => openModerationModal("unblock", user)}
+                            >
+                              {t("admin.users.moderation.removePermBlock")}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -400,10 +373,6 @@ export default function UserManagementSection() {
                 <dd>{formatRole(selectedUser.role)}</dd>
               </div>
               <div>
-                <dt>{t("admin.users.fields.active")}</dt>
-                <dd>{formatBoolean(selectedUser.active, t)}</dd>
-              </div>
-              <div>
                 <dt>{t("admin.users.fields.preferences")}</dt>
                 <dd>
                   {formatPreference(selectedUser.preferredLanguage)} /{" "}
@@ -450,6 +419,11 @@ export default function UserManagementSection() {
           )}
         </aside>
       </div>
+
+      <BroadcastNotificationModal
+        isOpen={broadcastOpen}
+        onClose={() => setBroadcastOpen(false)}
+      />
 
       <SendUserNotificationModal
         isOpen={Boolean(notificationUser)}

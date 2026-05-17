@@ -1,11 +1,14 @@
 package com.emrehalli.financeportal.ai.news;
 
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.postprocess.AiResponsePostProcessor;
 import com.emrehalli.financeportal.ai.provider.AiResponse;
 import com.emrehalli.financeportal.ai.provider.AiTaskType;
 import com.emrehalli.financeportal.ai.service.AiGatewayService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
+import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
+import com.emrehalli.financeportal.ai.service.AiResponseLogHelper;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.service.NewsService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -42,6 +45,7 @@ public class NewsImpactAnalysisService {
     private final AiResponseCacheService  cacheService;
     private final AiResponsePostProcessor postProcessor;
     private final ObjectMapper            objectMapper;
+    private final AiResponseLogHelper     responseLogHelper;
 
     public NewsImpactAnalysisService(NewsService newsService,
                                      NewsCategoryDetector categoryDetector,
@@ -50,7 +54,8 @@ public class NewsImpactAnalysisService {
                                      AiGatewayService aiGatewayService,
                                      AiResponseCacheService cacheService,
                                      AiResponsePostProcessor postProcessor,
-                                     ObjectMapper objectMapper) {
+                                     ObjectMapper objectMapper,
+                                     AiResponseLogHelper responseLogHelper) {
         this.newsService          = newsService;
         this.categoryDetector     = categoryDetector;
         this.sectorImpactResolver = sectorImpactResolver;
@@ -59,6 +64,7 @@ public class NewsImpactAnalysisService {
         this.cacheService         = cacheService;
         this.postProcessor        = postProcessor;
         this.objectMapper         = objectMapper;
+        this.responseLogHelper    = responseLogHelper;
     }
 
     public NewsImpactResponse getNewsImpactAnalysis(Long newsId) {
@@ -66,12 +72,17 @@ public class NewsImpactAnalysisService {
         NewsResponseDto news = newsService.getNewsById(newsId);
         String cacheKey = "ai:news-impact:" + newsId;
         try {
-            return cacheService.getOrComputeWithDynamicTtl(
+            LookupResult<NewsImpactResponse> lookup = cacheService.getOrComputeWithDynamicTtlStatus(
                     cacheKey, NewsImpactResponse.class,
                     () -> compute(newsId, news));
+            NewsImpactResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
+            responseLogHelper.log(AiTaskType.NEWS_IMPACT_ANALYSIS, response.metadata());
+            return response;
         } catch (Exception e) {
             logger.warn("NewsImpact AI critical failure. newsId={}, reason={}", newsId, e.getMessage());
-            return emptyFallback(newsId);
+            NewsImpactResponse response = emptyFallback(newsId);
+            responseLogHelper.log(AiTaskType.NEWS_IMPACT_ANALYSIS, response.metadata());
+            return response;
         }
     }
 
@@ -145,7 +156,8 @@ public class NewsImpactAnalysisService {
                         context.initialRiskLevel(),
                         highlights,
                         provider,
-                        aiResponse.fallbackUsed()
+                        aiResponse.fallbackUsed(),
+                        AiResponseMetadata.fromAiResponse(aiResponse, "COMPLETE")
                 ),
                 CACHE_TTL
         );
@@ -177,8 +189,9 @@ public class NewsImpactAnalysisService {
                 context.initialSentiment(),
                 context.initialRiskLevel(),
                 List.of(),
-                "rule-based",
-                true
+                null,
+                false,
+                AiResponseMetadata.deterministic("PARTIAL")
         );
     }
 
@@ -191,8 +204,30 @@ public class NewsImpactAnalysisService {
                 "NEUTRAL",
                 "LOW",
                 List.of(),
-                "rule-based",
-                false
+                null,
+                false,
+                AiResponseMetadata.deterministic("LOW")
+        );
+    }
+
+    private NewsImpactResponse withCacheHit(NewsImpactResponse response, boolean cacheHit) {
+        if (response == null) {
+            return null;
+        }
+        AiResponseMetadata metadata = response.metadata() != null
+                ? response.metadata().withCacheHit(cacheHit)
+                : AiResponseMetadata.deterministic("LOW").withCacheHit(cacheHit);
+        return new NewsImpactResponse(
+                response.newsId(),
+                response.summary(),
+                response.marketImpact(),
+                response.affectedSectors(),
+                response.sentiment(),
+                response.riskLevel(),
+                response.highlights(),
+                response.provider(),
+                response.fallbackUsed(),
+                metadata
         );
     }
 }

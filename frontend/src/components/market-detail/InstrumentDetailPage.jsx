@@ -7,6 +7,7 @@ import { getCompanyFundamentals, getCompanyDisclosures, getCompanyFinancials } f
 import { extractErrorMessage } from "../../api/responseUtils";
 import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../../api/watchlistApi";
 import { useAuth } from "../../auth/AuthContext";
+import AiCompanyComparisonCard from "../ai/AiCompanyComparisonCard";
 import AiFundamentalInsightCard from "../ai/AiFundamentalInsightCard";
 import AiTechnicalInsightCard from "../ai/AiTechnicalInsightCard";
 import AiUnifiedAnalysisCard from "../ai/AiUnifiedAnalysisCard";
@@ -51,7 +52,7 @@ export default function InstrumentDetailPage() {
   const [watchlistItems, setWatchlistItems] = useState([]);
   const [quoteLoading, setQuoteLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(true);
-  const [historyLoading, setHistoryLoading] = useState(true);
+  const [, setHistoryLoading] = useState(true);
   const [newsLoading, setNewsLoading] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [quoteError, setQuoteError] = useState("");
@@ -606,6 +607,14 @@ export default function InstrumentDetailPage() {
                     symbol={displaySymbol}
                     availableData={aiAvailableData}
                     highRisk={resolvedInstrumentType === "FUTURES"}
+                  />
+                ) : null}
+
+                {supportsTechnicalAi(resolvedInstrumentType) ? (
+                  <AiCompanyComparisonCard
+                    leftSymbol={normalizedSymbol}
+                    displaySymbol={displaySymbol}
+                    instrumentType={resolvedInstrumentType}
                   />
                 ) : null}
               </section>

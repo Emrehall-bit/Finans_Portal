@@ -1,12 +1,12 @@
 import AdminAuditLogsSection from "../components/admin/AdminAuditLogsSection";
-import BroadcastNotificationCard from "../components/admin/BroadcastNotificationCard";
+import AdminPremiumSection from "../components/admin/AdminPremiumSection";
 import UserManagementSection from "../components/admin/UserManagementSection";
 
 export default function AdminUsersPage() {
   return (
     <div className="dashboard-stack admin-console-shell">
       <UserManagementSection />
-      <BroadcastNotificationCard />
+      <AdminPremiumSection />
       <AdminAuditLogsSection />
     </div>
   );

@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.ai.unified;
 
+import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
+
 import java.util.List;
 
 public record UnifiedAnalysisResponse(
@@ -8,5 +10,6 @@ public record UnifiedAnalysisResponse(
         List<String> highlights,
         List<String> risks,
         String provider,
-        boolean fallbackUsed
+        boolean fallbackUsed,
+        AiResponseMetadata metadata
 ) {}
