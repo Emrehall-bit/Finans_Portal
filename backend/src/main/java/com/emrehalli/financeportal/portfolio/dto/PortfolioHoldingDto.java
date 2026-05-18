@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -22,6 +23,7 @@ public class PortfolioHoldingDto {
     private PriceStatus priceStatus;
     private LocalDateTime lastPriceUpdateTime;
     private boolean valuationAvailable;
+    private LocalDate purchaseDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

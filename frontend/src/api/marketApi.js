@@ -155,7 +155,19 @@ export async function getMarketsByType(type) {
 
   if (type === "COMMODITY") {
     const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/commodities`);
-    return normalizeArrayPayload(data).map(mapCommodityQuote);
+    const COMMODITY_ORDER = [
+      "GRAM_ALTIN", "CEYREK_ALTIN", "YARIM_ALTIN", "TAM_ALTIN",
+      "CUMHURIYET_ALTINI", "GUMUS_GRAM", "BRENT",
+    ];
+    return normalizeArrayPayload(data)
+      .map(mapCommodityQuote)
+      .sort((a, b) => {
+        const ai = COMMODITY_ORDER.indexOf(a.symbol);
+        const bi = COMMODITY_ORDER.indexOf(b.symbol);
+        const aOrder = ai === -1 ? 999 : ai;
+        const bOrder = bi === -1 ? 999 : bi;
+        return aOrder - bOrder;
+      });
   }
 
   const { data } = await axiosClient.get(
@@ -226,6 +238,20 @@ export async function compareTechnicalAnalysis(params) {
     params,
   });
   return data;
+}
+
+export async function searchInstruments(query, limit = 20) {
+  const response = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/instruments/search`, {
+    params: { q: query, limit },
+  });
+  return response.data?.data ?? [];
+}
+
+export async function getPriceOnDate(symbol, date) {
+  const response = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}/price-on-date`, {
+    params: { date },
+  });
+  return response.data?.data ?? null;
 }
 
 function mapFxQuote(item) {

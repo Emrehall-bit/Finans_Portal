@@ -40,7 +40,18 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\" -Recurse -File | Where-Object {$_.Name -match \"remium|Premium\"})",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -File -Name \"*SecurityConfig*\" -o *Security.java)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -File | Where-Object {$_.Name -match \"Security\" -or $_.Name -match \"Config\"} | Select-Object FullName | Sort-Object FullName)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "PowerShell(cd \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\"; .\\\\mvnw.cmd compile 2>&1 | Select-String -Pattern \"ERROR|error:|FAILURE|Cannot|cannot|symbol\" | Where-Object { $_ -notmatch \"Unsafe|terminally\" } | Select-Object -Last 25)",
+      "PowerShell(cd \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\"; .\\\\mvnw.cmd compile -q 2>&1 | Select-String -Pattern \"ERROR|error:|FAILURE|Cannot|cannot|symbol\" | Where-Object { $_ -notmatch \"Unsafe|terminally\" } | Select-Object -Last 10)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\\\\market\\\\provider\\\\fund\\\\dto\" -Recurse)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Directory)",
+      "Bash(Format-Table FullName)",
+      "Bash(xargs grep -l \"history\\\\|History\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\\\\notification\" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })",
+      "Bash(node --test src/pages/newsPageQueryUtils.test.js)"
     ]
   }
 }

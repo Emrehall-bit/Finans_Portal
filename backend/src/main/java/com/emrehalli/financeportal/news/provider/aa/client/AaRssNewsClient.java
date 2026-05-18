@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.news.provider.aa.client;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
+import com.emrehalli.financeportal.news.provider.rss.ArticleImageFetcher;
 import com.emrehalli.financeportal.news.provider.rss.RssFeedSupport;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,10 +18,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class AaRssNewsClient {
@@ -30,11 +33,13 @@ public class AaRssNewsClient {
     private final RestTemplate restTemplate;
     private final AaNewsProperties properties;
     private final RssFeedSupport rssFeedSupport;
+    private final ArticleImageFetcher articleImageFetcher;
 
-    public AaRssNewsClient(RestTemplate restTemplate, AaNewsProperties properties, RssFeedSupport rssFeedSupport) {
+    public AaRssNewsClient(RestTemplate restTemplate, AaNewsProperties properties, RssFeedSupport rssFeedSupport, ArticleImageFetcher articleImageFetcher) {
         this.restTemplate = restTemplate;
         this.properties = properties;
         this.rssFeedSupport = rssFeedSupport;
+        this.articleImageFetcher = articleImageFetcher;
     }
 
     public List<NewsItemDto> fetchEconomyNews() {
@@ -51,8 +56,9 @@ public class AaRssNewsClient {
                 return List.of();
             }
 
-            List<NewsItemDto> items = parse(payload);
-            logger.info("AA feed parsed. url: {}, fetched: {}", properties.getRssUrl(), items.size());
+            AtomicInteger cycleCounter = articleImageFetcher.newCycleCounter();
+            List<NewsItemDto> items = parse(payload, cycleCounter);
+            logger.info("AA feed parsed. url: {}, fetched: {}, imageFetches: {}", properties.getRssUrl(), items.size(), cycleCounter.get());
             return items;
         } catch (RestClientException e) {
             logger.error("AA RSS fetch failed. url: {}", properties.getRssUrl(), e);
@@ -67,13 +73,13 @@ public class AaRssNewsClient {
         return rssFeedSupport.decodeResponseBody(response, logger, "AA RSS");
     }
 
-    List<NewsItemDto> parse(String payload) {
+    List<NewsItemDto> parse(String payload, AtomicInteger cycleCounter) {
         if (payload == null || payload.isBlank()) {
             return List.of();
         }
 
         try {
-            List<NewsItemDto> xmlItems = parseXmlFeed(payload);
+            List<NewsItemDto> xmlItems = parseXmlFeed(payload, cycleCounter);
             if (!xmlItems.isEmpty()) {
                 return xmlItems;
             }
@@ -92,7 +98,12 @@ public class AaRssNewsClient {
         }
     }
 
-    private List<NewsItemDto> parseXmlFeed(String xml) {
+    // kept for tests that call parse without a counter
+    List<NewsItemDto> parse(String payload) {
+        return parse(payload, new AtomicInteger(0));
+    }
+
+    private List<NewsItemDto> parseXmlFeed(String xml, AtomicInteger cycleCounter) {
         Document document = Jsoup.parse(xml, properties.getRssUrl(), Parser.xmlParser());
         Elements entries = document.select("channel > item, feed > entry");
         List<NewsItemDto> items = new ArrayList<>();
@@ -110,7 +121,7 @@ public class AaRssNewsClient {
                     rssFeedSupport.text(entry, "content\\:encoded"),
                     rssFeedSupport.text(entry, "content")
             );
-            String imageUrl = resolveImageUrl(entry, descriptionHtml, link);
+            String imageUrl = resolveImageUrl(entry, descriptionHtml, link, cycleCounter);
             String pubDate = rssFeedSupport.firstNonBlank(
                     rssFeedSupport.text(entry, "pubDate"),
                     rssFeedSupport.text(entry, "dc|date"),
@@ -188,20 +199,12 @@ public class AaRssNewsClient {
         return link.contains("/tr/ekonomi/") || link.contains("/ekonomi/");
     }
 
-    private String resolveImageUrl(Element entry, String descriptionHtml, String link) {
+    private String resolveImageUrl(Element entry, String descriptionHtml, String link, AtomicInteger cycleCounter) {
         String imageUrl = rssFeedSupport.resolveImageUrl(entry, descriptionHtml);
         if (imageUrl != null || link == null || link.isBlank()) {
             return imageUrl;
         }
-
-        try {
-            ResponseEntity<byte[]> response = restTemplate.exchange(link, HttpMethod.GET, null, byte[].class);
-            String payload = decodeResponseBody(response);
-            return rssFeedSupport.extractPreferredImageUrlFromDocument(payload, link);
-        } catch (Exception e) {
-            logger.debug("AA article image enrichment failed. url: {}", link, e);
-            return null;
-        }
+        return articleImageFetcher.fetchImageUrl(link, cycleCounter, "AA");
     }
 
     private String normalizeSummary(String summary) {

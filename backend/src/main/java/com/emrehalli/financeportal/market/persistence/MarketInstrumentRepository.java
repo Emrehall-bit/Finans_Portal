@@ -35,6 +35,9 @@ public interface MarketInstrumentRepository extends JpaRepository<MarketInstrume
 
     boolean existsByInstrumentCodeIgnoreCase(String instrumentCode);
 
+    List<MarketInstrument> findAllByInstrumentTypeAndInstrumentCodeContainingIgnoreCase(
+            InstrumentType instrumentType, String codePart);
+
     @Query("""
             select instrument
             from MarketInstrument instrument
@@ -42,4 +45,7 @@ public interface MarketInstrumentRepository extends JpaRepository<MarketInstrume
               and trim(instrument.instrumentCode) <> ''
             """)
     List<MarketInstrument> findAllWithNonBlankInstrumentCode();
+
+    List<MarketInstrument> findByInstrumentCodeContainingIgnoreCaseOrInstrumentNameContainingIgnoreCase(
+            String code, String name, org.springframework.data.domain.Pageable pageable);
 }

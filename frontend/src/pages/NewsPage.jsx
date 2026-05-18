@@ -14,7 +14,7 @@ import NewsFeedSkeleton from "../components/news/NewsFeedSkeleton";
 import NewsSidebarFilters from "../components/news/NewsSidebarFilters";
 import NewsTopBar from "../components/news/NewsTopBar";
 import { formatNewsCategoryLabel, getNewsProviderLabel } from "../components/news/newsCardUtils";
-import { getStoredNewsLanguage, persistNewsLanguage } from "./newsLanguagePreference";
+import { getStoredNewsLanguage } from "./newsLanguagePreference";
 import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
@@ -151,7 +151,7 @@ export default function NewsPage() {
       keyword: filters.keyword,
       category: selectedCategories[0] || "",
       provider: selectedProviders[0] || "",
-      language: selectedLanguages[0] || "",
+      language: selectedLanguages.length === 1 ? selectedLanguages[0] : "",
     }),
     [filters.keyword, selectedCategories, selectedLanguages, selectedProviders],
   );
@@ -173,23 +173,16 @@ export default function NewsPage() {
         label: getNewsProviderLabel(draftFilters.provider),
       });
     }
-    if (draftFilters.language === "tr") {
-      nextFilters.push({
-        type: "language",
-        value: "tr",
-        label: t("common.turkish"),
-      });
-    }
-    if (draftFilters.language === "en") {
-      nextFilters.push({
-        type: "language",
-        value: "en",
-        label: t("common.english"),
-      });
-    }
+    selectedLanguages.forEach((lang) => {
+      if (lang === "tr") {
+        nextFilters.push({ type: "language", value: "tr", label: t("common.turkish") });
+      } else if (lang === "en") {
+        nextFilters.push({ type: "language", value: "en", label: t("common.english") });
+      }
+    });
 
     return nextFilters.filter((filter) => filter.label);
-  }, [draftFilters, t]);
+  }, [draftFilters, selectedLanguages, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -229,22 +222,17 @@ export default function NewsPage() {
   }
 
   function handleToggleLanguage(value) {
-    const nextSelection = selectedLanguages.includes(value) ? [] : [value];
-    setSelectedLanguages(nextSelection);
-    persistNewsLanguage(nextSelection[0] || "");
+    setSelectedLanguages((prev) =>
+      prev.includes(value) ? prev.filter((l) => l !== value) : [...prev, value]
+    );
   }
 
   function handleResetFilters() {
     const resetLanguage = getStoredNewsLanguage();
     setSelectedCategories([]);
     setSelectedProviders([]);
-    setSelectedLanguages(resetLanguage ? [resetLanguage] : []);
-    setFilters((prev) => ({
-      ...prev,
-      category: "",
-      provider: "",
-      language: resetLanguage,
-    }));
+    setSelectedLanguages([resetLanguage]);
+    setFilters((prev) => ({ ...prev, category: "", provider: "" }));
   }
 
   function handleReload() {
@@ -273,8 +261,7 @@ export default function NewsPage() {
     }
 
     if (filter.type === "language") {
-      setSelectedLanguages([]);
-      persistNewsLanguage("");
+      setSelectedLanguages((current) => current.filter((l) => l !== filter.value));
     }
   }
 

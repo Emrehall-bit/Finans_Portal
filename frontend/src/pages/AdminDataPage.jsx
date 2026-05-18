@@ -18,6 +18,8 @@ import {
   triggerTefasFundBackfill,
   triggerTcmbHistoryBackfill,
   triggerTcmbSync,
+  triggerIndexFetch,
+  triggerCommodityDerive,
   updateMarketTapeConfig,
 } from "../api/adminApi";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -289,6 +291,24 @@ export default function AdminDataPage() {
           startJob("binance-history", () =>
             triggerBinanceHistoryFetch(Number.parseInt(binanceDays, 10) || 1825),
           ),
+      },
+      {
+        key: "index-fetch",
+        group: "live",
+        eyebrow: t("admin.cards.indexFetch.eyebrow"),
+        title: t("admin.cards.indexFetch.title"),
+        description: t("admin.cards.indexFetch.description"),
+        actionLabel: t("admin.cards.indexFetch.action"),
+        onClick: () => runAction("index-fetch", triggerIndexFetch),
+      },
+      {
+        key: "commodity-derive",
+        group: "live",
+        eyebrow: t("admin.cards.commodityDerive.eyebrow"),
+        title: t("admin.cards.commodityDerive.title"),
+        description: t("admin.cards.commodityDerive.description"),
+        actionLabel: t("admin.cards.commodityDerive.action"),
+        onClick: () => runAction("commodity-derive", triggerCommodityDerive),
       },
       {
         key: "tefas-fund-fetch",

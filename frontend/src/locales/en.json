@@ -409,6 +409,11 @@
     "modalAddTitle": "Add asset",
     "instrumentCode": "Instrument code",
     "instrumentCodePlaceholder": "THYAO, BTCUSDT, USDTRY",
+    "instrumentSearchPlaceholder": "Search instrument (min. 2 chars)...",
+    "purchaseDate": "Purchase date (optional)",
+    "priceAutoFetched": "Auto-filled",
+    "fetchingPrice": "Fetching price...",
+    "priceNotFoundForDate": "No price data for this date. Please enter the price manually.",
     "quantity": "Quantity",
     "buyPrice": "Buy price",
     "saving": "Saving...",
@@ -732,6 +737,18 @@
         "title": "TEFAS Test Connection",
         "description": "Call the TEFAS list endpoint and verify the first returned fund.",
         "action": "Test Connection"
+      },
+      "indexFetch": {
+        "eyebrow": "Index data",
+        "title": "Index Fetch",
+        "description": "Manually fetch and persist BIST index data from Yahoo Finance.",
+        "action": "Fetch Index Data"
+      },
+      "commodityDerive": {
+        "eyebrow": "Commodity calc",
+        "title": "Calculate Commodities",
+        "description": "Calculate Turkish gold/silver commodities (Gram Altın, Çeyrek, etc.) from GOLD_USD, SILVER_USD and USDTRY.",
+        "action": "Calculate Commodities"
       },
       "macroSyncAll": {
         "eyebrow": "Macroeconomics",

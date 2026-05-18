@@ -1,32 +1,15 @@
-const NEWS_LANGUAGE_STORAGE_KEY = "finance-portal-news-language";
+const I18N_LANGUAGE_STORAGE_KEY = "i18nextLng";
 
 export function normalizeNewsLanguage(value) {
-  if (value === "en") {
-    return "en";
-  }
-  if (value === "") {
-    return "";
-  }
+  if (value && value.startsWith("en")) return "en";
   return "tr";
 }
 
 export function getStoredNewsLanguage() {
-  if (typeof window === "undefined") {
-    return "tr";
-  }
-
-  const storedValue = window.localStorage.getItem(NEWS_LANGUAGE_STORAGE_KEY);
-  if (storedValue === null) {
-    return "tr";
-  }
-
-  return normalizeNewsLanguage(storedValue);
+  if (typeof window === "undefined") return "tr";
+  const appLang = window.localStorage.getItem(I18N_LANGUAGE_STORAGE_KEY) || "tr";
+  return normalizeNewsLanguage(appLang);
 }
 
-export function persistNewsLanguage(value) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(NEWS_LANGUAGE_STORAGE_KEY, normalizeNewsLanguage(value));
-}
+// no-op: language preference is now derived from the app language setting
+export function persistNewsLanguage() {}

@@ -128,6 +128,20 @@ public class NotificationService {
     }
 
     @Transactional
+    public void createSystemBroadcastNotification(String title, String message) {
+        Notification notification = Notification.builder()
+                .user(null)
+                .title(title)
+                .message(message)
+                .type(NotificationType.SYSTEM)
+                .targetType(NotificationTargetType.BROADCAST)
+                .read(false)
+                .createdBy(null)
+                .build();
+        notificationRepository.save(notification);
+    }
+
+    @Transactional
     public NotificationResponseDto createBroadcastNotification(CreateBroadcastNotificationRequest request) {
         User currentAdmin = userService.getCurrentAuthenticatedUserEntity();
         NotificationType type = normalizeBroadcastNotificationType(request.getType());

@@ -12,5 +12,6 @@ public enum SourceName {
     YAHOO_FINANCE,
     IS_YATIRIM,
     BIST,
-    INTERNAL
+    INTERNAL,
+    CALCULATED
 }

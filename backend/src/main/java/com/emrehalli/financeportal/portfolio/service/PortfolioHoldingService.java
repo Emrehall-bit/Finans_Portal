@@ -1,6 +1,8 @@
 package com.emrehalli.financeportal.portfolio.service;
 
+import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
+import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
 import com.emrehalli.financeportal.portfolio.dto.CreatePortfolioHoldingRequest;
 import com.emrehalli.financeportal.portfolio.dto.PortfolioHoldingDto;
 import com.emrehalli.financeportal.portfolio.dto.PortfolioSummaryResponse;
@@ -24,13 +26,16 @@ public class PortfolioHoldingService {
     private final PortfolioHoldingRepository portfolioHoldingRepository;
     private final PortfolioRepository portfolioRepository;
     private final PortfolioPriceResolver portfolioPriceResolver;
+    private final MarketInstrumentRepository marketInstrumentRepository;
 
     public PortfolioHoldingService(PortfolioHoldingRepository portfolioHoldingRepository,
                                    PortfolioRepository portfolioRepository,
-                                   PortfolioPriceResolver portfolioPriceResolver) {
+                                   PortfolioPriceResolver portfolioPriceResolver,
+                                   MarketInstrumentRepository marketInstrumentRepository) {
         this.portfolioHoldingRepository = portfolioHoldingRepository;
         this.portfolioRepository = portfolioRepository;
         this.portfolioPriceResolver = portfolioPriceResolver;
+        this.marketInstrumentRepository = marketInstrumentRepository;
     }
 
     @Transactional
@@ -38,12 +43,17 @@ public class PortfolioHoldingService {
         Portfolio portfolio = findPortfolio(portfolioId);
         String instrumentCode = normalizeInstrumentCode(request.getInstrumentCode());
 
+        if (!marketInstrumentRepository.existsByInstrumentCodeIgnoreCase(instrumentCode)) {
+            throw new BadRequestException("Sistemde kayıtlı olmayan enstrüman: " + instrumentCode);
+        }
+
         LocalDateTime now = LocalDateTime.now();
         PortfolioHolding holding = PortfolioHolding.builder()
                 .portfolio(portfolio)
                 .instrumentCode(instrumentCode)
                 .quantity(request.getQuantity())
                 .buyPrice(request.getBuyPrice())
+                .purchaseDate(request.getPurchaseDate())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -168,6 +178,7 @@ public class PortfolioHoldingService {
                 .priceStatus(priceResolution.priceStatus())
                 .lastPriceUpdateTime(priceResolution.lastPriceUpdateTime())
                 .valuationAvailable(priceResolution.valuationAvailable())
+                .purchaseDate(holding.getPurchaseDate())
                 .createdAt(holding.getCreatedAt())
                 .updatedAt(holding.getUpdatedAt())
                 .build();

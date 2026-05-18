@@ -54,6 +54,10 @@ public class FinnhubClient {
     }
 
     private List<FinnhubNewsResponse> execute(String url, String endpoint) {
+        if (finnhubProperties.getApi().getKey() == null || finnhubProperties.getApi().getKey().isBlank()) {
+            logger.warn("Finnhub API key is not configured. Skipping request to endpoint: {}. Set FINNHUB_API_KEY env variable to enable.", endpoint);
+            return List.of();
+        }
         try {
             logger.info("Sending Finnhub request to endpoint: {}", endpoint);
             logger.debug("Finnhub request prepared. endpoint={}, category={}", endpoint, resolveCategory(endpoint));

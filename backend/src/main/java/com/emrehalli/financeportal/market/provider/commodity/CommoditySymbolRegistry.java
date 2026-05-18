@@ -6,37 +6,40 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Registry for commodity symbols.
- * Maps user-friendly instrument codes to Yahoo Finance query symbols.
+ * Registry for commodity symbols fetched from Yahoo Finance.
+ *
+ * <p>BRENT is a public commodity exposed directly.
+ * GOLD_USD and SILVER_USD are internal raw USD prices used to calculate
+ * Turkish gold/silver instrument prices; they are not exposed to the API.</p>
  */
 @Component
 public class CommoditySymbolRegistry {
 
-    // instrument_code → yahoo_symbol
+    // instrument_code → yahoo_symbol (fetched from Yahoo)
     private static final Map<String, String> CODE_TO_YAHOO = Map.of(
-            "GOLD",   "GC=F",
-            "SILVER", "SI=F",
-            "BRENT",  "BZ=F",
-            "WTI",    "CL=F",
-            "NATGAS", "NG=F"
+            "BRENT",      "BZ=F",
+            "GOLD_USD",   "GC=F",
+            "SILVER_USD", "SI=F"
     );
 
     // yahoo_symbol → instrument_code
     private static final Map<String, String> YAHOO_TO_CODE = Map.of(
-            "GC=F", "GOLD",
-            "SI=F", "SILVER",
             "BZ=F", "BRENT",
-            "CL=F", "WTI",
-            "NG=F", "NATGAS"
+            "GC=F", "GOLD_USD",
+            "SI=F", "SILVER_USD"
     );
 
-    // instrument_code → display name
+    // display names: covers both Yahoo-direct and calculated instruments
     private static final Map<String, String> CODE_TO_NAME = Map.of(
-            "GOLD",   "Altın (Vadeli)",
-            "SILVER", "Gümüş (Vadeli)",
-            "BRENT",  "Brent Petrol",
-            "WTI",    "Ham Petrol",
-            "NATGAS", "Doğalgaz"
+            "BRENT",               "Brent Petrol",
+            "GOLD_USD",            "Altın (Ham USD)",
+            "SILVER_USD",          "Gümüş (Ham USD)",
+            "GRAM_ALTIN",          "Gram Altın",
+            "CEYREK_ALTIN",        "Çeyrek Altın",
+            "YARIM_ALTIN",         "Yarım Altın",
+            "TAM_ALTIN",           "Tam Altın",
+            "CUMHURIYET_ALTINI",   "Cumhuriyet Altını",
+            "GUMUS_GRAM",          "Gümüş Gram"
     );
 
     public List<String> getAllYahooSymbols() {

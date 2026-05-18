@@ -16,30 +16,30 @@ class CommoditySymbolRegistryTest {
 
     @Test
     void yahoo_symbols_are_returned() {
+        // Only 3 symbols are fetched from Yahoo; calculated instruments have no Yahoo symbol
         assertThat(registry.getAllYahooSymbols())
-                .containsExactlyInAnyOrder("GC=F", "SI=F", "BZ=F", "CL=F", "NG=F");
+                .containsExactlyInAnyOrder("GC=F", "SI=F", "BZ=F");
     }
 
     @Test
     void instrument_codes_are_returned() {
         assertThat(registry.getAllCodes())
-                .containsExactlyInAnyOrder("GOLD", "SILVER", "BRENT", "WTI", "NATGAS");
+                .containsExactlyInAnyOrder("BRENT", "GOLD_USD", "SILVER_USD");
     }
 
     @Test
     void yahoo_symbol_maps_to_instrument_code() {
-        assertThat(registry.toInstrumentCode("GC=F")).isEqualTo("GOLD");
-        assertThat(registry.toInstrumentCode("SI=F")).isEqualTo("SILVER");
+        assertThat(registry.toInstrumentCode("GC=F")).isEqualTo("GOLD_USD");
+        assertThat(registry.toInstrumentCode("SI=F")).isEqualTo("SILVER_USD");
         assertThat(registry.toInstrumentCode("BZ=F")).isEqualTo("BRENT");
-        assertThat(registry.toInstrumentCode("CL=F")).isEqualTo("WTI");
-        assertThat(registry.toInstrumentCode("NG=F")).isEqualTo("NATGAS");
     }
 
     @Test
     void instrument_code_maps_to_yahoo_symbol() {
-        assertThat(registry.toYahooSymbol("GOLD")).isEqualTo("GC=F");
-        assertThat(registry.toYahooSymbol("WTI")).isEqualTo("CL=F");
-        assertThat(registry.toYahooSymbol("SP500")).isNull();
+        assertThat(registry.toYahooSymbol("BRENT")).isEqualTo("BZ=F");
+        assertThat(registry.toYahooSymbol("GOLD_USD")).isEqualTo("GC=F");
+        // Calculated instruments have no Yahoo symbol
+        assertThat(registry.toYahooSymbol("GRAM_ALTIN")).isNull();
     }
 
     @Test
@@ -49,8 +49,10 @@ class CommoditySymbolRegistryTest {
 
     @Test
     void display_names_are_populated() {
-        assertThat(registry.toDisplayName("GOLD")).isEqualTo("Altın (Vadeli)");
         assertThat(registry.toDisplayName("BRENT")).isEqualTo("Brent Petrol");
+        assertThat(registry.toDisplayName("GOLD_USD")).isEqualTo("Altın (Ham USD)");
+        assertThat(registry.toDisplayName("GRAM_ALTIN")).isEqualTo("Gram Altın");
+        assertThat(registry.toDisplayName("CEYREK_ALTIN")).isEqualTo("Çeyrek Altın");
         assertThat(registry.toDisplayName("UNKNOWN")).isEqualTo("UNKNOWN");
     }
 }

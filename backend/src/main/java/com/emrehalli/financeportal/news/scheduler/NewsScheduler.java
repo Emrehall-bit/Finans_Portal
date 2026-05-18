@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.common.logging.SchedulerLogSupport;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.provider.investing.InvestingNewsProperties;
+import com.emrehalli.financeportal.news.provider.kap.KapNewsProperties;
 import com.emrehalli.financeportal.news.service.NewsService;
 import jakarta.annotation.PostConstruct;
 import org.apache.logging.log4j.LogManager;
@@ -19,13 +20,16 @@ public class NewsScheduler {
 
     private final NewsService newsService;
     private final InvestingNewsProperties investingNewsProperties;
+    private final KapNewsProperties kapNewsProperties;
 
     public NewsScheduler(
             NewsService newsService,
-            InvestingNewsProperties investingNewsProperties
+            InvestingNewsProperties investingNewsProperties,
+            KapNewsProperties kapNewsProperties
     ) {
         this.newsService = newsService;
         this.investingNewsProperties = investingNewsProperties;
+        this.kapNewsProperties = kapNewsProperties;
     }
 
     @PostConstruct
@@ -46,9 +50,21 @@ public class NewsScheduler {
         runProviderSync(NewsProviderType.AA_RSS, "scheduled");
     }
 
+    @Scheduled(cron = "${news.providers.kap.scheduler-cron:0 0 */2 * * *}")
+    public void syncKapProvider() {
+        if (!kapNewsProperties.isSchedulerEnabled()) {
+            return;
+        }
+        runProviderSync(NewsProviderType.KAP, "scheduled");
+    }
+
     void runProviderSync(NewsProviderType providerType, String trigger) {
         if (providerType == NewsProviderType.INVESTING_RSS && !investingNewsProperties.isEnabled()) {
             logger.info("Skipping Investing RSS news sync because provider is disabled. trigger: {}", trigger);
+            return;
+        }
+        if (providerType == NewsProviderType.KAP && !kapNewsProperties.isEnabled()) {
+            logger.info("Skipping KAP news sync because provider is disabled. trigger: {}", trigger);
             return;
         }
 

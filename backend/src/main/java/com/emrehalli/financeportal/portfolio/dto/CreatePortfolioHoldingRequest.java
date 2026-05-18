@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 public class CreatePortfolioHoldingRequest {
 
@@ -18,6 +19,8 @@ public class CreatePortfolioHoldingRequest {
     @NotNull(message = "{validation.buyPrice.required}")
     @DecimalMin(value = "0.0001", message = "{validation.buyPrice.positive}")
     private BigDecimal buyPrice;
+
+    private LocalDate purchaseDate;
 
     public String getInstrumentCode() {
         return instrumentCode;
@@ -41,6 +44,14 @@ public class CreatePortfolioHoldingRequest {
 
     public void setBuyPrice(BigDecimal buyPrice) {
         this.buyPrice = buyPrice;
+    }
+
+    public LocalDate getPurchaseDate() {
+        return purchaseDate;
+    }
+
+    public void setPurchaseDate(LocalDate purchaseDate) {
+        this.purchaseDate = purchaseDate;
     }
 }
 

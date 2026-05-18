@@ -409,6 +409,11 @@
     "modalAddTitle": "Varlık ekle",
     "instrumentCode": "Enstrüman kodu",
     "instrumentCodePlaceholder": "THYAO, BTCUSDT, USDTRY",
+    "instrumentSearchPlaceholder": "Enstrüman ara (min. 2 karakter)...",
+    "purchaseDate": "Alış tarihi (opsiyonel)",
+    "priceAutoFetched": "Otomatik dolduruldu",
+    "fetchingPrice": "Fiyat getiriliyor...",
+    "priceNotFoundForDate": "Bu tarih için fiyat verisi bulunamadı, lütfen fiyatı manuel girin.",
     "quantity": "Miktar",
     "buyPrice": "Alış fiyatı",
     "saving": "Kaydediliyor...",
@@ -732,6 +737,18 @@
         "title": "TEFAS Test Connection",
         "description": "TEFAS liste endpointine bağlan ve ilk fon bilgisini doğrula.",
         "action": "Bağlantıyı Test Et"
+      },
+      "indexFetch": {
+        "eyebrow": "Endeks verisi",
+        "title": "Endeks Fetch",
+        "description": "BIST endeks verilerini Yahoo Finance'dan manuel çek ve kaydet.",
+        "action": "Endeks Verisini Çek"
+      },
+      "commodityDerive": {
+        "eyebrow": "Emtia hesaplama",
+        "title": "Emtia Hesapla",
+        "description": "GOLD_USD ve SILVER_USD verisiyle Türk altın/gümüş emtialarını (Gram Altın, Çeyrek vb.) hesapla ve kaydet.",
+        "action": "Emtia Hesapla"
       },
       "macroSyncAll": {
         "eyebrow": "Makro Ekonomi",

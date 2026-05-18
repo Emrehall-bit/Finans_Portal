@@ -1,9 +1,11 @@
 package com.emrehalli.financeportal.news.service;
 
+import com.emrehalli.financeportal.admin.notification.service.NotificationService;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;
+import com.emrehalli.financeportal.news.config.NewsNotificationProperties;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
@@ -25,45 +27,37 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Service
 public class NewsService {
-
-    /*
-     * Future translation design:
-     * - Add news_translations table keyed by news_id + language.
-     * - Persist original provider article once, then generate translated variants asynchronously.
-     * - Run translation in a background job so provider sync latency and translation latency stay isolated.
-     * - Cache translated list/detail DTOs per news id + language.
-     * - Fallback order should be: requested translation -> original language item -> explicit untranslated marker.
-     */
 
     private static final Logger logger = LogManager.getLogger(NewsService.class);
 
     private final NewsRepository newsRepository;
     private final Map<String, NewsProvider> providerMap;
     private final NewsImportanceScoringService newsImportanceScoringService;
-
-    public NewsService(NewsRepository newsRepository, List<NewsProvider> providers) {
-        this(newsRepository, providers, new NewsImportanceScoringService());
-    }
+    private final NotificationService notificationService;
+    private final NewsNotificationProperties notificationProperties;
 
     @Autowired
     public NewsService(
             NewsRepository newsRepository,
             List<NewsProvider> providers,
-            NewsImportanceScoringService newsImportanceScoringService
+            NewsImportanceScoringService newsImportanceScoringService,
+            NotificationService notificationService,
+            NewsNotificationProperties notificationProperties
     ) {
         this.newsRepository = newsRepository;
         this.newsImportanceScoringService = newsImportanceScoringService;
+        this.notificationService = notificationService;
+        this.notificationProperties = notificationProperties;
         this.providerMap = new HashMap<>();
         for (NewsProvider provider : providers) {
             providerMap.put(provider.getProviderName(), provider);
@@ -109,18 +103,57 @@ public class NewsService {
 
     @Transactional
     public NewsImportanceRecalculationResponseDto recalculateImportanceScores() {
-        List<News> allNews = newsRepository.findAll();
-        int updatedCount = 0;
-        for (News news : allNews) {
-            int recalculated = newsImportanceScoringService.calculateScore(news);
-            if (!java.util.Objects.equals(news.getImportanceScore(), recalculated)) {
-                news.setImportanceScore(recalculated);
-                updatedCount++;
+        final int CHUNK_SIZE = 500;
+        int page = 0;
+        int totalProcessed = 0;
+        int totalUpdated = 0;
+        int minScore = Integer.MAX_VALUE;
+        int maxScore = Integer.MIN_VALUE;
+        long scoreSum = 0;
+
+        Page<News> chunk;
+        do {
+            chunk = newsRepository.findAll(PageRequest.of(page, CHUNK_SIZE, Sort.by(Sort.Direction.ASC, "id")));
+            List<News> toUpdate = new ArrayList<>();
+
+            for (News news : chunk.getContent()) {
+                int recalculated = newsImportanceScoringService.calculateScore(news);
+                if (!java.util.Objects.equals(news.getImportanceScore(), recalculated)) {
+                    news.setImportanceScore(recalculated);
+                    toUpdate.add(news);
+                    totalUpdated++;
+                }
+                int score = news.getImportanceScore() != null ? news.getImportanceScore() : 0;
+                minScore = Math.min(minScore, score);
+                maxScore = Math.max(maxScore, score);
+                scoreSum += score;
             }
-        }
-        newsRepository.saveAll(allNews);
-        NewsImportanceRecalculationResponseDto response = buildRecalculationResponse(allNews, updatedCount);
-        logScoreDistribution(allNews, response);
+
+            if (!toUpdate.isEmpty()) {
+                newsRepository.saveAll(toUpdate);
+            }
+            totalProcessed += chunk.getNumberOfElements();
+            logger.info("Importance score recalculation chunk. page: {}/{}, chunkSize: {}, updatedInChunk: {}",
+                    page + 1, chunk.getTotalPages(), chunk.getNumberOfElements(), toUpdate.size());
+            page++;
+        } while (chunk.hasNext());
+
+        int finalMin = totalProcessed == 0 ? 0 : (minScore == Integer.MAX_VALUE ? 0 : minScore);
+        int finalMax = totalProcessed == 0 ? 0 : (maxScore == Integer.MIN_VALUE ? 0 : maxScore);
+        double averageScore = totalProcessed == 0 ? 0.0 : (double) scoreSum / totalProcessed;
+
+        NewsImportanceRecalculationResponseDto response = NewsImportanceRecalculationResponseDto.builder()
+                .totalProcessed(totalProcessed)
+                .updatedCount(totalUpdated)
+                .minScore(finalMin)
+                .maxScore(finalMax)
+                .averageScore(averageScore)
+                .build();
+
+        logger.info("News importance score recalculation completed. totalProcessed: {}, updatedCount: {}, minScore: {}, maxScore: {}, averageScore: {}",
+                response.getTotalProcessed(), response.getUpdatedCount(), response.getMinScore(), response.getMaxScore(),
+                String.format("%.2f", response.getAverageScore()));
+
         return response;
     }
 
@@ -357,7 +390,24 @@ public class NewsService {
         toSave.forEach(news -> news.setImportanceScore(newsImportanceScoringService.calculateScore(news)));
 
         if (!toSave.isEmpty()) {
-            savedCount = newsRepository.saveAll(toSave).size();
+            List<News> saved = newsRepository.saveAll(toSave);
+            savedCount = saved.size();
+            if (notificationProperties.isEnabled()) {
+                int threshold = notificationProperties.getMinImportanceScore();
+                saved.stream()
+                        .filter(news -> news.getImportanceScore() != null && news.getImportanceScore() >= threshold)
+                        .forEach(news -> {
+                            String title = truncate(news.getTitle(), 255);
+                            String message = hasText(news.getSummary())
+                                    ? truncate(news.getSummary(), 1000)
+                                    : title;
+                            try {
+                                notificationService.createSystemBroadcastNotification(title, message);
+                            } catch (Exception ex) {
+                                logger.warn("Failed to send news notification. newsId: {}, reason: {}", news.getId(), ex.getMessage());
+                            }
+                        });
+            }
         }
         if (!existingToUpdate.isEmpty()) {
             newsRepository.saveAll(existingToUpdate);
@@ -459,6 +509,11 @@ public class NewsService {
         return value != null && !value.trim().isEmpty();
     }
 
+    private String truncate(String value, int maxLength) {
+        if (value == null) return null;
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    }
+
     private QueryContext resolveQueryContext(NewsSearchRequest request) {
         NewsProviderType provider = hasText(request.getProvider()) ? NewsProviderType.from(request.getProvider()) : null;
         NewsScope scope = NewsScope.from(request.getScope());
@@ -556,7 +611,14 @@ public class NewsService {
             return null;
         }
         String symbol = normalizeSymbol(request.getSymbol());
-        return (root, query, cb) -> cb.equal(cb.upper(root.get("relatedSymbol")), symbol);
+        String titlePattern = "%" + symbol.toLowerCase(Locale.ROOT) + "%";
+        return (root, query, cb) -> cb.or(
+                cb.equal(cb.upper(root.get("relatedSymbol")), symbol),
+                cb.and(
+                        cb.isNull(root.get("relatedSymbol")),
+                        cb.like(cb.lower(root.get("title")), titlePattern)
+                )
+        );
     }
 
     private Specification<News> byKeyword(NewsSearchRequest request) {
@@ -673,63 +735,6 @@ public class NewsService {
                 .publishedAt(news.getPublishedAt())
                 .importanceScore(news.getImportanceScore())
                 .build();
-    }
-
-    private NewsImportanceRecalculationResponseDto buildRecalculationResponse(List<News> allNews, int updatedCount) {
-        if (allNews.isEmpty()) {
-            return NewsImportanceRecalculationResponseDto.builder()
-                    .totalProcessed(0)
-                    .updatedCount(0)
-                    .minScore(0)
-                    .maxScore(0)
-                    .averageScore(0.0)
-                    .build();
-        }
-
-        int minScore = allNews.stream()
-                .map(News::getImportanceScore)
-                .filter(java.util.Objects::nonNull)
-                .min(Integer::compareTo)
-                .orElse(0);
-        int maxScore = allNews.stream()
-                .map(News::getImportanceScore)
-                .filter(java.util.Objects::nonNull)
-                .max(Integer::compareTo)
-                .orElse(0);
-        double averageScore = allNews.stream()
-                .map(News::getImportanceScore)
-                .filter(java.util.Objects::nonNull)
-                .mapToInt(Integer::intValue)
-                .average()
-                .orElse(0.0);
-
-        return NewsImportanceRecalculationResponseDto.builder()
-                .totalProcessed(allNews.size())
-                .updatedCount(updatedCount)
-                .minScore(minScore)
-                .maxScore(maxScore)
-                .averageScore(averageScore)
-                .build();
-    }
-
-    private void logScoreDistribution(List<News> allNews, NewsImportanceRecalculationResponseDto response) {
-        logger.info(
-                "News importance score recalculation completed. totalProcessed: {}, updatedCount: {}, minScore: {}, maxScore: {}, averageScore: {}",
-                response.getTotalProcessed(),
-                response.getUpdatedCount(),
-                response.getMinScore(),
-                response.getMaxScore(),
-                String.format("%.2f", response.getAverageScore())
-        );
-
-        List<String> topFive = allNews.stream()
-                .sorted(java.util.Comparator
-                        .comparing(News::getImportanceScore, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder()))
-                        .thenComparing(News::getPublishedAt, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
-                .limit(5)
-                .map(news -> String.format("%s (%d)", news.getTitle(), news.getImportanceScore()))
-                .toList();
-        logger.info("News importance score top 5: {}", topFive);
     }
 
     private record QueryContext(NewsScope scope, NewsProviderType provider) {

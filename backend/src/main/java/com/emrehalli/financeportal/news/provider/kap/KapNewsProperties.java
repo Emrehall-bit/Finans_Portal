@@ -6,6 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class KapNewsProperties {
 
     private boolean enabled = true;
+    private boolean schedulerEnabled = false;
+    private String schedulerCron = "0 0 */2 * * *";
     private String baseUrl = "https://www.kap.org.tr";
     private String defaultCategory = "DISCLOSURE";
     private String defaultLanguage = "tr";
@@ -18,6 +20,22 @@ public class KapNewsProperties {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public boolean isSchedulerEnabled() {
+        return schedulerEnabled;
+    }
+
+    public void setSchedulerEnabled(boolean schedulerEnabled) {
+        this.schedulerEnabled = schedulerEnabled;
+    }
+
+    public String getSchedulerCron() {
+        return schedulerCron;
+    }
+
+    public void setSchedulerCron(String schedulerCron) {
+        this.schedulerCron = schedulerCron;
     }
 
     public String getBaseUrl() {

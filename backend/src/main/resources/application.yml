@@ -70,7 +70,7 @@ finnhub:
   enabled: true
   api:
     url: https://finnhub.io/api/v1
-    key: ${FINNHUB_API_KEY:d7laeepr01qm7o0b5dt0d7laeepr01qm7o0b5dtg}
+    key: ${FINNHUB_API_KEY:}
   sync:
     default-days-back: 3
 
@@ -90,11 +90,16 @@ news:
       default-region-scope: GLOBAL
     kap:
       enabled: true
+      scheduler-enabled: false
+      scheduler-cron: "0 0 */2 * * *"
       base-url: https://www.kap.org.tr
       default-category: DISCLOSURE
       default-language: tr
       default-region-scope: TR
       max-items: 25
+  notification:
+    enabled: false
+    min-importance-score: 70
 
 market:
   providers:

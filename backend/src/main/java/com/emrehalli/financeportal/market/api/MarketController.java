@@ -2,8 +2,10 @@ package com.emrehalli.financeportal.market.api;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.market.api.dto.FxRateResponse;
+import com.emrehalli.financeportal.market.api.dto.InstrumentSearchResult;
 import com.emrehalli.financeportal.market.api.dto.MarketAggregateResponse;
 import com.emrehalli.financeportal.market.api.dto.PriceHistoryDto;
+import com.emrehalli.financeportal.market.api.dto.PriceOnDateResult;
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
@@ -22,6 +24,7 @@ import com.emrehalli.financeportal.market.service.StockService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -84,6 +87,55 @@ public class MarketController {
                 .message("OK")
                 .data(data)
                 .dataDate(resolveDataDate(fx, cryptoSnapshots))
+                .build();
+    }
+
+    @GetMapping("/instruments/search")
+    public ApiResponse<List<InstrumentSearchResult>> searchInstruments(
+            @RequestParam(name = "q", defaultValue = "") String query,
+            @RequestParam(name = "limit", defaultValue = "20") int limit
+    ) {
+        int clampedLimit = Math.min(Math.max(limit, 1), 100);
+        List<InstrumentSearchResult> results;
+        if (query == null || query.isBlank()) {
+            results = List.of();
+        } else {
+            Pageable pageable = PageRequest.of(0, clampedLimit);
+            results = instrumentRepository
+                    .findByInstrumentCodeContainingIgnoreCaseOrInstrumentNameContainingIgnoreCase(
+                            query, query, pageable)
+                    .stream()
+                    .map(i -> new InstrumentSearchResult(
+                            i.getInstrumentCode(),
+                            i.getInstrumentName(),
+                            i.getInstrumentType().name()))
+                    .toList();
+        }
+        return ApiResponse.<List<InstrumentSearchResult>>builder()
+                .success(true)
+                .message("OK")
+                .data(results)
+                .build();
+    }
+
+    @GetMapping("/{symbol}/price-on-date")
+    public ApiResponse<PriceOnDateResult> getPriceOnDate(
+            @PathVariable String symbol,
+            @RequestParam(name = "date") String date
+    ) {
+        LocalDate targetDate = LocalDate.parse(date);
+        String normalizedSymbol = symbol.toUpperCase();
+        List<MarketQueryService.HistoricalPrice> history = marketQueryService.getHistory(
+                normalizedSymbol, null, targetDate.minusDays(7), targetDate);
+        PriceOnDateResult result = history.stream()
+                .filter(p -> !p.priceDate().isAfter(targetDate))
+                .reduce((first, second) -> second)
+                .map(p -> new PriceOnDateResult(normalizedSymbol, p.priceDate(), p.closePrice()))
+                .orElse(null);
+        return ApiResponse.<PriceOnDateResult>builder()
+                .success(true)
+                .message("OK")
+                .data(result)
                 .build();
     }
 
@@ -224,7 +276,8 @@ public class MarketController {
             case CRYPTO -> SourceName.BINANCE;
             case STOCK -> SourceName.BIST;
             case FX -> parseSourceFromSymbol(symbol);
-            case INDEX, COMMODITY -> SourceName.YAHOO_FINANCE;
+            case INDEX -> SourceName.YAHOO_FINANCE;
+            case COMMODITY -> null; // mixed sources (YAHOO_FINANCE for BRENT, CALCULATED for gold/silver)
             default -> null;
         };
     }

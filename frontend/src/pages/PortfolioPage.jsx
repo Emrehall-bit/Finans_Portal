@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pie, PieChart, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import {
@@ -10,6 +10,7 @@ import {
   updatePortfolioHolding,
 } from "../api/portfolioApi";
 import { extractErrorMessage } from "../api/responseUtils";
+import { getPriceOnDate, searchInstruments } from "../api/marketApi";
 import { useAuth } from "../auth/AuthContext";
 import AiPortfolioCommentaryCard from "../components/ai/AiPortfolioCommentaryCard";
 import EmptyState from "../components/common/EmptyState";
@@ -41,8 +42,17 @@ export default function PortfolioPage() {
     instrumentCode: "",
     quantity: "",
     buyPrice: "",
+    purchaseDate: "",
   });
   const [savingHolding, setSavingHolding] = useState(false);
+  const [instrumentSearch, setInstrumentSearch] = useState("");
+  const [instrumentResults, setInstrumentResults] = useState([]);
+  const [instrumentSearchOpen, setInstrumentSearchOpen] = useState(false);
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+  const [priceAutoFetched, setPriceAutoFetched] = useState(false);
+  const [priceFetchError, setPriceFetchError] = useState("");
+  const instrumentSearchRef = useRef(null);
+  const searchDebounceRef = useRef(null);
 
   useEffect(() => {
     if (userId) {
@@ -114,7 +124,12 @@ export default function PortfolioPage() {
 
   function openAddHoldingModal() {
     setEditingHolding(null);
-    setHoldingForm({ instrumentCode: "", quantity: "", buyPrice: "" });
+    setHoldingForm({ instrumentCode: "", quantity: "", buyPrice: "", purchaseDate: "" });
+    setInstrumentSearch("");
+    setInstrumentResults([]);
+    setInstrumentSearchOpen(false);
+    setPriceAutoFetched(false);
+    setPriceFetchError("");
     setHoldingModalOpen(true);
   }
 
@@ -124,14 +139,88 @@ export default function PortfolioPage() {
       instrumentCode: holding.instrumentCode || "",
       quantity: holding.quantity ?? "",
       buyPrice: holding.buyPrice ?? "",
+      purchaseDate: holding.purchaseDate ?? "",
     });
+    setInstrumentSearch(holding.instrumentCode || "");
+    setInstrumentResults([]);
+    setInstrumentSearchOpen(false);
+    setPriceAutoFetched(false);
+    setPriceFetchError("");
     setHoldingModalOpen(true);
   }
 
   function closeHoldingModal() {
     setHoldingModalOpen(false);
     setEditingHolding(null);
-    setHoldingForm({ instrumentCode: "", quantity: "", buyPrice: "" });
+    setHoldingForm({ instrumentCode: "", quantity: "", buyPrice: "", purchaseDate: "" });
+    setInstrumentSearch("");
+    setInstrumentResults([]);
+    setInstrumentSearchOpen(false);
+    setPriceAutoFetched(false);
+    setPriceFetchError("");
+  }
+
+  const handleInstrumentSearchChange = useCallback((value) => {
+    setInstrumentSearch(value);
+    setHoldingForm((current) => ({ ...current, instrumentCode: "" }));
+    setPriceAutoFetched(false);
+    setPriceFetchError("");
+
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    if (value.length < 2) {
+      setInstrumentResults([]);
+      setInstrumentSearchOpen(false);
+      return;
+    }
+
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchInstruments(value);
+        setInstrumentResults(results);
+        setInstrumentSearchOpen(results.length > 0);
+      } catch {
+        setInstrumentResults([]);
+        setInstrumentSearchOpen(false);
+      }
+    }, 300);
+  }, []);
+
+  function selectInstrument(instrument) {
+    setHoldingForm((current) => ({ ...current, instrumentCode: instrument.code, buyPrice: "", purchaseDate: "" }));
+    setInstrumentSearch(instrument.code);
+    setInstrumentResults([]);
+    setInstrumentSearchOpen(false);
+    setPriceAutoFetched(false);
+    setPriceFetchError("");
+  }
+
+  async function handlePurchaseDateChange(dateValue) {
+    setHoldingForm((current) => ({ ...current, purchaseDate: dateValue, buyPrice: "" }));
+    setPriceAutoFetched(false);
+    setPriceFetchError("");
+
+    const code = holdingForm.instrumentCode;
+    if (!code || !dateValue) {
+      return;
+    }
+
+    try {
+      setFetchingPrice(true);
+      const result = await getPriceOnDate(code, dateValue);
+      if (result && result.price != null) {
+        setHoldingForm((current) => ({ ...current, buyPrice: String(result.price) }));
+        setPriceAutoFetched(true);
+      } else {
+        setPriceFetchError(t("portfolio.priceNotFoundForDate"));
+      }
+    } catch {
+      setPriceFetchError(t("portfolio.priceNotFoundForDate"));
+    } finally {
+      setFetchingPrice(false);
+    }
   }
 
   async function handleSaveHolding(event) {
@@ -147,6 +236,7 @@ export default function PortfolioPage() {
         instrumentCode: normalizeCode(holdingForm.instrumentCode),
         quantity: Number(holdingForm.quantity),
         buyPrice: Number(holdingForm.buyPrice),
+        purchaseDate: holdingForm.purchaseDate || null,
       };
 
       if (editingHolding?.holdingId) {
@@ -464,16 +554,42 @@ export default function PortfolioPage() {
             </div>
 
             <form className="instrument-action-form" onSubmit={handleSaveHolding}>
-              <label className="portfolio-field">
+              <div className="portfolio-field" ref={instrumentSearchRef}>
                 <span>{t("portfolio.instrumentCode")}</span>
-                <input
-                  required
-                  disabled={Boolean(editingHolding)}
-                  value={holdingForm.instrumentCode}
-                  onChange={(event) => setHoldingForm((current) => ({ ...current, instrumentCode: event.target.value }))}
-                  placeholder={t("portfolio.instrumentCodePlaceholder")}
-                />
-              </label>
+                {editingHolding ? (
+                  <input disabled value={holdingForm.instrumentCode} />
+                ) : (
+                  <div className="instrument-search-wrap">
+                    <input
+                      required={!holdingForm.instrumentCode}
+                      value={instrumentSearch}
+                      onChange={(event) => handleInstrumentSearchChange(event.target.value)}
+                      onFocus={() => instrumentResults.length > 0 && setInstrumentSearchOpen(true)}
+                      onBlur={() => setTimeout(() => setInstrumentSearchOpen(false), 150)}
+                      placeholder={t("portfolio.instrumentSearchPlaceholder")}
+                      autoComplete="off"
+                    />
+                    {holdingForm.instrumentCode && (
+                      <span className="instrument-selected-badge">{holdingForm.instrumentCode}</span>
+                    )}
+                    {instrumentSearchOpen && (
+                      <ul className="instrument-search-dropdown">
+                        {instrumentResults.map((item) => (
+                          <li
+                            key={item.code}
+                            className="instrument-search-item"
+                            onMouseDown={() => selectInstrument(item)}
+                          >
+                            <strong>{item.code}</strong>
+                            <span className="instrument-search-name">{item.name}</span>
+                            <span className="instrument-search-type">{item.type}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <div className="instrument-action-grid">
                 <label className="portfolio-field">
@@ -488,20 +604,42 @@ export default function PortfolioPage() {
                   />
                 </label>
                 <label className="portfolio-field">
-                  <span>{t("portfolio.buyPrice")}</span>
+                  <span>{t("portfolio.purchaseDate")}</span>
                   <input
-                    required
-                    type="number"
-                    step="any"
-                    min="0.0001"
-                    value={holdingForm.buyPrice}
-                    onChange={(event) => setHoldingForm((current) => ({ ...current, buyPrice: event.target.value }))}
+                    type="date"
+                    value={holdingForm.purchaseDate}
+                    max={new Date().toISOString().split("T")[0]}
+                    onChange={(event) => handlePurchaseDateChange(event.target.value)}
+                    disabled={!holdingForm.instrumentCode}
                   />
                 </label>
               </div>
 
+              <label className="portfolio-field">
+                <span>
+                  {t("portfolio.buyPrice")}
+                  {priceAutoFetched && <span className="portfolio-price-auto-badge">{t("portfolio.priceAutoFetched")}</span>}
+                  {fetchingPrice && <span className="portfolio-price-auto-badge">{t("portfolio.fetchingPrice")}</span>}
+                </span>
+                <input
+                  required
+                  type="number"
+                  step="any"
+                  min="0.0001"
+                  value={holdingForm.buyPrice}
+                  readOnly={priceAutoFetched}
+                  onChange={(event) => {
+                    if (!priceAutoFetched) {
+                      setHoldingForm((current) => ({ ...current, buyPrice: event.target.value }));
+                    }
+                  }}
+                  placeholder={fetchingPrice ? t("portfolio.fetchingPrice") : ""}
+                />
+                {priceFetchError && <span className="portfolio-price-fetch-error">{priceFetchError}</span>}
+              </label>
+
               <div className="instrument-action-footer">
-                <button type="submit" disabled={savingHolding}>
+                <button type="submit" disabled={savingHolding || !holdingForm.instrumentCode}>
                   {savingHolding ? t("portfolio.saving") : editingHolding ? t("portfolio.update") : t("portfolio.addAsset")}
                 </button>
               </div>
