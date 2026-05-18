@@ -14,7 +14,6 @@ import NewsFeedSkeleton from "../components/news/NewsFeedSkeleton";
 import NewsSidebarFilters from "../components/news/NewsSidebarFilters";
 import NewsTopBar from "../components/news/NewsTopBar";
 import { formatNewsCategoryLabel, getNewsProviderLabel } from "../components/news/newsCardUtils";
-import { getStoredNewsLanguage } from "./newsLanguagePreference";
 import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
@@ -36,20 +35,19 @@ export default function NewsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
-  const defaultLanguage = getStoredNewsLanguage();
   const [newsPage, setNewsPage] = useState(INITIAL_NEWS_PAGE);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ keyword: "", category: "", provider: "", language: defaultLanguage });
-  const [appliedFilters, setAppliedFilters] = useState({ keyword: "", category: "", provider: "", language: defaultLanguage });
+  const [filters, setFilters] = useState({ keyword: "", category: "", provider: "" });
+  const [appliedFilters, setAppliedFilters] = useState({ keyword: "", category: "", provider: "", language: "" });
   const [sortBy, setSortBy] = useState("publishedAt");
   const [appliedSortBy, setAppliedSortBy] = useState("publishedAt");
   const [currentPage, setCurrentPage] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState(filters.category ? [filters.category] : []);
-  const [selectedProviders, setSelectedProviders] = useState(filters.provider ? [filters.provider] : []);
-  const [selectedLanguages, setSelectedLanguages] = useState(filters.language ? [filters.language] : []);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedProviders, setSelectedProviders] = useState([]);
+  const [selectedLanguages, setSelectedLanguages] = useState([]);
 
   useEffect(() => {
     let active = true;
@@ -228,10 +226,9 @@ export default function NewsPage() {
   }
 
   function handleResetFilters() {
-    const resetLanguage = getStoredNewsLanguage();
     setSelectedCategories([]);
     setSelectedProviders([]);
-    setSelectedLanguages([resetLanguage]);
+    setSelectedLanguages([]);
     setFilters((prev) => ({ ...prev, category: "", provider: "" }));
   }
 

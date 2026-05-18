@@ -191,6 +191,16 @@ export async function triggerCommodityDerive() {
   return normalizeApiResponse(response);
 }
 
+export async function triggerInternalCommodityHistoryBackfill(days = 365) {
+  const response = await axiosClient.post(`/api/v1/admin/markets/internal-commodities/history/backfill?days=${days}`);
+  return normalizeApiResponse(response);
+}
+
+export async function triggerCommodityHistoryBackfill(days = 365) {
+  const response = await axiosClient.post(`/api/v1/admin/markets/commodities/history/backfill?days=${days}`);
+  return normalizeApiResponse(response);
+}
+
 export async function triggerMacroSyncAll() {
   const response = await axiosClient.post("/api/v1/admin/markets/macro/tcmb/sync-all");
   return normalizeApiResponse(response);

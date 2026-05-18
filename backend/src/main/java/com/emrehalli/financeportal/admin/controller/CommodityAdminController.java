@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.admin.controller;
 
+import com.emrehalli.financeportal.market.service.CommodityHistoryDerivationService;
+import com.emrehalli.financeportal.market.service.CommodityHistoryDerivationService.DerivationResult;
 import com.emrehalli.financeportal.market.service.CommodityService;
 import com.emrehalli.financeportal.market.service.CommodityService.DerivedCommodityResult;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
@@ -25,6 +28,7 @@ import java.util.Map;
 public class CommodityAdminController {
 
     private final CommodityService commodityService;
+    private final CommodityHistoryDerivationService historyDerivationService;
 
     /**
      * Manually triggers derived commodity calculation without waiting for the scheduler.
@@ -81,6 +85,36 @@ public class CommodityAdminController {
         response.put("usdTryInDb",      usdTry      != null ? usdTry      : "NOT IN DB");
         response.put("readyToCalculate", goldUsdOz != null && silverUsdOz != null && usdTry != null);
         response.put("checkedAt",        LocalDateTime.now());
+        return response;
+    }
+
+    /**
+     * Backfills historical ONE_DAY price records for all Turkish gold/silver instruments.
+     * Matches GOLD_USD + USDTRY and SILVER_USD + USDTRY from market_price_history; skips existing rows.
+     *
+     * <p>Example: POST /api/v1/admin/markets/commodities/history/backfill?days=365</p>
+     */
+    @PostMapping("/history/backfill")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Object> backfillHistory(@RequestParam(defaultValue = "365") int days) {
+        log.info("Manual history backfill triggered by admin. days={}", days);
+
+        Map<String, DerivationResult> results = historyDerivationService.deriveHistory(days);
+
+        int totalSaved   = results.values().stream().mapToInt(DerivationResult::saved).sum();
+        int totalSkipped = results.values().stream().mapToInt(DerivationResult::skipped).sum();
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("days",         days);
+        response.put("totalSaved",   totalSaved);
+        response.put("totalSkipped", totalSkipped);
+        response.put("bySymbol",     results);
+        response.put("triggeredAt",  LocalDateTime.now());
+
+        if (totalSaved == 0 && totalSkipped == 0) {
+            response.put("warning", "No source history found. Populate GOLD_USD/SILVER_USD and USDTRY ONE_DAY history first.");
+        }
+
         return response;
     }
 

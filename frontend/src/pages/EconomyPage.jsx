@@ -149,15 +149,19 @@ export default function EconomyPage() {
 
         <div className="economy-tab-row">
           {INDICATOR_GROUPS.map((group) => (
-            <button
-              key={group.key}
-              type="button"
-              className={`economy-tab-btn${selectedGroupKey === group.key ? " active" : ""}`}
-              title={t(`economy.groups.${group.key}.title`)}
-              onClick={() => handleGroupChange(group.key)}
-            >
-              {t(`economy.groups.${group.key}.label`)}
-            </button>
+            <div key={group.key} className="economy-tab-item">
+              <button
+                type="button"
+                className={`economy-tab-btn${selectedGroupKey === group.key ? " active" : ""}`}
+                aria-label={t(`economy.groups.${group.key}.title`)}
+                onClick={() => handleGroupChange(group.key)}
+              >
+                {t(`economy.groups.${group.key}.label`)}
+              </button>
+              <span className="economy-tab-tooltip" role="tooltip">
+                {t(`economy.groups.${group.key}.title`)}
+              </span>
+            </div>
           ))}
         </div>
 

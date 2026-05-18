@@ -750,6 +750,20 @@
         "description": "GOLD_USD ve SILVER_USD verisiyle Türk altın/gümüş emtialarını (Gram Altın, Çeyrek vb.) hesapla ve kaydet.",
         "action": "Emtia Hesapla"
       },
+      "internalCommodityHistory": {
+        "eyebrow": "Adım 1 — Ham Emtia",
+        "title": "GOLD_USD & SILVER_USD History Backfill",
+        "description": "Yahoo Finance'dan GC=F ve SI=F günlük OHLCV verisini çek; GOLD_USD ve SILVER_USD için INTERNAL kaynaklı ONE_DAY history kayıtları oluştur. Türev emtia backfill'i için zorunlu ön koşul.",
+        "action": "Ham Emtia History Çek",
+        "daysPlaceholder": "Gün (örn: 365)"
+      },
+      "commodityHistory": {
+        "eyebrow": "Adım 2 — Türev Emtia",
+        "title": "Türev Emtia History Backfill",
+        "description": "GOLD_USD + USDTRY ve SILVER_USD + USDTRY kayıtlarını eşleştirerek Gram Altın, Çeyrek Altın, Yarım Altın, Tam Altın, Cumhuriyet Altını ve Gümüş Gram için CALCULATED kaynaklı günlük history oluştur.",
+        "action": "Türev Emtia History Üret",
+        "daysPlaceholder": "Gün (örn: 365)"
+      },
       "macroSyncAll": {
         "eyebrow": "Makro Ekonomi",
         "title": "Tüm Makro Verileri Güncelle",

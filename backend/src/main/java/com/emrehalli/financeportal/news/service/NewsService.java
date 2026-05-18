@@ -348,9 +348,13 @@ public class NewsService {
                         existingNews.setImageUrl(item.getImageUrl().trim());
                         needsUpdate = true;
                     }
-                    if (!hasText(existingNews.getSummary()) && hasText(item.getSummary())) {
-                        existingNews.setSummary(item.getSummary().trim());
-                        needsUpdate = true;
+                    if (hasText(item.getSummary())) {
+                        String newSummary = item.getSummary().trim();
+                        int existingLen = existingNews.getSummary() != null ? existingNews.getSummary().trim().length() : 0;
+                        if (existingLen == 0 || (newSummary.length() >= 500 && newSummary.length() > existingLen + 200)) {
+                            existingNews.setSummary(newSummary);
+                            needsUpdate = true;
+                        }
                     }
                     if (existingNews.getPublishedAt() == null && item.getPublishedAt() != null) {
                         existingNews.setPublishedAt(item.getPublishedAt());

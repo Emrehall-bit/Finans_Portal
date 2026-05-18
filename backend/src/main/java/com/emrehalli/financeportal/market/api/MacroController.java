@@ -1,7 +1,8 @@
 package com.emrehalli.financeportal.market.api;
 
-import com.emrehalli.financeportal.market.api.dto.MacroIndicatorResponse;
-import com.emrehalli.financeportal.market.api.dto.MacroObservationResponse;
+import com.emrehalli.financeportal.market.domain.enums.MacroFrequency;
+import com.emrehalli.financeportal.market.domain.enums.MacroSourceName;
+import com.emrehalli.financeportal.market.domain.enums.MacroUnit;
 import com.emrehalli.financeportal.market.domain.enums.MacroValueType;
 import com.emrehalli.financeportal.market.persistence.MacroIndicatorRepository;
 import com.emrehalli.financeportal.market.persistence.MacroObservationRepository;
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/markets/macro")
@@ -42,5 +45,24 @@ public class MacroController {
                         o.getPeriodLabel(), o.getObservationDate(),
                         o.getValue(), o.getValueType(), o.getSource()))
                 .toList();
+    }
+
+    private record MacroIndicatorResponse(
+            String code,
+            String name,
+            MacroSourceName source,
+            MacroFrequency frequency,
+            MacroUnit unit,
+            boolean active
+    ) {
+    }
+
+    private record MacroObservationResponse(
+            String periodLabel,
+            LocalDate observationDate,
+            BigDecimal value,
+            MacroValueType valueType,
+            MacroSourceName source
+    ) {
     }
 }

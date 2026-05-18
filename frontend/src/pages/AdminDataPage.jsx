@@ -20,6 +20,8 @@ import {
   triggerTcmbSync,
   triggerIndexFetch,
   triggerCommodityDerive,
+  triggerInternalCommodityHistoryBackfill,
+  triggerCommodityHistoryBackfill,
   updateMarketTapeConfig,
 } from "../api/adminApi";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -61,6 +63,7 @@ export default function AdminDataPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [binanceDays, setBinanceDays] = useState("1825");
+  const [commodityHistoryDays, setCommodityHistoryDays] = useState("365");
   const [tefasFundCode, setTefasFundCode] = useState("");
   const [tefasPeriod, setTefasPeriod] = useState("");
   const [marketTapeSymbols, setMarketTapeSymbols] = useState([]);
@@ -311,6 +314,54 @@ export default function AdminDataPage() {
         onClick: () => runAction("commodity-derive", triggerCommodityDerive),
       },
       {
+        key: "internal-commodity-history",
+        group: "history",
+        warning: true,
+        eyebrow: t("admin.cards.internalCommodityHistory.eyebrow"),
+        title: t("admin.cards.internalCommodityHistory.title"),
+        description: t("admin.cards.internalCommodityHistory.description"),
+        actionLabel: t("admin.cards.internalCommodityHistory.action"),
+        input: (
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={commodityHistoryDays}
+            onChange={(event) => setCommodityHistoryDays(event.target.value)}
+            className="admin-console-input"
+            placeholder={t("admin.cards.internalCommodityHistory.daysPlaceholder")}
+          />
+        ),
+        onClick: () =>
+          runAction("internal-commodity-history", () =>
+            triggerInternalCommodityHistoryBackfill(Number.parseInt(commodityHistoryDays, 10) || 365),
+          ),
+      },
+      {
+        key: "commodity-history",
+        group: "history",
+        warning: true,
+        eyebrow: t("admin.cards.commodityHistory.eyebrow"),
+        title: t("admin.cards.commodityHistory.title"),
+        description: t("admin.cards.commodityHistory.description"),
+        actionLabel: t("admin.cards.commodityHistory.action"),
+        input: (
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={commodityHistoryDays}
+            onChange={(event) => setCommodityHistoryDays(event.target.value)}
+            className="admin-console-input"
+            placeholder={t("admin.cards.commodityHistory.daysPlaceholder")}
+          />
+        ),
+        onClick: () =>
+          runAction("commodity-history", () =>
+            triggerCommodityHistoryBackfill(Number.parseInt(commodityHistoryDays, 10) || 365),
+          ),
+      },
+      {
         key: "tefas-fund-fetch",
         group: "live",
         eyebrow: t("admin.cards.tefasFundFetch.eyebrow"),
@@ -357,7 +408,7 @@ export default function AdminDataPage() {
           ),
       },
     ],
-    [binanceDays, tefasFundCode, tefasPeriod, t],
+    [binanceDays, commodityHistoryDays, tefasFundCode, tefasPeriod, t],
   );
 
   const runMacroSyncAll = async () => {

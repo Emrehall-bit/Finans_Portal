@@ -9,13 +9,11 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import { formatDateTime } from "../utils/formatters";
-import { getStoredNewsLanguage } from "./newsLanguagePreference";
 import { buildNewsPlaceholderLabel, getNewsFallbackLogoUrl, getNewsProviderLabel } from "../components/news/newsCardUtils";
 
 export default function NewsDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams();
-  const selectedLanguage = getStoredNewsLanguage();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -59,6 +57,10 @@ export default function NewsDetailPage() {
     };
   }, [id, t]);
 
+  const summaryParagraphs = item?.summary
+    ? item.summary.split("\n\n").filter(Boolean)
+    : [];
+
   return (
     <div className="news-page-stack">
       <PageHeader
@@ -81,20 +83,11 @@ export default function NewsDetailPage() {
         </section>
       ) : null}
 
-      {!loading && !error && item && item.language && item.language !== selectedLanguage ? (
-        <section className="panel-surface">
-          <EmptyState
-            title={t("newsDetail.languageMismatchTitle")}
-            description={t("newsDetail.languageMismatchDescription")}
-          />
-        </section>
-      ) : null}
-
-      {!loading && !error && item && (!item.language || item.language === selectedLanguage) ? (
+      {!loading && !error && item ? (
         <AiNewsImpactCard newsId={item.id} />
       ) : null}
 
-      {!loading && !error && item && (!item.language || item.language === selectedLanguage) ? (
+      {!loading && !error && item ? (
         <section className="panel-surface news-detail-card">
           {item.imageUrl && !imageFailed ? (
             <div className="news-detail-media">
@@ -141,14 +134,23 @@ export default function NewsDetailPage() {
             </div>
           </div>
 
-          <h3 className="news-detail-title">{item.title || t("newsDetail.titleMissing")}</h3>
-          <p className={`news-detail-summary${item.summary ? "" : " is-fallback"}`}>
-            {item.summary || t("newsDetail.summaryMissing")}
-          </p>
+          <div className="news-detail-body">
+            {summaryParagraphs.length > 0 ? (
+              summaryParagraphs.map((para, i) =>
+                para.startsWith("## ") ? (
+                  <h3 key={i} className="news-detail-subheading">{para.slice(3)}</h3>
+                ) : (
+                  <p key={i} className="news-detail-summary">{para}</p>
+                )
+              )
+            ) : (
+              <p className="news-detail-summary is-fallback">{t("newsDetail.summaryMissing")}</p>
+            )}
+          </div>
 
           {item.url ? (
             <div className="news-detail-actions">
-              <a className="secondary-button news-detail-link" href={item.url} target="_blank" rel="noreferrer">
+              <a className="primary-button news-detail-source-link" href={item.url} target="_blank" rel="noreferrer">
                 {t("newsDetail.openSource")}
               </a>
             </div>

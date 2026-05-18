@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { GripVertical, LayoutGrid, RotateCcw } from "lucide-react";
 import { Pie, PieChart, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { Responsive, WidthProvider } from "react-grid-layout/legacy";
 import {
   createPortfolio,
   createPortfolioHolding,
@@ -20,9 +22,94 @@ import SummaryCard from "../components/common/SummaryCard";
 import useToast from "../hooks/useToast";
 import { useTheme } from "../theme/ThemeContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 
 const CHART_COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4f46e5"];
 const EMPTY_HOLDINGS = [];
+const ResponsiveGridLayout = WidthProvider(Responsive);
+const PORTFOLIO_WIDGET_LAYOUTS_STORAGE_KEY = "fp:portfolio:widget-layouts:v1";
+const PORTFOLIO_WIDGET_LAYOUTS_DEFAULT = {
+  lg: [
+    { i: "kpi", x: 0, y: 0, w: 12, h: 4, minW: 6, minH: 4 },
+    { i: "performance", x: 0, y: 4, w: 7, h: 5, minW: 4, minH: 4 },
+    { i: "allocation", x: 7, y: 4, w: 5, h: 5, minW: 4, minH: 4 },
+    { i: "ai", x: 0, y: 9, w: 12, h: 4, minW: 5, minH: 4 },
+    { i: "holdings", x: 0, y: 13, w: 12, h: 8, minW: 7, minH: 6 },
+  ],
+  md: [
+    { i: "kpi", x: 0, y: 0, w: 10, h: 4, minW: 6, minH: 4 },
+    { i: "performance", x: 0, y: 4, w: 10, h: 5, minW: 5, minH: 4 },
+    { i: "allocation", x: 0, y: 9, w: 10, h: 5, minW: 5, minH: 4 },
+    { i: "ai", x: 0, y: 14, w: 10, h: 4, minW: 5, minH: 4 },
+    { i: "holdings", x: 0, y: 18, w: 10, h: 8, minW: 6, minH: 6 },
+  ],
+  sm: [
+    { i: "kpi", x: 0, y: 0, w: 1, h: 4, minH: 4 },
+    { i: "performance", x: 0, y: 4, w: 1, h: 5, minH: 4 },
+    { i: "allocation", x: 0, y: 9, w: 1, h: 5, minH: 4 },
+    { i: "ai", x: 0, y: 14, w: 1, h: 4, minH: 4 },
+    { i: "holdings", x: 0, y: 18, w: 1, h: 8, minH: 6 },
+  ],
+};
+
+function createDefaultWidgetLayouts() {
+  return Object.fromEntries(
+    Object.entries(PORTFOLIO_WIDGET_LAYOUTS_DEFAULT).map(([breakpoint, layouts]) => [
+      breakpoint,
+      layouts.map((item) => ({ ...item })),
+    ]),
+  );
+}
+
+function mergeWidgetLayouts(savedLayouts = {}) {
+  const defaults = createDefaultWidgetLayouts();
+
+  return Object.fromEntries(
+    Object.entries(defaults).map(([breakpoint, layouts]) => {
+      const savedById = new Map(
+        Array.isArray(savedLayouts?.[breakpoint])
+          ? savedLayouts[breakpoint]
+              .filter((item) => item && typeof item.i === "string")
+              .map((item) => [item.i, item])
+          : [],
+      );
+
+      return [
+        breakpoint,
+        layouts.map((item) => ({
+          ...item,
+          ...(savedById.get(item.i) ?? {}),
+        })),
+      ];
+    }),
+  );
+}
+
+function loadPortfolioWidgetLayouts() {
+  if (typeof window === "undefined") {
+    return createDefaultWidgetLayouts();
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(PORTFOLIO_WIDGET_LAYOUTS_STORAGE_KEY);
+    if (!rawValue) {
+      return createDefaultWidgetLayouts();
+    }
+
+    return mergeWidgetLayouts(JSON.parse(rawValue));
+  } catch {
+    return createDefaultWidgetLayouts();
+  }
+}
+
+function persistPortfolioWidgetLayouts(layouts) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(PORTFOLIO_WIDGET_LAYOUTS_STORAGE_KEY, JSON.stringify(layouts));
+}
 
 export default function PortfolioPage() {
   const { t } = useTranslation();
@@ -51,8 +138,18 @@ export default function PortfolioPage() {
   const [fetchingPrice, setFetchingPrice] = useState(false);
   const [priceAutoFetched, setPriceAutoFetched] = useState(false);
   const [priceFetchError, setPriceFetchError] = useState("");
+  const [widgetLayouts, setWidgetLayouts] = useState(loadPortfolioWidgetLayouts);
+  const [isWidgetEditMode, setWidgetEditMode] = useState(false);
+  const [widgetBreakpoint, setWidgetBreakpoint] = useState("lg");
   const instrumentSearchRef = useRef(null);
   const searchDebounceRef = useRef(null);
+  const canEditWidgetLayout = widgetBreakpoint === "lg" || widgetBreakpoint === "md";
+
+  useEffect(() => {
+    if (!canEditWidgetLayout && isWidgetEditMode) {
+      setWidgetEditMode(false);
+    }
+  }, [canEditWidgetLayout, isWidgetEditMode]);
 
   useEffect(() => {
     if (userId) {
@@ -290,6 +387,25 @@ export default function PortfolioPage() {
       percentage: totalValue > 0 ? (toNumber(holding.currentValue) / totalValue) * 100 : 0,
     }));
   }, [holdings]);
+  const widgetTitles = useMemo(() => ({
+    kpi: t("portfolio.summary.totalCost"),
+    performance: t("portfolio.historyTitle"),
+    allocation: t("portfolio.allocationTitle"),
+    ai: "AI Portfoy Yorumu",
+    holdings: t("portfolio.holdingsTitle"),
+  }), [t]);
+
+  const handleWidgetLayoutChange = useCallback((_, allLayouts) => {
+    const nextLayouts = mergeWidgetLayouts(allLayouts);
+    setWidgetLayouts(nextLayouts);
+    persistPortfolioWidgetLayouts(nextLayouts);
+  }, []);
+
+  function handleResetWidgetLayouts() {
+    const nextLayouts = createDefaultWidgetLayouts();
+    setWidgetLayouts(nextLayouts);
+    persistPortfolioWidgetLayouts(nextLayouts);
+  }
 
   return (
     <div className="portfolio-management-shell portfolio-page-v2">
@@ -374,167 +490,254 @@ export default function PortfolioPage() {
                   </p>
                 </div>
                 <div className="actions-row portfolio-detail-header-actions">
+                  {canEditWidgetLayout ? (
+                    <>
+                      <button
+                        type="button"
+                        className={`secondary-button portfolio-widget-action${isWidgetEditMode ? " active" : ""}`}
+                        onClick={() => setWidgetEditMode((current) => !current)}
+                        title="Widget duzenini duzenle"
+                        aria-label="Widget duzenini duzenle"
+                      >
+                        <LayoutGrid size={16} />
+                      </button>
+                      {isWidgetEditMode ? (
+                        <button
+                          type="button"
+                          className="secondary-button portfolio-widget-action"
+                          onClick={handleResetWidgetLayouts}
+                          title="Widget duzenini sifirla"
+                          aria-label="Widget duzenini sifirla"
+                        >
+                          <RotateCcw size={16} />
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
                   <button type="button" onClick={openAddHoldingModal}>
                     {t("portfolio.addAsset")}
                   </button>
                 </div>
               </header>
 
-              <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-kpi-panel">
-                <div className="portfolio-kpi-grid">
-                  <div className="portfolio-kpi-wrap portfolio-kpi-wrap--stat">
-                    <SummaryCard title={t("portfolio.summary.totalCost")} value={formatCurrency(summary?.totalCost)} subtitle={t("portfolio.summary.totalCostSubtitle")} tone="cool" />
-                  </div>
-                  <div className="portfolio-kpi-wrap portfolio-kpi-wrap--stat">
-                    <SummaryCard title={t("portfolio.summary.currentValue")} value={formatCurrency(summary?.currentValue ?? summary?.totalCurrentValue)} subtitle={t("portfolio.summary.currentValueSubtitle")} tone="cool" />
-                  </div>
-                  <div className={getSummaryPnLWrapClass(plAmount)}>
-                    <SummaryCard title={t("portfolio.summary.profitLossAmount")} value={formatCurrency(summary?.profitLoss ?? summary?.totalProfitLoss)} subtitle={t("portfolio.summary.profitLossAmountSubtitle")} tone={plAmount >= 0 ? "cool" : "warm"} />
-                  </div>
-                  <div className={getSummaryPnLWrapClass(plPct)}>
-                    <SummaryCard title={t("portfolio.summary.profitLossPercent")} value={formatPercent(summary?.profitLossPercent)} subtitle={t("portfolio.summary.profitLossPercentSubtitle")} tone={plPct >= 0 ? "cool" : "warm"} />
+              <ResponsiveGridLayout
+                className={`portfolio-widget-grid${isWidgetEditMode ? " is-editing" : ""}`}
+                layouts={widgetLayouts}
+                breakpoints={{ lg: 1400, md: 1040, sm: 0 }}
+                cols={{ lg: 12, md: 10, sm: 1 }}
+                rowHeight={76}
+                margin={[18, 18]}
+                containerPadding={[0, 0]}
+                compactType="vertical"
+                isDraggable={isWidgetEditMode && canEditWidgetLayout}
+                isResizable={isWidgetEditMode && canEditWidgetLayout}
+                draggableHandle=".portfolio-widget-drag-handle"
+                onLayoutChange={handleWidgetLayoutChange}
+                onBreakpointChange={setWidgetBreakpoint}
+              >
+                <div key="kpi" className="portfolio-widget-slot">
+                  <div className="portfolio-widget-shell portfolio-widget-shell--kpi">
+                    {isWidgetEditMode && canEditWidgetLayout ? (
+                      <div className="portfolio-widget-toolbar">
+                        <span className="portfolio-widget-drag-handle"><GripVertical size={15} /></span>
+                        <span className="portfolio-widget-toolbar-label">{widgetTitles.kpi}</span>
+                      </div>
+                    ) : null}
+                    <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-kpi-panel">
+                      <div className="portfolio-kpi-grid">
+                        <div className="portfolio-kpi-wrap portfolio-kpi-wrap--stat">
+                          <SummaryCard title={t("portfolio.summary.totalCost")} value={formatCurrency(summary?.totalCost)} subtitle={t("portfolio.summary.totalCostSubtitle")} tone="cool" />
+                        </div>
+                        <div className="portfolio-kpi-wrap portfolio-kpi-wrap--stat">
+                          <SummaryCard title={t("portfolio.summary.currentValue")} value={formatCurrency(summary?.currentValue ?? summary?.totalCurrentValue)} subtitle={t("portfolio.summary.currentValueSubtitle")} tone="cool" />
+                        </div>
+                        <div className={getSummaryPnLWrapClass(plAmount)}>
+                          <SummaryCard title={t("portfolio.summary.profitLossAmount")} value={formatCurrency(summary?.profitLoss ?? summary?.totalProfitLoss)} subtitle={t("portfolio.summary.profitLossAmountSubtitle")} tone={plAmount >= 0 ? "cool" : "warm"} />
+                        </div>
+                        <div className={getSummaryPnLWrapClass(plPct)}>
+                          <SummaryCard title={t("portfolio.summary.profitLossPercent")} value={formatPercent(summary?.profitLossPercent)} subtitle={t("portfolio.summary.profitLossPercentSubtitle")} tone={plPct >= 0 ? "cool" : "warm"} />
+                        </div>
+                      </div>
+                    </section>
                   </div>
                 </div>
-              </section>
 
-              <div className="portfolio-analytics-grid">
-                <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-performance-panel">
-                  <div className="panel-head portfolio-analytics-panel-head">
-                    <div>
-                      <p className="eyebrow">{t("portfolio.historyEyebrow")}</p>
-                      <h3>{t("portfolio.historyTitle")}</h3>
-                    </div>
-                  </div>
-                  {/* TODO: backend tarafinda portfoy performans gecmisi endpointi eklendiginde bu alan gercek veriyle doldurulacak. */}
-                  <div className="portfolio-performance-body">
-                    <div className="portfolio-history-empty-card portfolio-history-empty-card--fill">
-                      <EmptyState title={t("portfolio.historyEmptyTitle")} description={t("portfolio.historyEmptyDescription")} />
-                    </div>
-                  </div>
-                </section>
-
-                <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-allocation-panel">
-                  <div className="panel-head portfolio-analytics-panel-head">
-                    <div>
-                      <p className="eyebrow">{t("portfolio.allocationEyebrow")}</p>
-                      <h3>{t("portfolio.allocationTitle")}</h3>
-                    </div>
-                  </div>
-                  {allocationData.length === 0 ? (
-                    <EmptyState title={t("portfolio.allocationEmptyTitle")} description={t("portfolio.allocationEmptyDescription")} />
-                  ) : (
-                    <div className="portfolio-allocation-shell">
-                      <div className="portfolio-allocation-chart-wrap">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie data={allocationData} dataKey="value" nameKey="instrumentCode" outerRadius={58} innerRadius={34}>
-                              {allocationData.map((entry, index) => (
-                                <Cell key={`${entry.instrumentCode}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(value) => formatCurrency(value)}
-                              contentStyle={chartTheme.tooltipContentStyle}
-                              itemStyle={chartTheme.tooltipItemStyle}
-                              labelStyle={chartTheme.tooltipLabelStyle}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
+                <div key="performance" className="portfolio-widget-slot">
+                  <div className="portfolio-widget-shell portfolio-widget-shell--performance">
+                    {isWidgetEditMode && canEditWidgetLayout ? (
+                      <div className="portfolio-widget-toolbar">
+                        <span className="portfolio-widget-drag-handle"><GripVertical size={15} /></span>
+                        <span className="portfolio-widget-toolbar-label">{widgetTitles.performance}</span>
                       </div>
-                      <div className="portfolio-allocation-legend">
-                        {allocationData.map((entry, index) => (
-                          <div key={`${entry.instrumentCode}-${index}`} className="portfolio-allocation-item portfolio-allocation-item--v2">
-                            <div className="portfolio-allocation-label">
-                              <span className="portfolio-color-dot" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
-                              <strong className="portfolio-allocation-code">{entry.instrumentCode}</strong>
-                            </div>
-                            <div className="portfolio-allocation-metrics" aria-label={`${entry.instrumentCode} allocation`}>
-                              <span className="portfolio-allocation-pct">{formatNumber(entry.percentage, 2)}%</span>
-                              <span className="portfolio-allocation-amt">{formatCurrency(entry.value)}</span>
-                            </div>
+                    ) : null}
+                    <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-performance-panel">
+                      <div className="panel-head portfolio-analytics-panel-head">
+                        <div>
+                          <p className="eyebrow">{t("portfolio.historyEyebrow")}</p>
+                          <h3>{t("portfolio.historyTitle")}</h3>
+                        </div>
+                      </div>
+                      <div className="portfolio-performance-body">
+                        <div className="portfolio-history-empty-card portfolio-history-empty-card--fill">
+                          <EmptyState title={t("portfolio.historyEmptyTitle")} description={t("portfolio.historyEmptyDescription")} />
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                <div key="allocation" className="portfolio-widget-slot">
+                  <div className="portfolio-widget-shell portfolio-widget-shell--allocation">
+                    {isWidgetEditMode && canEditWidgetLayout ? (
+                      <div className="portfolio-widget-toolbar">
+                        <span className="portfolio-widget-drag-handle"><GripVertical size={15} /></span>
+                        <span className="portfolio-widget-toolbar-label">{widgetTitles.allocation}</span>
+                      </div>
+                    ) : null}
+                    <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-allocation-panel">
+                      <div className="panel-head portfolio-analytics-panel-head">
+                        <div>
+                          <p className="eyebrow">{t("portfolio.allocationEyebrow")}</p>
+                          <h3>{t("portfolio.allocationTitle")}</h3>
+                        </div>
+                      </div>
+                      {allocationData.length === 0 ? (
+                        <EmptyState title={t("portfolio.allocationEmptyTitle")} description={t("portfolio.allocationEmptyDescription")} />
+                      ) : (
+                        <div className="portfolio-allocation-shell">
+                          <div className="portfolio-allocation-chart-wrap">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie data={allocationData} dataKey="value" nameKey="instrumentCode" outerRadius={58} innerRadius={34}>
+                                  {allocationData.map((entry, index) => (
+                                    <Cell key={`${entry.instrumentCode}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  formatter={(value) => formatCurrency(value)}
+                                  contentStyle={chartTheme.tooltipContentStyle}
+                                  itemStyle={chartTheme.tooltipItemStyle}
+                                  labelStyle={chartTheme.tooltipLabelStyle}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </section>
-              </div>
-
-              <AiPortfolioCommentaryCard portfolio={selectedPortfolio} />
-
-              <section className="panel-surface portfolio-management-panel portfolio-table-card portfolio-holdings-section portfolio-detail-panel portfolio-holdings-panel">
-                <div className="panel-head">
-                  <div>
-                    <p className="eyebrow">{t("portfolio.holdingsEyebrow")}</p>
-                    <h3>{t("portfolio.holdingsTitle")}</h3>
+                          <div className="portfolio-allocation-legend">
+                            {allocationData.map((entry, index) => (
+                              <div key={`${entry.instrumentCode}-${index}`} className="portfolio-allocation-item portfolio-allocation-item--v2">
+                                <div className="portfolio-allocation-label">
+                                  <span className="portfolio-color-dot" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                                  <strong className="portfolio-allocation-code">{entry.instrumentCode}</strong>
+                                </div>
+                                <div className="portfolio-allocation-metrics" aria-label={`${entry.instrumentCode} allocation`}>
+                                  <span className="portfolio-allocation-pct">{formatNumber(entry.percentage, 2)}%</span>
+                                  <span className="portfolio-allocation-amt">{formatCurrency(entry.value)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </section>
                   </div>
-                  <span className="summary-chip">{t("common.rows", { count: formatNumber(holdings.length, 0) })}</span>
                 </div>
 
-                {holdings.length === 0 ? (
-                  <EmptyState title={t("portfolio.emptyHoldingsTitle")} description={t("portfolio.emptyHoldingsDescription")} />
-                ) : (
-                  <div className="portfolio-holdings-scroll">
-                    <table className="portfolio-holdings-table">
-                      <thead>
-                        <tr>
-                          <th>{t("portfolio.table.asset")}</th>
-                          <th>{t("portfolio.table.quantity")}</th>
-                          <th>{t("portfolio.table.cost")}</th>
-                          <th>{t("portfolio.table.currentPrice")}</th>
-                          <th>{t("portfolio.table.currentValue")}</th>
-                          <th>{t("portfolio.table.profitLoss")}</th>
-                          <th>{t("portfolio.table.status")}</th>
-                          <th>{t("portfolio.table.updatedAt")}</th>
-                          <th>{t("portfolio.table.action")}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {holdings.map((holding, index) => (
-                          <tr key={`${holding.holdingId || holding.instrumentCode}-${index}`}>
-                            <td>
-                              <div className="portfolio-cell-stack">
-                                <strong>{holding.instrumentCode || "-"}</strong>
-                                <span className="muted">{t("portfolio.assetNumber", { index: index + 1 })}</span>
-                              </div>
-                            </td>
-                            <td>{formatNumber(holding.quantity)}</td>
-                            <td>{formatCurrency(holding.buyPrice)}</td>
-                            <td>{holding.valuationAvailable ? formatCurrency(holding.currentPrice) : t("portfolio.priceMissing")}</td>
-                            <td>{holding.valuationAvailable ? formatCurrency(holding.currentValue) : t("portfolio.missingData")}</td>
-                            <td className={holding.valuationAvailable ? getPnLCellClass(holding.profitLoss) : undefined}>
-                              {holding.valuationAvailable ? (
-                                <div className="portfolio-cell-stack">
-                                  <strong>{formatCurrency(holding.profitLoss)}</strong>
-                                  <span className="muted">{formatPercent(holding.profitLossPercent)}</span>
-                                </div>
-                              ) : (
-                                <span className="muted">{t("portfolio.missingData")}</span>
-                              )}
-                            </td>
-                            <td>
-                              <span className={`portfolio-status-pill ${getPriceStatusClass(holding.priceStatus)}`}>
-                                {formatPriceStatus(holding.priceStatus, t)}
-                              </span>
-                            </td>
-                            <td>{formatDateTime(holding.lastPriceUpdateTime)}</td>
-                            <td>
-                              <div className="actions-row portfolio-holdings-actions">
-                                <button type="button" className="secondary-button" onClick={() => openEditHoldingModal(holding)}>
-                                  {t("portfolio.update")}
-                                </button>
-                                <button type="button" className="danger-button" onClick={() => handleDeleteHolding(holding.holdingId)}>
-                                  {t("portfolio.delete")}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                <div key="ai" className="portfolio-widget-slot">
+                  <div className="portfolio-widget-shell portfolio-widget-shell--ai">
+                    {isWidgetEditMode && canEditWidgetLayout ? (
+                      <div className="portfolio-widget-toolbar">
+                        <span className="portfolio-widget-drag-handle"><GripVertical size={15} /></span>
+                        <span className="portfolio-widget-toolbar-label">{widgetTitles.ai}</span>
+                      </div>
+                    ) : null}
+                    <AiPortfolioCommentaryCard portfolio={selectedPortfolio} />
                   </div>
-                )}
-              </section>
+                </div>
+
+                <div key="holdings" className="portfolio-widget-slot">
+                  <div className="portfolio-widget-shell portfolio-widget-shell--holdings">
+                    {isWidgetEditMode && canEditWidgetLayout ? (
+                      <div className="portfolio-widget-toolbar">
+                        <span className="portfolio-widget-drag-handle"><GripVertical size={15} /></span>
+                        <span className="portfolio-widget-toolbar-label">{widgetTitles.holdings}</span>
+                      </div>
+                    ) : null}
+                    <section className="panel-surface portfolio-management-panel portfolio-table-card portfolio-holdings-section portfolio-detail-panel portfolio-holdings-panel">
+                      <div className="panel-head">
+                        <div>
+                          <p className="eyebrow">{t("portfolio.holdingsEyebrow")}</p>
+                          <h3>{t("portfolio.holdingsTitle")}</h3>
+                        </div>
+                        <span className="summary-chip">{t("common.rows", { count: formatNumber(holdings.length, 0) })}</span>
+                      </div>
+
+                      {holdings.length === 0 ? (
+                        <EmptyState title={t("portfolio.emptyHoldingsTitle")} description={t("portfolio.emptyHoldingsDescription")} />
+                      ) : (
+                        <div className="portfolio-holdings-scroll">
+                          <table className="portfolio-holdings-table">
+                            <thead>
+                              <tr>
+                                <th>{t("portfolio.table.asset")}</th>
+                                <th>{t("portfolio.table.quantity")}</th>
+                                <th>{t("portfolio.table.cost")}</th>
+                                <th>{t("portfolio.table.currentPrice")}</th>
+                                <th>{t("portfolio.table.currentValue")}</th>
+                                <th>{t("portfolio.table.profitLoss")}</th>
+                                <th>{t("portfolio.table.status")}</th>
+                                <th>{t("portfolio.table.updatedAt")}</th>
+                                <th>{t("portfolio.table.action")}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {holdings.map((holding, index) => (
+                                <tr key={`${holding.holdingId || holding.instrumentCode}-${index}`}>
+                                  <td>
+                                    <div className="portfolio-cell-stack">
+                                      <strong>{holding.instrumentCode || "-"}</strong>
+                                      <span className="muted">{t("portfolio.assetNumber", { index: index + 1 })}</span>
+                                    </div>
+                                  </td>
+                                  <td>{formatNumber(holding.quantity)}</td>
+                                  <td>{formatCurrency(holding.buyPrice)}</td>
+                                  <td>{holding.valuationAvailable ? formatCurrency(holding.currentPrice) : t("portfolio.priceMissing")}</td>
+                                  <td>{holding.valuationAvailable ? formatCurrency(holding.currentValue) : t("portfolio.missingData")}</td>
+                                  <td className={holding.valuationAvailable ? getPnLCellClass(holding.profitLoss) : undefined}>
+                                    {holding.valuationAvailable ? (
+                                      <div className="portfolio-cell-stack">
+                                        <strong>{formatCurrency(holding.profitLoss)}</strong>
+                                        <span className="muted">{formatPercent(holding.profitLossPercent)}</span>
+                                      </div>
+                                    ) : (
+                                      <span className="muted">{t("portfolio.missingData")}</span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <span className={`portfolio-status-pill ${getPriceStatusClass(holding.priceStatus)}`}>
+                                      {formatPriceStatus(holding.priceStatus, t)}
+                                    </span>
+                                  </td>
+                                  <td>{formatDateTime(holding.lastPriceUpdateTime)}</td>
+                                  <td>
+                                    <div className="actions-row portfolio-holdings-actions">
+                                      <button type="button" className="secondary-button" onClick={() => openEditHoldingModal(holding)}>
+                                        {t("portfolio.update")}
+                                      </button>
+                                      <button type="button" className="danger-button" onClick={() => handleDeleteHolding(holding.holdingId)}>
+                                        {t("portfolio.delete")}
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </section>
+                  </div>
+                </div>
+              </ResponsiveGridLayout>
             </>
           ) : null}
         </div>

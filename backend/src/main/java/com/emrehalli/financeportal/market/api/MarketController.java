@@ -2,10 +2,8 @@ package com.emrehalli.financeportal.market.api;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.market.api.dto.FxRateResponse;
-import com.emrehalli.financeportal.market.api.dto.InstrumentSearchResult;
 import com.emrehalli.financeportal.market.api.dto.MarketAggregateResponse;
 import com.emrehalli.financeportal.market.api.dto.PriceHistoryDto;
-import com.emrehalli.financeportal.market.api.dto.PriceOnDateResult;
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
@@ -487,5 +485,11 @@ public class MarketController {
             return fxLatest;
         }
         return fxLatest.isAfter(cryptoLatest) ? fxLatest : cryptoLatest;
+    }
+
+    private record InstrumentSearchResult(String code, String name, String type) {
+    }
+
+    private record PriceOnDateResult(String symbol, LocalDate date, BigDecimal price) {
     }
 }

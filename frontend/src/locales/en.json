@@ -750,6 +750,20 @@
         "description": "Calculate Turkish gold/silver commodities (Gram Altın, Çeyrek, etc.) from GOLD_USD, SILVER_USD and USDTRY.",
         "action": "Calculate Commodities"
       },
+      "internalCommodityHistory": {
+        "eyebrow": "Step 1 — Raw Inputs",
+        "title": "GOLD_USD & SILVER_USD History Backfill",
+        "description": "Fetch GC=F and SI=F daily OHLCV bars from Yahoo Finance and persist ONE_DAY INTERNAL history for GOLD_USD and SILVER_USD. Required before derived commodity history can be generated.",
+        "action": "Fetch Raw Commodity History",
+        "daysPlaceholder": "Days (e.g. 365)"
+      },
+      "commodityHistory": {
+        "eyebrow": "Step 2 — Derived",
+        "title": "Derived Commodity History Backfill",
+        "description": "Match GOLD_USD + USDTRY and SILVER_USD + USDTRY records by day and generate CALCULATED ONE_DAY history for Gram Altın, Çeyrek Altın, Yarım Altın, Tam Altın, Cumhuriyet Altını and Gümüş Gram.",
+        "action": "Generate Derived History",
+        "daysPlaceholder": "Days (e.g. 365)"
+      },
       "macroSyncAll": {
         "eyebrow": "Macroeconomics",
         "title": "Sync All Macro Data",

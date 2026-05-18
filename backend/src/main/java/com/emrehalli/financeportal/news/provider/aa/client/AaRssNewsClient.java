@@ -2,8 +2,9 @@ package com.emrehalli.financeportal.news.provider.aa.client;
 
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
+import com.emrehalli.financeportal.news.provider.aa.AaArticleEnricher;
+import com.emrehalli.financeportal.news.provider.aa.AaArticleEnrichment;
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
-import com.emrehalli.financeportal.news.provider.rss.ArticleImageFetcher;
 import com.emrehalli.financeportal.news.provider.rss.RssFeedSupport;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,7 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -33,13 +33,18 @@ public class AaRssNewsClient {
     private final RestTemplate restTemplate;
     private final AaNewsProperties properties;
     private final RssFeedSupport rssFeedSupport;
-    private final ArticleImageFetcher articleImageFetcher;
+    private final AaArticleEnricher aaArticleEnricher;
 
-    public AaRssNewsClient(RestTemplate restTemplate, AaNewsProperties properties, RssFeedSupport rssFeedSupport, ArticleImageFetcher articleImageFetcher) {
+    public AaRssNewsClient(
+            RestTemplate restTemplate,
+            AaNewsProperties properties,
+            RssFeedSupport rssFeedSupport,
+            AaArticleEnricher aaArticleEnricher
+    ) {
         this.restTemplate = restTemplate;
         this.properties = properties;
         this.rssFeedSupport = rssFeedSupport;
-        this.articleImageFetcher = articleImageFetcher;
+        this.aaArticleEnricher = aaArticleEnricher;
     }
 
     public List<NewsItemDto> fetchEconomyNews() {
@@ -56,9 +61,10 @@ public class AaRssNewsClient {
                 return List.of();
             }
 
-            AtomicInteger cycleCounter = articleImageFetcher.newCycleCounter();
+            AtomicInteger cycleCounter = aaArticleEnricher.newCycleCounter();
             List<NewsItemDto> items = parse(payload, cycleCounter);
-            logger.info("AA feed parsed. url: {}, fetched: {}, imageFetches: {}", properties.getRssUrl(), items.size(), cycleCounter.get());
+            logger.info("AA feed parsed. url: {}, fetched: {}, articleFetches: {}",
+                    properties.getRssUrl(), items.size(), cycleCounter.get());
             return items;
         } catch (RestClientException e) {
             logger.error("AA RSS fetch failed. url: {}", properties.getRssUrl(), e);
@@ -98,7 +104,6 @@ public class AaRssNewsClient {
         }
     }
 
-    // kept for tests that call parse without a counter
     List<NewsItemDto> parse(String payload) {
         return parse(payload, new AtomicInteger(0));
     }
@@ -111,9 +116,12 @@ public class AaRssNewsClient {
         for (Element entry : entries) {
             String title = rssFeedSupport.text(entry, "title");
             String link = rssFeedSupport.resolveXmlLink(entry);
-            String guid = rssFeedSupport.firstNonBlank(rssFeedSupport.text(entry, "guid"), rssFeedSupport.text(entry, "id"));
+            String guid = rssFeedSupport.firstNonBlank(
+                    rssFeedSupport.text(entry, "guid"),
+                    rssFeedSupport.text(entry, "id")
+            );
             String descriptionHtml = rssFeedSupport.html(entry, "description");
-            String summary = rssFeedSupport.firstNonBlank(
+            String rssSummary = rssFeedSupport.firstNonBlank(
                     rssFeedSupport.extractTextFromHtml(descriptionHtml),
                     rssFeedSupport.text(entry, "description"),
                     rssFeedSupport.text(entry, "summary"),
@@ -121,7 +129,6 @@ public class AaRssNewsClient {
                     rssFeedSupport.text(entry, "content\\:encoded"),
                     rssFeedSupport.text(entry, "content")
             );
-            String imageUrl = resolveImageUrl(entry, descriptionHtml, link, cycleCounter);
             String pubDate = rssFeedSupport.firstNonBlank(
                     rssFeedSupport.text(entry, "pubDate"),
                     rssFeedSupport.text(entry, "dc|date"),
@@ -129,6 +136,23 @@ public class AaRssNewsClient {
                     rssFeedSupport.text(entry, "updated"),
                     rssFeedSupport.text(entry, "published")
             );
+
+            // Single page fetch: extracts both og:image and full article content
+            AaArticleEnrichment enrichment = aaArticleEnricher.enrich(link, cycleCounter);
+
+            // Image: prefer in-feed media/enclosure, fall back to article og:image
+            String rssImageUrl = rssFeedSupport.resolveImageUrl(entry, descriptionHtml);
+            String imageUrl = rssImageUrl != null ? rssImageUrl : enrichment.imageUrl();
+
+            // Summary: use full article content when meaningfully longer than RSS snippet
+            String summary = selectBestSummary(rssSummary, enrichment.content());
+
+            if (enrichment.content() != null) {
+                logger.debug("AA article content enriched. url: {}, rssSummaryLen: {}, contentLen: {}",
+                        link,
+                        rssSummary != null ? rssSummary.length() : 0,
+                        enrichment.content().length());
+            }
 
             NewsItemDto item = buildItem(title, link, guid, summary, imageUrl, pubDate);
             if (item != null) {
@@ -180,7 +204,7 @@ public class AaRssNewsClient {
                 .externalId(rssFeedSupport.resolveExternalId(NewsProviderType.AA_RSS.name(), guid, link))
                 .title(title)
                 .summary(normalizedSummary)
-                .source("Anadolu Ajans\u0131")
+                .source("Anadolu Ajansı")
                 .provider(NewsProviderType.AA_RSS.name())
                 .language(properties.getDefaultLanguage())
                 .regionScope(properties.getDefaultRegionScope())
@@ -199,12 +223,20 @@ public class AaRssNewsClient {
         return link.contains("/tr/ekonomi/") || link.contains("/ekonomi/");
     }
 
-    private String resolveImageUrl(Element entry, String descriptionHtml, String link, AtomicInteger cycleCounter) {
-        String imageUrl = rssFeedSupport.resolveImageUrl(entry, descriptionHtml);
-        if (imageUrl != null || link == null || link.isBlank()) {
-            return imageUrl;
+    private String selectBestSummary(String rssSummary, String articleContent) {
+        String cleanedContent = rssFeedSupport.clean(articleContent);
+        if (cleanedContent == null) {
+            return rssSummary;
         }
-        return articleImageFetcher.fetchImageUrl(link, cycleCounter, "AA");
+        String cleanedRss = rssFeedSupport.clean(rssSummary);
+        if (cleanedRss == null) {
+            return cleanedContent;
+        }
+        // Use full article content only when it is substantial (>=500 chars) AND meaningfully longer
+        if (cleanedContent.length() >= 500 && cleanedContent.length() > cleanedRss.length() + 150) {
+            return cleanedContent;
+        }
+        return cleanedRss;
     }
 
     private String normalizeSummary(String summary) {
