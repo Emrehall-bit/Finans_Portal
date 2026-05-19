@@ -15,6 +15,7 @@ public class NewsSearchRequest {
     private String symbol;
     private String category;
     private String language;
+    private Boolean isKapDisclosure;
     private LocalDate fromDate;
     private LocalDate toDate;
 }

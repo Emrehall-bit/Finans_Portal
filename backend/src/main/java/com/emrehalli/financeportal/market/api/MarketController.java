@@ -47,6 +47,9 @@ import java.util.List;
 @Slf4j
 public class MarketController {
 
+    private static final String INTERNAL_CASH_CODE = "TRY";
+    private static final String INTERNAL_CASH_DISPLAY_NAME = "Nakit";
+
     private final FxService fxService;
     private final CryptoService cryptoService;
     private final FundService fundService;
@@ -91,7 +94,8 @@ public class MarketController {
     @GetMapping("/instruments/search")
     public ApiResponse<List<InstrumentSearchResult>> searchInstruments(
             @RequestParam(name = "q", defaultValue = "") String query,
-            @RequestParam(name = "limit", defaultValue = "20") int limit
+            @RequestParam(name = "limit", defaultValue = "20") int limit,
+            @RequestParam(name = "includeInternal", defaultValue = "false") boolean includeInternal
     ) {
         int clampedLimit = Math.min(Math.max(limit, 1), 100);
         List<InstrumentSearchResult> results;
@@ -99,15 +103,21 @@ public class MarketController {
             results = List.of();
         } else {
             Pageable pageable = PageRequest.of(0, clampedLimit);
-            results = instrumentRepository
+            results = new ArrayList<>(instrumentRepository
                     .findByInstrumentCodeContainingIgnoreCaseOrInstrumentNameContainingIgnoreCase(
                             query, query, pageable)
                     .stream()
-                    .map(i -> new InstrumentSearchResult(
-                            i.getInstrumentCode(),
-                            i.getInstrumentName(),
-                            i.getInstrumentType().name()))
-                    .toList();
+                    .filter(instrument -> includeInternal || !isInternalCashInstrument(instrument))
+                    .map(this::toInstrumentSearchResult)
+                    .toList());
+
+            if (includeInternal
+                    && matchesInternalCashAlias(query)
+                    && results.stream().noneMatch(item -> INTERNAL_CASH_CODE.equalsIgnoreCase(item.code()))) {
+                instrumentRepository.findByInstrumentCodeIgnoreCase(INTERNAL_CASH_CODE)
+                        .map(this::toInstrumentSearchResult)
+                        .ifPresent(result -> results.add(0, result));
+            }
         }
         return ApiResponse.<List<InstrumentSearchResult>>builder()
                 .success(true)
@@ -485,6 +495,32 @@ public class MarketController {
             return fxLatest;
         }
         return fxLatest.isAfter(cryptoLatest) ? fxLatest : cryptoLatest;
+    }
+
+    private InstrumentSearchResult toInstrumentSearchResult(MarketInstrument instrument) {
+        String displayName = isInternalCashInstrument(instrument)
+                ? INTERNAL_CASH_DISPLAY_NAME
+                : instrument.getInstrumentName();
+        return new InstrumentSearchResult(
+                instrument.getInstrumentCode(),
+                displayName,
+                instrument.getInstrumentType().name());
+    }
+
+    private boolean matchesInternalCashAlias(String query) {
+        String normalized = query == null ? "" : query.trim().toLowerCase(java.util.Locale.ROOT);
+        return normalized.contains("nakit")
+                || normalized.contains("cash")
+                || normalized.contains("try")
+                || normalized.contains("turk")
+                || normalized.contains("türk")
+                || normalized.contains("lira");
+    }
+
+    private boolean isInternalCashInstrument(MarketInstrument instrument) {
+        return instrument.getInstrumentType() == InstrumentType.FX
+                && instrument.getSourceName() == SourceName.INTERNAL
+                && INTERNAL_CASH_CODE.equalsIgnoreCase(instrument.getInstrumentCode());
     }
 
     private record InstrumentSearchResult(String code, String name, String type) {

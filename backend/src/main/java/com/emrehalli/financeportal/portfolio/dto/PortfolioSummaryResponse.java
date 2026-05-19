@@ -12,6 +12,8 @@ public class PortfolioSummaryResponse {
 
     private BigDecimal totalCost;
     private BigDecimal currentValue;
+    private BigDecimal dailyProfitLoss;
+    private BigDecimal dailyProfitLossPercent;
     private BigDecimal profitLoss;
     private BigDecimal profitLossPercent;
     private SummaryStatus summaryStatus;
@@ -26,12 +28,16 @@ public class PortfolioSummaryResponse {
 
     public PortfolioSummaryResponse(BigDecimal totalCost,
                                     BigDecimal currentValue,
+                                    BigDecimal dailyProfitLoss,
+                                    BigDecimal dailyProfitLossPercent,
                                     BigDecimal profitLoss,
                                     BigDecimal profitLossPercent,
                                     SummaryStatus summaryStatus,
                                     int missingPriceCount) {
         this.totalCost = totalCost;
         this.currentValue = currentValue;
+        this.dailyProfitLoss = dailyProfitLoss;
+        this.dailyProfitLossPercent = dailyProfitLossPercent;
         this.profitLoss = profitLoss;
         this.profitLossPercent = profitLossPercent;
         this.summaryStatus = summaryStatus;

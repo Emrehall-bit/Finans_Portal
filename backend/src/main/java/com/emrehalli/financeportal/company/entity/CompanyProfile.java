@@ -40,6 +40,9 @@ public class CompanyProfile {
     @Column(name = "mkk_member_oid", length = 100)
     private String mkkMemberOid;
 
+    @Column(name = "kap_disclosure_oid", length = 100)
+    private String kapDisclosureOid;
+
     @Column(name = "shares_outstanding", precision = 30, scale = 4)
     private BigDecimal sharesOutstanding;
 

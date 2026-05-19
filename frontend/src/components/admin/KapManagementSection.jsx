@@ -12,7 +12,7 @@ import {
 import { extractErrorMessage } from "../../api/responseUtils";
 import ErrorMessage from "../common/ErrorMessage";
 
-const PRESET_TICKERS = ["THYAO", "ASELS", "TUPRS", "KCHOL", "BIMAS"];
+const PRESET_TICKERS = ["THYAO", "SISE", "TUPRS", "KCHOL", "BIMAS"];
 
 function kapErrorMessage(err) {
   const status = err?.response?.status;

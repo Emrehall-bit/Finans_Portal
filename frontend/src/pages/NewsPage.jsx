@@ -17,7 +17,8 @@ import { formatNewsCategoryLabel, getNewsProviderLabel } from "../components/new
 import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
-const KNOWN_PROVIDERS = ["FINNHUB", "AA_RSS", "INVESTING_RSS"];
+const REGULAR_PROVIDERS = ["FINNHUB", "AA_RSS", "INVESTING_RSS"];
+const KAP_PROVIDERS = ["KAP"];
 const KNOWN_CATEGORIES = ["business", "ECONOMY", "top news", "general", "company"];
 const INITIAL_NEWS_PAGE = {
   content: [],
@@ -48,6 +49,7 @@ export default function NewsPage() {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedProviders, setSelectedProviders] = useState([]);
   const [selectedLanguages, setSelectedLanguages] = useState([]);
+  const [feedType, setFeedType] = useState("news");
 
   useEffect(() => {
     let active = true;
@@ -56,7 +58,7 @@ export default function NewsPage() {
       try {
         setLoading(true);
         setError("");
-        const requestParams = buildNewsQueryParams(appliedFilters, currentPage, appliedSortBy);
+        const requestParams = buildNewsQueryParams(appliedFilters, currentPage, appliedSortBy, feedType);
         const result = await getNews(requestParams);
 
         if (!active) {
@@ -84,11 +86,11 @@ export default function NewsPage() {
     return () => {
       active = false;
     };
-  }, [appliedFilters, appliedSortBy, currentPage, refreshKey, t]);
+  }, [appliedFilters, appliedSortBy, currentPage, feedType, refreshKey, t]);
 
   async function handleSync() {
     try {
-      await syncNews({ provider: appliedFilters.provider || undefined });
+      await syncNews({ provider: appliedFilters.provider || (feedType === "kap" ? "KAP" : undefined) });
       setCurrentPage(0);
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
@@ -105,9 +107,11 @@ export default function NewsPage() {
   }
 
   const items = newsPage.content ?? [];
+  const isKapFeed = feedType === "kap";
+  const providerSeed = isKapFeed ? KAP_PROVIDERS : REGULAR_PROVIDERS;
 
   const providerOptions = useMemo(() => {
-    const values = new Set(KNOWN_PROVIDERS);
+    const values = new Set(providerSeed);
 
     selectedProviders.forEach((provider) => {
       if (provider) {
@@ -116,12 +120,12 @@ export default function NewsPage() {
     });
 
     return [...values].filter(Boolean).sort((a, b) => a.localeCompare(b));
-  }, [selectedProviders]);
+  }, [providerSeed, selectedProviders]);
 
   const categoryOptions = useMemo(() => {
     const values = new Map();
 
-    [...KNOWN_CATEGORIES, ...selectedCategories, ...items.map((item) => item?.category)]
+    [...(isKapFeed ? [] : KNOWN_CATEGORIES), ...selectedCategories, ...items.map((item) => item?.category)]
       .filter(Boolean)
       .forEach((category) => {
         const key = category.trim().toLowerCase();
@@ -133,7 +137,7 @@ export default function NewsPage() {
     return [...values.values()].sort((a, b) =>
       (formatNewsCategoryLabel(a) || a).localeCompare(formatNewsCategoryLabel(b) || b),
     );
-  }, [items, selectedCategories]);
+  }, [isKapFeed, items, selectedCategories]);
 
   const languageOptions = useMemo(
     () => [
@@ -242,6 +246,17 @@ export default function NewsPage() {
     setCurrentPage(0);
   }
 
+  function handleFeedTypeChange(nextFeedType) {
+    if (nextFeedType === feedType) {
+      return;
+    }
+
+    setFeedType(nextFeedType);
+    setCurrentPage(0);
+    setSelectedCategories([]);
+    setSelectedProviders([]);
+  }
+
   function handleRemoveActiveFilter(filter) {
     if (!filter?.type) {
       return;
@@ -307,6 +322,23 @@ export default function NewsPage() {
         onOpenFilters={() => setMobileFiltersOpen(true)}
       />
 
+      <section className="news-feed-tabs" aria-label={t("news.feedTabs")}>
+        <button
+          type="button"
+          className={feedType === "news" ? "news-feed-tab active" : "news-feed-tab"}
+          onClick={() => handleFeedTypeChange("news")}
+        >
+          {t("news.tabs.news")}
+        </button>
+        <button
+          type="button"
+          className={feedType === "kap" ? "news-feed-tab active" : "news-feed-tab"}
+          onClick={() => handleFeedTypeChange("kap")}
+        >
+          {t("news.tabs.kap")}
+        </button>
+      </section>
+
       <div className="news-layout-grid">
         <aside className="news-sidebar-column">
           <NewsSidebarFilters
@@ -329,7 +361,7 @@ export default function NewsPage() {
             <section className="news-feed-header">
               <div className="news-feed-copy">
                 <p className="eyebrow">{t("news.publishFlowEyebrow")}</p>
-                <h3>{t("news.publishFlowTitle")}</h3>
+                <h3>{isKapFeed ? t("news.kapFlowTitle") : t("news.publishFlowTitle")}</h3>
               </div>
             </section>
           ) : null}

@@ -224,8 +224,14 @@
     "activeFilters": "Aktif filtreler",
     "drawerAria": "Haber filtreleri",
     "drawerCloseAria": "Filtreleri kapat",
+    "feedTabs": "Haber akışı sekmeleri",
+    "tabs": {
+      "news": "Haberler",
+      "kap": "KAP Bildirimleri"
+    },
     "publishFlowEyebrow": "Yayın Akışı",
     "publishFlowTitle": "Güncel finans haberleri",
+    "kapFlowTitle": "KAP bildirim akışı",
     "emptyTitle": "Haber bulunamadı",
     "emptyDescription": "Filtreleri değiştir veya kaynaklardan tekrar veri çek.",
     "loadingMore": "Haberler yükleniyor...",
@@ -236,7 +242,25 @@
     "providers": "Kaynaklar",
     "language": "Dil",
     "all": "Hepsi",
-    "openNews": "Haberi aç"
+    "openNews": "Haberi aç",
+    "openDisclosure": "Bildirimi aç",
+    "readAtSource": "Kaynakta oku",
+    "previewMissing": "Bu kayıt için gösterilebilir içerik özeti yok.",
+    "titleMissing": "Başlık bulunmuyor",
+    "importanceLabel": "Önem",
+    "importanceLevels": {
+      "low": "Düşük önem",
+      "medium": "Orta önem",
+      "high": "Yüksek önem"
+    },
+    "kapDisclosure": "KAP bildirimi",
+    "kapFields": {
+      "companyCode": "Şirket / Kod",
+      "type": "Bildirim tipi",
+      "date": "Tarih",
+      "source": "Kaynak",
+      "quality": "İçerik durumu"
+    }
   },
   "markets": {
     "eyebrow": "Piyasa Takip",
@@ -764,6 +788,13 @@
         "action": "Türev Emtia History Üret",
         "daysPlaceholder": "Gün (örn: 365)"
       },
+      "indexHistory": {
+        "eyebrow": "Endeks History",
+        "title": "BIST Endeks History Backfill",
+        "description": "Yahoo Finance'dan XU100.IS, XU030.IS, XU050.IS, XBANK.IS, XUSIN.IS, XUTEK.IS ve XHOLD.IS için günlük OHLCV verisini çek; YAHOO_FINANCE kaynaklı ONE_DAY history kayıtları oluştur.",
+        "action": "Endeks History Çek",
+        "daysPlaceholder": "Gün (örn: 3650)"
+      },
       "macroSyncAll": {
         "eyebrow": "Makro Ekonomi",
         "title": "Tüm Makro Verileri Güncelle",
@@ -1124,6 +1155,7 @@
   },
   "newsDetail": {
     "eyebrow": "Haber Detayı",
+    "kapEyebrow": "KAP Bildirimi",
     "titleFallback": "Haber",
     "descriptionFallback": "Finans gündemi",
     "back": "Haberlere dön",
@@ -1139,7 +1171,29 @@
     "defaultCategory": "Gündem",
     "titleMissing": "Başlık bulunamıyor",
     "summaryMissing": "Bu haber için kaynak tarafı özet bilgisi sağlamadı.",
-    "openSource": "Kaynakta aç"
+    "openSource": "Kaynakta aç",
+    "relatedLoadError": "İlgili veriler yüklenemedi.",
+    "relatedLoading": "İlgili içerikler yükleniyor...",
+    "relatedAssetsEyebrow": "Etkilenebilecek Varlıklar",
+    "relatedAssetsTitle": "Etkilenebilecek Varlıklar",
+    "relatedAssetsDescription": "Haber içeriğindeki şirket, sektör ve makro tema eşleşmelerine göre otomatik üretilmiştir.",
+    "relatedAssetsEmptyTitle": "Bu haber için doğrudan ilişkili varlık bulunamadı.",
+    "relatedAssetsEmptyDescription": "Haber metninde güçlü bir şirket, sektör veya tema eşleşmesi tespit edilemedi.",
+    "relatedStocksNoPrice": "Piyasa verisi yok",
+    "relatedAssetsReasonFallback": "Tema eşleşmesi",
+    "relatedNewsEyebrow": "İlgili Haberler",
+    "relatedNewsTitle": "İlgili haberler",
+    "relatedNewsEmptyTitle": "İlgili haber bulunamadı",
+    "relatedNewsEmptyDescription": "Son 7 gün içinde bu haberle ilişkili başka kayıt bulunamadı.",
+    "relationTypes": {
+      "direct": "Doğrudan",
+      "theme": "Tema"
+    },
+    "confidence": {
+      "high": "Yüksek güven",
+      "medium": "Orta güven",
+      "low": "Düşük güven"
+    }
   },
   "marketDetail": {
     "addToPortfolio": {

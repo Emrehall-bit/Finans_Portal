@@ -26,7 +26,7 @@ public class PortfolioPriceResolver {
                                                                  BigDecimal purchasePricePerUnit,
                                                                  LocalDateTime referenceTime) {
         if ("TRY".equalsIgnoreCase(instrumentCode)) {
-            return PriceResolutionResult.available(BigDecimal.ONE, PriceStatus.LIVE, LocalDateTime.now());
+            return PriceResolutionResult.available(BigDecimal.ONE, BigDecimal.ZERO, PriceStatus.LIVE, LocalDateTime.now());
         }
 
         var snapshot = marketQueryService.findBySymbol(instrumentCode).orElse(null);
@@ -34,6 +34,7 @@ public class PortfolioPriceResolver {
             logger.debug("Using market price for instrument {}", instrumentCode);
             return PriceResolutionResult.available(
                     snapshot.price(),
+                    snapshot.changeRate(),
                     PriceStatus.LIVE,
                     snapshot.fetchedAt()
             );
@@ -42,7 +43,7 @@ public class PortfolioPriceResolver {
         if (purchasePricePerUnit != null && purchasePricePerUnit.compareTo(BigDecimal.ZERO) > 0) {
             LocalDateTime ts = referenceTime != null ? referenceTime : LocalDateTime.now();
             logger.debug("Using purchase-price fallback for instrument {}", instrumentCode);
-            return PriceResolutionResult.available(purchasePricePerUnit, PriceStatus.STALE, ts);
+            return PriceResolutionResult.available(purchasePricePerUnit, null, PriceStatus.STALE, ts);
         }
         logger.debug("No price fallback available for instrument {}", instrumentCode);
         return PriceResolutionResult.unavailable();

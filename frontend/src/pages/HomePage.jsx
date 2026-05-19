@@ -29,7 +29,7 @@ export default function HomePage() {
         setLoading(true);
         setError("");
 
-        const [newsData, quoteData] = await Promise.all([getNews(), getMarketQuotes()]);
+        const [newsData, quoteData] = await Promise.all([getNews({ isKapDisclosure: false }), getMarketQuotes()]);
 
         if (!active) {
           return;

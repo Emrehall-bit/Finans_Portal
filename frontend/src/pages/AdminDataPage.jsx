@@ -22,6 +22,7 @@ import {
   triggerCommodityDerive,
   triggerInternalCommodityHistoryBackfill,
   triggerCommodityHistoryBackfill,
+  triggerIndexHistoryBackfill,
   updateMarketTapeConfig,
 } from "../api/adminApi";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -64,6 +65,7 @@ export default function AdminDataPage() {
   const [endDate, setEndDate] = useState("");
   const [binanceDays, setBinanceDays] = useState("1825");
   const [commodityHistoryDays, setCommodityHistoryDays] = useState("365");
+  const [indexHistoryDays, setIndexHistoryDays] = useState("365");
   const [tefasFundCode, setTefasFundCode] = useState("");
   const [tefasPeriod, setTefasPeriod] = useState("");
   const [marketTapeSymbols, setMarketTapeSymbols] = useState([]);
@@ -362,6 +364,30 @@ export default function AdminDataPage() {
           ),
       },
       {
+        key: "index-history",
+        group: "history",
+        warning: true,
+        eyebrow: t("admin.cards.indexHistory.eyebrow"),
+        title: t("admin.cards.indexHistory.title"),
+        description: t("admin.cards.indexHistory.description"),
+        actionLabel: t("admin.cards.indexHistory.action"),
+        input: (
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={indexHistoryDays}
+            onChange={(event) => setIndexHistoryDays(event.target.value)}
+            className="admin-console-input"
+            placeholder={t("admin.cards.indexHistory.daysPlaceholder")}
+          />
+        ),
+        onClick: () =>
+          runAction("index-history", () =>
+            triggerIndexHistoryBackfill(Number.parseInt(indexHistoryDays, 10) || 365),
+          ),
+      },
+      {
         key: "tefas-fund-fetch",
         group: "live",
         eyebrow: t("admin.cards.tefasFundFetch.eyebrow"),
@@ -408,7 +434,7 @@ export default function AdminDataPage() {
           ),
       },
     ],
-    [binanceDays, commodityHistoryDays, tefasFundCode, tefasPeriod, t],
+    [binanceDays, commodityHistoryDays, indexHistoryDays, tefasFundCode, tefasPeriod, t],
   );
 
   const runMacroSyncAll = async () => {

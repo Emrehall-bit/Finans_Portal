@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.news.provider.aa.client;
 
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
+import com.emrehalli.financeportal.news.enums.NewsQualityStatus;
 import com.emrehalli.financeportal.news.provider.aa.AaArticleEnricher;
 import com.emrehalli.financeportal.news.provider.aa.AaArticleEnrichment;
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
@@ -146,6 +147,7 @@ public class AaRssNewsClient {
 
             // Summary: use full article content when meaningfully longer than RSS snippet
             String summary = selectBestSummary(rssSummary, enrichment.content());
+            boolean fullContent = isFullContentSelected(rssSummary, enrichment.content(), summary);
 
             if (enrichment.content() != null) {
                 logger.debug("AA article content enriched. url: {}, rssSummaryLen: {}, contentLen: {}",
@@ -154,7 +156,7 @@ public class AaRssNewsClient {
                         enrichment.content().length());
             }
 
-            NewsItemDto item = buildItem(title, link, guid, summary, imageUrl, pubDate);
+            NewsItemDto item = buildItem(title, link, guid, summary, imageUrl, pubDate, fullContent);
             if (item != null) {
                 items.add(item);
             }
@@ -184,7 +186,7 @@ public class AaRssNewsClient {
                 );
             }
 
-            NewsItemDto item = buildItem(title, link, null, null, null, null);
+            NewsItemDto item = buildItem(title, link, null, null, null, null, false);
             if (item != null) {
                 items.add(item);
             }
@@ -193,7 +195,7 @@ public class AaRssNewsClient {
         return items;
     }
 
-    private NewsItemDto buildItem(String title, String link, String guid, String summary, String imageUrl, String pubDate) {
+    private NewsItemDto buildItem(String title, String link, String guid, String summary, String imageUrl, String pubDate, boolean fullContent) {
         if (title == null || link == null) {
             return null;
         }
@@ -213,6 +215,8 @@ public class AaRssNewsClient {
                 .url(link)
                 .imageUrl(imageUrl)
                 .publishedAt(rssFeedSupport.parsePublishedAt(pubDate, logger, "AA RSS"))
+                .qualityStatus(resolveQualityStatus(normalizedSummary, fullContent))
+                .isKapDisclosure(false)
                 .build();
     }
 
@@ -248,5 +252,25 @@ public class AaRssNewsClient {
             return rssFeedSupport.extractTextFromHtml(cleaned);
         }
         return cleaned;
+    }
+
+    private boolean isFullContentSelected(String rssSummary, String articleContent, String selectedSummary) {
+        String cleanedArticle = rssFeedSupport.clean(articleContent);
+        if (cleanedArticle == null || selectedSummary == null) {
+            return false;
+        }
+        String cleanedRss = rssFeedSupport.clean(rssSummary);
+        return cleanedArticle.equals(selectedSummary)
+                && (cleanedRss == null || !cleanedArticle.equals(cleanedRss));
+    }
+
+    private String resolveQualityStatus(String normalizedSummary, boolean fullContent) {
+        if (fullContent) {
+            return NewsQualityStatus.FULL_CONTENT.name();
+        }
+        if (normalizedSummary != null) {
+            return NewsQualityStatus.SUMMARY_ONLY.name();
+        }
+        return NewsQualityStatus.SOURCE_LINK_ONLY.name();
     }
 }

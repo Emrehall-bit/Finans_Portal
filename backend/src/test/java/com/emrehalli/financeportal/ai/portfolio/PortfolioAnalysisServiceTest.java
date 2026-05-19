@@ -242,6 +242,8 @@ class PortfolioAnalysisServiceTest {
         return new PortfolioSummaryResponse(
                 BigDecimal.ZERO,
                 currentValue,
+                null,
+                null,
                 profitLoss,
                 profitLossPercent,
                 missingPriceCount == 0 ? SummaryStatus.COMPLETE : SummaryStatus.PARTIAL,

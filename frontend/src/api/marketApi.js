@@ -240,9 +240,9 @@ export async function compareTechnicalAnalysis(params) {
   return data;
 }
 
-export async function searchInstruments(query, limit = 20) {
+export async function searchInstruments(query, limit = 20, includeInternal = false) {
   const response = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/instruments/search`, {
-    params: { q: query, limit },
+    params: { q: query, limit, includeInternal },
   });
   return response.data?.data ?? [];
 }

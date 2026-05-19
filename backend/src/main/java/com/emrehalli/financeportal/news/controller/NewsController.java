@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
+import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.service.NewsService;
@@ -39,6 +40,7 @@ public class NewsController {
             @RequestParam(required = false) String language,
             @RequestParam(required = false) String scope,
             @RequestParam(required = false) String provider,
+            @RequestParam(required = false) Boolean isKapDisclosure,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(defaultValue = "0") int page,
@@ -53,6 +55,7 @@ public class NewsController {
                 .language(language)
                 .scope(scope)
                 .provider(provider)
+                .isKapDisclosure(isKapDisclosure)
                 .fromDate(fromDate)
                 .toDate(toDate)
                 .build();
@@ -71,6 +74,17 @@ public class NewsController {
         NewsResponseDto response = newsService.getNewsById(id);
 
         return ApiResponse.<NewsResponseDto>builder()
+                .success(true)
+                .data(response)
+                .message(appMessageSource.get("news.detail.fetched"))
+                .build();
+    }
+
+    @GetMapping("/{id}/related")
+    public ApiResponse<NewsRelatedResponseDto> getRelatedNewsData(@PathVariable Long id) {
+        NewsRelatedResponseDto response = newsService.getRelatedData(id);
+
+        return ApiResponse.<NewsRelatedResponseDto>builder()
                 .success(true)
                 .data(response)
                 .message(appMessageSource.get("news.detail.fetched"))

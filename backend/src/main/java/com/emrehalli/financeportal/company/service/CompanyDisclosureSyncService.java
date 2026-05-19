@@ -55,8 +55,9 @@ public class CompanyDisclosureSyncService {
         CompanyProfile company = profileRepository.findByTickerCodeIgnoreCase(tickerCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Şirket bulunamadı: " + tickerCode));
 
-        if (company.getMkkMemberOid() == null || company.getMkkMemberOid().isBlank()) {
-            logger.warn("mkkMemberOid missing for ticker={}", tickerCode);
+        String disclosureCompanyId = resolveDisclosureCompanyId(company);
+        if (disclosureCompanyId == null || disclosureCompanyId.isBlank()) {
+            logger.warn("KAP company id missing for ticker={}", tickerCode);
             return CompanyDisclosureSyncResponse.builder()
                     .tickerCode(tickerCode)
                     .fetchedCount(0)
@@ -65,17 +66,17 @@ public class CompanyDisclosureSyncService {
                     .duplicateSkippedCount(0)
                     .failedCount(0)
                     .failedItems(List.of())
-                    .message("mkkMemberOid missing for ticker " + tickerCode)
+                    .message("KAP company id missing for ticker " + tickerCode)
                     .build();
         }
 
-        logger.info("KAP disclosure fetch started. ticker={}, mkkMemberOid={}, days={}", tickerCode, company.getMkkMemberOid(), days);
+        logger.info("KAP disclosure fetch started. ticker={}, disclosureCompanyId={}, days={}", tickerCode, disclosureCompanyId, days);
 
         KapDisclosureProviderResult providerResult;
         try {
-            providerResult = kapDisclosureProvider.fetchDisclosures(company.getMkkMemberOid(), days);
+            providerResult = kapDisclosureProvider.fetchDisclosures(disclosureCompanyId, days);
         } catch (Exception e) {
-            logger.error("KAP fetch failed. ticker={}, mkkMemberOid={}, days={}", tickerCode, company.getMkkMemberOid(), days, e);
+            logger.error("KAP fetch failed. ticker={}, disclosureCompanyId={}, days={}", tickerCode, disclosureCompanyId, days, e);
             return CompanyDisclosureSyncResponse.builder()
                     .tickerCode(tickerCode)
                     .fetchedCount(0)
@@ -152,9 +153,13 @@ public class CompanyDisclosureSyncService {
 
         int totalFetched = fetched.size() + providerResult.failedItems().size();
 
-        logger.info("KAP disclosure sync done. ticker={}, mkkMemberOid={}, days={}, fetched={}, saved={}, updated={}, dupes={}, failed={}, oldestPublishedAt={}, newestPublishedAt={}",
-                tickerCode, company.getMkkMemberOid(), days, totalFetched, savedCount, updatedCount,
+        logger.info("KAP disclosure sync done. ticker={}, disclosureCompanyId={}, days={}, fetched={}, saved={}, updated={}, dupes={}, failed={}, oldestPublishedAt={}, newestPublishedAt={}",
+                tickerCode, disclosureCompanyId, days, totalFetched, savedCount, updatedCount,
                 duplicateSkippedCount, allFailedItems.size(), oldestPublishedAt, newestPublishedAt);
+
+        String message = totalFetched == 0
+                ? "Bildirim bulunamadı (son " + days + " gün)."
+                : "Sync tamamlandı.";
 
         return CompanyDisclosureSyncResponse.builder()
                 .tickerCode(tickerCode)
@@ -166,8 +171,21 @@ public class CompanyDisclosureSyncService {
                 .oldestPublishedAt(oldestPublishedAt)
                 .newestPublishedAt(newestPublishedAt)
                 .failedItems(allFailedItems.isEmpty() ? null : allFailedItems)
-                .message("Sync tamamlandı.")
+                .message(message)
                 .build();
+    }
+
+    private String resolveDisclosureCompanyId(CompanyProfile company) {
+        if (company.getKapDisclosureOid() != null && !company.getKapDisclosureOid().isBlank()) {
+            return company.getKapDisclosureOid();
+        }
+        if (company.getMkkMemberOid() != null && !company.getMkkMemberOid().isBlank()) {
+            return company.getMkkMemberOid();
+        }
+        if (company.getKapCompanyId() != null && !company.getKapCompanyId().isBlank()) {
+            return company.getKapCompanyId();
+        }
+        return null;
     }
 
     public List<CompanyDisclosureSyncResponse> syncAllDisclosures() {

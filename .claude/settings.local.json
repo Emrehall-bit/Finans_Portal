@@ -51,7 +51,16 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Directory)",
       "Bash(Select-Object Name)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\\\\notification\" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })",
-      "Bash(node --test src/pages/newsPageQueryUtils.test.js)"
+      "Bash(node --test src/pages/newsPageQueryUtils.test.js)",
+      "Bash(xargs grep -l -i \"bist\\\\|index\\\\|xu100\\\\|xu050\\\\|xhold\\\\|xutek\\\\|xusin\\\\|xbank\")",
+      "Bash(sort -t- -k1)",
+      "PowerShell(Rename-Item *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\resources\\\\db\\\\migration\\\\\" | Where-Object { $_.Name -match \"V3[3-9]|V4\" } | Select-Object Name)",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\resources\\\\db\\\\migration\\\\ /B /O:N\")",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\resources\\\\ /B\")",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\\\\ /B\")",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\\\\config\\\\ /B\")",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\\\\config\\\\security\\\\ /B\")"
     ]
   }
 }

@@ -19,6 +19,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,7 +44,7 @@ class ModerationEnforcementFilterTest {
     @BeforeEach
     void setUp() {
         filter = new ModerationEnforcementFilter(userService, userModerationService, new ObjectMapper());
-        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt()));
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt(), List.of()));
     }
 
     @AfterEach
@@ -54,6 +55,7 @@ class ModerationEnforcementFilterTest {
     @Test
     void shouldSkipPublicEndpoints() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/news/top");
+        request.setServletPath("/api/v1/news/top");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 

@@ -7,13 +7,18 @@ import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;
 import com.emrehalli.financeportal.news.config.NewsNotificationProperties;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
+import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
+import com.emrehalli.financeportal.news.dto.response.RelatedInstrumentDto;
+import com.emrehalli.financeportal.news.dto.response.RelatedNewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.entity.News;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.enums.NewsScope;
+import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.news.provider.common.NewsProvider;
 import com.emrehalli.financeportal.news.repository.NewsRepository;
 import org.apache.logging.log4j.LogManager;
@@ -30,21 +35,33 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.Set;
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 @Service
 public class NewsService {
 
     private static final Logger logger = LogManager.getLogger(NewsService.class);
+    private static final int MAX_RELATED_NEWS = 4;
+    private static final Pattern TOKEN_SPLIT_PATTERN = Pattern.compile("[^\\p{L}\\p{Nd}]+");
+    private static final Map<String, InstrumentAlias> BIST_INSTRUMENT_ALIASES = createInstrumentAliases();
+    private static final List<ThemeRule> THEME_RULES = createThemeRules();
 
     private final NewsRepository newsRepository;
     private final Map<String, NewsProvider> providerMap;
     private final NewsImportanceScoringService newsImportanceScoringService;
     private final NotificationService notificationService;
     private final NewsNotificationProperties notificationProperties;
+    private final NewsPresentationMapper newsPresentationMapper;
+    private final MarketQueryService marketQueryService;
 
     @Autowired
     public NewsService(
@@ -52,12 +69,16 @@ public class NewsService {
             List<NewsProvider> providers,
             NewsImportanceScoringService newsImportanceScoringService,
             NotificationService notificationService,
-            NewsNotificationProperties notificationProperties
+            NewsNotificationProperties notificationProperties,
+            NewsPresentationMapper newsPresentationMapper,
+            MarketQueryService marketQueryService
     ) {
         this.newsRepository = newsRepository;
         this.newsImportanceScoringService = newsImportanceScoringService;
         this.notificationService = notificationService;
         this.notificationProperties = notificationProperties;
+        this.newsPresentationMapper = newsPresentationMapper;
+        this.marketQueryService = marketQueryService;
         this.providerMap = new HashMap<>();
         for (NewsProvider provider : providers) {
             providerMap.put(provider.getProviderName(), provider);
@@ -93,6 +114,20 @@ public class NewsService {
         News news = newsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("News not found with id: " + id));
         return toResponse(news);
+    }
+
+    @Transactional(readOnly = true)
+    public NewsRelatedResponseDto getRelatedData(Long id) {
+        News news = newsRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("News not found with id: " + id));
+
+        List<RelatedInstrumentDto> relatedInstruments = resolveRelatedInstruments(news);
+        List<RelatedNewsItemDto> relatedNews = resolveRelatedNews(news, relatedInstruments);
+
+        return NewsRelatedResponseDto.builder()
+                .relatedInstruments(relatedInstruments)
+                .relatedNews(relatedNews)
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -360,6 +395,22 @@ public class NewsService {
                         existingNews.setPublishedAt(item.getPublishedAt());
                         needsUpdate = true;
                     }
+                    if (!hasText(existingNews.getQualityStatus()) && hasText(item.getQualityStatus())) {
+                        existingNews.setQualityStatus(item.getQualityStatus().trim());
+                        needsUpdate = true;
+                    }
+                    if (!Boolean.TRUE.equals(existingNews.getIsKapDisclosure()) && Boolean.TRUE.equals(item.getIsKapDisclosure())) {
+                        existingNews.setIsKapDisclosure(true);
+                        needsUpdate = true;
+                    }
+                    if (!hasText(existingNews.getDisclosureType()) && hasText(item.getDisclosureType())) {
+                        existingNews.setDisclosureType(item.getDisclosureType().trim());
+                        needsUpdate = true;
+                    }
+                    if (!hasText(existingNews.getRelatedSymbol()) && hasText(item.getRelatedSymbol())) {
+                        existingNews.setRelatedSymbol(item.getRelatedSymbol().trim());
+                        needsUpdate = true;
+                    }
                     if (shouldRefreshImportanceScore(existingNews)) {
                         int recalculatedScore = newsImportanceScoringService.calculateScore(existingNews);
                         if (!java.util.Objects.equals(existingNews.getImportanceScore(), recalculatedScore)) {
@@ -387,6 +438,9 @@ public class NewsService {
                     .url(item.getUrl())
                     .imageUrl(item.getImageUrl())
                     .publishedAt(item.getPublishedAt())
+                    .qualityStatus(item.getQualityStatus())
+                    .isKapDisclosure(Boolean.TRUE.equals(item.getIsKapDisclosure()))
+                    .disclosureType(item.getDisclosureType())
                     .importanceScore(0)
                     .build());
         }
@@ -568,6 +622,7 @@ public class NewsService {
                 byScope(context),
                 byCategory(request),
                 byLanguage(request),
+                byKapDisclosure(request),
                 bySymbol(request),
                 byKeyword(request),
                 byDateRange(request),
@@ -608,6 +663,13 @@ public class NewsService {
         }
         String language = request.getLanguage().trim().toLowerCase(Locale.ROOT);
         return (root, query, cb) -> cb.equal(cb.lower(root.get("language")), language);
+    }
+
+    private Specification<News> byKapDisclosure(NewsSearchRequest request) {
+        if (request.getIsKapDisclosure() == null) {
+            return null;
+        }
+        return (root, query, cb) -> cb.equal(root.get("isKapDisclosure"), request.getIsKapDisclosure());
     }
 
     private Specification<News> bySymbol(NewsSearchRequest request) {
@@ -723,25 +785,366 @@ public class NewsService {
     }
 
     private NewsResponseDto toResponse(News news) {
-        return NewsResponseDto.builder()
-                .id(news.getId())
-                .externalId(news.getExternalId())
-                .title(news.getTitle())
-                .summary(news.getSummary())
-                .source(news.getSource())
-                .provider(news.getProvider())
-                .language(news.getLanguage())
-                .regionScope(news.getRegionScope())
-                .category(news.getCategory())
-                .relatedSymbol(news.getRelatedSymbol())
-                .url(news.getUrl())
-                .imageUrl(news.getImageUrl())
-                .publishedAt(news.getPublishedAt())
-                .importanceScore(news.getImportanceScore())
-                .build();
+        return newsPresentationMapper.toResponse(news);
+    }
+
+    private List<RelatedInstrumentDto> resolveRelatedInstruments(News news) {
+        Map<String, RelatedInstrumentCandidate> matched = detectRelatedInstruments(news);
+        matched.putAll(detectThemeRelatedInstruments(news, matched));
+        if (matched.isEmpty()) {
+            return List.of();
+        }
+
+        return matched.values().stream()
+                .sorted(Comparator
+                        .comparing((RelatedInstrumentCandidate candidate) -> relationTypePriority(candidate.relationType())).reversed()
+                        .thenComparing(candidate -> confidencePriority(candidate.confidence())).reversed()
+                        .thenComparing(RelatedInstrumentCandidate::symbol))
+                .map(candidate -> {
+                    Optional<MarketQueryService.MarketSnapshot> snapshot =
+                            marketQueryService.findBySymbol(candidate.symbol(), parseInstrumentType(candidate.instrumentType()));
+
+                    return RelatedInstrumentDto.builder()
+                            .symbol(candidate.symbol())
+                            .name(snapshot.map(MarketQueryService.MarketSnapshot::displayName).filter(this::hasText).orElse(candidate.name()))
+                            .instrumentType(snapshot.map(MarketQueryService.MarketSnapshot::instrumentType).orElse(candidate.instrumentType()))
+                            .lastPrice(snapshot.map(MarketQueryService.MarketSnapshot::price).orElse(null))
+                            .changePercent(snapshot.map(MarketQueryService.MarketSnapshot::changeRate).orElse(null))
+                            .relationType(candidate.relationType())
+                            .confidence(candidate.confidence())
+                            .reason(candidate.reason())
+                            .build();
+                })
+                .toList();
+    }
+
+    private List<RelatedNewsItemDto> resolveRelatedNews(News news, List<RelatedInstrumentDto> relatedInstruments) {
+        if (!hasText(news.getCategory())) {
+            return List.of();
+        }
+
+        LocalDateTime publishedAfter = (news.getPublishedAt() != null ? news.getPublishedAt() : LocalDateTime.now()).minusDays(7);
+        Set<String> matchedSymbols = relatedInstruments.stream()
+                .map(RelatedInstrumentDto::symbol)
+                .filter(this::hasText)
+                .collect(Collectors.toSet());
+        Set<String> currentTokens = tokenize(news);
+
+        return newsRepository.findRecentCandidatesForRelatedNews(news.getId(), news.getCategory(), publishedAfter).stream()
+                .map(candidate -> scoreRelatedNews(candidate, matchedSymbols, currentTokens))
+                .sorted(Comparator
+                        .comparingInt(ScoredRelatedNews::score).reversed()
+                        .thenComparing(scored -> scored.news().getPublishedAt(), Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(scored -> scored.news().getImportanceScore(), Comparator.nullsLast(Comparator.reverseOrder())))
+                .filter(scored -> scored.score() > 0)
+                .limit(MAX_RELATED_NEWS)
+                .map(scored -> RelatedNewsItemDto.builder()
+                        .id(scored.news().getId())
+                        .title(scored.news().getTitle())
+                        .sourceName(newsPresentationMapper.toResponse(scored.news()).getSourceName())
+                        .category(scored.news().getCategory())
+                        .publishedAt(scored.news().getPublishedAt())
+                        .importanceScore(scored.news().getImportanceScore())
+                        .build())
+                .toList();
+    }
+
+    private ScoredRelatedNews scoreRelatedNews(News candidate, Set<String> matchedSymbols, Set<String> currentTokens) {
+        int score = 20;
+        String candidateSymbol = normalizeSymbolValue(candidate.getRelatedSymbol());
+        if (hasText(candidateSymbol) && matchedSymbols.contains(candidateSymbol)) {
+            score += 100;
+        }
+
+        Set<String> candidateSymbols = detectRelatedInstruments(candidate).keySet();
+        long aliasOverlap = candidateSymbols.stream().filter(matchedSymbols::contains).count();
+        if (aliasOverlap > 0) {
+            score += (int) aliasOverlap * 60;
+        }
+
+        Set<String> candidateTokens = tokenize(candidate);
+        long tokenOverlap = candidateTokens.stream().filter(currentTokens::contains).count();
+        score += Math.min(40, (int) tokenOverlap * 4);
+
+        if (candidate.getImportanceScore() != null) {
+            score += Math.min(15, Math.max(0, candidate.getImportanceScore() / 10));
+        }
+
+        return new ScoredRelatedNews(candidate, score);
+    }
+
+    private Map<String, RelatedInstrumentCandidate> detectRelatedInstruments(News news) {
+        String combinedText = normalizeText(String.join(" ",
+                safeText(news.getRelatedSymbol()),
+                safeText(news.getTitle()),
+                safeText(news.getSummary())));
+        Set<String> tokens = tokenizeText(combinedText);
+
+        Map<String, RelatedInstrumentCandidate> matched = new LinkedHashMap<>();
+        for (InstrumentAlias alias : BIST_INSTRUMENT_ALIASES.values()) {
+            if (matchesInstrumentAlias(combinedText, tokens, alias)) {
+                matched.put(alias.symbol(), RelatedInstrumentCandidate.direct(alias.symbol(), alias.name(), alias.instrumentType()));
+            }
+        }
+
+        String normalizedRelatedSymbol = normalizeSymbolValue(news.getRelatedSymbol());
+        if (hasText(normalizedRelatedSymbol) && BIST_INSTRUMENT_ALIASES.containsKey(normalizedRelatedSymbol)) {
+            InstrumentAlias alias = BIST_INSTRUMENT_ALIASES.get(normalizedRelatedSymbol);
+            matched.putIfAbsent(normalizedRelatedSymbol, RelatedInstrumentCandidate.direct(alias.symbol(), alias.name(), alias.instrumentType()));
+        }
+
+        return matched;
+    }
+
+    private Map<String, RelatedInstrumentCandidate> detectThemeRelatedInstruments(
+            News news,
+            Map<String, RelatedInstrumentCandidate> directMatches
+    ) {
+        String combinedText = normalizeText(String.join(" ",
+                safeText(news.getTitle()),
+                safeText(news.getSummary()),
+                safeText(news.getCategory())));
+        Set<String> tokens = tokenizeText(combinedText);
+
+        Map<String, RelatedInstrumentCandidate> themed = new LinkedHashMap<>();
+        for (ThemeRule themeRule : THEME_RULES) {
+            boolean themeMatched = themeRule.keywords().stream().anyMatch(keyword -> containsKeyword(combinedText, tokens, keyword));
+            if (!themeMatched) {
+                continue;
+            }
+
+            for (ThemeInstrument themeInstrument : themeRule.instruments()) {
+                RelatedInstrumentCandidate existingDirect = directMatches.get(themeInstrument.symbol());
+                if (existingDirect != null) {
+                    continue;
+                }
+
+                themed.merge(
+                        themeInstrument.symbol(),
+                        RelatedInstrumentCandidate.theme(
+                                themeInstrument.symbol(),
+                                themeInstrument.name(),
+                                themeInstrument.instrumentType(),
+                                themeInstrument.confidence(),
+                                themeRule.reason()
+                        ),
+                        this::mergeThemeCandidates
+                );
+            }
+        }
+
+        return themed;
+    }
+
+    private RelatedInstrumentCandidate mergeThemeCandidates(RelatedInstrumentCandidate left, RelatedInstrumentCandidate right) {
+        if (confidencePriority(right.confidence()) > confidencePriority(left.confidence())) {
+            return right;
+        }
+        return left;
+    }
+
+    private boolean matchesInstrumentAlias(String normalizedText, Set<String> tokens, InstrumentAlias alias) {
+        if (containsKeyword(normalizedText, tokens, alias.symbol())) {
+            return true;
+        }
+
+        for (String keyword : alias.keywords()) {
+            if (containsKeyword(normalizedText, tokens, keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private int relationTypePriority(String relationType) {
+        return "DIRECT".equalsIgnoreCase(relationType) ? 2 : 1;
+    }
+
+    private int confidencePriority(String confidence) {
+        return switch (String.valueOf(confidence).toUpperCase(Locale.ROOT)) {
+            case "HIGH" -> 3;
+            case "MEDIUM" -> 2;
+            default -> 1;
+        };
+    }
+
+    private InstrumentType parseInstrumentType(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        try {
+            return InstrumentType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    private Set<String> tokenize(News news) {
+        return tokenizeText(normalizeText(String.join(" ",
+                safeText(news.getTitle()),
+                safeText(news.getSummary()),
+                safeText(news.getCategory()))));
+    }
+
+    private Set<String> tokenizeText(String normalizedText) {
+        return TOKEN_SPLIT_PATTERN.splitAsStream(normalizedText)
+                .map(String::trim)
+                .filter(token -> token.length() >= 3)
+                .collect(Collectors.toSet());
+    }
+
+    private boolean containsKeyword(String normalizedText, Set<String> tokens, String keyword) {
+        if (!hasText(keyword)) {
+            return false;
+        }
+        String normalizedKeyword = normalizeText(keyword);
+        if (normalizedKeyword.contains(" ")) {
+            return normalizedText.contains(normalizedKeyword);
+        }
+        return tokens.contains(normalizedKeyword);
+    }
+
+    private String normalizeText(String value) {
+        if (!hasText(value)) {
+            return "";
+        }
+        return value.toUpperCase(Locale.ROOT)
+                .replace('İ', 'I')
+                .replace('I', 'I')
+                .replace('Ş', 'S')
+                .replace('Ğ', 'G')
+                .replace('Ü', 'U')
+                .replace('Ö', 'O')
+                .replace('Ç', 'C')
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private String normalizeSymbolValue(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        return value.replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
+    }
+
+    private String safeText(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static Map<String, InstrumentAlias> createInstrumentAliases() {
+        Map<String, InstrumentAlias> aliases = new LinkedHashMap<>();
+        aliases.put("THYAO", new InstrumentAlias("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), Set.of("THYAO", "TURK HAVA YOLLARI", "THY", "TURKISH AIRLINES")));
+        aliases.put("ASELS", new InstrumentAlias("ASELS", "Aselsan", InstrumentType.STOCK.name(), Set.of("ASELS", "ASELSAN")));
+        aliases.put("AKBNK", new InstrumentAlias("AKBNK", "Akbank", InstrumentType.STOCK.name(), Set.of("AKBNK", "AKBANK")));
+        aliases.put("BIMAS", new InstrumentAlias("BIMAS", "BİM", InstrumentType.STOCK.name(), Set.of("BIMAS", "BIM", "BIM BIRLESIK", "BIRLESIK MAGAZALAR")));
+        aliases.put("KCHOL", new InstrumentAlias("KCHOL", "Koç Holding", InstrumentType.STOCK.name(), Set.of("KCHOL", "KOC HOLDING", "KOC")));
+        aliases.put("TUPRS", new InstrumentAlias("TUPRS", "Tüpraş", InstrumentType.STOCK.name(), Set.of("TUPRS", "TUPRAS")));
+        aliases.put("GARAN", new InstrumentAlias("GARAN", "Garanti BBVA", InstrumentType.STOCK.name(), Set.of("GARAN", "GARANTI", "GARANTI BBVA")));
+        aliases.put("ISCTR", new InstrumentAlias("ISCTR", "İş Bankası", InstrumentType.STOCK.name(), Set.of("ISCTR", "IS BANKASI", "TURKIYE IS BANKASI", "ISBANK")));
+        aliases.put("YKBNK", new InstrumentAlias("YKBNK", "Yapı Kredi", InstrumentType.STOCK.name(), Set.of("YKBNK", "YAPI KREDI")));
+        aliases.put("EREGL", new InstrumentAlias("EREGL", "Ereğli Demir Çelik", InstrumentType.STOCK.name(), Set.of("EREGL", "EREGLI", "ERDEMIR", "EREGLI DEMIR CELIK")));
+        aliases.put("SISE", new InstrumentAlias("SISE", "Şişecam", InstrumentType.STOCK.name(), Set.of("SISE", "SISECAM", "TURKIYE SISE VE CAM")));
+        aliases.put("FROTO", new InstrumentAlias("FROTO", "Ford Otosan", InstrumentType.STOCK.name(), Set.of("FROTO", "FORD OTOSAN", "FORD")));
+        aliases.put("TOASO", new InstrumentAlias("TOASO", "Tofaş", InstrumentType.STOCK.name(), Set.of("TOASO", "TOFAS")));
+        aliases.put("MGROS", new InstrumentAlias("MGROS", "Migros", InstrumentType.STOCK.name(), Set.of("MGROS", "MIGROS")));
+        return aliases;
+    }
+
+    private static List<ThemeRule> createThemeRules() {
+        return List.of(
+                new ThemeRule(Set.of("PETROL", "BRENT", "YAKIT", "AKARYAKIT", "ENERJI FIYATI"),
+                        "Petrol/yakit maliyeti temasi",
+                        List.of(
+                                new ThemeInstrument("TUPRS", "Tüpraş", InstrumentType.STOCK.name(), "HIGH"),
+                                new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("BRENT", "Brent Petrol", InstrumentType.COMMODITY.name(), "MEDIUM")
+                        )),
+                new ThemeRule(Set.of("ENERJI", "ELEKTRIK", "DOGALGAZ"),
+                        "Enerji maliyeti ve sektor hassasiyeti",
+                        List.of(
+                                new ThemeInstrument("TUPRS", "Tüpraş", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("SISE", "Şişecam", InstrumentType.STOCK.name(), "LOW")
+                        )),
+                new ThemeRule(Set.of("FAIZ", "KREDI", "ENFLASYON", "TCMB", "PARA POLITIKASI"),
+                        "Faiz ve kredi hassasiyeti",
+                        List.of(
+                                new ThemeInstrument("AKBNK", "Akbank", InstrumentType.STOCK.name(), "HIGH"),
+                                new ThemeInstrument("GARAN", "Garanti BBVA", InstrumentType.STOCK.name(), "HIGH"),
+                                new ThemeInstrument("ISCTR", "İş Bankası", InstrumentType.STOCK.name(), "HIGH"),
+                                new ThemeInstrument("YKBNK", "Yapı Kredi", InstrumentType.STOCK.name(), "HIGH")
+                        )),
+                new ThemeRule(Set.of("SAVUNMA", "JEOPOLITIK", "SAVAS"),
+                        "Savunma ve jeopolitik tema",
+                        List.of(new ThemeInstrument("ASELS", "Aselsan", InstrumentType.STOCK.name(), "HIGH"))),
+                new ThemeRule(Set.of("OTOMOTIV", "ARAC", "IHRACAT"),
+                        "Otomotiv ve ihracat temasi",
+                        List.of(
+                                new ThemeInstrument("FROTO", "Ford Otosan", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("TOASO", "Tofaş", InstrumentType.STOCK.name(), "MEDIUM")
+                        )),
+                new ThemeRule(Set.of("GIDA", "PERAKENDE", "TUKETIM"),
+                        "Tuketim ve perakende temasi",
+                        List.of(
+                                new ThemeInstrument("BIMAS", "BİM", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("MGROS", "Migros", InstrumentType.STOCK.name(), "MEDIUM")
+                        )),
+                new ThemeRule(Set.of("TURIZM", "HAVACILIK", "YOLCU"),
+                        "Turizm ve havacilik talebi",
+                        List.of(new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "HIGH"))),
+                new ThemeRule(Set.of("DOLAR", "KUR", "IHRACAT"),
+                        "Kur ve ihracat hassasiyeti",
+                        List.of(
+                                new ThemeInstrument("TCMB:USD:SELL", "USD/TRY", InstrumentType.FX.name(), "MEDIUM"),
+                                new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("EREGL", "Ereğli Demir Çelik", InstrumentType.STOCK.name(), "LOW")
+                        )),
+                new ThemeRule(Set.of("ALTIN", "ONS", "GUVENLI LIMAN"),
+                        "Guvenli liman ve emtia temasi",
+                        List.of(
+                                new ThemeInstrument("GRAM_ALTIN", "Gram Altın", InstrumentType.COMMODITY.name(), "HIGH"),
+                                new ThemeInstrument("BRENT", "Brent Petrol", InstrumentType.COMMODITY.name(), "LOW")
+                        )),
+                new ThemeRule(Set.of("KURESEL BUYUME", "RESESYON", "TICARET", "TEDARIK ZINCIRI"),
+                        "Kuresel buyume/piyasa geneli etkisi",
+                        List.of(
+                                new ThemeInstrument("XU100", "BIST 100", InstrumentType.INDEX.name(), "MEDIUM"),
+                                new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("TUPRS", "Tüpraş", InstrumentType.STOCK.name(), "LOW")
+                        ))
+        );
     }
 
     private record QueryContext(NewsScope scope, NewsProviderType provider) {
+    }
+
+    private record InstrumentAlias(String symbol, String name, String instrumentType, Set<String> keywords) {
+    }
+
+    private record ThemeRule(Set<String> keywords, String reason, List<ThemeInstrument> instruments) {
+    }
+
+    private record ThemeInstrument(String symbol, String name, String instrumentType, String confidence) {
+    }
+
+    private record RelatedInstrumentCandidate(
+            String symbol,
+            String name,
+            String instrumentType,
+            String relationType,
+            String confidence,
+            String reason
+    ) {
+        private static RelatedInstrumentCandidate direct(String symbol, String name, String instrumentType) {
+            return new RelatedInstrumentCandidate(symbol, name, instrumentType, "DIRECT", "HIGH", "Sirket/sembol eslesmesi");
+        }
+
+        private static RelatedInstrumentCandidate theme(String symbol, String name, String instrumentType, String confidence, String reason) {
+            return new RelatedInstrumentCandidate(symbol, name, instrumentType, "THEME", confidence, reason);
+        }
+    }
+
+    private record ScoredRelatedNews(News news, int score) {
     }
 
     private record ValidationResult(

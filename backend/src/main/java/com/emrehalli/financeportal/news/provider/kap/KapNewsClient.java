@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.news.provider.kap;
 
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
+import com.emrehalli.financeportal.news.enums.NewsQualityStatus;
 import com.emrehalli.financeportal.news.provider.rss.RssFeedSupport;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,6 +30,7 @@ public class KapNewsClient {
     private static final Logger logger = LogManager.getLogger(KapNewsClient.class);
     private static final Pattern PUBLISHED_AT_PATTERN = Pattern.compile("(\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2})");
     private static final DateTimeFormatter PUBLISHED_AT_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+    private static final Pattern SYMBOL_PATTERN = Pattern.compile("\\b([A-Z0-9]{3,6})\\b");
 
     private final RestTemplate restTemplate;
     private final KapNewsProperties properties;
@@ -84,6 +86,8 @@ public class KapNewsClient {
             LocalDateTime publishedAt = parsePublishedAt(contextText);
             String summary = summarize(contextText, title, publishedAt);
             String externalId = rssFeedSupport.resolveExternalId(NewsProviderType.KAP.name(), null, url);
+            String resolvedSymbol = relatedSymbol != null ? relatedSymbol : extractRelatedSymbol(title, summary);
+            String disclosureType = detectDisclosureType(title, summary);
 
             itemsByUrl.putIfAbsent(url, NewsItemDto.builder()
                     .externalId(externalId)
@@ -94,9 +98,12 @@ public class KapNewsClient {
                     .language(properties.getDefaultLanguage())
                     .regionScope(properties.getDefaultRegionScope())
                     .category(properties.getDefaultCategory())
-                    .relatedSymbol(relatedSymbol)
+                    .relatedSymbol(resolvedSymbol)
                     .url(url)
                     .publishedAt(publishedAt)
+                    .qualityStatus(NewsQualityStatus.KAP_DISCLOSURE.name())
+                    .isKapDisclosure(true)
+                    .disclosureType(disclosureType)
                     .build());
 
             if (itemsByUrl.size() >= Math.max(properties.getMaxItems(), 1)) {
@@ -178,5 +185,32 @@ public class KapNewsClient {
 
         summary = summary.replaceAll("\\s+", " ").trim();
         return summary.isBlank() ? null : summary;
+    }
+
+    private String detectDisclosureType(String title, String summary) {
+        String content = ((title == null ? "" : title) + " " + (summary == null ? "" : summary)).toLowerCase(Locale.ROOT);
+        if (content.contains("finansal") || content.contains("bilan") || content.contains("faaliyet raporu")) {
+            return "FINANCIAL";
+        }
+        if (content.contains("hak kullan") || content.contains("temett") || content.contains("bedelsiz") || content.contains("sermaye art")) {
+            return "RIGHTS";
+        }
+        if (content.contains("ozel durum") || content.contains("özel durum") || content.contains("genel kurul")
+                || content.contains("yönetim kurulu") || content.contains("duyuru")) {
+            return "SPECIAL";
+        }
+        return "GENERAL";
+    }
+
+    private String extractRelatedSymbol(String title, String summary) {
+        String combined = (title == null ? "" : title) + " " + (summary == null ? "" : summary);
+        Matcher matcher = SYMBOL_PATTERN.matcher(combined);
+        while (matcher.find()) {
+            String candidate = matcher.group(1);
+            if (candidate.length() >= 3 && candidate.length() <= 6 && !candidate.equals("KAP")) {
+                return candidate;
+            }
+        }
+        return null;
     }
 }

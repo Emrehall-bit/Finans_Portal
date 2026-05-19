@@ -62,6 +62,8 @@ class CompanyRatioServiceTest {
         when(reportRepository.findEligibleReports(eq("TEST"), anyCollection())).thenReturn(List.of(report));
         when(ratioRepository.findByCompanyIdAndReportId(1L, 10L)).thenReturn(Optional.empty());
         when(ratioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(quarterNormalizer.effectiveValue(any(CompanyFinancialValue.class)))
+                .thenAnswer(inv -> ((CompanyFinancialValue) inv.getArgument(0)).getValue());
     }
 
     // -------------------------------------------------------------------------
@@ -80,6 +82,10 @@ class CompanyRatioServiceTest {
                 value(FinancialItemKey.TOPLAM_YUKUMLULUKLER, "300000"),
                 value(FinancialItemKey.ODENMIS_SERMAYE, "100000")
         ));
+        when(quarterNormalizer.getQuarterlyValue(1L, FinancialItemKey.NET_DONEM_KARI, 2024, 4))
+                .thenReturn(new BigDecimal("-50000"));
+        when(quarterNormalizer.getQuarterlyValue(1L, FinancialItemKey.HASILAT, 2024, 4))
+                .thenReturn(new BigDecimal("1000000"));
 
         CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
 

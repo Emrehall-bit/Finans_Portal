@@ -171,8 +171,8 @@ public class FinancialItemParser {
         if (report.getCompany() == null) {
             return baseFailure(report, "Company profile is missing");
         }
-        if (report.getCompany().getMkkMemberOid() == null || report.getCompany().getMkkMemberOid().isBlank()) {
-            return baseFailure(report, "Company mkkMemberOid is missing");
+        if (report.getCompany().getKapCompanyId() == null || report.getCompany().getKapCompanyId().isBlank()) {
+            return baseFailure(report, "KAP member id missing");
         }
         if (report.getCompany().getCompanyName() == null || report.getCompany().getCompanyName().isBlank()) {
             return baseFailure(report, "Company companyName is missing");

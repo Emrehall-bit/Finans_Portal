@@ -45,6 +45,7 @@ import java.util.TreeSet;
 public class FxService {
 
     private static final String CACHE_KEY_ALL = "fx:all";
+    private static final String INTERNAL_CASH_CODE = "TRY";
 
     private final MarketInstrumentRepository marketInstrumentRepository;
     private final MarketPriceRepository marketPriceRepository;
@@ -88,17 +89,17 @@ public class FxService {
     public List<FxRateResponse> getAll() {
         List<FxRateResponse> cached = readCachedListSafely(CACHE_KEY_ALL, FxRateResponse.class);
         if (!cached.isEmpty()) {
-            return cached;
+            return filterBrowsableResponses(cached);
         }
 
         try {
             List<MarketInstrument> instruments = getFxInstruments();
             List<FxRateResponse> responses = resolveResponses(instruments, null, null);
             putCacheSilently(CACHE_KEY_ALL, responses);
-            return responses;
+            return filterBrowsableResponses(responses);
         } catch (Exception exception) {
             log.error("Failed to load all FX rates from database. Returning cached values when available.", exception);
-            return readCachedListSafely(CACHE_KEY_ALL, FxRateResponse.class);
+            return filterBrowsableResponses(readCachedListSafely(CACHE_KEY_ALL, FxRateResponse.class));
         }
     }
 
@@ -111,7 +112,7 @@ public class FxService {
         String cacheKey = buildSourceCacheKey(sourceName);
         List<FxRateResponse> cached = readCachedListSafely(cacheKey, FxRateResponse.class);
         if (!cached.isEmpty()) {
-            return cached;
+            return filterBrowsableResponses(cached);
         }
 
         try {
@@ -120,10 +121,10 @@ public class FxService {
                     .toList();
             List<FxRateResponse> responses = resolveResponses(instruments, sourceName, null);
             putCacheSilently(cacheKey, responses);
-            return responses;
+            return filterBrowsableResponses(responses);
         } catch (Exception exception) {
             log.error("Failed to load FX rates for source {}. Returning cached values when available.", sourceName, exception);
-            return readCachedListSafely(cacheKey, FxRateResponse.class);
+            return filterBrowsableResponses(readCachedListSafely(cacheKey, FxRateResponse.class));
         }
     }
 
@@ -133,7 +134,7 @@ public class FxService {
         String cacheKey = buildCodeCacheKey(normalizedCode);
         List<FxRateResponse> cached = readCachedListSafely(cacheKey, FxRateResponse.class);
         if (!cached.isEmpty()) {
-            return cached;
+            return filterBrowsableResponses(cached);
         }
 
         try {
@@ -142,10 +143,10 @@ public class FxService {
                     .toList();
             List<FxRateResponse> responses = resolveResponses(instruments, null, normalizedCode);
             putCacheSilently(cacheKey, responses);
-            return responses;
+            return filterBrowsableResponses(responses);
         } catch (Exception exception) {
             log.error("Failed to load FX rates for code {}. Returning cached values when available.", normalizedCode, exception);
-            return readCachedListSafely(cacheKey, FxRateResponse.class);
+            return filterBrowsableResponses(readCachedListSafely(cacheKey, FxRateResponse.class));
         }
     }
 
@@ -185,7 +186,20 @@ public class FxService {
 
     private List<MarketInstrument> getFxInstruments() {
         return marketInstrumentRepository.findAll().stream()
-                .filter(instrument -> instrument.getInstrumentType() == InstrumentType.FX)
+                .filter(this::isBrowsableFxInstrument)
+                .toList();
+    }
+
+    private boolean isBrowsableFxInstrument(MarketInstrument instrument) {
+        return instrument.getInstrumentType() == InstrumentType.FX
+                && instrument.getSourceName() != SourceName.INTERNAL;
+    }
+
+    private List<FxRateResponse> filterBrowsableResponses(List<FxRateResponse> responses) {
+        return responses.stream()
+                .filter(Objects::nonNull)
+                .filter(response -> !SourceName.INTERNAL.name().equalsIgnoreCase(response.getSource()))
+                .filter(response -> !INTERNAL_CASH_CODE.equalsIgnoreCase(response.getCode()))
                 .toList();
     }
 

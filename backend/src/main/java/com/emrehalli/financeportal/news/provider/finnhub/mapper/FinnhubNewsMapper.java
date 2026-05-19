@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.news.provider.finnhub.mapper;
 
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
+import com.emrehalli.financeportal.news.enums.NewsQualityStatus;
 import com.emrehalli.financeportal.news.enums.NewsRegionScope;
 import com.emrehalli.financeportal.news.provider.finnhub.dto.FinnhubNewsResponse;
 import org.springframework.stereotype.Component;
@@ -31,7 +32,15 @@ public class FinnhubNewsMapper {
                 .url(source.getUrl())
                 .imageUrl(resolveImageUrl(source.getImage()))
                 .publishedAt(mapDate(source.getDatetime()))
+                .qualityStatus(resolveQualityStatus(source.getSummary()))
+                .isKapDisclosure(false)
                 .build();
+    }
+
+    private String resolveQualityStatus(String summary) {
+        return (summary == null || summary.isBlank())
+                ? NewsQualityStatus.SOURCE_LINK_ONLY.name()
+                : NewsQualityStatus.SUMMARY_ONLY.name();
     }
 
     private String resolveImageUrl(String imageUrl) {

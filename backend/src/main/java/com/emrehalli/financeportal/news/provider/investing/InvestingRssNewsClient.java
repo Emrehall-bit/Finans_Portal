@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.news.provider.investing;
 
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
+import com.emrehalli.financeportal.news.enums.NewsQualityStatus;
 import com.emrehalli.financeportal.news.provider.rss.ArticleImageFetcher;
 import com.emrehalli.financeportal.news.provider.rss.RssFeedSupport;
 import org.apache.logging.log4j.LogManager;
@@ -143,6 +144,10 @@ public class InvestingRssNewsClient {
                 .url(link)
                 .imageUrl(imageUrl)
                 .publishedAt(rssFeedSupport.parsePublishedAt(pubDate, logger, "Investing RSS"))
+                .qualityStatus(normalizedSummary == null
+                        ? NewsQualityStatus.SOURCE_LINK_ONLY.name()
+                        : NewsQualityStatus.SUMMARY_ONLY.name())
+                .isKapDisclosure(false)
                 .build();
     }
 

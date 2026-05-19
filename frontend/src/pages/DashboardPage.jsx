@@ -33,7 +33,7 @@ export default function DashboardPage() {
         setSectionErrors({});
 
         // Public veriler her zaman yüklenir (giriş gerektirmez)
-        const publicRequests = [getMarketQuotes(), getNews({ size: 6 })];
+        const publicRequests = [getMarketQuotes(), getNews({ size: 6, isKapDisclosure: false })];
 
         // Kullanıcıya özel veriler yalnızca giriş yapılmışsa yüklenir
         const userRequests = userId

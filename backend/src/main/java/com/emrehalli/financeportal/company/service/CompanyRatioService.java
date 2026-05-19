@@ -313,10 +313,13 @@ public class CompanyRatioService {
     // -------------------------------------------------------------------------
 
     private Map<String, BigDecimal> loadValueMap(Long reportId) {
-        return valueRepository.findByReportId(reportId).stream()
-                .filter(v -> v.getValue() != null)
-                .collect(Collectors.toMap(CompanyFinancialValue::getItemKey, this::scaledValue,
-                        (existing, replacement) -> existing));
+        Map<String, BigDecimal> result = new java.util.HashMap<>();
+        for (CompanyFinancialValue v : valueRepository.findByReportId(reportId)) {
+            if (v.getValue() == null) continue;
+            BigDecimal scaled = scaledValue(v);
+            if (scaled != null) result.putIfAbsent(v.getItemKey(), scaled);
+        }
+        return result;
     }
 
     private BigDecimal scaledValue(CompanyFinancialValue value) {

@@ -33,32 +33,32 @@ public class KapDisclosureProvider {
         this.restClient = restClient;
     }
 
-    public KapDisclosureProviderResult fetchDisclosures(String mkkMemberOid) {
-        return fetchDisclosures(mkkMemberOid, 365);
+    public KapDisclosureProviderResult fetchDisclosures(String companyDetailOid) {
+        return fetchDisclosures(companyDetailOid, 365);
     }
 
-    public KapDisclosureProviderResult fetchDisclosures(String mkkMemberOid, int days) {
-        if (mkkMemberOid == null || mkkMemberOid.isBlank()) {
+    public KapDisclosureProviderResult fetchDisclosures(String companyDetailOid, int days) {
+        if (companyDetailOid == null || companyDetailOid.isBlank()) {
             return new KapDisclosureProviderResult(List.of(), List.of());
         }
 
-        logger.info("KAP SGBF fetch started. mkkMemberOid={}, days={}", mkkMemberOid, days);
+        logger.info("KAP SGBF fetch started. companyDetailOid={}, days={}", companyDetailOid, days);
 
         KapSgbfItem[] rawItems;
         try {
             rawItems = restClient.get()
-                    .uri(KAP_API_URL, mkkMemberOid, days)
+                    .uri(KAP_API_URL, companyDetailOid, days)
                     .header("Accept", "application/json")
                     .header("User-Agent", "Mozilla/5.0 (compatible; FinancePortal/1.0)")
                     .retrieve()
                     .body(KapSgbfItem[].class);
         } catch (Exception e) {
-            logger.error("KAP SGBF API call failed. mkkMemberOid={}, days={}", mkkMemberOid, days, e);
+            logger.error("KAP SGBF API call failed. companyDetailOid={}, days={}", companyDetailOid, days, e);
             throw e;
         }
 
         if (rawItems == null || rawItems.length == 0) {
-            logger.info("KAP SGBF returned empty result. mkkMemberOid={}, days={}", mkkMemberOid, days);
+            logger.info("KAP SGBF returned empty result. companyDetailOid={}, days={}", companyDetailOid, days);
             return new KapDisclosureProviderResult(List.of(), List.of());
         }
 
@@ -72,8 +72,8 @@ public class KapDisclosureProvider {
             mapItem(item.getDisclosureBasic(), disclosures, failedItems);
         }
 
-        logger.info("KAP SGBF parse complete. mkkMemberOid={}, days={}, total={}, parsed={}, failed={}",
-                mkkMemberOid, days, rawItems.length, disclosures.size(), failedItems.size());
+        logger.info("KAP SGBF parse complete. companyDetailOid={}, days={}, total={}, parsed={}, failed={}",
+                companyDetailOid, days, rawItems.length, disclosures.size(), failedItems.size());
 
         return new KapDisclosureProviderResult(disclosures, failedItems);
     }

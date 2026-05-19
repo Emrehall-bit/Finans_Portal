@@ -80,6 +80,16 @@ public class News {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    @Column(name = "quality_status", length = 40)
+    private String qualityStatus;
+
+    @Builder.Default
+    @Column(name = "is_kap_disclosure", nullable = false)
+    private Boolean isKapDisclosure = false;
+
+    @Column(name = "disclosure_type", length = 50)
+    private String disclosureType;
+
     @Builder.Default
     @Column(name = "importance_score", nullable = false)
     private Integer importanceScore = 0;

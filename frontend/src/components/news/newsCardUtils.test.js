@@ -4,14 +4,19 @@ import {
   buildNewsPlaceholderLabel,
   formatNewsPublishedAt,
   getNewsFallbackLogoUrl,
+  getNewsPrimaryActionLabel,
   getNewsProviderLabel,
+  getNewsSourceUrl,
   getNewsSummaryText,
+  isKapDisclosure,
+  shouldShowSourceCta,
 } from "./newsCardUtils.js";
 
 test("maps provider enums to display labels", () => {
   assert.equal(getNewsProviderLabel("AA_RSS"), "Anadolu Ajans\u0131");
   assert.equal(getNewsProviderLabel("FINNHUB"), "Finnhub");
   assert.equal(getNewsProviderLabel("INVESTING_RSS"), "Investing.com");
+  assert.equal(getNewsProviderLabel("KAP"), "KAP");
 });
 
 test("returns AA initials for AA_RSS provider", () => {
@@ -46,4 +51,26 @@ test("returns article domain fallback logo url when provider is unknown", () => 
     getNewsFallbackLogoUrl({ provider: "UNKNOWN", url: "https://example.com/news/item-1" }),
     "https://www.google.com/s2/favicons?domain=example.com&sz=128",
   );
+});
+
+test("detects KAP disclosure records", () => {
+  assert.equal(isKapDisclosure({ provider: "KAP" }), true);
+  assert.equal(isKapDisclosure({ isKapDisclosure: true }), true);
+});
+
+test("uses normalized source url when present", () => {
+  assert.equal(
+    getNewsSourceUrl({ sourceUrl: "https://kap.org.tr/tr/Bildirim/123", url: "https://fallback.example" }),
+    "https://kap.org.tr/tr/Bildirim/123",
+  );
+});
+
+test("shows source CTA for source-link-only and KAP items", () => {
+  assert.equal(shouldShowSourceCta({ qualityStatus: "SOURCE_LINK_ONLY" }), true);
+  assert.equal(shouldShowSourceCta({ provider: "KAP" }), true);
+  assert.equal(shouldShowSourceCta({ qualityStatus: "SUMMARY_ONLY", provider: "AA_RSS" }), false);
+});
+
+test("returns source action label when source CTA is required", () => {
+  assert.equal(getNewsPrimaryActionLabel({ provider: "KAP" }, "Haberi aç"), "Kaynakta oku");
 });

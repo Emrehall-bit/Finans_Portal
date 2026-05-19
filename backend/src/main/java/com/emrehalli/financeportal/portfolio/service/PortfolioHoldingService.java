@@ -99,9 +99,11 @@ public class PortfolioHoldingService {
     private PortfolioSummaryResponse buildSummary(List<PortfolioHoldingDto> holdings) {
         BigDecimal totalCost = BigDecimal.ZERO;
         BigDecimal currentValue = BigDecimal.ZERO;
+        BigDecimal dailyProfitLoss = BigDecimal.ZERO;
         BigDecimal profitLoss = BigDecimal.ZERO;
         int missingPriceCount = 0;
         int valuedHoldingCount = 0;
+        int dailyValuedHoldingCount = 0;
 
         for (PortfolioHoldingDto holding : holdings) {
             totalCost = totalCost.add(holding.getBuyPrice().multiply(holding.getQuantity()));
@@ -113,10 +115,16 @@ public class PortfolioHoldingService {
             currentValue = currentValue.add(holding.getCurrentValue());
             profitLoss = profitLoss.add(holding.getProfitLoss());
             valuedHoldingCount++;
+            if (holding.getDailyProfitLoss() != null) {
+                dailyProfitLoss = dailyProfitLoss.add(holding.getDailyProfitLoss());
+                dailyValuedHoldingCount++;
+            }
         }
 
         BigDecimal summaryCurrentValue = valuedHoldingCount > 0 ? currentValue : null;
+        BigDecimal summaryDailyProfitLoss = dailyValuedHoldingCount > 0 ? dailyProfitLoss : null;
         BigDecimal summaryProfitLoss = valuedHoldingCount > 0 ? profitLoss : null;
+        BigDecimal dailyProfitLossPercent = null;
         BigDecimal profitLossPercent = null;
         BigDecimal costBasisForValuedHoldings = holdings.stream()
                 .filter(PortfolioHoldingDto::isValuationAvailable)
@@ -128,12 +136,22 @@ public class PortfolioHoldingService {
                     .multiply(BigDecimal.valueOf(100))
                     .divide(costBasisForValuedHoldings, 4, RoundingMode.HALF_UP);
         }
+        if (dailyValuedHoldingCount > 0 && summaryCurrentValue != null && summaryDailyProfitLoss != null) {
+            BigDecimal previousValue = summaryCurrentValue.subtract(summaryDailyProfitLoss);
+            if (previousValue.compareTo(BigDecimal.ZERO) > 0) {
+                dailyProfitLossPercent = summaryDailyProfitLoss
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(previousValue, 4, RoundingMode.HALF_UP);
+            }
+        }
 
         SummaryStatus summaryStatus = resolveSummaryStatus(holdings.size(), valuedHoldingCount);
 
         return new PortfolioSummaryResponse(
                 totalCost,
                 summaryCurrentValue,
+                summaryDailyProfitLoss,
+                dailyProfitLossPercent,
                 summaryProfitLoss,
                 profitLossPercent,
                 summaryStatus,
@@ -151,12 +169,16 @@ public class PortfolioHoldingService {
                         priceRef);
 
         BigDecimal currentValue = null;
+        BigDecimal dailyProfitLoss = null;
+        BigDecimal dailyChangePercent = null;
         BigDecimal profitLoss = null;
         BigDecimal profitLossPercent = null;
 
         if (priceResolution.valuationAvailable()) {
             BigDecimal totalCost = holding.getBuyPrice().multiply(holding.getQuantity());
             currentValue = priceResolution.price().multiply(holding.getQuantity());
+            dailyChangePercent = priceResolution.changeRate();
+            dailyProfitLoss = calculateDailyProfitLoss(priceResolution.price(), priceResolution.changeRate(), holding.getQuantity());
             profitLoss = currentValue.subtract(totalCost);
 
             if (totalCost.compareTo(BigDecimal.ZERO) > 0) {
@@ -173,6 +195,8 @@ public class PortfolioHoldingService {
                 .buyPrice(holding.getBuyPrice())
                 .currentPrice(priceResolution.price())
                 .currentValue(currentValue)
+                .dailyProfitLoss(dailyProfitLoss)
+                .dailyChangePercent(dailyChangePercent)
                 .profitLoss(profitLoss)
                 .profitLossPercent(profitLossPercent)
                 .priceStatus(priceResolution.priceStatus())
@@ -218,5 +242,22 @@ public class PortfolioHoldingService {
         }
         return SummaryStatus.PARTIAL;
     }
-}
 
+    private BigDecimal calculateDailyProfitLoss(BigDecimal currentPrice,
+                                                BigDecimal changeRate,
+                                                BigDecimal quantity) {
+        if (currentPrice == null || changeRate == null || quantity == null) {
+            return null;
+        }
+
+        BigDecimal divisor = BigDecimal.ONE.add(
+                changeRate.divide(BigDecimal.valueOf(100), 8, RoundingMode.HALF_UP)
+        );
+        if (divisor.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+
+        BigDecimal previousClose = currentPrice.divide(divisor, 8, RoundingMode.HALF_UP);
+        return currentPrice.subtract(previousClose).multiply(quantity);
+    }
+}

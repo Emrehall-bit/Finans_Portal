@@ -201,6 +201,11 @@ export async function triggerCommodityHistoryBackfill(days = 365) {
   return normalizeApiResponse(response);
 }
 
+export async function triggerIndexHistoryBackfill(days = 365) {
+  const response = await axiosClient.post(`/api/v1/admin/markets/indexes/history/backfill?days=${days}`);
+  return normalizeApiResponse(response);
+}
+
 export async function triggerMacroSyncAll() {
   const response = await axiosClient.post("/api/v1/admin/markets/macro/tcmb/sync-all");
   return normalizeApiResponse(response);

@@ -5,13 +5,14 @@ export const NEWS_SORT_OPTIONS = [
   { value: "importanceScore", label: "Onemli haberler" },
 ];
 
-export function buildNewsQueryParams(filters, page, sortBy = "publishedAt") {
+export function buildNewsQueryParams(filters, page, sortBy = "publishedAt", feedType = "news") {
   return Object.fromEntries(
     Object.entries({
       keyword: filters.keyword?.trim() || undefined,
       category: filters.category || undefined,
       provider: filters.provider || undefined,
       language: filters.language || undefined,
+      isKapDisclosure: feedType === "kap" ? true : false,
       page,
       size: NEWS_PAGE_SIZE,
       sortBy,

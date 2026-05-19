@@ -18,6 +18,8 @@ public class PortfolioHoldingDto {
     private BigDecimal buyPrice;
     private BigDecimal currentPrice;
     private BigDecimal currentValue;
+    private BigDecimal dailyProfitLoss;
+    private BigDecimal dailyChangePercent;
     private BigDecimal profitLoss;
     private BigDecimal profitLossPercent;
     private PriceStatus priceStatus;
@@ -27,6 +29,5 @@ public class PortfolioHoldingDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
-
 
 

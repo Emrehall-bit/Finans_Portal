@@ -224,8 +224,14 @@
     "activeFilters": "Active filters",
     "drawerAria": "News filters",
     "drawerCloseAria": "Close filters",
+    "feedTabs": "News feed tabs",
+    "tabs": {
+      "news": "News",
+      "kap": "KAP Disclosures"
+    },
     "publishFlowEyebrow": "Feed",
     "publishFlowTitle": "Current financial news",
+    "kapFlowTitle": "KAP disclosure feed",
     "emptyTitle": "No news found",
     "emptyDescription": "Change the filters or pull data from the sources again.",
     "loadingMore": "Loading news...",
@@ -236,7 +242,25 @@
     "providers": "Sources",
     "language": "Language",
     "all": "All",
-    "openNews": "Open news"
+    "openNews": "Open news",
+    "openDisclosure": "Open disclosure",
+    "readAtSource": "Read at source",
+    "previewMissing": "No renderable content preview is available for this record.",
+    "titleMissing": "Title unavailable",
+    "importanceLabel": "Importance",
+    "importanceLevels": {
+      "low": "Low importance",
+      "medium": "Medium importance",
+      "high": "High importance"
+    },
+    "kapDisclosure": "KAP disclosure",
+    "kapFields": {
+      "companyCode": "Company / Code",
+      "type": "Disclosure type",
+      "date": "Date",
+      "source": "Source",
+      "quality": "Content status"
+    }
   },
   "markets": {
     "eyebrow": "Markets",
@@ -764,6 +788,13 @@
         "action": "Generate Derived History",
         "daysPlaceholder": "Days (e.g. 365)"
       },
+      "indexHistory": {
+        "eyebrow": "Index History",
+        "title": "BIST Index History Backfill",
+        "description": "Fetch daily OHLCV bars from Yahoo Finance for XU100.IS, XU030.IS, XU050.IS, XBANK.IS, XUSIN.IS, XUTEK.IS and XHOLD.IS and persist ONE_DAY YAHOO_FINANCE history records.",
+        "action": "Fetch Index History",
+        "daysPlaceholder": "Days (e.g. 3650)"
+      },
       "macroSyncAll": {
         "eyebrow": "Macroeconomics",
         "title": "Sync All Macro Data",
@@ -1124,6 +1155,7 @@
   },
   "newsDetail": {
     "eyebrow": "News Detail",
+    "kapEyebrow": "KAP Disclosure",
     "titleFallback": "News",
     "descriptionFallback": "Financial agenda",
     "back": "Back to news",
@@ -1139,7 +1171,29 @@
     "defaultCategory": "Agenda",
     "titleMissing": "Title unavailable",
     "summaryMissing": "The source did not provide a summary for this item.",
-    "openSource": "Open at source"
+    "openSource": "Open at source",
+    "relatedLoadError": "Failed to load related data.",
+    "relatedLoading": "Loading related content...",
+    "relatedAssetsEyebrow": "Potentially Affected Assets",
+    "relatedAssetsTitle": "Potentially Affected Assets",
+    "relatedAssetsDescription": "Automatically generated from company, sector, and macro-theme matches in the news content.",
+    "relatedAssetsEmptyTitle": "No directly related asset was found for this item.",
+    "relatedAssetsEmptyDescription": "No strong company, sector, or theme match was detected in the news text.",
+    "relatedStocksNoPrice": "No market data",
+    "relatedAssetsReasonFallback": "Theme match",
+    "relatedNewsEyebrow": "Related News",
+    "relatedNewsTitle": "Related news",
+    "relatedNewsEmptyTitle": "No related news found",
+    "relatedNewsEmptyDescription": "No related record was found for this item in the last 7 days.",
+    "relationTypes": {
+      "direct": "Direct",
+      "theme": "Theme"
+    },
+    "confidence": {
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence"
+    }
   },
   "marketDetail": {
     "addToPortfolio": {
