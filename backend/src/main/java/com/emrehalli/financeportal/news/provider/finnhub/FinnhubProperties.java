@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "finnhub")
 public class FinnhubProperties {
 
-    private boolean enabled = true;
+    private boolean enabled = false;
     private Api api = new Api();
     private Sync sync = new Sync();
 

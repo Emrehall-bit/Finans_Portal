@@ -154,7 +154,55 @@ class NewsServiceRelatedDataTest {
         assertThat(response.relatedInstruments()).allMatch(item -> "THEME".equals(item.relationType()) || "DIRECT".equals(item.relationType()));
         assertThat(response.relatedInstruments()).anyMatch(item ->
                 "THEME".equals(item.relationType())
-                        && "HIGH".equals(item.confidence())
+                        && "MEDIUM".equals(item.confidence())
                         && "Faiz ve kredi hassasiyeti".equals(item.reason()));
+    }
+
+    @Test
+    void resolvesCarbonThemeWithLimitedAndDeduplicatedResults() {
+        NewsRepository newsRepository = mock(NewsRepository.class);
+        NewsImportanceScoringService scoringService = mock(NewsImportanceScoringService.class);
+        NotificationService notificationService = mock(NotificationService.class);
+        NewsNotificationProperties notificationProperties = mock(NewsNotificationProperties.class);
+        NewsPresentationMapper presentationMapper = new NewsPresentationMapper();
+        MarketQueryService marketQueryService = mock(MarketQueryService.class);
+
+        NewsService service = new NewsService(
+                newsRepository,
+                List.of(),
+                scoringService,
+                notificationService,
+                notificationProperties,
+                presentationMapper,
+                marketQueryService
+        );
+
+        News climateNews = News.builder()
+                .id(300L)
+                .externalId("AA-300")
+                .title("Karbon fiyatlandirmasi ve yesil donusum sanayi maliyetlerini artirabilir")
+                .summary("Emisyon ve surdurulebilirlik baskisi agir sanayi ve enerji sirketlerini etkileyebilir.")
+                .source("Anadolu Ajansi")
+                .provider("AA_RSS")
+                .language("tr")
+                .regionScope("TR")
+                .category("ECONOMY")
+                .url("https://example.com/climate-news")
+                .publishedAt(LocalDateTime.of(2026, 5, 19, 11, 0))
+                .importanceScore(73)
+                .build();
+
+        when(newsRepository.findById(300L)).thenReturn(Optional.of(climateNews));
+        when(newsRepository.findRecentCandidatesForRelatedNews(eq(300L), eq("ECONOMY"), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        NewsRelatedResponseDto response = service.getRelatedData(300L);
+
+        assertThat(response.relatedInstruments()).hasSizeLessThanOrEqualTo(6);
+        assertThat(response.relatedInstruments()).extracting("symbol")
+                .contains("EREGL", "KRDMD", "TUPRS");
+        assertThat(response.relatedInstruments()).anyMatch(item ->
+                "Karbon fiyatlandirmasi / emisyon maliyeti temasi".equals(item.reason())
+                        && ("MEDIUM".equals(item.confidence()) || "LOW".equals(item.confidence())));
     }
 }

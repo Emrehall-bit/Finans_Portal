@@ -3,7 +3,8 @@ package com.emrehalli.financeportal.news.provider.investing;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.enums.NewsQualityStatus;
-import com.emrehalli.financeportal.news.provider.rss.ArticleImageFetcher;
+import com.emrehalli.financeportal.news.provider.rss.RssArticleEnrichment;
+import com.emrehalli.financeportal.news.provider.rss.RssArticleEnrichmentService;
 import com.emrehalli.financeportal.news.provider.rss.RssFeedSupport;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,18 +32,18 @@ public class InvestingRssNewsClient {
     private final RestTemplate restTemplate;
     private final InvestingNewsProperties properties;
     private final RssFeedSupport rssFeedSupport;
-    private final ArticleImageFetcher articleImageFetcher;
+    private final RssArticleEnrichmentService enrichmentService;
 
     public InvestingRssNewsClient(
             RestTemplate restTemplate,
             InvestingNewsProperties properties,
             RssFeedSupport rssFeedSupport,
-            ArticleImageFetcher articleImageFetcher
+            RssArticleEnrichmentService enrichmentService
     ) {
         this.restTemplate = restTemplate;
         this.properties = properties;
         this.rssFeedSupport = rssFeedSupport;
-        this.articleImageFetcher = articleImageFetcher;
+        this.enrichmentService = enrichmentService;
     }
 
     public List<NewsItemDto> fetchNews() {
@@ -59,9 +60,9 @@ public class InvestingRssNewsClient {
                 return List.of();
             }
 
-            AtomicInteger cycleCounter = articleImageFetcher.newCycleCounter();
+            AtomicInteger cycleCounter = enrichmentService.newCycleCounter();
             List<NewsItemDto> items = parse(payload, cycleCounter);
-            logger.info("Investing feed parsed. url: {}, fetched: {}, imageFetches: {}", properties.getRssUrl(), items.size(), cycleCounter.get());
+            logger.info("Investing feed parsed. url: {}, fetched: {}, articleFetches: {}", properties.getRssUrl(), items.size(), cycleCounter.get());
             return items;
         } catch (RestClientException e) {
             logger.error("Investing RSS fetch failed. url: {}", properties.getRssUrl(), e);
@@ -102,7 +103,8 @@ public class InvestingRssNewsClient {
                         rssFeedSupport.text(entry, "content\\:encoded"),
                         rssFeedSupport.text(entry, "content")
                 );
-                String imageUrl = resolveImageUrl(entry, descriptionHtml, link, cycleCounter);
+                RssArticleEnrichment enrichment = enrichmentService.enrich(NewsProviderType.INVESTING_RSS, link, cycleCounter);
+                String imageUrl = resolveImageUrl(entry, descriptionHtml, enrichment);
                 String pubDate = rssFeedSupport.firstNonBlank(
                         rssFeedSupport.text(entry, "pubDate"),
                         rssFeedSupport.text(entry, "dc|date"),
@@ -111,7 +113,7 @@ public class InvestingRssNewsClient {
                         rssFeedSupport.text(entry, "published")
                 );
 
-                NewsItemDto item = buildItem(title, link, guid, summary, imageUrl, pubDate);
+                NewsItemDto item = buildItem(title, link, guid, summary, imageUrl, pubDate, enrichment);
                 if (item != null) {
                     items.add(item);
                 }
@@ -124,16 +126,27 @@ public class InvestingRssNewsClient {
         }
     }
 
-    private NewsItemDto buildItem(String title, String link, String guid, String summary, String imageUrl, String pubDate) {
+    private NewsItemDto buildItem(
+            String title,
+            String link,
+            String guid,
+            String summary,
+            String imageUrl,
+            String pubDate,
+            RssArticleEnrichment enrichment
+    ) {
         if (title == null || link == null) {
             return null;
         }
 
-        String normalizedSummary = normalizeSummary(summary);
+        String normalizedSummary = normalizeSummary(enrichment.content() != null ? enrichment.content() : summary);
+        String qualityStatus = enrichment.qualityStatus() != null
+                ? enrichment.qualityStatus()
+                : normalizedSummary == null ? NewsQualityStatus.SOURCE_LINK_ONLY.name() : NewsQualityStatus.SUMMARY_ONLY.name();
 
         return NewsItemDto.builder()
                 .externalId(rssFeedSupport.resolveExternalId(NewsProviderType.INVESTING_RSS.name(), guid, link))
-                .title(title)
+                .title(rssFeedSupport.firstNonBlank(enrichment.title(), title))
                 .summary(normalizedSummary)
                 .source("Investing.com")
                 .provider(NewsProviderType.INVESTING_RSS.name())
@@ -143,20 +156,21 @@ public class InvestingRssNewsClient {
                 .relatedSymbol(null)
                 .url(link)
                 .imageUrl(imageUrl)
-                .publishedAt(rssFeedSupport.parsePublishedAt(pubDate, logger, "Investing RSS"))
-                .qualityStatus(normalizedSummary == null
-                        ? NewsQualityStatus.SOURCE_LINK_ONLY.name()
-                        : NewsQualityStatus.SUMMARY_ONLY.name())
+                .publishedAt(enrichment.publishedAt() != null
+                        ? enrichment.publishedAt()
+                        : rssFeedSupport.parsePublishedAt(pubDate, logger, "Investing RSS"))
+                .contentEnrichedAt(enrichment.contentEnrichedAt())
+                .qualityStatus(qualityStatus)
                 .isKapDisclosure(false)
                 .build();
     }
 
-    private String resolveImageUrl(Element entry, String descriptionHtml, String link, AtomicInteger cycleCounter) {
-        String imageUrl = rssFeedSupport.resolveImageUrl(entry, descriptionHtml);
-        if (imageUrl != null || link == null || link.isBlank()) {
-            return imageUrl;
+    private String resolveImageUrl(Element entry, String descriptionHtml, RssArticleEnrichment enrichment) {
+        if (enrichment.imageUrl() != null && !enrichment.imageUrl().isBlank()) {
+            return enrichment.imageUrl();
         }
-        return articleImageFetcher.fetchImageUrl(link, cycleCounter, "Investing");
+        String imageUrl = rssFeedSupport.resolveImageUrl(entry, descriptionHtml);
+        return imageUrl;
     }
 
     private String normalizeSummary(String summary) {

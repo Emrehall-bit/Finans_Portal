@@ -1,37 +1,43 @@
 import { formatDateTime } from "../../utils/formatters.js";
 
 const PROVIDER_LABELS = {
-  AA_RSS: "Anadolu Ajans\u0131",
+  AA_RSS: "Anadolu Ajansı",
+  CNBC_RSS: "CNBC",
   FINNHUB: "Finnhub",
   INVESTING_RSS: "Investing.com",
   KAP: "KAP",
+  REUTERS_RSS: "Reuters",
 };
 
 const PROVIDER_INITIALS = {
   AA_RSS: "AA",
+  CNBC_RSS: "CNBC",
   FINNHUB: "FH",
   INVESTING_RSS: "IN",
   KAP: "KAP",
+  REUTERS_RSS: "RT",
 };
 
 const PROVIDER_DOMAINS = {
   AA_RSS: "aa.com.tr",
+  CNBC_RSS: "cnbc.com",
   FINNHUB: "finnhub.io",
   INVESTING_RSS: "investing.com",
   KAP: "kap.org.tr",
+  REUTERS_RSS: "reuters.com",
 };
 
 const QUALITY_LABELS = {
   FULL_CONTENT: "Tam metin",
-  SUMMARY_ONLY: "\u00d6zet",
+  SUMMARY_ONLY: "Özet",
   SOURCE_LINK_ONLY: "Kaynak linki",
   KAP_DISCLOSURE: "KAP bildirimi",
 };
 
 const DISCLOSURE_TYPE_LABELS = {
   FINANCIAL: "Finansal rapor",
-  RIGHTS: "Hak kullan\u0131m\u0131",
-  SPECIAL: "\u00d6zel durum",
+  RIGHTS: "Hak kullanımı",
+  SPECIAL: "Özel durum",
   GENERAL: "Genel bildirim",
 };
 
@@ -52,11 +58,11 @@ export function getNewsLanguageLabel(language) {
   return language ? language.toUpperCase() : null;
 }
 
-export function getNewsSummaryText(summary, fallback = "\u00d6zet bilgisi bulunmuyor.") {
+export function getNewsSummaryText(summary, fallback = "Özet bilgisi bulunmuyor.") {
   return summary?.trim() || fallback;
 }
 
-export function getNewsPreviewText(item, fallback = "\u0130\u00e7erik \u00f6nizlemesi bulunmuyor.") {
+export function getNewsPreviewText(item, fallback = "İçerik önizlemesi bulunmuyor.") {
   const preview = item?.contentPreview?.trim();
   if (preview) {
     return preview;
@@ -70,7 +76,7 @@ export function getNewsPreviewText(item, fallback = "\u0130\u00e7erik \u00f6nizl
   return fallback;
 }
 
-export function formatNewsPublishedAt(value, emptyLabel = "Tarih bilgisi al\u0131namad\u0131") {
+export function formatNewsPublishedAt(value, emptyLabel = "Tarih bilgisi alınamadı") {
   return value ? formatDateTime(value) : emptyLabel;
 }
 
@@ -106,12 +112,14 @@ export function buildNewsPlaceholderLabel(item) {
   }
 
   const base = getNewsProviderLabel(item?.provider);
-  return base
-    .split(/[\s_-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "N";
+  return (
+    base
+      .split(/[\s_-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "N"
+  );
 }
 
 export function getNewsFallbackLogoUrl(item) {
@@ -142,10 +150,10 @@ export function getNewsSourceUrl(item) {
 
 export function shouldShowSourceCta(item) {
   const status = String(item?.qualityStatus || "").toUpperCase();
-  return status === "SOURCE_LINK_ONLY" || isKapDisclosure(item);
+  return status === "SOURCE_LINK_ONLY" || status === "SUMMARY_ONLY" || isKapDisclosure(item);
 }
 
-export function getNewsPrimaryActionLabel(item, fallback = "Haberi a\u00e7") {
+export function getNewsPrimaryActionLabel(item, fallback = "Haberi aç") {
   return shouldShowSourceCta(item) ? "Kaynakta oku" : fallback;
 }
 

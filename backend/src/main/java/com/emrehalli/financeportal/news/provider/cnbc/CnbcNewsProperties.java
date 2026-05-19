@@ -1,12 +1,12 @@
-package com.emrehalli.financeportal.news.provider.investing;
+package com.emrehalli.financeportal.news.provider.cnbc;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "news.providers.investing")
-public class InvestingNewsProperties {
+@ConfigurationProperties(prefix = "news.providers.cnbc")
+public class CnbcNewsProperties {
 
-    private boolean enabled = false;
-    private String rssUrl = "https://www.investing.com/rss/news_14.rss";
+    private boolean enabled = true;
+    private String rssUrl = "https://www.cnbc.com/id/100003114/device/rss/rss.html";
     private String defaultCategory = "ECONOMY";
     private String defaultLanguage = "en";
     private String defaultRegionScope = "GLOBAL";

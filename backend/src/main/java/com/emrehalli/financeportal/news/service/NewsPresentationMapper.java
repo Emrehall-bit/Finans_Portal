@@ -85,6 +85,8 @@ public class NewsPresentationMapper {
         }
         return switch (provider.toUpperCase(Locale.ROOT)) {
             case "AA_RSS" -> "Anadolu Ajansi";
+            case "CNBC_RSS" -> "CNBC";
+            case "REUTERS_RSS" -> "Reuters";
             case "INVESTING_RSS" -> "Investing.com";
             case "FINNHUB" -> "Finnhub";
             case "KAP" -> "KAP";

@@ -51,6 +51,7 @@ public class NewsService {
 
     private static final Logger logger = LogManager.getLogger(NewsService.class);
     private static final int MAX_RELATED_NEWS = 4;
+    private static final int MAX_RELATED_INSTRUMENTS = 6;
     private static final Pattern TOKEN_SPLIT_PATTERN = Pattern.compile("[^\\p{L}\\p{Nd}]+");
     private static final Map<String, InstrumentAlias> BIST_INSTRUMENT_ALIASES = createInstrumentAliases();
     private static final List<ThemeRule> THEME_RULES = createThemeRules();
@@ -395,7 +396,14 @@ public class NewsService {
                         existingNews.setPublishedAt(item.getPublishedAt());
                         needsUpdate = true;
                     }
+                    if (existingNews.getContentEnrichedAt() == null && item.getContentEnrichedAt() != null) {
+                        existingNews.setContentEnrichedAt(item.getContentEnrichedAt());
+                        needsUpdate = true;
+                    }
                     if (!hasText(existingNews.getQualityStatus()) && hasText(item.getQualityStatus())) {
+                        existingNews.setQualityStatus(item.getQualityStatus().trim());
+                        needsUpdate = true;
+                    } else if (isHigherQuality(item.getQualityStatus(), existingNews.getQualityStatus())) {
                         existingNews.setQualityStatus(item.getQualityStatus().trim());
                         needsUpdate = true;
                     }
@@ -438,6 +446,7 @@ public class NewsService {
                     .url(item.getUrl())
                     .imageUrl(item.getImageUrl())
                     .publishedAt(item.getPublishedAt())
+                    .contentEnrichedAt(item.getContentEnrichedAt())
                     .qualityStatus(item.getQualityStatus())
                     .isKapDisclosure(Boolean.TRUE.equals(item.getIsKapDisclosure()))
                     .disclosureType(item.getDisclosureType())
@@ -771,6 +780,22 @@ public class NewsService {
         return news.getImportanceScore() == null || news.getImportanceScore() <= 0;
     }
 
+    private boolean isHigherQuality(String candidate, String existing) {
+        return qualityRank(candidate) > qualityRank(existing);
+    }
+
+    private int qualityRank(String value) {
+        if (!hasText(value)) {
+            return 0;
+        }
+        return switch (value.trim().toUpperCase(Locale.ROOT)) {
+            case "FULL_CONTENT" -> 3;
+            case "SUMMARY_ONLY" -> 2;
+            case "SOURCE_LINK_ONLY" -> 1;
+            default -> 0;
+        };
+    }
+
     private boolean hasLowValueLogoImage(String imageUrl) {
         if (!hasText(imageUrl)) {
             return false;
@@ -797,9 +822,10 @@ public class NewsService {
 
         return matched.values().stream()
                 .sorted(Comparator
-                        .comparing((RelatedInstrumentCandidate candidate) -> relationTypePriority(candidate.relationType())).reversed()
-                        .thenComparing(candidate -> confidencePriority(candidate.confidence())).reversed()
+                        .comparingInt((RelatedInstrumentCandidate candidate) -> -relationTypePriority(candidate.relationType()))
+                        .thenComparingInt(candidate -> -confidencePriority(candidate.confidence()))
                         .thenComparing(RelatedInstrumentCandidate::symbol))
+                .limit(MAX_RELATED_INSTRUMENTS)
                 .map(candidate -> {
                     Optional<MarketQueryService.MarketSnapshot> snapshot =
                             marketQueryService.findBySymbol(candidate.symbol(), parseInstrumentType(candidate.instrumentType()));
@@ -1048,70 +1074,64 @@ public class NewsService {
         aliases.put("FROTO", new InstrumentAlias("FROTO", "Ford Otosan", InstrumentType.STOCK.name(), Set.of("FROTO", "FORD OTOSAN", "FORD")));
         aliases.put("TOASO", new InstrumentAlias("TOASO", "Tofaş", InstrumentType.STOCK.name(), Set.of("TOASO", "TOFAS")));
         aliases.put("MGROS", new InstrumentAlias("MGROS", "Migros", InstrumentType.STOCK.name(), Set.of("MGROS", "MIGROS")));
+        aliases.put("KRDMD", new InstrumentAlias("KRDMD", "Kardemir", InstrumentType.STOCK.name(), Set.of("KRDMD", "KARDEMIR")));
+        aliases.put("AKSEN", new InstrumentAlias("AKSEN", "Aksa Enerji", InstrumentType.STOCK.name(), Set.of("AKSEN", "AKSA ENERJI")));
+        aliases.put("ENJSA", new InstrumentAlias("ENJSA", "Enerjisa", InstrumentType.STOCK.name(), Set.of("ENJSA", "ENERJISA")));
+        aliases.put("CIMSA", new InstrumentAlias("CIMSA", "Çimsa", InstrumentType.STOCK.name(), Set.of("CIMSA")));
+        aliases.put("OYAKC", new InstrumentAlias("OYAKC", "OYAK Çimento", InstrumentType.STOCK.name(), Set.of("OYAKC", "OYAK CIMENTO")));
+        aliases.put("SAHOL", new InstrumentAlias("SAHOL", "Sabancı Holding", InstrumentType.STOCK.name(), Set.of("SAHOL", "SABANCI HOLDING", "SABANCI")));
+        aliases.put("XU100", new InstrumentAlias("XU100", "BIST 100", InstrumentType.INDEX.name(), Set.of("XU100", "BIST100", "BIST 100")));
         return aliases;
     }
 
     private static List<ThemeRule> createThemeRules() {
         return List.of(
-                new ThemeRule(Set.of("PETROL", "BRENT", "YAKIT", "AKARYAKIT", "ENERJI FIYATI"),
-                        "Petrol/yakit maliyeti temasi",
+                new ThemeRule(Set.of("KARBON", "EMISYON", "IKLIM", "SURDURULEBILIRLIK", "YESIL DONUSUM", "KARBON FIYATLANDIRMASI"),
+                        "Karbon fiyatlandirmasi / emisyon maliyeti temasi",
                         List.of(
-                                new ThemeInstrument("TUPRS", "Tüpraş", InstrumentType.STOCK.name(), "HIGH"),
-                                new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("BRENT", "Brent Petrol", InstrumentType.COMMODITY.name(), "MEDIUM")
-                        )),
-                new ThemeRule(Set.of("ENERJI", "ELEKTRIK", "DOGALGAZ"),
-                        "Enerji maliyeti ve sektor hassasiyeti",
-                        List.of(
+                                new ThemeInstrument("EREGL", "Ereğli Demir Çelik", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("KRDMD", "Kardemir", InstrumentType.STOCK.name(), "MEDIUM"),
                                 new ThemeInstrument("TUPRS", "Tüpraş", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("SISE", "Şişecam", InstrumentType.STOCK.name(), "LOW")
+                                new ThemeInstrument("AKSEN", "Aksa Enerji", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("ENJSA", "Enerjisa", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("CIMSA", "Çimsa", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("OYAKC", "OYAK Çimento", InstrumentType.STOCK.name(), "LOW")
                         )),
-                new ThemeRule(Set.of("FAIZ", "KREDI", "ENFLASYON", "TCMB", "PARA POLITIKASI"),
+                new ThemeRule(Set.of("BUYUME", "RESESYON", "KURESEL EKONOMI", "TICARET", "TEDARIK ZINCIRI"),
+                        "Kuresel buyume ve piyasa geneli etkisi",
+                        List.of(
+                                new ThemeInstrument("XU100", "BIST 100", InstrumentType.INDEX.name(), "LOW"),
+                                new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("TUPRS", "Tüpraş", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("KCHOL", "Koç Holding", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("SAHOL", "Sabancı Holding", InstrumentType.STOCK.name(), "LOW")
+                        )),
+                new ThemeRule(Set.of("FAIZ", "TCMB", "ENFLASYON", "KREDI", "POLITIKA FAIZI"),
                         "Faiz ve kredi hassasiyeti",
                         List.of(
-                                new ThemeInstrument("AKBNK", "Akbank", InstrumentType.STOCK.name(), "HIGH"),
-                                new ThemeInstrument("GARAN", "Garanti BBVA", InstrumentType.STOCK.name(), "HIGH"),
-                                new ThemeInstrument("ISCTR", "İş Bankası", InstrumentType.STOCK.name(), "HIGH"),
-                                new ThemeInstrument("YKBNK", "Yapı Kredi", InstrumentType.STOCK.name(), "HIGH")
+                                new ThemeInstrument("AKBNK", "Akbank", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("GARAN", "Garanti BBVA", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("ISCTR", "İş Bankası", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("YKBNK", "Yapı Kredi", InstrumentType.STOCK.name(), "MEDIUM")
                         )),
-                new ThemeRule(Set.of("SAVUNMA", "JEOPOLITIK", "SAVAS"),
-                        "Savunma ve jeopolitik tema",
-                        List.of(new ThemeInstrument("ASELS", "Aselsan", InstrumentType.STOCK.name(), "HIGH"))),
-                new ThemeRule(Set.of("OTOMOTIV", "ARAC", "IHRACAT"),
-                        "Otomotiv ve ihracat temasi",
+                new ThemeRule(Set.of("PETROL", "BRENT", "AKARYAKIT", "YAKIT"),
+                        "Petrol/yakit maliyeti temasi",
                         List.of(
-                                new ThemeInstrument("FROTO", "Ford Otosan", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("TOASO", "Tofaş", InstrumentType.STOCK.name(), "MEDIUM")
+                                new ThemeInstrument("TUPRS", "Tüpraş", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "MEDIUM")
                         )),
+                new ThemeRule(Set.of("SAVUNMA", "SAVAS", "JEOPOLITIK", "GUVENLIK"),
+                        "Savunma ve jeopolitik tema",
+                        List.of(new ThemeInstrument("ASELS", "Aselsan", InstrumentType.STOCK.name(), "MEDIUM"))),
                 new ThemeRule(Set.of("GIDA", "PERAKENDE", "TUKETIM"),
                         "Tuketim ve perakende temasi",
                         List.of(
-                                new ThemeInstrument("BIMAS", "BİM", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("MGROS", "Migros", InstrumentType.STOCK.name(), "MEDIUM")
+                                new ThemeInstrument("BIMAS", "BİM", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("MGROS", "Migros", InstrumentType.STOCK.name(), "LOW")
                         )),
                 new ThemeRule(Set.of("TURIZM", "HAVACILIK", "YOLCU"),
-                        "Turizm ve havacilik talebi",
-                        List.of(new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "HIGH"))),
-                new ThemeRule(Set.of("DOLAR", "KUR", "IHRACAT"),
-                        "Kur ve ihracat hassasiyeti",
-                        List.of(
-                                new ThemeInstrument("TCMB:USD:SELL", "USD/TRY", InstrumentType.FX.name(), "MEDIUM"),
-                                new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("EREGL", "Ereğli Demir Çelik", InstrumentType.STOCK.name(), "LOW")
-                        )),
-                new ThemeRule(Set.of("ALTIN", "ONS", "GUVENLI LIMAN"),
-                        "Guvenli liman ve emtia temasi",
-                        List.of(
-                                new ThemeInstrument("GRAM_ALTIN", "Gram Altın", InstrumentType.COMMODITY.name(), "HIGH"),
-                                new ThemeInstrument("BRENT", "Brent Petrol", InstrumentType.COMMODITY.name(), "LOW")
-                        )),
-                new ThemeRule(Set.of("KURESEL BUYUME", "RESESYON", "TICARET", "TEDARIK ZINCIRI"),
-                        "Kuresel buyume/piyasa geneli etkisi",
-                        List.of(
-                                new ThemeInstrument("XU100", "BIST 100", InstrumentType.INDEX.name(), "MEDIUM"),
-                                new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("TUPRS", "Tüpraş", InstrumentType.STOCK.name(), "LOW")
-                        ))
+                        "Havacilik/turizm talebi temasi",
+                        List.of(new ThemeInstrument("THYAO", "Türk Hava Yolları", InstrumentType.STOCK.name(), "MEDIUM")))
         );
     }
 

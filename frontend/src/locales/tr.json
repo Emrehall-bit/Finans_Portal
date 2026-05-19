@@ -1189,6 +1189,7 @@
       "direct": "Doğrudan",
       "theme": "Tema"
     },
+    "indirectTheme": "Dolaylı tema",
     "confidence": {
       "high": "Yüksek güven",
       "medium": "Orta güven",

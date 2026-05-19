@@ -1,12 +1,12 @@
-package com.emrehalli.financeportal.news.provider.investing;
+package com.emrehalli.financeportal.news.provider.reuters;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "news.providers.investing")
-public class InvestingNewsProperties {
+@ConfigurationProperties(prefix = "news.providers.reuters")
+public class ReutersNewsProperties {
 
-    private boolean enabled = false;
-    private String rssUrl = "https://www.investing.com/rss/news_14.rss";
+    private boolean enabled = true;
+    private String rssUrl = "https://www.reuters.com/business/?rpc=401&feedType=rss";
     private String defaultCategory = "ECONOMY";
     private String defaultLanguage = "en";
     private String defaultRegionScope = "GLOBAL";

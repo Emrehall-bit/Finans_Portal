@@ -80,6 +80,9 @@ public class News {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    @Column(name = "content_enriched_at")
+    private LocalDateTime contentEnrichedAt;
+
     @Column(name = "quality_status", length = 40)
     private String qualityStatus;
 

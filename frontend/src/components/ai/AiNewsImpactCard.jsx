@@ -1,5 +1,15 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle, Info, Newspaper, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { useState } from "react";
+import {
+  AlertTriangle,
+  Brain,
+  ChevronDown,
+  Info,
+  Minus,
+  Newspaper,
+  Sparkles,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 import { getAiNewsImpactAnalysis } from "../../api/aiApi";
 import { useAuth } from "../../auth/AuthContext";
 import AiLockedCard from "./AiLockedCard";
@@ -10,38 +20,30 @@ export default function AiNewsImpactCard({ newsId }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
-  useEffect(() => {
-    if (!newsId || !isPremium) {
-      setData(null);
-      setError("");
-      setLoading(false);
+  async function handleToggle() {
+    const nextExpanded = !expanded;
+    setExpanded(nextExpanded);
+
+    if (!nextExpanded || !newsId || !isPremium || hasLoaded || loading) {
       return;
     }
 
-    let active = true;
-
-    async function load() {
-      try {
-        setLoading(true);
-        setError("");
-        const result = await getAiNewsImpactAnalysis(newsId);
-        if (active) setData(result ?? null);
-      } catch {
-        if (active) {
-          setData(null);
-          setError("AI etki analizi su anda uretilemedi.");
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
+    try {
+      setLoading(true);
+      setError("");
+      const result = await getAiNewsImpactAnalysis(newsId);
+      setData(result ?? null);
+      setHasLoaded(true);
+    } catch {
+      setData(null);
+      setError("AI etki analizi su anda uretilemedi.");
+    } finally {
+      setLoading(false);
     }
-
-    load();
-    return () => {
-      active = false;
-    };
-  }, [isPremium, newsId]);
+  }
 
   if (!isAuthenticated) {
     return (
@@ -63,34 +65,48 @@ export default function AiNewsImpactCard({ newsId }) {
   }
 
   return (
-    <section className="ai-card ai-news-impact-card">
+    <section className={`ai-card ai-news-impact-card ai-news-impact-card--toggle${expanded ? " is-expanded" : ""}`}>
       <div className="ai-card-glow ai-news-impact-glow" aria-hidden="true" />
 
-      <header className="ai-card-head">
-        <div className="ai-card-title-row">
+      <button type="button" className="ai-news-impact-trigger" onClick={handleToggle}>
+        <div className="ai-news-impact-trigger-main">
           <span className="ai-card-icon ai-news-impact-icon" aria-hidden="true">
-            <Newspaper size={17} />
+            {hasLoaded ? <Brain size={17} /> : <Sparkles size={17} />}
           </span>
           <div>
-            <h3>AI Etki Analizi</h3>
-            <p>Bu haberin finansal ve sektorel yorumu</p>
+            <h3>{hasLoaded ? "AI Etki Analizi" : "Yapay Zeka Etki Analizini Baslat"}</h3>
+            <p>{hasLoaded ? "Analiz hazir, detaylari goruntuleyebilirsiniz." : "AI ile analiz et"}</p>
           </div>
         </div>
-        <span className="ai-card-badge ai-news-impact-badge">HABER</span>
-      </header>
 
-      <div className="ai-card-body">
-        {loading ? <ImpactSkeleton /> : null}
-        {!loading && error ? <p className="ai-state-message error">{error}</p> : null}
-        {!loading && !error && data ? <ImpactContent data={data} /> : null}
+        <div className="ai-news-impact-trigger-actions">
+          <span className="ai-card-badge ai-news-impact-badge">{hasLoaded ? "HAZIR" : "AI"}</span>
+          <ChevronDown
+            size={18}
+            className={`ai-news-impact-chevron${expanded ? " is-expanded" : ""}`}
+            aria-hidden="true"
+          />
+        </div>
+      </button>
+
+      <div className={`ai-news-impact-collapsible${expanded ? " is-expanded" : ""}`}>
+        <div className="ai-card-body ai-news-impact-collapsible-inner">
+          {loading ? <ImpactSkeleton /> : null}
+          {!loading && error ? <p className="ai-state-message error">{error}</p> : null}
+          {!loading && !error && data ? <ImpactContent data={data} /> : null}
+        </div>
+
+        {data ? (
+          <div className="ai-card-footer">
+            <AiResponseMeta metadata={data.metadata} />
+          </div>
+        ) : null}
+
+        <p className="ai-disclaimer">
+          <Info size={13} aria-hidden="true" />
+          <span>Bu yorum yatirim tavsiyesi degildir; yalnizca mevcut verilerin otomatik analizidir.</span>
+        </p>
       </div>
-
-      {data ? <div className="ai-card-footer"><AiResponseMeta metadata={data.metadata} /></div> : null}
-
-      <p className="ai-disclaimer">
-        <Info size={13} aria-hidden="true" />
-        <span>Bu yorum yatirim tavsiyesi degildir; yalnizca mevcut verilerin otomatik analizidir.</span>
-      </p>
     </section>
   );
 }

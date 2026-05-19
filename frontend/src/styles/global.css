@@ -10718,6 +10718,74 @@ html[data-theme] button.sidebar-register-button:focus-visible,
   border-color: var(--news-border);
 }
 
+.ai-news-impact-card--toggle {
+  overflow: hidden;
+}
+
+.ai-news-impact-trigger {
+  width: 100%;
+  padding: 18px 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  text-align: left;
+}
+
+.ai-news-impact-trigger:hover,
+.ai-news-impact-trigger:focus-visible {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.ai-news-impact-trigger-main,
+.ai-news-impact-trigger-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-news-impact-trigger-main {
+  min-width: 0;
+}
+
+.ai-news-impact-trigger-main h3,
+.ai-news-impact-trigger-main p {
+  margin: 0;
+}
+
+.ai-news-impact-trigger-main p {
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.ai-news-impact-chevron {
+  color: var(--text-soft);
+  transition: transform 180ms ease;
+}
+
+.ai-news-impact-chevron.is-expanded {
+  transform: rotate(180deg);
+}
+
+.ai-news-impact-collapsible {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 300ms ease;
+}
+
+.ai-news-impact-collapsible.is-expanded {
+  max-height: 960px;
+}
+
+.ai-news-impact-collapsible-inner {
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
 .news-page-stack .ai-news-impact-card {
   border-color: rgba(245, 158, 11, 0.18);
   background: linear-gradient(180deg, rgba(255, 250, 242, 0.94), rgba(255, 255, 255, 0.96));
@@ -10863,6 +10931,27 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 .news-detail-content-card .news-detail-body,
 .news-detail-content-card .news-detail-actions {
   max-width: none;
+}
+
+.news-detail-back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-main);
+  box-shadow: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+}
+
+.news-detail-back-link:hover,
+.news-detail-back-link:focus-visible {
+  color: color-mix(in srgb, var(--text-main) 78%, var(--accent));
+  background: transparent;
 }
 
 .news-detail-side-panel {

@@ -18,6 +18,8 @@ public interface NewsRepository extends JpaRepository<News, Long>, JpaSpecificat
 
     Optional<News> findByExternalId(String externalId);
 
+    Optional<News> findFirstByUrlAndContentEnrichedAtIsNotNullOrderByContentEnrichedAtDesc(String url);
+
     @Query("""
             select n
             from News n

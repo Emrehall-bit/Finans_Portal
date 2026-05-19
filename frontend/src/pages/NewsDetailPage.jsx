@@ -134,7 +134,7 @@ export default function NewsDetailPage() {
         title={item?.title || t("newsDetail.titleFallback")}
         description={sourceName || t("newsDetail.descriptionFallback")}
         actions={
-          <Link className="secondary-button" to="/news">
+          <Link className="news-detail-back-link" to="/news">
             {t("newsDetail.back")}
           </Link>
         }
@@ -148,8 +148,6 @@ export default function NewsDetailPage() {
           <EmptyState title={t("newsDetail.emptyTitle")} description={t("newsDetail.emptyDescription")} />
         </section>
       ) : null}
-
-      {!loading && !error && item && !kapDisclosure ? <AiNewsImpactCard newsId={item.id} /> : null}
 
       {!loading && !error && item ? (
         <section className="news-detail-hero-grid">
@@ -272,6 +270,9 @@ export default function NewsDetailPage() {
                   <div className="news-related-list">
                     {relatedData.relatedInstruments.map((instrument) => {
                       const changeTone = Number(instrument?.changePercent) >= 0 ? "market-up" : "market-down";
+                      const isIndirectTheme =
+                        String(instrument?.relationType || "").toUpperCase() === "THEME" &&
+                        String(instrument?.confidence || "").toUpperCase() === "LOW";
                       return (
                         <Link
                           key={instrument.symbol}
@@ -281,10 +282,12 @@ export default function NewsDetailPage() {
                           <div className="news-related-card-top">
                             <strong className="news-related-symbol">{instrument.symbol}</strong>
                             <div className="news-related-badge-stack">
-                              <span className="news-card-badge provider">{instrument.instrumentType || "STOCK"}</span>
-                              <span className={`news-card-badge neutral ${String(instrument.relationType || "").toLowerCase()}`}>
-                                {t(`newsDetail.relationTypes.${String(instrument.relationType || "THEME").toLowerCase()}`)}
-                              </span>
+                            <span className="news-card-badge provider">{instrument.instrumentType || "STOCK"}</span>
+                            <span className={`news-card-badge neutral ${String(instrument.relationType || "").toLowerCase()}`}>
+                              {isIndirectTheme
+                                ? t("newsDetail.indirectTheme")
+                                : t(`newsDetail.relationTypes.${String(instrument.relationType || "THEME").toLowerCase()}`)}
+                            </span>
                               <span className={`news-card-badge importance ${String(instrument.confidence || "LOW").toLowerCase()}`}>
                                 {t(`newsDetail.confidence.${String(instrument.confidence || "LOW").toLowerCase()}`)}
                               </span>
@@ -330,7 +333,7 @@ export default function NewsDetailPage() {
                   />
                 ) : null}
 
-                {!relatedLoading && !relatedError && relatedData.relatedNews.length > 0 ? (
+              {!relatedLoading && !relatedError && relatedData.relatedNews.length > 0 ? (
                   <div className="news-related-list">
                     {relatedData.relatedNews.map((relatedItem) => (
                       <button
@@ -356,6 +359,8 @@ export default function NewsDetailPage() {
                   </div>
                 ) : null}
               </section>
+
+              {!kapDisclosure ? <AiNewsImpactCard newsId={item.id} /> : null}
             </div>
           </aside>
         </section>

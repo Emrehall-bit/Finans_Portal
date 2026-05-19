@@ -213,6 +213,13 @@
     "description": "Track the financial agenda by source, category, and importance.",
     "refresh": "Refresh",
     "sync": "Sync news",
+    "syncProvider": "Sync {{provider}}",
+    "syncingProvider": "Syncing {{provider}}...",
+    "adminSyncEyebrow": "Admin Sync",
+    "adminSyncTitle": "Provider-based news sync",
+    "adminSyncDescription": "Run sync for a specific provider from the UI. Uses the current session token.",
+    "syncCompletedGeneric": "Sync completed.",
+    "syncCompletedSummary": "{{provider}} completed. Fetched: {{fetched}}, saved: {{saved}}, existing: {{existing}}, invalid: {{invalid}}.",
     "loadError": "Failed to load news.",
     "syncError": "News synchronization failed.",
     "searchPlaceholder": "Search news by keyword...",
@@ -1189,6 +1196,7 @@
       "direct": "Direct",
       "theme": "Theme"
     },
+    "indirectTheme": "Indirect theme",
     "confidence": {
       "high": "High confidence",
       "medium": "Medium confidence",

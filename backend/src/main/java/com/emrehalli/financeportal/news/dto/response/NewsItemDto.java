@@ -21,6 +21,7 @@ public class NewsItemDto {
     private String url;
     private String imageUrl;
     private LocalDateTime publishedAt;
+    private LocalDateTime contentEnrichedAt;
     private String qualityStatus;
     private Boolean isKapDisclosure;
     private String disclosureType;

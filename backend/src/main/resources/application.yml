@@ -67,7 +67,7 @@ management:
       application: finance-portal-backend
 
 finnhub:
-  enabled: true
+  enabled: false
   api:
     url: https://finnhub.io/api/v1
     key: ${FINNHUB_API_KEY:}
@@ -82,8 +82,20 @@ news:
       default-category: ECONOMY
       default-language: tr
       default-region-scope: TR
-    investing:
+    cnbc:
       enabled: true
+      rss-url: ${CNBC_RSS_URL:https://www.cnbc.com/id/100003114/device/rss/rss.html}
+      default-category: ECONOMY
+      default-language: en
+      default-region-scope: GLOBAL
+    reuters:
+      enabled: true
+      rss-url: ${REUTERS_RSS_URL:https://www.reuters.com/business/?rpc=401&feedType=rss}
+      default-category: ECONOMY
+      default-language: en
+      default-region-scope: GLOBAL
+    investing:
+      enabled: false
       rss-url: ${INVESTING_RSS_URL:https://www.investing.com/rss/news_14.rss}
       default-category: ECONOMY
       default-language: en

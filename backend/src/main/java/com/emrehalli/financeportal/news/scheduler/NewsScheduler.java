@@ -4,8 +4,11 @@ import com.emrehalli.financeportal.common.exception.ProviderRateLimitException;
 import com.emrehalli.financeportal.common.logging.SchedulerLogSupport;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
+import com.emrehalli.financeportal.news.provider.cnbc.CnbcNewsProperties;
+import com.emrehalli.financeportal.news.provider.finnhub.FinnhubProperties;
 import com.emrehalli.financeportal.news.provider.investing.InvestingNewsProperties;
 import com.emrehalli.financeportal.news.provider.kap.KapNewsProperties;
+import com.emrehalli.financeportal.news.provider.reuters.ReutersNewsProperties;
 import com.emrehalli.financeportal.news.service.NewsService;
 import jakarta.annotation.PostConstruct;
 import org.apache.logging.log4j.LogManager;
@@ -19,15 +22,24 @@ public class NewsScheduler {
     private static final Logger logger = LogManager.getLogger(NewsScheduler.class);
 
     private final NewsService newsService;
+    private final FinnhubProperties finnhubProperties;
+    private final CnbcNewsProperties cnbcNewsProperties;
+    private final ReutersNewsProperties reutersNewsProperties;
     private final InvestingNewsProperties investingNewsProperties;
     private final KapNewsProperties kapNewsProperties;
 
     public NewsScheduler(
             NewsService newsService,
+            FinnhubProperties finnhubProperties,
+            CnbcNewsProperties cnbcNewsProperties,
+            ReutersNewsProperties reutersNewsProperties,
             InvestingNewsProperties investingNewsProperties,
             KapNewsProperties kapNewsProperties
     ) {
         this.newsService = newsService;
+        this.finnhubProperties = finnhubProperties;
+        this.cnbcNewsProperties = cnbcNewsProperties;
+        this.reutersNewsProperties = reutersNewsProperties;
         this.investingNewsProperties = investingNewsProperties;
         this.kapNewsProperties = kapNewsProperties;
     }
@@ -35,14 +47,14 @@ public class NewsScheduler {
     @PostConstruct
     public void loadOnStartup() {
         logger.info("NewsScheduler started. Loading latest news on startup...");
-        runProviderSync(NewsProviderType.FINNHUB, "startup");
-        runProviderSync(NewsProviderType.INVESTING_RSS, "startup");
+        runProviderSync(NewsProviderType.CNBC_RSS, "startup");
+        runProviderSync(NewsProviderType.REUTERS_RSS, "startup");
     }
 
     @Scheduled(cron = "0 */30 * * * *")
     public void syncPrimaryProviders() {
-        runProviderSync(NewsProviderType.FINNHUB, "scheduled");
-        runProviderSync(NewsProviderType.INVESTING_RSS, "scheduled");
+        runProviderSync(NewsProviderType.CNBC_RSS, "scheduled");
+        runProviderSync(NewsProviderType.REUTERS_RSS, "scheduled");
     }
 
     @Scheduled(cron = "0 10,40 * * * *")
@@ -59,6 +71,18 @@ public class NewsScheduler {
     }
 
     void runProviderSync(NewsProviderType providerType, String trigger) {
+        if (providerType == NewsProviderType.FINNHUB && !finnhubProperties.isEnabled()) {
+            logger.info("Skipping Finnhub news sync because provider is disabled. trigger: {}", trigger);
+            return;
+        }
+        if (providerType == NewsProviderType.CNBC_RSS && !cnbcNewsProperties.isEnabled()) {
+            logger.info("Skipping CNBC RSS news sync because provider is disabled. trigger: {}", trigger);
+            return;
+        }
+        if (providerType == NewsProviderType.REUTERS_RSS && !reutersNewsProperties.isEnabled()) {
+            logger.info("Skipping Reuters RSS news sync because provider is disabled. trigger: {}", trigger);
+            return;
+        }
         if (providerType == NewsProviderType.INVESTING_RSS && !investingNewsProperties.isEnabled()) {
             logger.info("Skipping Investing RSS news sync because provider is disabled. trigger: {}", trigger);
             return;

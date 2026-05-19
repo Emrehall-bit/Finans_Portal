@@ -14,10 +14,16 @@ public class FinnhubNewsProvider implements NewsProvider {
 
     private final FinnhubClient finnhubClient;
     private final FinnhubNewsMapper finnhubNewsMapper;
+    private final FinnhubProperties finnhubProperties;
 
-    public FinnhubNewsProvider(FinnhubClient finnhubClient, FinnhubNewsMapper finnhubNewsMapper) {
+    public FinnhubNewsProvider(
+            FinnhubClient finnhubClient,
+            FinnhubNewsMapper finnhubNewsMapper,
+            FinnhubProperties finnhubProperties
+    ) {
         this.finnhubClient = finnhubClient;
         this.finnhubNewsMapper = finnhubNewsMapper;
+        this.finnhubProperties = finnhubProperties;
     }
 
     @Override
@@ -27,6 +33,9 @@ public class FinnhubNewsProvider implements NewsProvider {
 
     @Override
     public List<NewsItemDto> fetchLatestNews() {
+        if (!finnhubProperties.isEnabled()) {
+            return List.of();
+        }
         List<FinnhubNewsResponse> rawNews = finnhubClient.fetchGeneralNews();
         return rawNews.stream()
                 .map(finnhubNewsMapper::map)
@@ -36,6 +45,9 @@ public class FinnhubNewsProvider implements NewsProvider {
 
     @Override
     public List<NewsItemDto> fetchCompanyNews(String symbol) {
+        if (!finnhubProperties.isEnabled()) {
+            return List.of();
+        }
         List<FinnhubNewsResponse> rawNews = finnhubClient.fetchCompanyNews(symbol);
         return rawNews.stream()
                 .map(finnhubNewsMapper::map)
