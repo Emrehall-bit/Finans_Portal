@@ -6,7 +6,6 @@ import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.provider.cnbc.CnbcNewsProperties;
 import com.emrehalli.financeportal.news.provider.kap.KapNewsProperties;
-import com.emrehalli.financeportal.news.provider.world.WorldNewsApiProperties;
 import com.emrehalli.financeportal.news.service.NewsService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,18 +20,15 @@ public class NewsScheduler {
     private final NewsService newsService;
     private final CnbcNewsProperties cnbcNewsProperties;
     private final KapNewsProperties kapNewsProperties;
-    private final WorldNewsApiProperties worldNewsApiProperties;
 
     public NewsScheduler(
             NewsService newsService,
             CnbcNewsProperties cnbcNewsProperties,
-            KapNewsProperties kapNewsProperties,
-            WorldNewsApiProperties worldNewsApiProperties
+            KapNewsProperties kapNewsProperties
     ) {
         this.newsService = newsService;
         this.cnbcNewsProperties = cnbcNewsProperties;
         this.kapNewsProperties = kapNewsProperties;
-        this.worldNewsApiProperties = worldNewsApiProperties;
     }
 
     @Scheduled(cron = "0 */30 * * * *")
@@ -43,17 +39,6 @@ public class NewsScheduler {
     @Scheduled(cron = "0 10,40 * * * *")
     public void syncSecondaryRssProviders() {
         runProviderSync(NewsProviderType.AA_RSS, "scheduled");
-    }
-
-    @Scheduled(
-            fixedDelayString = "#{${news.providers.world-news-api.sync-rate-hours:6} * 3600000}",
-            initialDelayString = "#{${news.providers.world-news-api.sync-rate-hours:6} * 3600000}"
-    )
-    public void syncWorldNewsApiProvider() {
-        if (!worldNewsApiProperties.isSchedulerEnabled()) {
-            return;
-        }
-        runProviderSync(NewsProviderType.WORLD_NEWS_API, "scheduled");
     }
 
     @Scheduled(cron = "${news.providers.kap.scheduler-cron:0 0 */2 * * *}")
@@ -73,12 +58,6 @@ public class NewsScheduler {
             logger.info("Skipping KAP news sync because provider is disabled. trigger: {}", trigger);
             return;
         }
-        if (providerType == NewsProviderType.WORLD_NEWS_API
-                && (!worldNewsApiProperties.isEnabled() || worldNewsApiProperties.getApiKey() == null || worldNewsApiProperties.getApiKey().isBlank())) {
-            logger.info("Skipping World News API sync because provider is disabled or api key missing. trigger: {}", trigger);
-            return;
-        }
-
         SchedulerLogSupport.Run run = SchedulerLogSupport.start("NewsScheduler." + trigger + "." + providerType.name());
         try {
             if (providerType == NewsProviderType.CNBC_RSS) {
@@ -87,14 +66,6 @@ public class NewsScheduler {
                         cnbcNewsProperties.isEnabled(),
                         cnbcNewsProperties.getFeedUrls().size(),
                         cnbcNewsProperties.getFeedUrls());
-            }
-            if (providerType == NewsProviderType.WORLD_NEWS_API) {
-                logger.info("Scheduler invoking WORLD_NEWS_API. trigger: {}, enabled: {}, maxItemsPerSync: {}, schedulerEnabled: {}, syncRateHours: {}",
-                        trigger,
-                        worldNewsApiProperties.isEnabled(),
-                        worldNewsApiProperties.getMaxItemsPerSync(),
-                        worldNewsApiProperties.isSchedulerEnabled(),
-                        worldNewsApiProperties.getSyncRateHours());
             }
             logger.info("{} {} news sync started", capitalize(trigger), providerType.name());
             NewsSyncResponseDto result = "startup".equalsIgnoreCase(trigger)
@@ -134,11 +105,4 @@ public class NewsScheduler {
         return Character.toUpperCase(normalized.charAt(0)) + normalized.substring(1);
     }
 
-    void runWorldNewsApiStartupSync() {
-        if (!worldNewsApiProperties.isStartupEnabled()) {
-            logger.info("Skipping WORLD_NEWS_API startup sync because startup-enabled is false");
-            return;
-        }
-        runProviderSync(NewsProviderType.WORLD_NEWS_API, "startup");
-    }
 }

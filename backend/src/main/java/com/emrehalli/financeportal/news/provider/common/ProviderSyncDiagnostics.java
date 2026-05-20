@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.news.provider.common;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -24,6 +25,12 @@ public class ProviderSyncDiagnostics {
     private Integer apiQuotaLeft;
     private Integer apiQuotaUsed;
     private Integer apiQuotaRequest;
+    private Integer apiReturnedCount;
+    private Integer fullContentEligibleCount;
+    private Integer skippedTooOld;
+    private Integer skippedBlockedSource;
+    private String firstReturnedTitle;
+    private LocalDateTime firstReturnedPublishedAt;
     private String errorMessage;
     private List<String> lastErrors;
 
@@ -44,6 +51,12 @@ public class ProviderSyncDiagnostics {
                 .apiQuotaLeft(null)
                 .apiQuotaUsed(null)
                 .apiQuotaRequest(null)
+                .apiReturnedCount(0)
+                .fullContentEligibleCount(0)
+                .skippedTooOld(0)
+                .skippedBlockedSource(0)
+                .firstReturnedTitle(null)
+                .firstReturnedPublishedAt(null)
                 .errorMessage(null)
                 .lastErrors(List.of())
                 .build();

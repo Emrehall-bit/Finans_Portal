@@ -36,7 +36,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * REST controller for aggregate market data.
@@ -103,12 +106,27 @@ public class MarketController {
             results = List.of();
         } else {
             Pageable pageable = PageRequest.of(0, clampedLimit);
-            results = new ArrayList<>(instrumentRepository
+            List<MarketInstrument> directMatches = new ArrayList<>(instrumentRepository
                     .findByInstrumentCodeContainingIgnoreCaseOrInstrumentNameContainingIgnoreCase(
-                            query, query, pageable)
-                    .stream()
+                            query, query, pageable));
+            List<MarketInstrument> aliasMatches = instrumentRepository.findAllWithNonBlankInstrumentCode().stream()
+                    .filter(this::isFxSellInstrument)
+                    .filter(instrument -> matchesFxAlias(query, instrument))
+                    .toList();
+
+            LinkedHashMap<String, InstrumentSearchResult> deduped = new LinkedHashMap<>();
+            directMatches.stream()
                     .filter(instrument -> includeInternal || !isInternalCashInstrument(instrument))
+                    .filter(this::shouldIncludeInPortfolioSearch)
                     .map(this::toInstrumentSearchResult)
+                    .forEach(result -> deduped.putIfAbsent(result.code(), result));
+
+            aliasMatches.stream()
+                    .map(this::toInstrumentSearchResult)
+                    .forEach(result -> deduped.putIfAbsent(result.code(), result));
+
+            results = new ArrayList<>(deduped.values().stream()
+                    .limit(clampedLimit)
                     .toList());
 
             if (includeInternal
@@ -500,11 +518,21 @@ public class MarketController {
     private InstrumentSearchResult toInstrumentSearchResult(MarketInstrument instrument) {
         String displayName = isInternalCashInstrument(instrument)
                 ? INTERNAL_CASH_DISPLAY_NAME
-                : instrument.getInstrumentName();
+                : resolveInstrumentSearchDisplayName(instrument);
         return new InstrumentSearchResult(
                 instrument.getInstrumentCode(),
                 displayName,
                 instrument.getInstrumentType().name());
+    }
+
+    private String resolveInstrumentSearchDisplayName(MarketInstrument instrument) {
+        if (instrument.getInstrumentType() == InstrumentType.FX) {
+            FxSearchLabel label = extractFxSearchLabel(instrument.getInstrumentCode());
+            if (label != null) {
+                return label.currencyCode() + " / " + label.currencyName();
+            }
+        }
+        return instrument.getInstrumentName();
     }
 
     private boolean matchesInternalCashAlias(String query) {
@@ -521,6 +549,85 @@ public class MarketController {
         return instrument.getInstrumentType() == InstrumentType.FX
                 && instrument.getSourceName() == SourceName.INTERNAL
                 && INTERNAL_CASH_CODE.equalsIgnoreCase(instrument.getInstrumentCode());
+    }
+
+    private boolean shouldIncludeInPortfolioSearch(MarketInstrument instrument) {
+        if (instrument.getInstrumentType() != InstrumentType.FX) {
+            return true;
+        }
+        return isInternalCashInstrument(instrument) || isFxSellInstrument(instrument);
+    }
+
+    private boolean isFxSellInstrument(MarketInstrument instrument) {
+        if (instrument == null || instrument.getInstrumentType() != InstrumentType.FX) {
+            return false;
+        }
+        String code = instrument.getInstrumentCode();
+        return code != null && code.trim().toUpperCase(Locale.ROOT).endsWith(":SELL");
+    }
+
+    private boolean matchesFxAlias(String query, MarketInstrument instrument) {
+        if (query == null || query.isBlank()) {
+            return false;
+        }
+        FxSearchLabel label = extractFxSearchLabel(instrument.getInstrumentCode());
+        if (label == null) {
+            return false;
+        }
+
+        String normalizedQuery = normalizeSearchText(query);
+        return normalizeSearchText(label.currencyCode()).contains(normalizedQuery)
+                || normalizeSearchText(label.currencyName()).contains(normalizedQuery)
+                || normalizeSearchText(label.currencyCode() + " " + label.currencyName()).contains(normalizedQuery);
+    }
+
+    private FxSearchLabel extractFxSearchLabel(String instrumentCode) {
+        if (instrumentCode == null || instrumentCode.isBlank()) {
+            return null;
+        }
+
+        String[] parts = instrumentCode.trim().toUpperCase(Locale.ROOT).split(":");
+        if (parts.length != 3 || !"SELL".equals(parts[2])) {
+            return null;
+        }
+
+        String currencyCode = parts[1];
+        String currencyName = FX_SEARCH_ALIASES.getOrDefault(currencyCode, currencyCode);
+        return new FxSearchLabel(parts[0], currencyCode, currencyName);
+    }
+
+    private String normalizeSearchText(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.toLowerCase(Locale.ROOT)
+                .replace('ı', 'i')
+                .replace('ğ', 'g')
+                .replace('ü', 'u')
+                .replace('ş', 's')
+                .replace('ö', 'o')
+                .replace('ç', 'c')
+                .trim();
+    }
+
+    private static final Map<String, String> FX_SEARCH_ALIASES = Map.ofEntries(
+            Map.entry("USD", "Dolar"),
+            Map.entry("EUR", "Euro"),
+            Map.entry("GBP", "Sterlin"),
+            Map.entry("AUD", "Avustralya Dolari"),
+            Map.entry("CAD", "Kanada Dolari"),
+            Map.entry("CHF", "Frank"),
+            Map.entry("JPY", "Yen"),
+            Map.entry("SAR", "Riyal"),
+            Map.entry("RUB", "Ruble"),
+            Map.entry("AZN", "Manat"),
+            Map.entry("CNY", "Yuan"),
+            Map.entry("QAR", "Riyal"),
+            Map.entry("KWD", "Dinar"),
+            Map.entry("KRW", "Won")
+    );
+
+    private record FxSearchLabel(String source, String currencyCode, String currencyName) {
     }
 
     private record InstrumentSearchResult(String code, String name, String type) {

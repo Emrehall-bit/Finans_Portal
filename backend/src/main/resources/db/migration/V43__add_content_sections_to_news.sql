@@ -1,0 +1,1 @@
+ALTER TABLE news ADD COLUMN IF NOT EXISTS content_sections TEXT;

@@ -276,7 +276,11 @@ export default function AppLayout() {
       tickerQuotes.find((item) => item.symbol?.toUpperCase() === symbol),
     ).filter((item) => item && Number(item.price) !== 0);
 
-    const merged = configuredMatches;
+    const fallbackMatches = PRIORITY_SYMBOLS.map((symbol) =>
+      tickerQuotes.find((item) => item.symbol?.toUpperCase() === symbol),
+    ).filter((item) => item && Number(item.price) !== 0);
+
+    const merged = configuredMatches.length > 0 ? configuredMatches : fallbackMatches.length > 0 ? fallbackMatches : tickerQuotes.slice(0, 10);
     const unique = [];
     const seen = new Set();
 

@@ -49,7 +49,7 @@ function Placeholder({ item, providerLabel, logoUrl, logoFailed, onLogoError }) 
   );
 }
 
-export default function NewsCard({ item, onClick }) {
+export default function NewsCard({ item, onClick, expandedKapId, onKapToggle }) {
   const { t } = useTranslation();
   const [imageFailed, setImageFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
@@ -78,9 +78,16 @@ export default function NewsCard({ item, onClick }) {
   const shellClassName = `news-card news-card-shell${kapDisclosure ? " kap" : ""}`;
 
   if (kapDisclosure) {
+    const isExpanded = expandedKapId === item?.id;
+
     return (
-      <article className={shellClassName}>
-        <button className="news-card-main" onClick={() => onClick(item)} type="button">
+      <article className={`${shellClassName}${isExpanded ? " is-expanded" : ""}`}>
+        <button
+          className="news-card-main"
+          onClick={() => onKapToggle?.(item?.id)}
+          type="button"
+          aria-expanded={isExpanded}
+        >
           <div className="news-card-body news-card-body-kap">
             <div className="news-card-meta">
               <span className="news-card-badge provider">{providerLabel}</span>
@@ -93,39 +100,51 @@ export default function NewsCard({ item, onClick }) {
             <h3 className="news-card-title">{item?.title || t("news.titleMissing")}</h3>
             <p className="news-card-summary">{previewText}</p>
 
-            <div className="news-kap-meta-grid">
-              <div>
-                <span className="news-kap-meta-label">{t("news.kapFields.companyCode")}</span>
-                <strong>{item?.relatedSymbol || "-"}</strong>
-              </div>
-              <div>
-                <span className="news-kap-meta-label">{t("news.kapFields.type")}</span>
-                <strong>{disclosureTypeLabel}</strong>
-              </div>
-              <div>
-                <span className="news-kap-meta-label">{t("news.kapFields.date")}</span>
-                <strong>{publishedAtLabel}</strong>
-              </div>
-              <div>
-                <span className="news-kap-meta-label">{t("news.kapFields.source")}</span>
-                <strong>{sourceName}</strong>
-              </div>
+            <div className="news-kap-chip-row">
+              {item?.relatedSymbol ? (
+                <>
+                  <span className="news-kap-chip-symbol">{item.relatedSymbol}</span>
+                  <span className="news-kap-bullet">•</span>
+                </>
+              ) : null}
+              <span>{disclosureTypeLabel}</span>
+              <span className="news-kap-bullet">•</span>
+              <time dateTime={item?.publishedAt || ""}>{publishedAtLabel}</time>
+              <span className="news-kap-bullet">•</span>
+              <span>{sourceName}</span>
             </div>
 
             <div className="news-card-footer">
-              <span className="news-card-quality">{qualityLabel}</span>
-              <span className="news-card-link">{t("news.openDisclosure")}</span>
+              <span className={`news-card-link${isExpanded ? " is-active" : ""}`}>
+                {isExpanded ? t("news.detailsCollapse") : t("news.detailsExpand")}
+              </span>
             </div>
           </div>
         </button>
 
-        {sourceUrl ? (
-          <div className="news-card-secondary-action">
-            <a href={sourceUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-              {t("news.readAtSource")}
-            </a>
+        <div className={`news-kap-expand${isExpanded ? " open" : ""}`}>
+          <div className="news-kap-expand-inner">
+            <h4 className="news-kap-expand-title">{t("news.kapExpandTitle")}</h4>
+
+            {item?.summary ? (
+              <p className="news-kap-expand-summary">{item.summary}</p>
+            ) : (
+              <p className="news-kap-expand-summary is-fallback">{t("news.kapExpandNoSummary")}</p>
+            )}
+
+            {sourceUrl ? (
+              <a
+                className="primary-button news-kap-cta-btn"
+                href={sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {t("news.viewOfficialKap")}
+              </a>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </article>
     );
   }

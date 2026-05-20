@@ -22,8 +22,7 @@ public class RssProviderRelevanceFilter {
     );
 
     public boolean isRelevant(NewsProviderType providerType, String title, String summary, String category, String link) {
-        if (providerType != NewsProviderType.CNBC_RSS
-                && providerType != NewsProviderType.WORLD_NEWS_API) {
+        if (providerType != NewsProviderType.CNBC_RSS) {
             return true;
         }
 

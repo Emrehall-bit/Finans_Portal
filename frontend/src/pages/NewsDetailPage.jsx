@@ -12,6 +12,7 @@ import PageHeader from "../components/common/PageHeader";
 import { formatCurrency, formatDateTime, formatPercent } from "../utils/formatters";
 import {
   buildNewsPlaceholderLabel,
+  getNewsCategoryLabel,
   getNewsDisclosureTypeLabel,
   getNewsFallbackLogoUrl,
   getNewsPreviewText,
@@ -153,45 +154,47 @@ export default function NewsDetailPage() {
         <section className="news-detail-hero-grid">
           <div className="news-detail-main-column">
             <article className={`panel-surface news-detail-card news-detail-hero-card${kapDisclosure ? " is-kap" : ""}`}>
-              <div className="news-detail-media-shell">
-                {item.imageUrl && !imageFailed && !kapDisclosure ? (
-                  <div className="news-detail-media">
-                    <img
-                      className="news-detail-image"
-                      src={item.imageUrl}
-                      alt={item.title || t("newsDetail.imageAlt")}
-                      loading="lazy"
-                      onError={() => setImageFailed(true)}
-                    />
-                  </div>
-                ) : getNewsFallbackLogoUrl(item) && !logoFailed ? (
-                  <div className="news-detail-media news-detail-media-fallback">
-                    <div className="news-card-placeholder-inner">
+              {!kapDisclosure ? (
+                <div className="news-detail-media-shell">
+                  {item.imageUrl && !imageFailed ? (
+                    <div className="news-detail-media">
                       <img
-                        className="news-card-placeholder-logo"
-                        src={getNewsFallbackLogoUrl(item)}
-                        alt={providerLabel}
+                        className="news-detail-image"
+                        src={item.imageUrl}
+                        alt={item.title || t("newsDetail.imageAlt")}
                         loading="lazy"
-                        onError={() => setLogoFailed(true)}
+                        onError={() => setImageFailed(true)}
                       />
-                      <strong className="news-card-placeholder-provider">{providerLabel}</strong>
-                      <small className="news-card-placeholder-note">{t("newsDetail.sourceLogo")}</small>
                     </div>
-                  </div>
-                ) : (
-                  <div className="news-detail-media news-detail-media-fallback">
-                    <div className="news-card-placeholder-inner">
-                      <span className="news-card-placeholder-mark">{buildNewsPlaceholderLabel(item)}</span>
-                      <strong className="news-card-placeholder-provider">{providerLabel}</strong>
-                      <small className="news-card-placeholder-note">{sourceName}</small>
+                  ) : getNewsFallbackLogoUrl(item) && !logoFailed ? (
+                    <div className="news-detail-media news-detail-media-fallback">
+                      <div className="news-card-placeholder-inner">
+                        <img
+                          className="news-card-placeholder-logo"
+                          src={getNewsFallbackLogoUrl(item)}
+                          alt={providerLabel}
+                          loading="lazy"
+                          onError={() => setLogoFailed(true)}
+                        />
+                        <strong className="news-card-placeholder-provider">{providerLabel}</strong>
+                        <small className="news-card-placeholder-note">{t("newsDetail.sourceLogo")}</small>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="news-detail-media news-detail-media-fallback">
+                      <div className="news-card-placeholder-inner">
+                        <span className="news-card-placeholder-mark">{buildNewsPlaceholderLabel(item)}</span>
+                        <strong className="news-card-placeholder-provider">{providerLabel}</strong>
+                        <small className="news-card-placeholder-note">{sourceName}</small>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               <div className="news-detail-topbar">
                 <div className="news-detail-meta">
-                  <span className="news-card-badge category">{item?.category || t("newsDetail.defaultCategory")}</span>
+                  <span className="news-card-badge category">{getNewsCategoryLabel(item?.category) || t("newsDetail.defaultCategory")}</span>
                   <span className="news-card-badge provider">{providerLabel}</span>
                   <span className="muted">{formatDateTime(item?.publishedAt)}</span>
                 </div>
@@ -222,27 +225,40 @@ export default function NewsDetailPage() {
             <section className={`panel-surface news-detail-card news-detail-content-card${kapDisclosure ? " is-kap" : ""}`}>
               <div className="news-detail-body">
                 {detailParagraphs.length > 0 ? (
-                detailParagraphs.map((para, index) =>
-                  para.startsWith("## ") ? (
-                    <h3 key={index} className="news-detail-subheading">{para.slice(3)}</h3>
-                  ) : (
-                    <p key={index} className="news-detail-summary">{para}</p>
-                  ),
-                )
-              ) : (
-                <p className="news-detail-summary is-fallback">{previewText}</p>
-              )}
-            </div>
-
-            {sourceUrl ? (
-              <div className="news-detail-actions">
-                <a className="primary-button news-detail-source-link" href={sourceUrl} target="_blank" rel="noreferrer">
-                  {kapDisclosure || String(item?.qualityStatus || "").toUpperCase() === "SOURCE_LINK_ONLY"
-                    ? t("news.readAtSource")
-                    : t("newsDetail.openSource")}
-                </a>
+                  detailParagraphs.map((para, index) =>
+                    para.startsWith("## ") ? (
+                      <h3 key={index} className="news-detail-subheading">{para.slice(3)}</h3>
+                    ) : (
+                      <p key={index} className="news-detail-summary">{para}</p>
+                    )
+                  )
+                ) : (
+                  <p className="news-detail-summary is-fallback">
+                    {kapDisclosure ? t("newsDetail.kapNoSummary") : previewText}
+                  </p>
+                )}
               </div>
-            ) : null}
+
+              {kapDisclosure ? (
+                <div className="news-detail-actions">
+                  <a
+                    className="primary-button news-detail-kap-cta"
+                    href={item.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t("newsDetail.viewOnKap")}
+                  </a>
+                </div>
+              ) : sourceUrl ? (
+                <div className="news-detail-actions">
+                  <a className="primary-button news-detail-source-link" href={sourceUrl} target="_blank" rel="noreferrer">
+                    {String(item?.qualityStatus || "").toUpperCase() === "SOURCE_LINK_ONLY"
+                      ? t("news.readAtSource")
+                      : t("newsDetail.openSource")}
+                  </a>
+                </div>
+              ) : null}
           </section>
           </div>
 
@@ -344,7 +360,7 @@ export default function NewsDetailPage() {
                       >
                         <div className="news-related-card-top">
                           <span className="news-card-badge category">
-                            {relatedItem.category || t("newsDetail.defaultCategory")}
+                            {getNewsCategoryLabel(relatedItem.category) || t("newsDetail.defaultCategory")}
                           </span>
                         </div>
                         <strong className="news-related-title" title={relatedItem.title || t("news.titleMissing")}>

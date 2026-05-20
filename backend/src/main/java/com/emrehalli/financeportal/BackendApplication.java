@@ -5,7 +5,6 @@ import com.emrehalli.financeportal.news.config.NewsStartupSyncProperties;
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
 import com.emrehalli.financeportal.news.provider.cnbc.CnbcNewsProperties;
 import com.emrehalli.financeportal.news.provider.kap.KapNewsProperties;
-import com.emrehalli.financeportal.news.provider.world.WorldNewsApiProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -22,7 +21,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         NewsStartupSyncProperties.class,
         AaNewsProperties.class,
         CnbcNewsProperties.class,
-        WorldNewsApiProperties.class,
         KapNewsProperties.class
 })
 public class BackendApplication {

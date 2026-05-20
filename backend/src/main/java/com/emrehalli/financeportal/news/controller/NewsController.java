@@ -129,14 +129,15 @@ public class NewsController {
     public ApiResponse<NewsSyncResponseDto> syncNews(
             @RequestParam(required = false) String scope,
             @RequestParam(required = false) String provider,
-            @RequestParam(required = false) String symbol) {
+            @RequestParam(required = false) String symbol,
+            @RequestParam(required = false) Integer limit) {
 
         NewsSyncResponseDto response;
 
         if (symbol != null && !symbol.trim().isEmpty()) {
-            response = newsService.syncCompanyNews(symbol, provider);
+            response = newsService.syncCompanyNews(symbol, provider, limit);
         } else {
-            response = newsService.syncLatestNews(scope, provider);
+            response = newsService.syncLatestNews(scope, provider, limit);
         }
 
         return ApiResponse.<NewsSyncResponseDto>builder()

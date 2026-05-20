@@ -4,16 +4,22 @@ import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.portfolio.dto.CreatePortfolioRequest;
 import com.emrehalli.financeportal.portfolio.dto.PortfolioDetailResponse;
+import com.emrehalli.financeportal.portfolio.dto.PortfolioPerformanceResponse;
+import com.emrehalli.financeportal.portfolio.dto.PortfolioRiskSummaryResponse;
 import com.emrehalli.financeportal.portfolio.dto.PortfolioResponseDto;
 import com.emrehalli.financeportal.portfolio.dto.PortfolioSummaryResponse;
 import com.emrehalli.financeportal.portfolio.dto.UpdatePortfolioRequest;
 import com.emrehalli.financeportal.portfolio.entity.Portfolio;
 import com.emrehalli.financeportal.portfolio.service.PortfolioHoldingService;
+import com.emrehalli.financeportal.portfolio.service.PortfolioPerformanceHistoryService;
+import com.emrehalli.financeportal.portfolio.service.PortfolioRiskAnalysisService;
 import com.emrehalli.financeportal.portfolio.service.PortfolioService;
 import com.emrehalli.financeportal.portfolio.service.PortfolioValuationResult;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -22,13 +28,19 @@ public class PortfolioController {
 
     private final PortfolioService portfolioService;
     private final PortfolioHoldingService portfolioHoldingService;
+    private final PortfolioPerformanceHistoryService portfolioPerformanceHistoryService;
+    private final PortfolioRiskAnalysisService portfolioRiskAnalysisService;
     private final AppMessageSource appMessageSource;
 
     public PortfolioController(PortfolioService portfolioService,
                                PortfolioHoldingService portfolioHoldingService,
+                               PortfolioPerformanceHistoryService portfolioPerformanceHistoryService,
+                               PortfolioRiskAnalysisService portfolioRiskAnalysisService,
                                AppMessageSource appMessageSource) {
         this.portfolioService = portfolioService;
         this.portfolioHoldingService = portfolioHoldingService;
+        this.portfolioPerformanceHistoryService = portfolioPerformanceHistoryService;
+        this.portfolioRiskAnalysisService = portfolioRiskAnalysisService;
         this.appMessageSource = appMessageSource;
     }
 
@@ -123,6 +135,29 @@ public class PortfolioController {
                 .success(true)
                 .data(response)
                 .message(appMessageSource.get("portfolio.details.fetched"))
+                .build();
+    }
+
+    @GetMapping("/{portfolioId}/performance-history")
+    public ApiResponse<PortfolioPerformanceResponse> getPortfolioPerformanceHistory(
+            @PathVariable Long portfolioId,
+            @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        PortfolioPerformanceResponse data = portfolioPerformanceHistoryService.getPerformanceHistory(portfolioId, from, to);
+        return ApiResponse.<PortfolioPerformanceResponse>builder()
+                .success(true)
+                .data(data)
+                .message("OK")
+                .build();
+    }
+
+    @GetMapping("/{portfolioId}/risk-summary")
+    public ApiResponse<PortfolioRiskSummaryResponse> getPortfolioRiskSummary(@PathVariable Long portfolioId) {
+        PortfolioRiskSummaryResponse data = portfolioRiskAnalysisService.getRiskSummary(portfolioId);
+        return ApiResponse.<PortfolioRiskSummaryResponse>builder()
+                .success(true)
+                .data(data)
+                .message("OK")
                 .build();
     }
 }

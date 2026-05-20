@@ -84,19 +84,6 @@ news:
       default-category: ECONOMY
       default-language: en
       default-region-scope: GLOBAL
-    world-news-api:
-      enabled: true
-      base-url: https://api.worldnewsapi.com
-      api-key: ${WORLD_NEWS_API_KEY:}
-      categories: business
-      language: en
-      max-items-per-sync: 4
-      min-content-length: 500
-      scheduler-enabled: true
-      startup-enabled: false
-      sync-rate-hours: 6
-      connect-timeout-ms: 3000
-      read-timeout-ms: 20000
     kap:
       enabled: true
       scheduler-enabled: false
@@ -109,8 +96,8 @@ news:
       lookback-days: 7
       startup-lookback-days: 30
       max-range-days: 90
-      fetch-detail-enabled: false
-      startup-sync-enabled: false
+      fetch-detail-enabled: true
+      startup-sync-enabled: true
       disclosure-types:
         - ODA
         - FR

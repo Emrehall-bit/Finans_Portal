@@ -212,10 +212,10 @@ public class NewsService {
     }
 
     @Transactional
-    public NewsSyncResponseDto syncLatestNews(String scope, String provider) {
+    public NewsSyncResponseDto syncLatestNews(String scope, String provider, Integer limit) {
         if (hasText(provider)) {
             NewsProviderType providerType = NewsProviderType.from(provider);
-            return syncSingleProvider(providerType, null, false);
+            return syncSingleProvider(providerType, null, false, false, limit);
         }
 
         NewsScope newsScope = NewsScope.from(scope);
@@ -223,13 +223,13 @@ public class NewsService {
     }
 
     @Transactional
-    public NewsSyncResponseDto syncCompanyNews(String symbol, String provider) {
+    public NewsSyncResponseDto syncCompanyNews(String symbol, String provider, Integer limit) {
         if (!hasText(provider)) {
             throw new BadRequestException("provider is required for symbol based sync");
         }
         String normalizedSymbol = normalizeSymbol(symbol);
         NewsProviderType providerType = NewsProviderType.from(provider);
-        return syncSingleProvider(providerType, normalizedSymbol, false);
+        return syncSingleProvider(providerType, normalizedSymbol, false, false, limit);
     }
 
     @Transactional
@@ -245,12 +245,12 @@ public class NewsService {
 
     @Transactional
     public NewsSyncResponseDto syncProvider(NewsProviderType providerType) {
-        return syncSingleProvider(providerType, null, false);
+        return syncSingleProvider(providerType, null, false, true, null);
     }
 
     @Transactional
     public NewsSyncResponseDto syncProviderOnStartup(NewsProviderType providerType) {
-        return syncSingleProvider(providerType, null, true);
+        return syncSingleProvider(providerType, null, true, false, null);
     }
 
     @Transactional
@@ -264,7 +264,7 @@ public class NewsService {
         int saved = 0;
 
         for (NewsProviderType providerType : providers) {
-            NewsSyncResponseDto result = syncSingleProvider(providerType, symbol, false);
+            NewsSyncResponseDto result = syncSingleProvider(providerType, symbol, false, false, null);
             fetched += result.getFetchedCount();
             valid += result.getValidCount();
             invalid += result.getInvalidCount();
@@ -305,17 +305,21 @@ public class NewsService {
                 .build();
     }
 
-    private NewsSyncResponseDto syncSingleProvider(NewsProviderType providerType, String symbol, boolean startupSync) {
+    private NewsSyncResponseDto syncSingleProvider(
+            NewsProviderType providerType,
+            String symbol,
+            boolean startupSync,
+            boolean schedulerSync,
+            Integer requestedLimit
+    ) {
         NewsProvider provider = getProvider(providerType);
-        int startupLimit = resolveStartupLimit(providerType, startupSync);
+        int effectiveLimit = resolveEffectiveLimit(providerType, startupSync, schedulerSync, requestedLimit);
         LocalDateTime lastSuccessfulSyncAt = getLastSuccessfulSyncAt(providerType);
         long startedAt = System.nanoTime();
         LoggingContext.put(LoggingConstants.PROVIDER_NAME_KEY, providerType.name());
 
         try {
-            List<NewsItemDto> items = hasText(symbol)
-                    ? provider.fetchCompanyNews(symbol, startupLimit)
-                    : provider.fetchLatestNews(startupLimit);
+            List<NewsItemDto> items = fetchItems(provider, providerType, symbol, effectiveLimit, schedulerSync ? lastSuccessfulSyncAt : null);
             ProviderSyncDiagnostics diagnostics = resolveProviderDiagnostics(provider, providerType);
 
             PersistenceStats stats = saveNewsItems(items, providerType.name());
@@ -327,12 +331,14 @@ public class NewsService {
             LoggingContext.put(LoggingConstants.FETCHED_ITEM_COUNT_KEY, String.valueOf(items.size()));
 
             logger.info(
-                    "News sync stats. provider: {}, startupSync: {}, enabled: {}, feedUrlCount: {}, startupLimit: {}, lastSuccessfulSyncAt: {}, fetched: {}, skippedByRelevance: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, parseSuccessRatio: {}, durationMs: {}, errorMessage: {}",
+                    "News sync stats. provider: {}, startupSync: {}, schedulerSync: {}, enabled: {}, feedUrlCount: {}, requestedLimit: {}, effectiveLimit: {}, lastSuccessfulSyncAt: {}, fetched: {}, skippedByRelevance: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, parseSuccessRatio: {}, durationMs: {}, errorMessage: {}",
                     providerType.name(),
                     startupSync,
+                    schedulerSync,
                     diagnostics.isEnabled(),
                     diagnostics.getFeedUrlCount(),
-                    startupLimit,
+                    requestedLimit,
+                    effectiveLimit,
                     lastSuccessfulSyncAt,
                     items.size(),
                     diagnostics.getSkippedByRelevance(),
@@ -363,6 +369,14 @@ public class NewsService {
                     .apiQuotaLeft(diagnostics.getApiQuotaLeft())
                     .apiQuotaUsed(diagnostics.getApiQuotaUsed())
                     .apiQuotaRequest(diagnostics.getApiQuotaRequest())
+                    .apiReturnedCount(diagnostics.getApiReturnedCount())
+                    .fullContentEligibleCount(diagnostics.getFullContentEligibleCount())
+                    .skippedTooOld(diagnostics.getSkippedTooOld())
+                    .skippedBlockedSource(diagnostics.getSkippedBlockedSource())
+                    .existing(stats.existingCount())
+                    .saved(stats.savedCount())
+                    .firstReturnedTitle(diagnostics.getFirstReturnedTitle())
+                    .firstReturnedPublishedAt(diagnostics.getFirstReturnedPublishedAt())
                     .startupSync(startupSync)
                     .errorMessage(diagnostics.getErrorMessage())
                     .lastErrors(diagnostics.getLastErrors())
@@ -381,10 +395,13 @@ public class NewsService {
             LoggingContext.put(LoggingConstants.SUCCESS_KEY, Boolean.FALSE.toString());
             LoggingContext.put(LoggingConstants.DURATION_MS_KEY, String.valueOf(durationMs));
             logger.error(
-                    "News provider sync failed. provider: {}, symbol: {}, startupSync: {}, durationMs: {}, message: {}",
+                    "News provider sync failed. provider: {}, symbol: {}, startupSync: {}, schedulerSync: {}, requestedLimit: {}, effectiveLimit: {}, durationMs: {}, message: {}",
                     providerType.name(),
                     symbol,
                     startupSync,
+                    schedulerSync,
+                    requestedLimit,
+                    effectiveLimit,
                     durationMs,
                     ex.getMessage(),
                     ex
@@ -407,6 +424,14 @@ public class NewsService {
                     .apiQuotaLeft(diagnostics.getApiQuotaLeft())
                     .apiQuotaUsed(diagnostics.getApiQuotaUsed())
                     .apiQuotaRequest(diagnostics.getApiQuotaRequest())
+                    .apiReturnedCount(diagnostics.getApiReturnedCount())
+                    .fullContentEligibleCount(diagnostics.getFullContentEligibleCount())
+                    .skippedTooOld(diagnostics.getSkippedTooOld())
+                    .skippedBlockedSource(diagnostics.getSkippedBlockedSource())
+                    .existing(0)
+                    .saved(0)
+                    .firstReturnedTitle(diagnostics.getFirstReturnedTitle())
+                    .firstReturnedPublishedAt(diagnostics.getFirstReturnedPublishedAt())
                     .startupSync(startupSync)
                     .errorMessage(hasText(diagnostics.getErrorMessage()) ? diagnostics.getErrorMessage() : ex.getMessage())
                     .lastErrors(diagnostics.getLastErrors())
@@ -426,15 +451,22 @@ public class NewsService {
         }
     }
 
-    private int resolveStartupLimit(NewsProviderType providerType, boolean startupSync) {
-        if (!startupSync) {
-            return 0;
+    private int resolveEffectiveLimit(
+            NewsProviderType providerType,
+            boolean startupSync,
+            boolean schedulerSync,
+            Integer requestedLimit
+    ) {
+        if (startupSync) {
+            return switch (providerType) {
+                case CNBC_RSS -> 5;
+                default -> 0;
+            };
         }
-        return switch (providerType) {
-            case WORLD_NEWS_API -> 2;
-            case CNBC_RSS -> 5;
-            default -> 0;
-        };
+        if (requestedLimit != null) {
+            return Math.max(1, requestedLimit);
+        }
+        return 0;
     }
 
     private LocalDateTime getLastSuccessfulSyncAt(NewsProviderType providerType) {
@@ -452,6 +484,19 @@ public class NewsService {
         state.setProvider(providerType.name());
         state.setLastSuccessfulSyncAt(LocalDateTime.now());
         newsProviderSyncStateRepository.save(state);
+    }
+
+    private List<NewsItemDto> fetchItems(
+            NewsProvider provider,
+            NewsProviderType providerType,
+            String symbol,
+            int limit,
+            LocalDateTime earliestPublishDate
+    ) {
+        if (hasText(symbol)) {
+            return provider.fetchCompanyNews(symbol, limit);
+        }
+        return provider.fetchLatestNews(limit);
     }
 
     private ProviderSyncDiagnostics resolveProviderDiagnostics(NewsProvider provider, NewsProviderType providerType) {
@@ -592,6 +637,10 @@ public class NewsService {
                         existingNews.setRelatedSymbol(item.getRelatedSymbol().trim());
                         needsUpdate = true;
                     }
+                    if (!hasText(existingNews.getContentSections()) && hasText(item.getContentSections())) {
+                        existingNews.setContentSections(item.getContentSections());
+                        needsUpdate = true;
+                    }
                     if (shouldRefreshImportanceScore(existingNews)) {
                         int recalculatedScore = newsImportanceScoringService.calculateScore(existingNews);
                         if (!java.util.Objects.equals(existingNews.getImportanceScore(), recalculatedScore)) {
@@ -623,6 +672,7 @@ public class NewsService {
                     .qualityStatus(item.getQualityStatus())
                     .isKapDisclosure(Boolean.TRUE.equals(item.getIsKapDisclosure()))
                     .disclosureType(item.getDisclosureType())
+                    .contentSections(item.getContentSections())
                     .importanceScore(0)
                     .build());
         }
@@ -1116,7 +1166,10 @@ public class NewsService {
 
     private List<RelatedInstrumentDto> resolveRelatedInstruments(News news) {
         Map<String, RelatedInstrumentCandidate> matched = detectRelatedInstruments(news);
-        matched.putAll(detectThemeRelatedInstruments(news, matched));
+        boolean isKapWithSymbol = Boolean.TRUE.equals(news.getIsKapDisclosure()) && hasText(news.getRelatedSymbol());
+        if (!isKapWithSymbol) {
+            matched.putAll(detectThemeRelatedInstruments(news, matched));
+        }
         if (matched.isEmpty()) {
             return List.of();
         }
@@ -1201,13 +1254,29 @@ public class NewsService {
     }
 
     private Map<String, RelatedInstrumentCandidate> detectRelatedInstruments(News news) {
+        Map<String, RelatedInstrumentCandidate> matched = new LinkedHashMap<>();
+
+        // KAP disclosures with a direct relatedSymbol: skip heuristic text scan, use only the declared symbol
+        if (Boolean.TRUE.equals(news.getIsKapDisclosure()) && hasText(news.getRelatedSymbol())) {
+            String normalizedSymbol = normalizeSymbolValue(news.getRelatedSymbol());
+            if (hasText(normalizedSymbol)) {
+                if (BIST_INSTRUMENT_ALIASES.containsKey(normalizedSymbol)) {
+                    InstrumentAlias alias = BIST_INSTRUMENT_ALIASES.get(normalizedSymbol);
+                    matched.put(normalizedSymbol, RelatedInstrumentCandidate.direct(alias.symbol(), alias.name(), alias.instrumentType()));
+                } else {
+                    matched.put(normalizedSymbol, RelatedInstrumentCandidate.direct(normalizedSymbol, normalizedSymbol, InstrumentType.STOCK.name()));
+                }
+            }
+            return matched;
+        }
+
+        // Normal heuristic scan for non-KAP news
         String combinedText = normalizeText(String.join(" ",
                 safeText(news.getRelatedSymbol()),
                 safeText(news.getTitle()),
                 safeText(news.getSummary())));
         Set<String> tokens = tokenizeText(combinedText);
 
-        Map<String, RelatedInstrumentCandidate> matched = new LinkedHashMap<>();
         for (InstrumentAlias alias : BIST_INSTRUMENT_ALIASES.values()) {
             if (matchesInstrumentAlias(combinedText, tokens, alias)) {
                 matched.put(alias.symbol(), RelatedInstrumentCandidate.direct(alias.symbol(), alias.name(), alias.instrumentType()));

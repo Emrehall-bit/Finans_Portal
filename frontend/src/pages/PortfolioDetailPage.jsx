@@ -23,6 +23,24 @@ import { useTheme } from "../theme/ThemeContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
 
 const CHART_COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4f46e5"];
+const INTERNAL_CASH_CODE = "TRY";
+const INTERNAL_CASH_LABEL = "Nakit";
+const FX_CODE_LABELS = {
+  USD: "Dolar",
+  EUR: "Euro",
+  GBP: "Sterlin",
+  AUD: "Avustralya Doları",
+  CAD: "Kanada Doları",
+  CHF: "Frank",
+  JPY: "Yen",
+  SAR: "Riyal",
+  RUB: "Ruble",
+  AZN: "Manat",
+  CNY: "Yuan",
+  QAR: "Riyal",
+  KWD: "Dinar",
+  KRW: "Won",
+};
 
 export default function PortfolioDetailPage() {
   const { t } = useTranslation();
@@ -97,6 +115,9 @@ export default function PortfolioDetailPage() {
 
     return holdings.map((holding) => ({
       instrumentCode: holding.instrumentCode,
+      displayName: formatInstrumentLabel(holding.instrumentCode),
+      assetCategoryKey: getAssetCategoryKey(holding.instrumentCode),
+      assetCategoryLabel: getAssetCategoryLabel(getAssetCategoryKey(holding.instrumentCode)),
       value: Number(holding.currentValue || 0),
       percentage: (Number(holding.currentValue || 0) / totalValue) * 100,
     }));
@@ -163,7 +184,7 @@ export default function PortfolioDetailPage() {
     setHoldingForm((prev) => ({
       ...prev,
       instrumentCode: instrument.symbol || "",
-      instrumentSearch: [instrument.symbol, instrument.name].filter(Boolean).join(" - "),
+      instrumentSearch: formatInstrumentLabel(instrument.symbol || instrument.name),
     }));
     setIsInstrumentMenuOpen(false);
     setHighlightedInstrumentIndex(0);
@@ -172,7 +193,7 @@ export default function PortfolioDetailPage() {
   function handleEditHolding(holding) {
     setEditingHoldingId(holding.holdingId);
     setHoldingForm({
-      instrumentSearch: holding.instrumentCode || "",
+      instrumentSearch: formatInstrumentLabel(holding.instrumentCode),
       instrumentCode: holding.instrumentCode || "",
       quantity: holding.quantity ?? "",
       buyPrice: holding.buyPrice ?? "",
@@ -471,9 +492,14 @@ export default function PortfolioDetailPage() {
                 <div className="portfolio-entry-column">
                   <div className="selected-instrument-card compact">
                     <p className="eyebrow">{t("portfolioDetail.selectedInstrumentEyebrow")}</p>
-                    <strong>{selectedInstrument ? selectedInstrument.symbol : t("portfolioDetail.noInstrumentSelected")}</strong>
+                    <strong>{selectedInstrument ? formatInstrumentLabel(selectedInstrument.symbol) : t("portfolioDetail.noInstrumentSelected")}</strong>
                     <p>{selectedInstrument ? selectedInstrument.name : t("portfolioDetail.selectedInstrumentDescription")}</p>
                     <div className="selected-instrument-meta">
+                      {selectedInstrument ? (
+                        <span className={`portfolio-type-badge is-${getAssetCategoryKey(selectedInstrument.symbol).toLowerCase()}`}>
+                          {getAssetCategoryLabel(getAssetCategoryKey(selectedInstrument.symbol))}
+                        </span>
+                      ) : null}
                       <span>{formatInstrumentType(selectedInstrument?.instrumentType, t)}</span>
                       <span>{selectedInstrument?.source || "-"}</span>
                       <span>{selectedInstrument?.currency || "TRY"}</span>
@@ -550,7 +576,10 @@ export default function PortfolioDetailPage() {
                       <div key={entry.instrumentCode} className="portfolio-allocation-item">
                         <div className="portfolio-allocation-label">
                           <span className="portfolio-color-dot" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
-                          <strong>{entry.instrumentCode}</strong>
+                          <div className="portfolio-allocation-label-copy">
+                            <strong>{entry.displayName}</strong>
+                            <span className={`portfolio-type-badge is-${entry.assetCategoryKey.toLowerCase()}`}>{entry.assetCategoryLabel}</span>
+                          </div>
                         </div>
                         <span className="muted">
                           {formatCurrency(entry.value)} ({formatNumber(entry.percentage, 2)}%)
@@ -593,8 +622,13 @@ export default function PortfolioDetailPage() {
                     <tr key={`${holding.instrumentCode}-${index}`}>
                       <td>
                         <div className="portfolio-cell-stack">
-                          <strong>{holding.instrumentCode}</strong>
-                          <span className="muted">{t("portfolioDetail.holdingNumber", { index: index + 1 })}</span>
+                          <strong>{formatInstrumentLabel(holding.instrumentCode)}</strong>
+                          <div className="portfolio-inline-meta">
+                            <span className={`portfolio-type-badge is-${getAssetCategoryKey(holding.instrumentCode).toLowerCase()}`}>
+                              {getAssetCategoryLabel(getAssetCategoryKey(holding.instrumentCode))}
+                            </span>
+                            <span className="muted">{t("portfolioDetail.holdingNumber", { index: index + 1 })}</span>
+                          </div>
                         </div>
                       </td>
                       <td>{formatNumber(holding.quantity)}</td>
@@ -663,4 +697,70 @@ function formatInstrumentType(value, t) {
   return {
     MANUAL: t("portfolioDetail.instrumentType.MANUAL"),
   }[value] ?? (value || "-");
+}
+
+function getAssetCategoryKey(instrumentCode) {
+  const code = normalizeInstrumentCode(instrumentCode);
+  if (!code) {
+    return "OTHER";
+  }
+  if (code === INTERNAL_CASH_CODE) {
+    return "CASH";
+  }
+  if (code.startsWith("TCMB:")) {
+    return "FX";
+  }
+  if (code.includes(":")) {
+    return "CRYPTO";
+  }
+  if (/^[A-Z]{3}$/.test(code)) {
+    return "FUND";
+  }
+  if (/^[A-Z0-9.]{1,10}$/.test(code)) {
+    return "STOCK";
+  }
+  return "OTHER";
+}
+
+function getAssetCategoryLabel(key) {
+  return {
+    CASH: "Nakit",
+    STOCK: "Hisse",
+    FUND: "Fon",
+    CRYPTO: "Kripto",
+    FX: "Döviz",
+    OTHER: "Diğer",
+  }[key] ?? "Diğer";
+}
+
+function normalizeInstrumentCode(value) {
+  if (value == null) {
+    return "";
+  }
+
+  const rawValue = String(value).trim();
+  if (rawValue.toUpperCase().startsWith("TCMB:")) {
+    return rawValue.toUpperCase();
+  }
+
+  return rawValue.replace(/[^A-Za-z0-9:]/g, "").toUpperCase();
+}
+
+function formatInstrumentLabel(value) {
+  const normalized = normalizeInstrumentCode(value);
+  if (!normalized) {
+    return "-";
+  }
+  if (normalized === INTERNAL_CASH_CODE) {
+    return INTERNAL_CASH_LABEL;
+  }
+
+  const fxMatch = normalized.match(/^([A-Z_]+):([A-Z0-9]+):(BUY|SELL)$/);
+  if (!fxMatch) {
+    return value || normalized;
+  }
+
+  const [, , currencyCode] = fxMatch;
+  const currencyLabel = FX_CODE_LABELS[currencyCode] || currencyCode;
+  return `${currencyCode} / ${currencyLabel}`;
 }

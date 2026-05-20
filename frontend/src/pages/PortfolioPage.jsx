@@ -1,26 +1,28 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { ChartPie, GripVertical, LayoutGrid, List, RotateCcw } from "lucide-react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { AlertTriangle, ArrowUpDown, ChartPie, Filter, GripVertical, LayoutGrid, RotateCcw, ShieldAlert, Sparkles, Star, X } from "lucide-react";
+import { Area, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Responsive, WidthProvider } from "react-grid-layout/legacy";
 import {
   createPortfolio,
   createPortfolioHolding,
   deletePortfolioHolding,
   getPortfolioDetails,
+  getPortfolioPerformanceHistory,
+  getPortfolioRiskSummary,
   getUserPortfolios,
   updatePortfolioHolding,
 } from "../api/portfolioApi";
 
+import { getPortfolioAiAnalysis } from "../api/aiApi";
 import { getPriceOnDate, searchInstruments } from "../api/marketApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { getUserWatchlist } from "../api/watchlistApi";
 import { useAuth } from "../auth/AuthContext";
-import AiPortfolioCommentaryCard from "../components/ai/AiPortfolioCommentaryCard";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import PortfolioHeatmap from "../components/portfolio/PortfolioHeatmap";
 import useToast from "../hooks/useToast";
 import { useTheme } from "../theme/ThemeContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
@@ -31,6 +33,38 @@ const CHART_COLORS = ["#2563eb", "#0f9d58", "#f59e0b", "#dc2626", "#7c3aed", "#0
 const EMPTY_HOLDINGS = [];
 const INTERNAL_CASH_CODE = "TRY";
 const INTERNAL_CASH_LABEL = "Nakit";
+const FX_CODE_LABELS = {
+  USD: "Dolar",
+  EUR: "Euro",
+  GBP: "Sterlin",
+  AUD: "Avustralya Doları",
+  CAD: "Kanada Doları",
+  CHF: "Frank",
+  JPY: "Yen",
+  SAR: "Riyal",
+  RUB: "Ruble",
+  AZN: "Manat",
+  CNY: "Yuan",
+  QAR: "Riyal",
+  KWD: "Dinar",
+  KRW: "Won",
+};
+const PERFORMANCE_RANGE_PRESETS = [
+  { key: "1M", label: "1 Ay", months: 1 },
+  { key: "3M", label: "3 Ay", months: 3 },
+  { key: "6M", label: "6 Ay", months: 6 },
+  { key: "1Y", label: "1 Yıl", months: 12 },
+  { key: "5Y", label: "5 Yıl", months: 60 },
+  { key: "MAX", label: "Tümü", months: null },
+];
+const WATCHLIST_RAIL_FALLBACK = [
+  { symbol: "BTC", price: 3527000, changePercent: 2.1 },
+  { symbol: "EURTRY", price: 44.18, changePercent: 0.6 },
+  { symbol: "XAUUSD", price: 3824.5, changePercent: -0.4 },
+  { symbol: "NASDAQ", price: 18842, changePercent: 1.2 },
+  { symbol: "THYAO", price: 312.4, changePercent: -1.1 },
+  { symbol: "GARAN", price: 127.9, changePercent: 0.8 },
+];
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const PORTFOLIO_WIDGET_LAYOUTS_STORAGE_KEY = "fp:portfolio:widget-layouts:v2";
 const PORTFOLIO_WIDGET_LAYOUTS_DEFAULT = {
@@ -38,25 +72,22 @@ const PORTFOLIO_WIDGET_LAYOUTS_DEFAULT = {
     { i: "performance", x: 0, y: 0, w: 8, h: 4, minW: 6, minH: 3 },
     { i: "allocation", x: 8, y: 0, w: 4, h: 4, minW: 4, minH: 3 },
     { i: "holdings", x: 0, y: 4, w: 8, h: 4, minW: 7, minH: 4 },
-    { i: "heatmap", x: 8, y: 4, w: 4, h: 2, minW: 4, minH: 2 },
-    { i: "ai", x: 8, y: 6, w: 4, h: 2, minW: 4, minH: 2 },
-    { i: "watchlist", x: 8, y: 8, w: 4, h: 3, minW: 4, minH: 3 },
+    { i: "ai", x: 8, y: 4, w: 4, h: 2, minW: 4, minH: 2 },
+    { i: "watchlist", x: 8, y: 6, w: 4, h: 3, minW: 4, minH: 3 },
   ],
   md: [
     { i: "performance", x: 0, y: 0, w: 6, h: 4, minW: 5, minH: 3 },
     { i: "allocation", x: 6, y: 0, w: 4, h: 4, minW: 4, minH: 3 },
     { i: "holdings", x: 0, y: 4, w: 6, h: 4, minW: 6, minH: 4 },
-    { i: "heatmap", x: 6, y: 4, w: 4, h: 2, minW: 4, minH: 2 },
-    { i: "ai", x: 6, y: 6, w: 4, h: 2, minW: 4, minH: 2 },
-    { i: "watchlist", x: 6, y: 8, w: 4, h: 3, minW: 4, minH: 3 },
+    { i: "ai", x: 6, y: 4, w: 4, h: 2, minW: 4, minH: 2 },
+    { i: "watchlist", x: 6, y: 6, w: 4, h: 3, minW: 4, minH: 3 },
   ],
   sm: [
     { i: "allocation", x: 0, y: 0, w: 1, h: 5, minH: 4 },
     { i: "performance", x: 0, y: 5, w: 1, h: 4, minH: 3 },
-    { i: "heatmap", x: 0, y: 9, w: 1, h: 3, minH: 2 },
-    { i: "ai", x: 0, y: 12, w: 1, h: 3, minH: 2 },
-    { i: "watchlist", x: 0, y: 15, w: 1, h: 4, minH: 3 },
-    { i: "holdings", x: 0, y: 19, w: 1, h: 6, minH: 5 },
+    { i: "ai", x: 0, y: 9, w: 1, h: 3, minH: 2 },
+    { i: "watchlist", x: 0, y: 12, w: 1, h: 4, minH: 3 },
+    { i: "holdings", x: 0, y: 16, w: 1, h: 6, minH: 5 },
   ],
 };
 
@@ -121,9 +152,14 @@ export default function PortfolioPage() {
   const [portfolios, setPortfolios] = useState([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState(null);
   const [selectedPortfolio, setSelectedPortfolio] = useState(null);
+  const [performanceHistory, setPerformanceHistory] = useState(null);
   const [loadingList, setLoadingList] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
+  const [loadingPerformanceHistory, setLoadingPerformanceHistory] = useState(false);
+  const [performanceHistoryError, setPerformanceHistoryError] = useState("");
+  const [riskSummary, setRiskSummary] = useState(null);
+  const [riskSummaryError, setRiskSummaryError] = useState("");
   const [watchlist, setWatchlist] = useState([]);
   const [newPortfolio, setNewPortfolio] = useState({ portfolioName: "", visibilityStatus: "PRIVATE" });
   const [isCreatePortfolioModalOpen, setCreatePortfolioModalOpen] = useState(false);
@@ -145,11 +181,38 @@ export default function PortfolioPage() {
   const [widgetLayouts, setWidgetLayouts] = useState(loadPortfolioWidgetLayouts);
   const [isWidgetEditMode, setWidgetEditMode] = useState(false);
   const [widgetBreakpoint, setWidgetBreakpoint] = useState("lg");
-  const [allocationView, setAllocationView] = useState("chart");
   const [isActivityModalOpen, setActivityModalOpen] = useState(false);
+  const [performanceRangeKey, setPerformanceRangeKey] = useState("3M");
+  const [holdingsFilterKey, setHoldingsFilterKey] = useState("ALL");
+  const [holdingsSortKey, setHoldingsSortKey] = useState("WEIGHT");
+  const [isAiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [isAiDrawerVisible, setAiDrawerVisible] = useState(false);
+  const [isWatchlistDrawerOpen, setWatchlistDrawerOpen] = useState(false);
+  const [isWatchlistDrawerVisible, setWatchlistDrawerVisible] = useState(false);
+  const [aiAnalysisData, setAiAnalysisData] = useState(null);
+  const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+  const [aiAnalysisError, setAiAnalysisError] = useState("");
   const instrumentSearchRef = useRef(null);
   const searchDebounceRef = useRef(null);
   const canEditWidgetLayout = widgetBreakpoint === "lg" || widgetBreakpoint === "md";
+
+  const openAiDrawer = useCallback(() => {
+    setAiDrawerVisible(true);
+    window.requestAnimationFrame(() => setAiDrawerOpen(true));
+  }, []);
+
+  const closeAiDrawer = useCallback(() => {
+    setAiDrawerOpen(false);
+  }, []);
+
+  const openWatchlistDrawer = useCallback(() => {
+    setWatchlistDrawerVisible(true);
+    window.requestAnimationFrame(() => setWatchlistDrawerOpen(true));
+  }, []);
+
+  const closeWatchlistDrawer = useCallback(() => {
+    setWatchlistDrawerOpen(false);
+  }, []);
 
   useEffect(() => {
     if (!canEditWidgetLayout && isWidgetEditMode) {
@@ -167,10 +230,103 @@ export default function PortfolioPage() {
   useEffect(() => {
     if (selectedPortfolioId) {
       loadPortfolioDetails(selectedPortfolioId);
+      loadPortfolioPerformanceHistory(selectedPortfolioId, performanceRangeKey);
+      loadPortfolioRiskSummary(selectedPortfolioId);
     } else {
       setSelectedPortfolio(null);
+      setPerformanceHistory(null);
+      setPerformanceHistoryError("");
+      setRiskSummary(null);
+      setRiskSummaryError("");
     }
-  }, [selectedPortfolioId]);
+  }, [selectedPortfolioId, performanceRangeKey]);
+
+  useEffect(() => {
+    if (!isAiDrawerVisible && !isWatchlistDrawerVisible) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        closeAiDrawer();
+        closeWatchlistDrawer();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeAiDrawer, closeWatchlistDrawer, isAiDrawerVisible, isWatchlistDrawerVisible]);
+
+  useEffect(() => {
+    if (!isAiDrawerVisible || !selectedPortfolio?.portfolioId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadAiAnalysis() {
+      try {
+        setAiAnalysisLoading(true);
+        setAiAnalysisError("");
+        const response = await getPortfolioAiAnalysis(selectedPortfolio.portfolioId);
+        if (!cancelled) {
+          setAiAnalysisData(response ?? null);
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setAiAnalysisData(null);
+          setAiAnalysisError(extractErrorMessage(requestError, "AI analizi üretilemedi."));
+        }
+      } finally {
+        if (!cancelled) {
+          setAiAnalysisLoading(false);
+        }
+      }
+    }
+
+    loadAiAnalysis();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAiDrawerVisible, selectedPortfolio?.portfolioId]);
+
+  useEffect(() => {
+    if (isAiDrawerOpen) {
+      return undefined;
+    }
+
+    if (!isAiDrawerVisible) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setAiDrawerVisible(false);
+    }, 220);
+
+    return () => window.clearTimeout(timer);
+  }, [isAiDrawerOpen, isAiDrawerVisible]);
+
+  useEffect(() => {
+    if (isWatchlistDrawerOpen) {
+      return undefined;
+    }
+
+    if (!isWatchlistDrawerVisible) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setWatchlistDrawerVisible(false);
+    }, 220);
+
+    return () => window.clearTimeout(timer);
+  }, [isWatchlistDrawerOpen, isWatchlistDrawerVisible]);
 
   async function loadPortfolios(preferredId = null) {
     try {
@@ -219,6 +375,31 @@ export default function PortfolioPage() {
       setError(extractErrorMessage(err, t("portfolio.loadDetailError")));
     } finally {
       setLoadingDetail(false);
+    }
+  }
+
+  async function loadPortfolioPerformanceHistory(portfolioId, rangeKey) {
+    try {
+      setLoadingPerformanceHistory(true);
+      setPerformanceHistoryError("");
+      const history = await getPortfolioPerformanceHistory(portfolioId, buildPerformanceHistoryParams(rangeKey));
+      setPerformanceHistory(history);
+    } catch (err) {
+      setPerformanceHistory(null);
+      setPerformanceHistoryError(extractErrorMessage(err, "Performans geçmişi yüklenemedi."));
+    } finally {
+      setLoadingPerformanceHistory(false);
+    }
+  }
+
+  async function loadPortfolioRiskSummary(portfolioId) {
+    try {
+      setRiskSummaryError("");
+      const summary = await getPortfolioRiskSummary(portfolioId);
+      setRiskSummary(summary);
+    } catch (err) {
+      setRiskSummary(null);
+      setRiskSummaryError(extractErrorMessage(err, "Risk analizi yüklenemedi."));
     }
   }
 
@@ -367,6 +548,10 @@ export default function PortfolioPage() {
           quantity: payload.quantity,
           buyPrice: payload.buyPrice,
         });
+        if (Array.isArray(editingHolding?.sourceHoldingIds) && editingHolding.sourceHoldingIds.length > 1) {
+          const redundantIds = editingHolding.sourceHoldingIds.slice(1);
+          await Promise.all(redundantIds.map((holdingId) => deletePortfolioHolding(selectedPortfolio.portfolioId, holdingId)));
+        }
         showToast("success", t("portfolio.holdingUpdateSuccess"));
       } else {
         await createPortfolioHolding(selectedPortfolio.portfolioId, payload);
@@ -374,7 +559,11 @@ export default function PortfolioPage() {
       }
 
       closeHoldingModal();
-      await loadPortfolioDetails(selectedPortfolio.portfolioId);
+      await Promise.all([
+        loadPortfolioDetails(selectedPortfolio.portfolioId),
+        loadPortfolioPerformanceHistory(selectedPortfolio.portfolioId, performanceRangeKey),
+        loadPortfolioRiskSummary(selectedPortfolio.portfolioId),
+      ]);
     } catch (err) {
       setError(extractErrorMessage(err, t("portfolio.holdingSaveError")));
     } finally {
@@ -382,16 +571,21 @@ export default function PortfolioPage() {
     }
   }
 
-  async function handleDeleteHolding(holdingId) {
+  async function handleDeleteHolding(holding) {
     if (!selectedPortfolio?.portfolioId) {
       return;
     }
 
     try {
       setError("");
-      await deletePortfolioHolding(selectedPortfolio.portfolioId, holdingId);
+      const ids = Array.isArray(holding?.sourceHoldingIds) && holding.sourceHoldingIds.length > 0 ? holding.sourceHoldingIds : [holding?.holdingId];
+      await Promise.all(ids.filter(Boolean).map((holdingId) => deletePortfolioHolding(selectedPortfolio.portfolioId, holdingId)));
       showToast("success", t("portfolio.holdingDeleteSuccess"));
-      await loadPortfolioDetails(selectedPortfolio.portfolioId);
+      await Promise.all([
+        loadPortfolioDetails(selectedPortfolio.portfolioId),
+        loadPortfolioPerformanceHistory(selectedPortfolio.portfolioId, performanceRangeKey),
+        loadPortfolioRiskSummary(selectedPortfolio.portfolioId),
+      ]);
     } catch (err) {
       setError(extractErrorMessage(err, t("portfolio.holdingDeleteError")));
     }
@@ -403,22 +597,25 @@ export default function PortfolioPage() {
   const totalValue = toNumber(summary?.currentValue ?? summary?.totalCurrentValue);
   const totalProfitLoss = toNumber(summary?.profitLoss ?? summary?.totalProfitLoss);
   const totalProfitLossPercent = toMaybeNumber(summary?.profitLossPercent);
-  const hasDailyPerformance = holdings.some((holding) => Number.isFinite(Number(holding.dailyProfitLoss)));
+  const aggregatedHoldings = useMemo(() => aggregatePortfolioHoldings(holdings), [holdings]);
+  const hasDailyPerformance = aggregatedHoldings.some((holding) => Number.isFinite(Number(holding.dailyProfitLoss)));
   const dailyProfitLoss = hasDailyPerformance
-    ? holdings.reduce((sum, holding) => sum + toNumber(holding.dailyProfitLoss), 0)
+    ? aggregatedHoldings.reduce((sum, holding) => sum + toNumber(holding.dailyProfitLoss), 0)
     : null;
   const dailyProfitLossPercent = hasDailyPerformance
-    ? holdings.reduce((sum, holding) => sum + toNumber(holding.dailyChangePercent), 0) / Math.max(holdings.length, 1)
+    ? aggregatedHoldings.reduce((sum, holding) => sum + toNumber(holding.dailyChangePercent), 0) / Math.max(aggregatedHoldings.length, 1)
     : null;
 
   const allocationData = useMemo(() => {
-    const items = holdings
+    const items = aggregatedHoldings
       .map((holding) => {
         const currentValue = resolveHoldingValue(holding);
         const weight = totalValue > 0 ? (currentValue / totalValue) * 100 : 0;
         return {
           instrumentCode: holding.instrumentCode,
           displayName: formatInstrumentLabel(holding.instrumentCode),
+          assetCategoryKey: getAssetCategoryKey(holding.instrumentCode),
+          assetCategoryLabel: getAssetCategoryLabel(getAssetCategoryKey(holding.instrumentCode)),
           currentValue,
           weight,
           profitLoss: toMaybeNumber(holding.profitLoss),
@@ -428,7 +625,7 @@ export default function PortfolioPage() {
       .filter((holding) => holding.currentValue > 0)
       .sort((a, b) => b.currentValue - a.currentValue);
     return items;
-  }, [holdings, totalValue]);
+  }, [aggregatedHoldings, totalValue]);
 
   const topHolding = allocationData[0] ?? null;
   const cashValue = allocationData
@@ -436,39 +633,170 @@ export default function PortfolioPage() {
     .reduce((sum, item) => sum + item.currentValue, 0);
   const cashRatio = totalValue > 0 ? (cashValue / totalValue) * 100 : null;
 
-  const assetCategorySummary = useMemo(() => buildAssetCategorySummary(holdings, totalValue), [holdings, totalValue]);
+  const assetCategorySummary = useMemo(() => buildAssetCategorySummary(aggregatedHoldings, totalValue), [aggregatedHoldings, totalValue]);
   const assetTypeBreakdown = useMemo(
     () => assetCategorySummary.filter((item) => item.value > 0).sort((a, b) => b.value - a.value),
     [assetCategorySummary],
   );
-
-  const heatmapItems = useMemo(
+  const distributionData = useMemo(
     () =>
-      allocationData.slice(0, 12).map((item) => ({
-        symbol: item.displayName,
-        weight: item.weight,
-        changePercent: item.profitLossPercent ?? 0,
+      allocationData.slice(0, 5).map((item, index) => ({
+        key: item.instrumentCode,
+        label: item.displayName,
         value: item.currentValue,
+        weight: item.weight,
+        color: CHART_COLORS[index % CHART_COLORS.length],
       })),
     [allocationData],
   );
+  const dominantDistributionItem = distributionData[0] ?? null;
+  const fallbackDiversificationScore = useMemo(() => {
+    if (allocationData.length === 0) {
+      return { label: "Nötr (0/5)", value: 0 };
+    }
+    const hhi = allocationData.reduce((sum, item) => sum + (item.weight / 100) ** 2, 0);
+    const score = Math.max(1, Math.min(5, Math.round((1 - hhi) * 5)));
+    const label = score <= 2 ? "Zayıf" : score === 3 ? "Orta" : "İyi";
+    return { label: `${label} (${score}/5)`, value: (score / 5) * 100 };
+  }, [allocationData]);
+  const fallbackVolatilityScore = useMemo(() => {
+    const cryptoWeight = assetTypeBreakdown.find((item) => item.key === "CRYPTO")?.ratio ?? 0;
+    const fxWeight = assetTypeBreakdown.find((item) => item.key === "FX")?.ratio ?? 0;
+    const score = Math.min(100, cryptoWeight * 1.1 + fxWeight * 0.45);
+    return { label: score >= 65 ? "Yüksek" : score >= 35 ? "Orta" : "Düşük", value: score };
+  }, [assetTypeBreakdown]);
+  const fallbackLiquidityScore = useMemo(() => {
+    const stockWeight = assetTypeBreakdown.find((item) => item.key === "STOCK")?.ratio ?? 0;
+    const score = Math.min(100, (cashRatio ?? 0) * 18 + stockWeight * 0.55 + 20);
+    return { label: score >= 65 ? "İyi" : score >= 40 ? "Orta" : "Zayıf", value: score };
+  }, [assetTypeBreakdown, cashRatio]);
+  const fallbackRiskAlert = useMemo(() => {
+    if (!topHolding) {
+      return {
+        title: "Risk görünümü hazırlanıyor",
+        message: "Portföy dağılımı oluştukça risk değerlendirmesi burada görünecek.",
+        tone: "neutral",
+      };
+    }
+    if (topHolding.weight >= 55) {
+      return {
+        title: "Yüksek konsantrasyon riski",
+        message: `${topHolding.displayName} portföyünün %${formatNumber(topHolding.weight, 1)}'ini oluşturuyor. Çeşitlendirme önerilir.`,
+        tone: "warning",
+      };
+    }
+    if (topHolding.weight >= 35) {
+      return {
+        title: "Orta konsantrasyon riski",
+        message: `${topHolding.displayName} portföyde baskın pozisyonda. Ağırlık dağılımı izlenmeli.`,
+        tone: "neutral",
+      };
+    }
+    return {
+      title: "Dağılım dengeli görünüyor",
+      message: "Portföyde baskın tek bir pozisyon görünmüyor. Mevcut çeşitlilik korunabilir.",
+      tone: "positive",
+    };
+  }, [topHolding]);
+  const diversificationScore = riskSummary?.diversification
+    ? { label: riskSummary.diversification.label, value: Number(riskSummary.diversification.score ?? 0) }
+    : fallbackDiversificationScore;
+  const volatilityScore = riskSummary?.volatility
+    ? { label: riskSummary.volatility.label, value: Number(riskSummary.volatility.score ?? 0) }
+    : fallbackVolatilityScore;
+  const liquidityScore = riskSummary?.liquidity
+    ? { label: riskSummary.liquidity.label, value: Number(riskSummary.liquidity.score ?? 0) }
+    : fallbackLiquidityScore;
+  const riskAlert = riskSummary
+    ? {
+        title: riskSummary.alertTitle || fallbackRiskAlert.title,
+        message: riskSummary.alertMessage || fallbackRiskAlert.message,
+        tone: riskSummary.alertTone || fallbackRiskAlert.tone,
+      }
+    : fallbackRiskAlert;
+  const aiRiskTeaser = useMemo(() => buildAiRiskTeaser({ topHolding, cashRatio, volatilityScore, liquidityScore }), [topHolding, cashRatio, volatilityScore, liquidityScore]);
+  const aiInsightSections = useMemo(
+    () =>
+      buildAiInsightSections({
+        aiAnalysisData,
+        riskAlert,
+        topHolding,
+        volatilityScore,
+        liquidityScore,
+        diversificationScore,
+        totalValue,
+        totalProfitLoss,
+        totalProfitLossPercent,
+      }),
+    [aiAnalysisData, riskAlert, topHolding, volatilityScore, liquidityScore, diversificationScore, totalValue, totalProfitLoss, totalProfitLossPercent],
+  );
+  const filteredAndSortedHoldings = useMemo(() => {
+    let items = [...aggregatedHoldings];
+    if (holdingsFilterKey === "PROFIT") {
+      items = items.filter((holding) => toNumber(holding.profitLoss) > 0);
+    } else if (holdingsFilterKey === "LOSS") {
+      items = items.filter((holding) => toNumber(holding.profitLoss) < 0);
+    } else if (holdingsFilterKey === "UNPRICED") {
+      items = items.filter((holding) => !holding.valuationAvailable);
+    }
+
+    items.sort((left, right) => {
+      if (holdingsSortKey === "PNL") {
+        return toNumber(right.profitLoss) - toNumber(left.profitLoss);
+      }
+      if (holdingsSortKey === "NAME") {
+        return formatInstrumentLabel(left.instrumentCode).localeCompare(formatInstrumentLabel(right.instrumentCode), "tr");
+      }
+      const leftWeight = totalValue > 0 ? resolveHoldingValue(left) / totalValue : 0;
+      const rightWeight = totalValue > 0 ? resolveHoldingValue(right) / totalValue : 0;
+      return rightWeight - leftWeight;
+    });
+
+    return items;
+  }, [aggregatedHoldings, holdingsFilterKey, holdingsSortKey, totalValue]);
+
+  const performancePoints = performanceHistory?.points ?? EMPTY_HOLDINGS;
+  const performanceChartData = useMemo(
+    () =>
+      performancePoints.map((point) => ({
+        rawDate: point.date,
+        totalValue: toMaybeNumber(point.totalValue),
+        totalCost: toMaybeNumber(point.totalCost),
+        profitLoss: toMaybeNumber(point.profitLoss),
+      })),
+    [performancePoints],
+  );
+  const performanceAxisTicks = useMemo(
+    () => buildPerformanceAxisTicks(performanceChartData, performanceRangeKey),
+    [performanceChartData, performanceRangeKey],
+  );
+  const performanceFirstPoint = performancePoints[0] ?? null;
+  const performanceLastPoint = performancePoints[performancePoints.length - 1] ?? null;
+  const performanceDelta =
+    performanceFirstPoint && performanceLastPoint
+      ? toNumber(performanceLastPoint.totalValue) - toNumber(performanceFirstPoint.totalValue)
+      : null;
+  const performanceDeltaPercent =
+    performanceFirstPoint && toNumber(performanceFirstPoint.totalValue) > 0 && performanceDelta != null
+      ? (performanceDelta / toNumber(performanceFirstPoint.totalValue)) * 100
+      : null;
 
   const activityItems = useMemo(() => {
     const rows = [...holdings]
       .sort((a, b) => getHoldingActivityTimestamp(b) - getHoldingActivityTimestamp(a))
       .slice(0, 5)
       .map((holding) => ({
-        title: `${formatInstrumentLabel(holding.instrumentCode)} pozisyonu gÃ¼ncellendi`,
+        title: `${formatInstrumentLabel(holding.instrumentCode)} pozisyonu güncellendi`,
         timestamp: holding.updatedAt || holding.createdAt || selectedPortfolio?.updatedAt || selectedPortfolio?.createdAt,
-        detail: `${formatNumber(holding.quantity)} adet Â· ${formatCurrency(holding.buyPrice)}`,
+        detail: `${formatNumber(holding.quantity)} adet · ${formatCurrency(holding.buyPrice)}`,
         tone: toNumber(holding.profitLoss) >= 0 ? "positive" : "negative",
       }));
 
     if (selectedPortfolio && rows.length < 5) {
       rows.push({
-        title: "PortfÃ¶y deÄŸeri hesaplandÄ±",
+        title: "Portföy değeri hesaplandı",
         timestamp: selectedPortfolio.updatedAt || selectedPortfolio.createdAt,
-        detail: `${formatCurrency(totalValue || totalCost)} Â· ${formatNumber(holdings.length, 0)} varlÄ±k`,
+        detail: `${formatCurrency(totalValue || totalCost)} · ${formatNumber(holdings.length, 0)} varlık`,
         tone: "neutral",
       });
     }
@@ -478,34 +806,35 @@ export default function PortfolioPage() {
 
   const watchlistItems = useMemo(() => {
     if (Array.isArray(watchlist) && watchlist.length > 0) {
-      return watchlist.slice(0, 5).map((item) => {
-        const linkedHolding = holdings.find((holding) => normalizeCode(holding.instrumentCode) === normalizeCode(item.instrumentCode));
+      return watchlist.map((item, index) => {
+        const quote = resolveWatchlistRailQuote(item.instrumentCode);
         return {
+          key: item.id || `${item.instrumentCode}-${index}`,
           symbol: formatInstrumentLabel(item.instrumentCode),
-          price: toMaybeNumber(item.currentPrice),
-          changePercent: toMaybeNumber(linkedHolding?.profitLossPercent),
-          status: linkedHolding?.valuationAvailable ? "CanlÄ±" : "Takipte",
+          price: toMaybeNumber(item.currentPrice) ?? quote.price,
+          changePercent: resolveWatchlistChangePercent(item, quote),
+          dotColor: CHART_COLORS[index % CHART_COLORS.length],
         };
       });
     }
 
-    return allocationData.slice(0, 5).map((item) => ({
-      symbol: item.displayName,
-      price: item.currentValue > 0 ? item.currentValue : null,
-      changePercent: item.profitLossPercent,
-      status: item.weight > 20 ? "Ã–ne Ã§Ä±kan" : "Ä°zleniyor",
+    return WATCHLIST_RAIL_FALLBACK.map((item, index) => ({
+      key: `fallback-${item.symbol}-${index}`,
+      symbol: item.symbol,
+      price: item.price,
+      changePercent: item.changePercent,
+      dotColor: CHART_COLORS[index % CHART_COLORS.length],
     }));
-  }, [allocationData, holdings, watchlist]);
+  }, [watchlist]);
 
   const widgetTitles = useMemo(
     () => ({
-      kpi: "PortfÃ¶y Ã¶zeti",
+      kpi: "Portföy özeti",
       performance: t("portfolio.historyTitle"),
-      summary: "VarlÄ±k Ã¶zeti",
+      summary: "Varlık özeti",
       holdings: t("portfolio.holdingsTitle"),
       allocation: t("portfolio.allocationTitle"),
-      heatmap: "PortfÃ¶y Ä±sÄ± haritasÄ±",
-      ai: "AI PortfÃ¶y Yorumu",
+      ai: "AI Portföy Yorumu",
       watchlist: "Takip listesi",
     }),
     [t],
@@ -570,11 +899,34 @@ export default function PortfolioPage() {
                   </select>
                 </label>
               </div>
+              <div className="portfolio-hero-value-row">
+                <div className="portfolio-hero-value-block">
+                  <span className="portfolio-hero-value-label">Toplam portföy değeri</span>
+                  <strong className="portfolio-hero-value">{formatCurrency(totalValue)}</strong>
+                </div>
+                <div className="portfolio-hero-trend-group">
+                  <span className={`portfolio-hero-trend-pill is-${resolveTone(dailyProfitLoss)}`}>
+                    Günlük {dailyProfitLoss == null ? "Henüz yok" : formatCurrency(dailyProfitLoss)}
+                    {dailyProfitLossPercent == null ? null : <small>{formatPercent(dailyProfitLossPercent)}</small>}
+                  </span>
+                  <span className={`portfolio-hero-trend-pill is-${resolveTone(totalProfitLoss)}`}>
+                    Toplam {formatCurrency(totalProfitLoss)}
+                    {totalProfitLossPercent == null ? null : <small>{formatPercent(totalProfitLossPercent)}</small>}
+                  </span>
+                </div>
+              </div>
               <p className="portfolio-detail-meta portfolio-detail-meta--topbar">
                 {formatVisibilityStatus(selectedPortfolio?.visibilityStatus || "PRIVATE", t)} · {t("portfolio.createdAt", { value: formatDateTime(selectedPortfolio?.createdAt) })}
               </p>
+              <p className="portfolio-hero-meta">
+                {formatNumber(holdings.length, 0)} varlık • Son güncelleme {formatDateTime(selectedPortfolio?.updatedAt || selectedPortfolio?.createdAt)}
+              </p>
             </div>
             <div className="actions-row portfolio-top-actions">
+              <button type="button" className="secondary-button portfolio-watchlist-trigger" onClick={openWatchlistDrawer}>
+                <Star size={15} />
+                Watchlist
+              </button>
               <button type="button" className="secondary-button" onClick={openCreatePortfolioModal}>
                 + Yeni Portföy Oluştur
               </button>
@@ -594,7 +946,7 @@ export default function PortfolioPage() {
 
           {!loadingDetail && selectedPortfolio ? (
             <>
-              <section className="panel-surface portfolio-summary-strip portfolio-summary-strip--standalone">
+              <section className="panel-surface portfolio-summary-strip portfolio-summary-strip--standalone portfolio-summary-strip--hero">
                 <div className="portfolio-summary-grid">
                   <PortfolioMetricCard label={t("portfolio.summary.totalCost")} value={formatCurrency(totalCost)} tone="neutral" />
                   <PortfolioMetricCard label={t("portfolio.summary.currentValue")} value={formatCurrency(totalValue)} tone="accent" />
@@ -614,57 +966,24 @@ export default function PortfolioPage() {
               </section>
 
               <section className="portfolio-grid-row portfolio-grid-row--analytics">
-                <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-allocation-panel portfolio-allocation-panel--dense">
-                  <div className="panel-head portfolio-analytics-panel-head">
+                <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-distribution-panel">
+                  <div className="panel-head portfolio-analytics-panel-head portfolio-distribution-head">
                     <div>
-                      <p className="eyebrow">Dağılım</p>
-                      <h3>Varlık Özeti ve Dağılımı</h3>
+                      <h3>Dağılım</h3>
                     </div>
-                    <div className="portfolio-view-toggle" role="tablist" aria-label="Dagilim gorunumu">
-                      <button
-                        type="button"
-                        className={`portfolio-view-toggle-button${allocationView === "chart" ? " active" : ""}`}
-                        onClick={() => setAllocationView("chart")}
-                        aria-label="Pasta grafik görünümü"
-                        title="Pasta grafik görünümü"
-                      >
-                        <ChartPie size={19} />
-                      </button>
-                      <button
-                        type="button"
-                        className={`portfolio-view-toggle-button${allocationView === "summary" ? " active" : ""}`}
-                        onClick={() => setAllocationView("summary")}
-                        aria-label="Liste görünümü"
-                        title="Liste görünümü"
-                      >
-                        <List size={19} />
-                      </button>
-                    </div>
+                    <span className="summary-chip portfolio-distribution-count-chip">{formatNumber(distributionData.length, 0)}</span>
                   </div>
-                  {allocationData.length === 0 && assetTypeBreakdown.length === 0 ? (
+
+                  {distributionData.length === 0 ? (
                     <EmptyState title={t("portfolio.allocationEmptyTitle")} description={t("portfolio.allocationEmptyDescription")} />
-                  ) : allocationView === "summary" ? (
-                    <div className="portfolio-allocation-summary-view portfolio-allocation-summary-view--scrollable">
-                      <div className="portfolio-holding-type-list">
-                        {holdings.map((holding, index) => (
-                          <div key={`${holding.holdingId || holding.instrumentCode}-${index}`} className="portfolio-holding-type-row">
-                            <div>
-                              <strong>{formatInstrumentLabel(holding.instrumentCode)}</strong>
-                              <span>{getAssetCategoryLabel(getAssetCategoryKey(holding.instrumentCode))}</span>
-                            </div>
-                            <strong>{formatCurrency(resolveHoldingValue(holding))}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   ) : (
-                    <div className="portfolio-allocation-shell portfolio-allocation-shell--pro">
-                      <div className="portfolio-allocation-chart-wrap">
+                    <div className="portfolio-distribution-layout">
+                      <div className="portfolio-distribution-chart-wrap">
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
-                            <Pie data={allocationData.slice(0, 6)} dataKey="currentValue" nameKey="displayName" outerRadius={76} innerRadius={48}>
-                              {allocationData.slice(0, 6).map((entry, index) => (
-                                <Cell key={`${entry.instrumentCode}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            <Pie data={distributionData} dataKey="value" nameKey="label" outerRadius={86} innerRadius={54}>
+                              {distributionData.map((entry) => (
+                                <Cell key={entry.key} fill={entry.color} />
                               ))}
                             </Pie>
                             <Tooltip
@@ -675,22 +994,21 @@ export default function PortfolioPage() {
                             />
                           </PieChart>
                         </ResponsiveContainer>
+                        <div className="portfolio-distribution-center">
+                          <strong>{dominantDistributionItem?.label ?? "-"}</strong>
+                          <span>{dominantDistributionItem ? `%${formatNumber(dominantDistributionItem.weight, 1)}` : "-"}</span>
+                        </div>
                       </div>
-                      <div className="portfolio-allocation-legend portfolio-allocation-legend--rich">
-                        {allocationData.slice(0, 5).map((entry, index) => (
-                          <div key={`${entry.instrumentCode}-${index}`} className="portfolio-allocation-item portfolio-allocation-item--v3">
-                            <div className="portfolio-allocation-label">
-                              <span className="portfolio-color-dot" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
-                              <div className="portfolio-allocation-label-copy">
-                                <strong className="portfolio-allocation-code">{entry.displayName}</strong>
-                                <span>{formatCurrency(entry.currentValue)}</span>
-                              </div>
+                      <div className="portfolio-distribution-list">
+                        {distributionData.map((entry) => (
+                          <div key={entry.key} className="portfolio-distribution-list-item">
+                            <div className="portfolio-distribution-list-label">
+                              <span className="portfolio-color-dot" style={{ backgroundColor: entry.color }} />
+                              <span>{entry.label}</span>
                             </div>
-                            <div className="portfolio-allocation-metrics">
-                              <span className="portfolio-allocation-pct">{formatNumber(entry.weight, 1)}%</span>
-                              <span className={getPnLTextClass(entry.profitLoss)}>
-                                {entry.profitLoss == null ? "-" : formatCurrency(entry.profitLoss)}
-                              </span>
+                            <div className="portfolio-distribution-list-metrics">
+                              <strong>{formatNumber(entry.weight, 1)}%</strong>
+                              <span>{formatCurrency(entry.value)}</span>
                             </div>
                           </div>
                         ))}
@@ -699,83 +1017,58 @@ export default function PortfolioPage() {
                   )}
                 </section>
 
-                <section className="portfolio-heatmap-column">
-                  <PortfolioHeatmap items={heatmapItems} />
-                </section>
-              </section>
-
-              <section className="portfolio-grid-row portfolio-grid-row--performance">
-                <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-performance-panel portfolio-performance-panel--dense">
-                  <div className="panel-head portfolio-analytics-panel-head">
-                    <div>
-                      <p className="eyebrow">Performans</p>
-                      <h3>{t("portfolio.historyTitle")}</h3>
-                    </div>
-                    <span className="summary-chip">Yakında veri serisi</span>
-                  </div>
-                  <div className="portfolio-performance-compact-empty">
-                    <div className="portfolio-performance-ghost-chart" aria-hidden="true">
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                    <div className="portfolio-performance-empty-copy">
-                      <strong>{t("portfolio.historyEmptyTitle")}</strong>
-                      <p>{t("portfolio.historyEmptyDescription")}</p>
-                    </div>
-                  </div>
-                </section>
-
-                <div className="portfolio-ai-column">
-                  <AiPortfolioCommentaryCard portfolio={selectedPortfolio} compact />
-                </div>
-              </section>
-
-              <section className="portfolio-grid-row portfolio-grid-row--lists">
-                <section className="panel-surface portfolio-side-card portfolio-watchlist-card-v4">
+                <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-risk-panel">
                   <div className="panel-head portfolio-side-card-head">
                     <div>
-                      <p className="eyebrow">Takip</p>
-                      <h3>Takip Listesi</h3>
+                      <p className="eyebrow">Risk</p>
+                      <h3>Risk analizi</h3>
                     </div>
-                    <span className="summary-chip">{watchlistItems.length}</span>
+                    <button type="button" className="portfolio-ai-drawer-trigger portfolio-ai-drawer-trigger--inline" onClick={openAiDrawer}>
+                      AI analizini aç →
+                    </button>
                   </div>
-                  <div className="portfolio-side-scroll">
-                    <div className="portfolio-watchlist-mini">
-                      {watchlistItems.length === 0 ? (
-                        <div className="portfolio-inline-empty">Henüz takip verisi yok.</div>
-                      ) : (
-                        watchlistItems.map((item, index) => (
-                          <div key={`${item.symbol}-${index}`} className="portfolio-watchlist-row">
-                            <div>
-                              <strong>{item.symbol}</strong>
-                              <span>{item.price == null ? "Fiyat yok" : formatCurrency(item.price)}</span>
-                            </div>
-                            <div className="portfolio-watchlist-meta">
-                              <span className={getPnLTextClass(item.changePercent)}>
-                                {item.changePercent == null ? "-" : formatPercent(item.changePercent)}
-                              </span>
-                              <small>{item.status}</small>
-                            </div>
-                          </div>
-                        ))
-                      )}
+                  <div className={`portfolio-risk-alert is-${riskAlert.tone}`}>
+                    <div className="portfolio-risk-alert-title">
+                      <ShieldAlert size={18} />
+                      <strong>{riskAlert.title}</strong>
                     </div>
+                    <p>{riskAlert.message}</p>
+                  </div>
+                  <div className="portfolio-risk-metrics">
+                    <RiskMetricRow label="Çeşitlilik skoru" value={diversificationScore.label} progress={diversificationScore.value} tone="warning" />
+                    <RiskMetricRow label="Volatilite" value={volatilityScore.label} progress={volatilityScore.value} tone="danger" />
+                    <RiskMetricRow label="Likidite" value={liquidityScore.label} progress={liquidityScore.value} tone="success" />
                   </div>
                 </section>
+              </section>
 
+              <section className="portfolio-grid-row portfolio-grid-row--holdings">
                 <section className="panel-surface portfolio-management-panel portfolio-table-card portfolio-holdings-section portfolio-detail-panel portfolio-holdings-panel portfolio-holdings-panel--pro">
-                  <div className="panel-head">
+                  <div className="panel-head portfolio-holdings-head">
                     <div>
                       <p className="eyebrow">Varlıklar</p>
                       <h3>{t("portfolio.holdingsTitle")}</h3>
                     </div>
-                    <span className="summary-chip">{t("common.rows", { count: formatNumber(holdings.length, 0) })}</span>
+                    <div className="portfolio-holdings-toolbar">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => setHoldingsFilterKey((current) => (current === "ALL" ? "PROFIT" : current === "PROFIT" ? "LOSS" : current === "LOSS" ? "UNPRICED" : "ALL"))}
+                      >
+                        <Filter size={15} />
+                        Filtrele
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => setHoldingsSortKey((current) => (current === "WEIGHT" ? "PNL" : current === "PNL" ? "NAME" : "WEIGHT"))}
+                      >
+                        <ArrowUpDown size={15} />
+                        Sırala
+                      </button>
+                    </div>
                   </div>
-
-                  {holdings.length === 0 ? (
+                  {filteredAndSortedHoldings.length === 0 ? (
                     <EmptyState title={t("portfolio.emptyHoldingsTitle")} description={t("portfolio.emptyHoldingsDescription")} />
                   ) : (
                     <div className="portfolio-holdings-scroll portfolio-holdings-scroll--bounded">
@@ -784,37 +1077,38 @@ export default function PortfolioPage() {
                           <tr>
                             <th>{t("portfolio.table.asset")}</th>
                             <th>{t("portfolio.table.quantity")}</th>
-                            <th>Ort. maliyet</th>
-                            <th>{t("portfolio.table.currentPrice")}</th>
-                            <th>{t("portfolio.table.currentValue")}</th>
-                            <th>Günlük %</th>
-                            <th>Toplam K/Z</th>
-                            <th>Ağırlık</th>
-                            <th>{t("portfolio.table.status")}</th>
+                            <th>Maliyet</th>
+                            <th>Güncel fiyat</th>
+                            <th>Toplam değer</th>
+                            <th>K/Z</th>
                             <th>{t("portfolio.table.action")}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {holdings.map((holding, index) => {
+                          {filteredAndSortedHoldings.map((holding, index) => {
                             const currentValue = resolveHoldingValue(holding);
                             const weight = totalValue > 0 ? (currentValue / totalValue) * 100 : null;
                             const typeLabel = getAssetCategoryLabel(getAssetCategoryKey(holding.instrumentCode));
-                            const dailyPct = toMaybeNumber(holding.dailyChangePercent);
+                            const color = CHART_COLORS[index % CHART_COLORS.length];
                             return (
                               <tr key={`${holding.holdingId || holding.instrumentCode}-${index}`}>
                                 <td>
                                   <div className="portfolio-cell-stack">
-                                    <strong>{formatInstrumentLabel(holding.instrumentCode)}</strong>
-                                    <span className="muted">{typeLabel}</span>
+                                    <div className="portfolio-asset-label-row">
+                                      <span className="portfolio-color-dot" style={{ backgroundColor: color }} />
+                                      <strong>{formatInstrumentLabel(holding.instrumentCode)}</strong>
+                                    </div>
+                                    <div className="portfolio-inline-meta">
+                                      <span className={`portfolio-type-badge is-${getAssetCategoryKey(holding.instrumentCode).toLowerCase()}`}>{typeLabel}</span>
+                                      <span className="muted">(%{formatNumber(weight, 1)})</span>
+                                      {holding.entryCount > 1 ? <span className="muted">{holding.entryCount} kayıt birleşti</span> : null}
+                                    </div>
                                   </div>
                                 </td>
                                 <td>{formatNumber(holding.quantity)}</td>
                                 <td>{formatCurrency(holding.buyPrice)}</td>
                                 <td>{holding.valuationAvailable ? formatCurrency(holding.currentPrice) : t("portfolio.priceMissing")}</td>
                                 <td>{holding.valuationAvailable ? formatCurrency(holding.currentValue) : formatCurrency(currentValue)}</td>
-                                <td className={dailyPct == null ? "" : getPnLCellClass(dailyPct)}>
-                                  {dailyPct == null ? <span className="muted">-</span> : formatPercent(dailyPct)}
-                                </td>
                                 <td className={holding.valuationAvailable ? getPnLCellClass(holding.profitLoss) : undefined}>
                                   {holding.valuationAvailable ? (
                                     <div className="portfolio-cell-stack">
@@ -825,29 +1119,141 @@ export default function PortfolioPage() {
                                     <span className="muted">{t("portfolio.missingData")}</span>
                                   )}
                                 </td>
-                                <td>{weight == null ? <span className="muted">-</span> : `${formatNumber(weight, 1)}%`}</td>
-                                <td>
-                                  <span className={`portfolio-status-pill ${getPriceStatusClass(holding.priceStatus)}`}>
-                                    {formatPriceStatus(holding.priceStatus, t)}
-                                  </span>
-                                </td>
                                 <td>
                                   <div className="actions-row portfolio-holdings-actions">
                                     <button type="button" className="secondary-button" onClick={() => openEditHoldingModal(holding)}>
-                                      {t("portfolio.update")}
+                                      Güncelle
                                     </button>
-                                    <button type="button" className="danger-button" onClick={() => handleDeleteHolding(holding.holdingId)}>
-                                      {t("portfolio.delete")}
+                                    <button type="button" className="danger-button" onClick={() => handleDeleteHolding(holding)}>
+                                      Sil
                                     </button>
                                   </div>
                                 </td>
                               </tr>
                             );
                           })}
+                          <tr className="portfolio-holdings-total-row">
+                            <td colSpan={4}>Toplam ({formatNumber(filteredAndSortedHoldings.length, 0)} varlık)</td>
+                            <td>{formatCurrency(totalValue)}</td>
+                            <td className={getPnLCellClass(totalProfitLoss)}>
+                              <div className="portfolio-cell-stack">
+                                <strong>{formatCurrency(totalProfitLoss)}</strong>
+                                <span>{formatPercent(totalProfitLossPercent)}</span>
+                              </div>
+                            </td>
+                            <td />
+                          </tr>
                         </tbody>
                       </table>
                     </div>
                   )}
+                </section>
+              </section>
+
+              <section className="portfolio-grid-row portfolio-grid-row--performance">
+                <section className="panel-surface portfolio-management-panel portfolio-detail-panel portfolio-performance-panel portfolio-performance-panel--dense">
+                  <div className="panel-head portfolio-analytics-panel-head">
+                    <div>
+                      <p className="eyebrow">Performans</p>
+                      <h3>{t("portfolio.historyTitle")}</h3>
+                    </div>
+                    <div className="portfolio-performance-head-actions">
+                      <div className="portfolio-performance-range-tabs" role="tablist" aria-label="Performans aralığı">
+                        {PERFORMANCE_RANGE_PRESETS.map((preset) => (
+                          <button
+                            key={preset.key}
+                            type="button"
+                            className={`table-chip-button ${performanceRangeKey === preset.key ? "active" : ""}`}
+                            onClick={() => setPerformanceRangeKey(preset.key)}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                      <span className="summary-chip">{performanceHistory?.approximate ? "Tahmini seri" : "Günlük seri"}</span>
+                    </div>
+                  </div>
+                  {loadingPerformanceHistory ? <LoadingSpinner label="Performans serisi yükleniyor" /> : null}
+                  {!loadingPerformanceHistory && performanceHistoryError ? <ErrorMessage message={performanceHistoryError} /> : null}
+                  {!loadingPerformanceHistory && !performanceHistoryError && performanceChartData.length < 2 ? (
+                    <div className="portfolio-performance-compact-empty">
+                      <div className="portfolio-performance-ghost-chart" aria-hidden="true">
+                        <span />
+                        <span />
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                      <div className="portfolio-performance-empty-copy">
+                        <strong>{t("portfolio.historyEmptyTitle")}</strong>
+                        <p>{t("portfolio.historyEmptyDescription")}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                  {!loadingPerformanceHistory && !performanceHistoryError && performanceChartData.length >= 2 ? (
+                    <div className="portfolio-performance-shell">
+                      <div className="portfolio-performance-stat-strip">
+                        <div className="portfolio-performance-stat portfolio-performance-stat--primary">
+                          <small>Son değer</small>
+                          <strong>{formatCurrency(performanceLastPoint?.totalValue)}</strong>
+                        </div>
+                        <div className="portfolio-performance-stat">
+                          <small>Dönem değişimi</small>
+                          <strong className={getPnLTextClass(performanceDelta)}>
+                            {performanceDelta == null ? "-" : formatCurrency(performanceDelta)}
+                          </strong>
+                        </div>
+                        <div className="portfolio-performance-stat">
+                          <small>Dönem getirisi</small>
+                          <strong className={getPnLTextClass(performanceDeltaPercent)}>
+                            {performanceDeltaPercent == null ? "-" : formatPercent(performanceDeltaPercent)}
+                          </strong>
+                        </div>
+                      </div>
+
+                      <div className="portfolio-performance-chart-shell">
+                        <ResponsiveContainer width="100%" height={290}>
+                          <LineChart data={performanceChartData} margin={{ top: 14, right: 12, left: 0, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="portfolioPerformanceFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#2563eb" stopOpacity={0.24} />
+                                <stop offset="60%" stopColor="#2563eb" stopOpacity={0.08} />
+                                <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} strokeOpacity={0.42} />
+                            <XAxis
+                              dataKey="rawDate"
+                              ticks={performanceAxisTicks}
+                              tickFormatter={(value) => formatPerformanceAxisTick(value, performanceRangeKey)}
+                              stroke={chartTheme.axis}
+                              tickLine={false}
+                              axisLine={false}
+                              minTickGap={36}
+                              tickMargin={10}
+                              interval="preserveStartEnd"
+                              allowDuplicatedCategory={false}
+                            />
+                            <YAxis
+                              stroke={chartTheme.axis}
+                              tickLine={false}
+                              axisLine={false}
+                              width={72}
+                              tickFormatter={(value) => formatCompactNumber(value)}
+                            />
+                            <Tooltip content={<PortfolioPerformanceTooltip chartTheme={chartTheme} />} />
+                            <Area type="monotone" dataKey="totalValue" stroke="none" fill="url(#portfolioPerformanceFill)" />
+                            <Line type="monotone" dataKey="totalCost" name="Toplam maliyet" stroke="#94a3b8" strokeWidth={1.9} dot={false} strokeDasharray="4 4" />
+                            <Line type="monotone" dataKey="totalValue" name="Portföy değeri" stroke="#2563eb" strokeWidth={2.8} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <p className="portfolio-performance-footnote">
+                        Seri, mevcut pozisyonlar ve kayıtlı alım tarihleri üzerinden yaklaşık olarak hesaplandı.
+                      </p>
+                    </div>
+                  ) : null}
                 </section>
               </section>
 
@@ -936,7 +1342,7 @@ export default function PortfolioPage() {
                       <ul className="instrument-search-dropdown">
                         {instrumentResults.map((item) => (
                           <li key={item.code} className="instrument-search-item" onMouseDown={() => selectInstrument(item)}>
-                            <strong>{item.code}</strong>
+                            <strong>{formatInstrumentLabel(item.code)}</strong>
                             <span className="instrument-search-name">{item.name}</span>
                             <span className="instrument-search-type">{item.type}</span>
                           </li>
@@ -1009,7 +1415,7 @@ export default function PortfolioPage() {
           <div className="auth-modal portfolio-activity-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="portfolio-action-modal-head">
               <div>
-                <p className="eyebrow">AkÄ±ÅŸ</p>
+                <p className="eyebrow">Akış</p>
                 <h3>Son Hareketler</h3>
               </div>
               <button type="button" className="secondary-button" onClick={() => setActivityModalOpen(false)}>
@@ -1019,7 +1425,7 @@ export default function PortfolioPage() {
 
             <div className="portfolio-activity-modal-body">
               {activityItems.length === 0 ? (
-                <div className="portfolio-inline-empty">HenÃ¼z hareket yok.</div>
+                <div className="portfolio-inline-empty">Henüz hareket yok.</div>
               ) : (
                 activityItems.map((item, index) => (
                   <div key={`${item.title}-${index}`} className={`portfolio-activity-row is-${item.tone}`}>
@@ -1035,6 +1441,145 @@ export default function PortfolioPage() {
           </div>
         </div>
       ) : null}
+
+      {isWatchlistDrawerVisible
+        ? createPortal(
+            <div className={`portfolio-watchlist-drawer ${isWatchlistDrawerOpen ? "is-open" : ""}`} role="presentation">
+              <div className="portfolio-watchlist-drawer-backdrop" aria-hidden="true" onClick={closeWatchlistDrawer} />
+              <aside className="portfolio-watchlist-drawer-sheet" role="dialog" aria-modal="true" aria-label="Watchlist paneli">
+                <div className="portfolio-watchlist-drawer-head">
+                  <div className="portfolio-watchlist-drawer-head-copy">
+                    <p className="eyebrow">Watchlist</p>
+                    <h3>İzleme listesi</h3>
+                    <p>Portföyden bağımsız takip edilen semboller</p>
+                  </div>
+                  <button type="button" className="portfolio-watchlist-drawer-close" aria-label="Watchlist panelini kapat" onClick={closeWatchlistDrawer}>
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="portfolio-watchlist-drawer-body">
+                  <div className="portfolio-watchlist-drawer-list" role="list" aria-label="Watchlist listesi">
+                    {watchlistItems.map((item) => {
+                      const toneClass = item.changePercent == null ? "is-neutral" : item.changePercent > 0 ? "is-positive" : item.changePercent < 0 ? "is-negative" : "is-neutral";
+                      return (
+                        <button key={item.key} type="button" className={`portfolio-watchlist-drawer-item ${toneClass}`} role="listitem">
+                          <div className="portfolio-watchlist-drawer-item-head">
+                            <span className="portfolio-watchlist-drawer-symbol-wrap">
+                              <span className="portfolio-watchlist-pill-dot" style={{ backgroundColor: item.dotColor }} />
+                              <strong>{item.symbol}</strong>
+                            </span>
+                            <span className={`portfolio-watchlist-drawer-change ${toneClass}`}>
+                              {item.changePercent == null ? "Nötr" : formatSignedPercent(item.changePercent)}
+                            </span>
+                          </div>
+                          <div className="portfolio-watchlist-drawer-price">{item.price == null ? "-" : formatCurrency(item.price)}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </aside>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {isAiDrawerVisible
+        ? createPortal(
+            <div className={`portfolio-ai-drawer ${isAiDrawerOpen ? "is-open" : ""}`} role="presentation">
+              <div className="portfolio-ai-drawer-backdrop" aria-hidden="true" onClick={closeAiDrawer} />
+              <aside className="portfolio-ai-drawer-sheet" role="dialog" aria-modal="true" aria-label="AI portföy analizi">
+            <div className="portfolio-ai-drawer-head">
+              <div className="portfolio-ai-drawer-head-copy">
+                <p className="eyebrow">Yapay Zeka</p>
+                <h3>Portföy AI Analizi</h3>
+                <div className="portfolio-ai-drawer-badges">
+                  <span className="portfolio-ai-badge">Risk Yorumu</span>
+                  <span className="portfolio-ai-badge">Güncel</span>
+                  <span className="portfolio-ai-badge">AI Destekli</span>
+                </div>
+              </div>
+              <button type="button" className="portfolio-ai-drawer-close" aria-label="AI analiz panelini kapat" onClick={closeAiDrawer}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="portfolio-ai-drawer-brief">
+              <div className="portfolio-ai-drawer-brief-icon">
+                <Sparkles size={16} />
+              </div>
+              <div className="portfolio-ai-drawer-brief-copy">
+                <span>Kısa Uyarı</span>
+                <p>{aiRiskTeaser}</p>
+              </div>
+            </div>
+            <div className="portfolio-ai-drawer-body">
+              {aiAnalysisLoading ? (
+                <section className="portfolio-ai-sections">
+                  <div className="portfolio-ai-state-card portfolio-ai-state-card--loading">
+                    <strong>Portföy analiz ediliyor...</strong>
+                    <p>AI katmanı güncel dağılım, risk ve öneri alanlarını hazırlıyor.</p>
+                  </div>
+                  {[0, 1, 2].map((item) => (
+                    <div key={`skeleton-${item}`} className="portfolio-ai-section-card portfolio-ai-section-card--skeleton" aria-hidden="true">
+                      <span className="portfolio-ai-skeleton-line portfolio-ai-skeleton-line--title" />
+                      <span className="portfolio-ai-skeleton-line" />
+                      <span className="portfolio-ai-skeleton-line" />
+                      <span className="portfolio-ai-skeleton-line portfolio-ai-skeleton-line--short" />
+                    </div>
+                  ))}
+                </section>
+              ) : aiAnalysisError ? (
+                <section className="portfolio-ai-sections">
+                  <div className="portfolio-ai-state-card portfolio-ai-state-card--error">
+                    <div className="portfolio-ai-state-head">
+                      <AlertTriangle size={16} />
+                      <strong>AI analizi şu anda getirilemedi</strong>
+                    </div>
+                    <p>{aiAnalysisError}</p>
+                  </div>
+                </section>
+              ) : !aiAnalysisData ? (
+                <section className="portfolio-ai-sections">
+                  <div className="portfolio-ai-state-card">
+                    <strong>AI analizi üretilemedi</strong>
+                    <p>Bu portföy için AI çıktısı şu anda boş döndü. Risk özeti kartı çalışmaya devam ediyor.</p>
+                  </div>
+                </section>
+              ) : (
+                <section className="portfolio-ai-sections">
+                  {aiInsightSections.map((section) => (
+                    <article key={section.title} className={`portfolio-ai-section-card is-${section.tone}`}>
+                      <div className="portfolio-ai-section-head">
+                        <div className="portfolio-ai-section-icon">{section.icon}</div>
+                        <div>
+                          <h4>{section.title}</h4>
+                          {section.subtitle ? <p>{section.subtitle}</p> : null}
+                        </div>
+                      </div>
+                      {section.paragraphs?.length ? (
+                        <div className="portfolio-ai-section-copy">
+                          {section.paragraphs.map((paragraph) => (
+                            <p key={paragraph}>{paragraph}</p>
+                          ))}
+                        </div>
+                      ) : null}
+                      {section.items?.length ? (
+                        <ul className="portfolio-ai-section-list">
+                          {section.items.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </article>
+                  ))}
+                </section>
+              )}
+            </div>
+              </aside>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -1063,6 +1608,354 @@ function PortfolioMetricCard({ label, value, subvalue = null, tone = "neutral" }
   );
 }
 
+function RiskMetricRow({ label, value, progress, tone }) {
+  const score = Math.max(1, Math.min(5, Math.round((Math.max(0, Math.min(100, progress)) / 100) * 4) + 1));
+  return (
+    <div className="portfolio-risk-metric-row">
+      <div className="portfolio-risk-metric-head">
+        <span>{label}</span>
+        <div className="portfolio-risk-metric-value">
+          <strong>{value}</strong>
+          <span className={`portfolio-risk-score-badge is-${tone}`}>{score}/5</span>
+        </div>
+      </div>
+      <div className="portfolio-risk-progress">
+        <span className={`portfolio-risk-progress-bar is-${tone}`} style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function buildAiRiskTeaser({ topHolding, cashRatio, volatilityScore, liquidityScore }) {
+  if (topHolding && topHolding.weight >= 55) {
+    return `${topHolding.displayName} ağırlığı portföy riskini artırıyor.`;
+  }
+  if ((cashRatio ?? 0) < 5 && volatilityScore.value >= 60) {
+    return "Nakit tamponu düşük, yüksek volatilite kısa vadeli dalgalanmayı artırabilir.";
+  }
+  if (liquidityScore.value >= 65) {
+    return "Likidite görünümü güçlü, portföy beklenmedik hareketlere karşı daha esnek.";
+  }
+  return "Portföy dengeli görünüyor, ağırlık dağılımı ve fiyat güncelliği izlenmeli.";
+}
+
+function buildAiInsightSections({
+  aiAnalysisData,
+  riskAlert,
+  topHolding,
+  volatilityScore,
+  liquidityScore,
+  diversificationScore,
+  totalValue,
+  totalProfitLoss,
+  totalProfitLossPercent,
+}) {
+  const summary = getNonEmptyText(
+    aiAnalysisData?.summary,
+    aiAnalysisData?.finalComment,
+    aiAnalysisData?.allocationComment,
+    aiAnalysisData?.riskComment,
+    `Toplam portföy değeri ${formatCurrency(totalValue)} seviyesinde. Toplam fark ${formatCurrency(totalProfitLoss)} ve getirisi ${formatPercent(
+      totalProfitLossPercent,
+    )} olarak izleniyor.`,
+  );
+
+  const generalParagraphs = [
+    summary,
+    aiAnalysisData?.allocationComment,
+    aiAnalysisData?.diversificationComment,
+  ].filter(Boolean);
+
+  const riskItems = uniqueStrings([
+    ...(Array.isArray(aiAnalysisData?.riskSignals) ? aiAnalysisData.riskSignals : []),
+    aiAnalysisData?.riskComment,
+    riskAlert?.message,
+    topHolding?.weight >= 55 ? "Baskın pozisyon riski yüksek; tek varlık etkisi toplam performansı belirgin şekilde yönlendirebilir." : null,
+    volatilityScore.value >= 65 ? "Volatilite yüksek; günlük dalgalanmalar portföy değerinde sert hareketler yaratabilir." : null,
+  ]);
+
+  const strengthItems = uniqueStrings([
+    ...(Array.isArray(aiAnalysisData?.strongestPositions) ? aiAnalysisData.strongestPositions : []),
+    liquidityScore.value >= 65 ? "Likidite görünümü güçlü; yeniden dengeleme veya nakde dönüş kararları daha rahat uygulanabilir." : null,
+    diversificationScore.value >= 60 ? "Çeşitlilik görünümü dengeli; baskın tek pozisyon etkisi kontrol altında." : null,
+    totalProfitLoss > 0 ? `Portföy genelinde pozitif fark ${formatCurrency(totalProfitLoss)} seviyesinde izleniyor.` : null,
+  ]);
+
+  const actionItems = uniqueStrings([
+    ...(Array.isArray(aiAnalysisData?.suggestions) ? aiAnalysisData.suggestions : []),
+    topHolding?.weight >= 55 ? `${topHolding.displayName} ağırlığını kademeli şekilde azaltarak dağılımı dengelemeyi değerlendirin.` : null,
+    volatilityScore.value >= 65 ? "Yüksek oynaklık taşıyan pozisyonlarda hedef ağırlık ve zarar kes disiplinini netleştirin." : null,
+    liquidityScore.value < 40 ? "Nakit oranını veya kolay nakde dönebilen varlık payını artırmak kısa vadeli esnekliği güçlendirebilir." : null,
+  ]);
+
+  return [
+    {
+      title: "Genel Değerlendirme",
+      subtitle: "Portföyün genel görünümü ve ana tema",
+      icon: <Sparkles size={15} />,
+      tone: "primary",
+      paragraphs: generalParagraphs.length ? generalParagraphs : ["Genel değerlendirme için yeterli AI çıktısı bulunamadı."],
+    },
+    {
+      title: "Öne Çıkan Riskler",
+      subtitle: "Yoğunlaşma ve oynaklık tarafında dikkat çeken başlıklar",
+      icon: <ShieldAlert size={15} />,
+      tone: "risk",
+      items: riskItems.length ? riskItems : ["Belirgin bir risk sinyali üretilmedi."],
+    },
+    {
+      title: "Güçlü Taraflar",
+      subtitle: "Portföyün korunan veya avantajlı kalan yönleri",
+      icon: <Sparkles size={15} />,
+      tone: "success",
+      items: strengthItems.length ? strengthItems : ["Belirgin bir güçlü taraf sinyali üretilmedi."],
+    },
+    {
+      title: "Aksiyon Önerileri",
+      subtitle: "Yakın vadede uygulanabilecek kontrollü adımlar",
+      icon: <AlertTriangle size={15} />,
+      tone: "warning",
+      items: actionItems.length ? actionItems : ["Şu an için ek aksiyon önerisi bulunmuyor."],
+    },
+  ];
+}
+
+function getNonEmptyText(...values) {
+  return values.map(normalizeAiText).find(Boolean) ?? "";
+}
+
+function normalizeAiText(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim();
+}
+
+function uniqueStrings(values) {
+  const seen = new Set();
+  return values
+    .map(normalizeAiText)
+    .filter((value) => {
+      if (!value || seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    });
+}
+
+function PortfolioPerformanceTooltip({ active, payload, label, chartTheme }) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  return (
+    <div
+      className="chart-tooltip terminal-tooltip"
+      style={{
+        backgroundColor: chartTheme.tooltipBg,
+        borderColor: chartTheme.tooltipBorder,
+        color: chartTheme.tooltipText,
+      }}
+    >
+      <strong>{label}</strong>
+      {payload.map((item, index) => (
+        <div key={`${item.dataKey}-${item.name}-${index}`} className="chart-tooltip-row">
+          <span>{item.name}</span>
+          <strong>{formatCurrency(item.value)}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatCompactNumber(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("tr-TR", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(numeric);
+}
+
+function buildPerformanceHistoryParams(rangeKey) {
+  const preset = PERFORMANCE_RANGE_PRESETS.find((item) => item.key === rangeKey) ?? PERFORMANCE_RANGE_PRESETS[1];
+  if (preset.key === "MAX" || preset.months == null) {
+    return {
+      from: "1970-01-01",
+      to: toIsoDateOnly(new Date()),
+    };
+  }
+
+  const to = new Date();
+  const from = new Date(to);
+  from.setMonth(from.getMonth() - preset.months);
+
+  return {
+    from: toIsoDateOnly(from),
+    to: toIsoDateOnly(to),
+  };
+}
+
+function toIsoDateOnly(value) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildPerformanceAxisTicks(chartData, rangeKey) {
+  if (!Array.isArray(chartData) || chartData.length === 0) {
+    return [];
+  }
+
+  const dates = chartData
+    .map((item) => parseDateOnly(item.rawDate))
+    .filter((value) => value != null);
+
+  if (dates.length === 0) {
+    return [];
+  }
+
+  const monthStep = resolvePerformanceMonthStep(rangeKey, dates);
+  const ticks =
+    monthStep == null
+      ? pickDateTicksByDayInterval(dates, rangeKey === "1M" ? 7 : 14).map(toIsoDateOnly)
+      : pickDateTicksByMonthInterval(dates, monthStep).map(toIsoDateOnly);
+
+  return dedupePerformanceTicksByLabel(ticks, rangeKey);
+}
+
+function resolvePerformanceMonthStep(rangeKey, dates) {
+  if (rangeKey === "1M") {
+    return null;
+  }
+  if (rangeKey === "3M" || rangeKey === "6M") {
+    return 1;
+  }
+  if (rangeKey === "1Y") {
+    return 2;
+  }
+  if (rangeKey === "5Y") {
+    return 3;
+  }
+
+  const firstDate = dates[0];
+  const lastDate = dates[dates.length - 1];
+  const monthDiff = Math.max(
+    0,
+    (lastDate.getFullYear() - firstDate.getFullYear()) * 12 + (lastDate.getMonth() - firstDate.getMonth()),
+  );
+
+  if (monthDiff <= 1) {
+    return null;
+  }
+  if (monthDiff <= 6) {
+    return 1;
+  }
+  if (monthDiff <= 18) {
+    return 2;
+  }
+  if (monthDiff <= 60) {
+    return 3;
+  }
+  return 6;
+}
+
+function pickDateTicksByDayInterval(dates, dayInterval) {
+  const ticks = [];
+  dates.forEach((date, index) => {
+    if (index === 0 || index === dates.length - 1) {
+      ticks.push(date);
+      return;
+    }
+
+    const previousTick = ticks[ticks.length - 1];
+    const diffDays = Math.round((date.getTime() - previousTick.getTime()) / 86400000);
+    if (diffDays >= dayInterval) {
+      ticks.push(date);
+    }
+  });
+  return dedupeDates(ticks);
+}
+
+function pickDateTicksByMonthInterval(dates, monthInterval) {
+  const ticks = [];
+  let previousBucket = null;
+
+  dates.forEach((date, index) => {
+    const bucket = date.getFullYear() * 12 + date.getMonth();
+    if (index === 0 || index === dates.length - 1) {
+      ticks.push(date);
+      previousBucket = bucket;
+      return;
+    }
+
+    if (previousBucket == null || bucket - previousBucket >= monthInterval) {
+      ticks.push(date);
+      previousBucket = bucket;
+    }
+  });
+
+  return dedupeDates(ticks);
+}
+
+function dedupeDates(dates) {
+  return [...new Map(dates.map((date) => [toIsoDateOnly(date), date])).values()];
+}
+
+function formatPerformanceAxisTick(value, rangeKey) {
+  const date = parseDateOnly(value);
+  if (!date) {
+    return String(value ?? "-");
+  }
+
+  if (rangeKey === "1M") {
+    return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short" }).format(date);
+  }
+
+  if (rangeKey === "3M" || rangeKey === "6M") {
+    return new Intl.DateTimeFormat("tr-TR", { month: "short", year: "numeric" }).format(date);
+  }
+
+  if (rangeKey === "1Y") {
+    return new Intl.DateTimeFormat("tr-TR", { month: "short", year: "numeric" }).format(date);
+  }
+
+  if (rangeKey === "5Y" || rangeKey === "MAX") {
+    return new Intl.DateTimeFormat("tr-TR", { month: "short", year: "numeric" }).format(date);
+  }
+
+  return new Intl.DateTimeFormat("tr-TR", { month: "short", year: "numeric" }).format(date);
+}
+
+function dedupePerformanceTicksByLabel(ticks, rangeKey) {
+  const deduped = [];
+  const labels = new Set();
+  ticks.forEach((tick, index) => {
+    const label = formatPerformanceAxisTick(tick, rangeKey);
+    const isEdge = index === 0 || index === ticks.length - 1;
+    if (isEdge || !labels.has(label)) {
+      deduped.push(tick);
+      labels.add(label);
+    }
+  });
+  return deduped;
+}
+
+function parseDateOnly(value) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function normalizeCode(value) {
   if (value == null) {
     return "";
@@ -1077,17 +1970,29 @@ function normalizeCode(value) {
 }
 
 function formatInstrumentLabel(value) {
-  return normalizeCode(value) === INTERNAL_CASH_CODE ? INTERNAL_CASH_LABEL : value || "-";
+  const normalized = normalizeCode(value);
+  if (!normalized) {
+    return "-";
+  }
+  if (normalized === INTERNAL_CASH_CODE) {
+    return INTERNAL_CASH_LABEL;
+  }
+
+  const fxMatch = normalized.match(/^([A-Z_]+):([A-Z0-9]+):(BUY|SELL)$/);
+  if (!fxMatch) {
+    return value || normalized;
+  }
+
+  const [, , currencyCode] = fxMatch;
+  const currencyLabel = FX_CODE_LABELS[currencyCode] || currencyCode;
+  return `${currencyCode} / ${currencyLabel}`;
 }
 
 function formatInstrumentSearchValue(instrument) {
   if (!instrument) {
     return "";
   }
-  if (normalizeCode(instrument.code) === INTERNAL_CASH_CODE) {
-    return instrument.name || INTERNAL_CASH_LABEL;
-  }
-  return instrument.code || instrument.name || "";
+  return formatInstrumentLabel(instrument.code || instrument.name);
 }
 
 function toNumber(value) {
@@ -1098,6 +2003,86 @@ function toNumber(value) {
 function toMaybeNumber(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function resolveWatchlistRailQuote(instrumentCode) {
+  const normalized = normalizeCode(instrumentCode);
+  const seededPrice = buildSeededWatchlistPrice(normalized);
+  const seededChangePercent = buildSeededWatchlistChangePercent(normalized);
+  const fallback = WATCHLIST_RAIL_FALLBACK.find((item) => normalizeCode(item.symbol) === normalized);
+
+  return {
+    price: fallback?.price ?? seededPrice,
+    changePercent: fallback?.changePercent ?? seededChangePercent,
+  };
+}
+
+function resolveWatchlistChangePercent(item, fallbackQuote) {
+  return (
+    toMaybeNumber(item?.changePercent) ??
+    toMaybeNumber(item?.changeRate) ??
+    toMaybeNumber(item?.dailyChangePercent) ??
+    toMaybeNumber(item?.priceChangePercent) ??
+    fallbackQuote.changePercent
+  );
+}
+
+function buildSeededWatchlistPrice(symbol) {
+  if (!symbol) {
+    return null;
+  }
+
+  const hash = hashString(symbol);
+  if (symbol.startsWith("TCMB:")) {
+    return Number((((hash % 4000) + 3400) / 100).toFixed(2));
+  }
+  if (symbol.includes("XAU")) {
+    return Number((((hash % 180000) + 320000) / 100).toFixed(2));
+  }
+  if (symbol.includes("BTC") || symbol.includes("ETH") || symbol.includes("USDT")) {
+    return Number((((hash % 3200000) + 680000) / 1).toFixed(0));
+  }
+  if (/^[A-Z]{5}$/.test(symbol)) {
+    return Number((((hash % 35000) + 7000) / 100).toFixed(2));
+  }
+  if (/^[A-Z]{3,6}$/.test(symbol)) {
+    return Number((((hash % 1600000) + 90000) / 100).toFixed(2));
+  }
+  return Number((((hash % 120000) + 12000) / 100).toFixed(2));
+}
+
+function buildSeededWatchlistChangePercent(symbol) {
+  if (!symbol) {
+    return 0;
+  }
+
+  const hash = hashString(symbol);
+  const seeded = ((hash % 101) - 50) / 10;
+  return Math.abs(seeded) < 0.2 ? 0 : Number(seeded.toFixed(1));
+}
+
+function hashString(value) {
+  let hash = 0;
+  for (const char of value) {
+    hash = (hash * 31 + char.charCodeAt(0)) % 2147483647;
+  }
+  return hash;
+}
+
+function formatSignedPercent(value) {
+  if (value == null || !Number.isFinite(Number(value))) {
+    return "-";
+  }
+
+  const numeric = Number(value);
+  const formatted = formatPercent(Math.abs(numeric));
+  if (numeric > 0) {
+    return `+${formatted}`;
+  }
+  if (numeric < 0) {
+    return `-${formatted}`;
+  }
+  return formatted;
 }
 
 function getSummaryPnLWrapClass(value) {
@@ -1165,6 +2150,54 @@ function resolveHoldingValue(holding) {
   return toNumber(holding?.buyPrice) * toNumber(holding?.quantity);
 }
 
+function aggregatePortfolioHoldings(holdings) {
+  const groups = new Map();
+
+  holdings.forEach((holding) => {
+    const key = normalizeCode(holding.instrumentCode);
+    const quantity = toNumber(holding.quantity);
+    const totalCostValue = quantity * toNumber(holding.buyPrice);
+    const currentValue = resolveHoldingValue(holding);
+    const bucket =
+      groups.get(key) ??
+      {
+        ...holding,
+        holdingId: holding.holdingId ?? null,
+        quantity: 0,
+        buyPrice: 0,
+        currentPrice: 0,
+        currentValue: 0,
+        profitLoss: 0,
+        profitLossPercent: null,
+        dailyProfitLoss: 0,
+        dailyChangePercent: 0,
+        valuationAvailable: false,
+        entryCount: 0,
+        totalCostValue: 0,
+        sourceHoldingIds: [],
+        sourceHoldings: [],
+      };
+
+    bucket.quantity += quantity;
+    bucket.totalCostValue += totalCostValue;
+    bucket.currentValue += currentValue;
+    bucket.dailyProfitLoss += toNumber(holding.dailyProfitLoss);
+    bucket.dailyChangePercent += toNumber(holding.dailyChangePercent);
+    bucket.entryCount += 1;
+    bucket.sourceHoldingIds.push(holding.holdingId);
+    bucket.sourceHoldings.push(holding);
+    bucket.valuationAvailable = bucket.valuationAvailable || Boolean(holding.valuationAvailable);
+    bucket.buyPrice = bucket.quantity > 0 ? bucket.totalCostValue / bucket.quantity : bucket.buyPrice;
+    bucket.currentPrice = bucket.quantity > 0 ? bucket.currentValue / bucket.quantity : bucket.currentPrice;
+    bucket.profitLoss = bucket.currentValue - bucket.totalCostValue;
+    bucket.profitLossPercent = bucket.totalCostValue > 0 ? (bucket.profitLoss / bucket.totalCostValue) * 100 : null;
+
+    groups.set(key, bucket);
+  });
+
+  return [...groups.values()];
+}
+
 function resolveTone(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric) || numeric === 0) {
@@ -1205,10 +2238,10 @@ function getAssetCategoryLabel(key) {
     STOCK: "Hisse",
     FUND: "Fon",
     CRYPTO: "Kripto",
-    FX: "DÃ¶viz",
-    COMMODITY: "AltÄ±n / Emtia",
-    OTHER: "DiÄŸer",
-  }[key] ?? "DiÄŸer";
+    FX: "Döviz",
+    COMMODITY: "Altın / Emtia",
+    OTHER: "Diğer",
+  }[key] ?? "Diğer";
 }
 
 function buildAssetCategorySummary(holdings, totalValue) {
@@ -1217,9 +2250,9 @@ function buildAssetCategorySummary(holdings, totalValue) {
     ["STOCK", { key: "STOCK", label: "Hisse", count: 0, value: 0 }],
     ["FUND", { key: "FUND", label: "Fon", count: 0, value: 0 }],
     ["CRYPTO", { key: "CRYPTO", label: "Kripto", count: 0, value: 0 }],
-    ["FX", { key: "FX", label: "DÃ¶viz", count: 0, value: 0 }],
-    ["COMMODITY", { key: "COMMODITY", label: "AltÄ±n / Emtia", count: 0, value: 0 }],
-    ["OTHER", { key: "OTHER", label: "DiÄŸer", count: 0, value: 0 }],
+    ["FX", { key: "FX", label: "Döviz", count: 0, value: 0 }],
+    ["COMMODITY", { key: "COMMODITY", label: "Altın / Emtia", count: 0, value: 0 }],
+    ["OTHER", { key: "OTHER", label: "Diğer", count: 0, value: 0 }],
   ]);
 
   holdings.forEach((holding) => {

@@ -15,14 +15,12 @@ import {
 test("maps provider enums to display labels", () => {
   assert.equal(getNewsProviderLabel("AA_RSS"), "Anadolu Ajansi");
   assert.equal(getNewsProviderLabel("CNBC_RSS"), "CNBC");
-  assert.equal(getNewsProviderLabel("WORLD_NEWS_API"), "World News API");
   assert.equal(getNewsProviderLabel("KAP"), "KAP");
 });
 
 test("returns provider initials for known providers", () => {
   assert.equal(buildNewsPlaceholderLabel({ provider: "AA_RSS" }), "AA");
   assert.equal(buildNewsPlaceholderLabel({ provider: "CNBC_RSS" }), "CNBC");
-  assert.equal(buildNewsPlaceholderLabel({ provider: "WORLD_NEWS_API" }), "WNA");
 });
 
 test("falls back to generic initials for unknown providers", () => {
@@ -39,8 +37,8 @@ test("returns date fallback when publishedAt is missing", () => {
 
 test("returns provider based fallback logo url", () => {
   assert.equal(
-    getNewsFallbackLogoUrl({ provider: "WORLD_NEWS_API" }),
-    "https://www.google.com/s2/favicons?domain=worldnewsapi.com&sz=128",
+    getNewsFallbackLogoUrl({ provider: "CNBC_RSS" }),
+    "https://www.google.com/s2/favicons?domain=cnbc.com&sz=128",
   );
 });
 

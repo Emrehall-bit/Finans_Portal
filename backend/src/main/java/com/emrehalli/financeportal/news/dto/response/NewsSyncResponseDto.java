@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.news.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -25,6 +26,14 @@ public class NewsSyncResponseDto {
     private Integer apiQuotaLeft;
     private Integer apiQuotaUsed;
     private Integer apiQuotaRequest;
+    private Integer apiReturnedCount;
+    private Integer fullContentEligibleCount;
+    private Integer skippedTooOld;
+    private Integer skippedBlockedSource;
+    private Integer existing;
+    private Integer saved;
+    private String firstReturnedTitle;
+    private LocalDateTime firstReturnedPublishedAt;
     private Boolean startupSync;
     private String errorMessage;
     private List<String> lastErrors;

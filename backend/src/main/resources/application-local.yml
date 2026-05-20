@@ -73,6 +73,7 @@ news:
     kap:
       scheduler-enabled: true
       startup-sync-enabled: true
+      fetch-detail-enabled: true
 
 logging:
   level:

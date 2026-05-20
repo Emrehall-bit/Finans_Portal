@@ -93,6 +93,12 @@ public class News {
     @Column(name = "disclosure_type", length = 50)
     private String disclosureType;
 
+    @Column(name = "content_html", columnDefinition = "TEXT")
+    private String contentHtml;
+
+    @Column(name = "content_sections", columnDefinition = "TEXT")
+    private String contentSections;
+
     @Builder.Default
     @Column(name = "importance_score", nullable = false)
     private Integer importanceScore = 0;

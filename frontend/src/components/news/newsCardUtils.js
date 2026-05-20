@@ -3,21 +3,18 @@ import { formatDateTime } from "../../utils/formatters.js";
 const PROVIDER_LABELS = {
   AA_RSS: "Anadolu Ajansi",
   CNBC_RSS: "CNBC",
-  WORLD_NEWS_API: "World News API",
   KAP: "KAP",
 };
 
 const PROVIDER_INITIALS = {
   AA_RSS: "AA",
   CNBC_RSS: "CNBC",
-  WORLD_NEWS_API: "WNA",
   KAP: "KAP",
 };
 
 const PROVIDER_DOMAINS = {
   AA_RSS: "aa.com.tr",
   CNBC_RSS: "cnbc.com",
-  WORLD_NEWS_API: "worldnewsapi.com",
   KAP: "kap.org.tr",
 };
 
@@ -33,6 +30,17 @@ const DISCLOSURE_TYPE_LABELS = {
   RIGHTS: "Hak kullanimi",
   SPECIAL: "Ozel durum",
   GENERAL: "Genel bildirim",
+};
+
+const CATEGORY_LABELS = {
+  SPECIAL_DISCLOSURE: "Özel Durum",
+  FINANCIAL_REPORT: "Finansal Rapor",
+  DISCLOSURE: "KAP Bildirimi",
+  GENERAL_MEETING: "Genel Kurul",
+  ECONOMY: "Ekonomi",
+  DIVIDEND: "Kar Payı",
+  BUYBACK: "Geri Alım",
+  CAPITAL_INCREASE: "Sermaye Artırımı",
 };
 
 export function getNewsProviderLabel(provider) {
@@ -72,6 +80,11 @@ export function getNewsPreviewText(item, fallback = "Icerik onizlemesi bulunmuyo
 
 export function formatNewsPublishedAt(value, emptyLabel = "Tarih bilgisi alinamadi") {
   return value ? formatDateTime(value) : emptyLabel;
+}
+
+export function getNewsCategoryLabel(category) {
+  const normalized = category?.toUpperCase?.()?.replace(/[-\s]+/g, "_") || "";
+  return CATEGORY_LABELS[normalized] || formatNewsCategoryLabel(category) || null;
 }
 
 export function formatNewsCategoryLabel(category) {
@@ -137,6 +150,7 @@ export function getNewsFallbackLogoUrl(item) {
 
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
 }
+
 
 export function getNewsSourceUrl(item) {
   return item?.sourceUrl || item?.url || null;

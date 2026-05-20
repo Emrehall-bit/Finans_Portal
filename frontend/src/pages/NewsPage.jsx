@@ -17,7 +17,7 @@ import { formatNewsCategoryLabel, getNewsProviderLabel } from "../components/new
 import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
-const REGULAR_PROVIDERS = ["AA_RSS", "CNBC_RSS", "WORLD_NEWS_API"];
+const REGULAR_PROVIDERS = ["AA_RSS", "CNBC_RSS"];
 const KAP_PROVIDERS = ["KAP"];
 const KNOWN_CATEGORIES = ["business", "ECONOMY", "top news", "general", "company"];
 const INITIAL_NEWS_PAGE = {
@@ -50,6 +50,7 @@ export default function NewsPage() {
   const [selectedProviders, setSelectedProviders] = useState([]);
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [feedType, setFeedType] = useState("news");
+  const [expandedKapId, setExpandedKapId] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -247,6 +248,10 @@ export default function NewsPage() {
     setCurrentPage(0);
   }
 
+  function handleKapToggle(id) {
+    setExpandedKapId((prev) => (prev === id ? null : id));
+  }
+
   function handleFeedTypeChange(nextFeedType) {
     if (nextFeedType === feedType) {
       return;
@@ -254,6 +259,7 @@ export default function NewsPage() {
 
     setFeedType(nextFeedType);
     setCurrentPage(0);
+    setExpandedKapId(null);
     setSelectedCategories([]);
     setSelectedProviders([]);
   }
@@ -282,6 +288,7 @@ export default function NewsPage() {
     if (loading || page === currentPage || page < 0 || page >= newsPage.totalPages) {
       return;
     }
+    setExpandedKapId(null);
     setCurrentPage(page);
   }
 
@@ -374,9 +381,9 @@ export default function NewsPage() {
           ) : null}
 
           {!loading && !error && items.length > 0 ? (
-            <section className="news-grid news-grid-portal">
+            <section className={`news-grid news-grid-portal${isKapFeed ? " news-grid-kap" : ""}`}>
               {items.map((item) => (
-                <NewsCard key={item.id || item.externalId || item.url} item={item} onClick={handleOpen} />
+                <NewsCard key={item.id || item.externalId || item.url} item={item} onClick={handleOpen} expandedKapId={expandedKapId} onKapToggle={handleKapToggle} />
               ))}
             </section>
           ) : null}

@@ -27,7 +27,7 @@ public class NewsPresentationMapper {
                 .externalId(news.getExternalId())
                 .title(normalizeText(news.getTitle()))
                 .summary(normalizedSummary)
-                .contentPreview(resolveContentPreview(news, normalizedSummary, isKapDisclosure))
+                .contentPreview(resolveContentPreview(news, normalizedSummary))
                 .source(news.getSource())
                 .sourceName(resolveSourceName(news))
                 .provider(news.getProvider())
@@ -86,30 +86,12 @@ public class NewsPresentationMapper {
         return switch (provider.toUpperCase(Locale.ROOT)) {
             case "AA_RSS" -> "Anadolu Ajansi";
             case "CNBC_RSS" -> "CNBC";
-            case "WORLD_NEWS_API" -> "World News API";
             case "KAP" -> "KAP";
             default -> provider;
         };
     }
 
-    private String resolveContentPreview(News news, String normalizedSummary, boolean isKapDisclosure) {
-        if (isKapDisclosure) {
-            String disclosureType = resolveDisclosureType(news, true);
-            String relatedSymbol = normalizeText(news.getRelatedSymbol());
-            String title = normalizeText(news.getTitle());
-            StringBuilder preview = new StringBuilder();
-            if (relatedSymbol != null) {
-                preview.append(relatedSymbol).append(" ");
-            }
-            if (disclosureType != null) {
-                preview.append(disclosureType.replace('_', ' ')).append(" ");
-            }
-            if (title != null) {
-                preview.append(title);
-            }
-            return truncate(cleanForPreview(preview.toString()), CONTENT_PREVIEW_LENGTH);
-        }
-
+    private String resolveContentPreview(News news, String normalizedSummary) {
         if (normalizedSummary != null) {
             return truncate(cleanForPreview(normalizedSummary), CONTENT_PREVIEW_LENGTH);
         }

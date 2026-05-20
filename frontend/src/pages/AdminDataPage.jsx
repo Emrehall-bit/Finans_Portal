@@ -275,15 +275,6 @@ export default function AdminDataPage() {
         onClick: () => runAction("news-sync-cnbc", () => syncNews({ provider: "CNBC_RSS" })),
       },
       {
-        key: "news-sync-world-news-api",
-        group: "live",
-        eyebrow: "News Sync",
-        title: "World News API",
-        description: "World News API search endpoint uzerinden full-content finans haberleri ceker. API key yoksa disabled kalir.",
-        actionLabel: `${getNewsProviderLabel("WORLD_NEWS_API")} sync`,
-        onClick: () => runAction("news-sync-world-news-api", () => syncNews({ provider: "WORLD_NEWS_API" })),
-      },
-      {
         key: "news-sync-kap",
         group: "live",
         eyebrow: "News Sync",

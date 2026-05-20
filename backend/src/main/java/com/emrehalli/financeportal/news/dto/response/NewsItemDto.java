@@ -25,6 +25,7 @@ public class NewsItemDto {
     private String qualityStatus;
     private Boolean isKapDisclosure;
     private String disclosureType;
+    private String contentSections;
 }
 
 
