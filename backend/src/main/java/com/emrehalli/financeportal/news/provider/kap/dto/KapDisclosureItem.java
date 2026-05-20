@@ -6,15 +6,11 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class KapDisclosureItem {
 
     private KapDisclosureBasic disclosureBasic;
-    private String year;
-    private String period;
+    private KapDisclosureDetail disclosureDetail;
 
     public KapDisclosureBasic getDisclosureBasic() { return disclosureBasic; }
     public void setDisclosureBasic(KapDisclosureBasic disclosureBasic) { this.disclosureBasic = disclosureBasic; }
 
-    public String getYear() { return year; }
-    public void setYear(String year) { this.year = year; }
-
-    public String getPeriod() { return period; }
-    public void setPeriod(String period) { this.period = period; }
+    public KapDisclosureDetail getDisclosureDetail() { return disclosureDetail; }
+    public void setDisclosureDetail(KapDisclosureDetail disclosureDetail) { this.disclosureDetail = disclosureDetail; }
 }

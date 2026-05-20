@@ -63,7 +63,8 @@
       "PowerShell(cmd /c \"dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\\\\config\\\\security\\\\ /B\")",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -Filter \"*.java\")",
       "Bash(python *)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Bash(node -e ' *)"
     ]
   }
 }

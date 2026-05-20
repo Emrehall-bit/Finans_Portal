@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.news.provider.kap;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.enums.NewsQualityStatus;
@@ -11,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -51,10 +52,12 @@ public class KapNewsClient {
 
     private final RestTemplate restTemplate;
     private final KapNewsProperties properties;
+    private final ObjectMapper objectMapper;
 
-    public KapNewsClient(RestTemplate restTemplate, KapNewsProperties properties) {
+    public KapNewsClient(RestTemplate restTemplate, KapNewsProperties properties, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
         this.properties = properties;
+        this.objectMapper = objectMapper;
     }
 
     public List<NewsItemDto> fetchDisclosures(LocalDate fromDate, LocalDate toDate) {
@@ -80,20 +83,30 @@ public class KapNewsClient {
 
         HttpHeaders headers = buildJsonHeaders();
         HttpEntity<KapDisclosureListRequest> entity = new HttpEntity<>(request, headers);
-
         String url = properties.normalizedBaseUrl() + "/tr/api/disclosure/list/main";
+
+        // Fetch raw String first so we can log the sample on deserialize failure
+        String rawBody;
+        try {
+            ResponseEntity<String> rawResponse = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+            rawBody = rawResponse.getBody();
+        } catch (Exception ex) {
+            logger.error("KAP disclosure list HTTP request failed. from: {}, to: {}, reason: {}", from, to, ex.getMessage(), ex);
+            return List.of();
+        }
+
+        if (rawBody == null || rawBody.isBlank()) {
+            logger.info("KAP disclosure list returned empty body. from: {}, to: {}", from, to);
+            return List.of();
+        }
 
         List<KapDisclosureItem> items;
         try {
-            ResponseEntity<List<KapDisclosureItem>> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    entity,
-                    new ParameterizedTypeReference<List<KapDisclosureItem>>() {}
-            );
-            items = response.getBody();
+            items = objectMapper.readValue(rawBody, new TypeReference<List<KapDisclosureItem>>() {});
         } catch (Exception ex) {
-            logger.error("KAP disclosure list API call failed. from: {}, to: {}, reason: {}", from, to, ex.getMessage(), ex);
+            String sample = rawBody.length() > 500 ? rawBody.substring(0, 500) + "..." : rawBody;
+            logger.error("KAP disclosure list deserialize failed. from: {}, to: {}, reason: {}, responseSample: {}",
+                    from, to, ex.getMessage(), sample);
             return List.of();
         }
 
@@ -106,11 +119,13 @@ public class KapNewsClient {
 
         List<NewsItemDto> result = new ArrayList<>();
         int detailParseFailed = 0;
-        int duplicateSkipped = 0;
 
         for (KapDisclosureItem item : items) {
             KapDisclosureBasic basic = item.getDisclosureBasic();
-            if (basic == null) continue;
+            if (basic == null) {
+                logger.debug("KAP item skipped: disclosureBasic is null.");
+                continue;
+            }
 
             if (stockCodeFilter != null && !stockCodeFilter.equalsIgnoreCase(basic.getStockCode())) {
                 continue;
@@ -128,11 +143,17 @@ public class KapNewsClient {
                 }
             }
 
-            result.add(toNewsItemDto(basic, detailText));
+            NewsItemDto dto = toNewsItemDto(basic, detailText);
+            if (dto == null) {
+                logger.debug("KAP item skipped: could not build NewsItemDto. disclosureId: {}", basic.getDisclosureId());
+                continue;
+            }
+
+            result.add(dto);
         }
 
-        logger.info("KAP disclosure fetch completed. from: {}, to: {}, returned: {}, mapped: {}, detailParseFailed: {}, duplicateSkipped: {}",
-                from, to, items.size(), result.size(), detailParseFailed, duplicateSkipped);
+        logger.info("KAP disclosure fetch completed. from: {}, to: {}, returned: {}, mapped: {}, detailParseFailed: {}",
+                from, to, items.size(), result.size(), detailParseFailed);
 
         return List.copyOf(result);
     }
@@ -167,8 +188,16 @@ public class KapNewsClient {
 
     private NewsItemDto toNewsItemDto(KapDisclosureBasic basic, String detailText) {
         String externalId = resolveExternalId(basic);
+        if (externalId == null) {
+            return null;
+        }
+
         String url = resolveUrl(basic);
         String title = resolveTitle(basic);
+        if (title == null) {
+            return null;
+        }
+
         String summary = resolveSummary(basic, detailText);
         LocalDateTime publishedAt = parsePublishDate(basic.getPublishDate());
         String category = mapCategory(basic.getDisclosureClass(), basic.getDisclosureType());
@@ -195,8 +224,8 @@ public class KapNewsClient {
     }
 
     private String resolveExternalId(KapDisclosureBasic basic) {
-        if (basic.getDisclosureId() != null) {
-            return "KAP-" + basic.getDisclosureId();
+        if (hasText(basic.getDisclosureId())) {
+            return "KAP-" + basic.getDisclosureId().trim();
         }
         if (basic.getDisclosureIndex() != null) {
             return "KAP-IDX-" + basic.getDisclosureIndex();
@@ -212,35 +241,33 @@ public class KapNewsClient {
     private String resolveTitle(KapDisclosureBasic basic) {
         String stockCode = basic.getStockCode();
         String title = basic.getTitle();
-        if (stockCode != null && !stockCode.isBlank() && title != null && !title.isBlank()) {
+        if (hasText(stockCode) && hasText(title)) {
             return stockCode.trim().toUpperCase(Locale.ROOT) + " - " + title.trim();
         }
-        if (title != null && !title.isBlank()) return title.trim();
-        if (basic.getCompanyTitle() != null) return basic.getCompanyTitle().trim();
-        return "KAP Bildirimi";
+        if (hasText(title)) return title.trim();
+        if (hasText(basic.getCompanyTitle())) return basic.getCompanyTitle().trim();
+        return null;
     }
 
     private String resolveSummary(KapDisclosureBasic basic, String detailText) {
-        if (detailText != null && !detailText.isBlank()) return detailText.trim();
-        if (basic.getSummary() != null && !basic.getSummary().isBlank()) return basic.getSummary().trim();
+        if (hasText(detailText)) return detailText.trim();
+        if (hasText(basic.getSummary())) return basic.getSummary().trim();
         return null;
     }
 
     private String resolveDisclosureType(KapDisclosureBasic basic) {
         String disclosureClass = basic.getDisclosureClass();
-        if (disclosureClass == null || disclosureClass.isBlank()) return "GENERAL";
+        if (!hasText(disclosureClass)) return "GENERAL";
         return switch (disclosureClass.trim().toUpperCase(Locale.ROOT)) {
-            case "FR", "FINANSAL" -> "FINANCIAL";
-            case "ODA", "OZEL DURUM" -> "SPECIAL";
-            case "GKB", "GENEL KURUL" -> "SPECIAL";
+            case "FR" -> "FINANCIAL";
+            case "ODA" -> "SPECIAL";
+            case "GKB" -> "SPECIAL";
             default -> "GENERAL";
         };
     }
 
     private String mapCategory(String disclosureClass, String disclosureType) {
-        if (disclosureClass == null || disclosureClass.isBlank()) {
-            return properties.getDefaultCategory();
-        }
+        if (!hasText(disclosureClass)) return properties.getDefaultCategory();
         return switch (disclosureClass.trim().toUpperCase(Locale.ROOT)) {
             case "FR" -> "FINANCIAL_REPORT";
             case "ODA" -> "SPECIAL_DISCLOSURE";
@@ -250,7 +277,7 @@ public class KapNewsClient {
     }
 
     private LocalDateTime parsePublishDate(String publishDate) {
-        if (publishDate == null || publishDate.isBlank()) return null;
+        if (!hasText(publishDate)) return null;
         String trimmed = publishDate.trim();
         for (DateTimeFormatter formatter : List.of(KAP_PUBLISH_DATE_FULL, KAP_PUBLISH_DATE_SHORT, KAP_PUBLISH_DATE_DATE_ONLY)) {
             try {
@@ -266,8 +293,12 @@ public class KapNewsClient {
     }
 
     private String normalizeSymbol(String stockCode) {
-        if (stockCode == null || stockCode.isBlank()) return null;
+        if (!hasText(stockCode)) return null;
         return stockCode.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private HttpHeaders buildJsonHeaders() {
