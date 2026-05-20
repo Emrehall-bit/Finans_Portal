@@ -44,7 +44,7 @@ public class News {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "external_id", nullable = false, unique = true, length = 200)
+    @Column(name = "external_id", nullable = false, unique = true, columnDefinition = "TEXT")
     private String externalId;
 
     @Column(nullable = false, length = 500)
@@ -71,7 +71,7 @@ public class News {
     @Column(name = "related_symbol", length = 30)
     private String relatedSymbol;
 
-    @Column(nullable = false, length = 1200)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String url;
 
     @Column(name = "image_url", columnDefinition = "TEXT")

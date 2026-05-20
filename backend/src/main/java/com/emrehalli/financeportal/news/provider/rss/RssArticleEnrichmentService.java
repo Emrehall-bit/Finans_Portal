@@ -101,7 +101,7 @@ public class RssArticleEnrichmentService {
                     continue;
                 }
 
-                String cleanedContent = rssFeedSupport.clean(result.content());
+                String cleanedContent = rssFeedSupport.clean(result.fullContent());
                 String qualityStatus = resolveQualityStatus(cleanedContent);
                 return new RssArticleEnrichment(
                         rssFeedSupport.clean(result.title()),
@@ -158,7 +158,7 @@ public class RssArticleEnrichmentService {
             }
             ArticleExtractionResult result = extractor.extract(document, articleUrl);
             if (result.hasMeaningfulData()) {
-                String content = rssFeedSupport.clean(result.content());
+                String content = rssFeedSupport.clean(result.fullContent());
                 if (content != null && content.length() >= 150) {
                     return result;
                 }

@@ -26,7 +26,7 @@ class RssProviderRelevanceFilterTest {
     @Test
     void dropsClearlyIrrelevantLifestyleStories() {
         boolean relevant = filter.isRelevant(
-                NewsProviderType.REUTERS_RSS,
+                NewsProviderType.CNBC_RSS,
                 "Celebrity travel guide for summer beaches",
                 "Lifestyle editors shared fashion and entertainment picks for the holiday season.",
                 "Lifestyle",
@@ -34,5 +34,18 @@ class RssProviderRelevanceFilterTest {
         );
 
         assertFalse(relevant);
+    }
+
+    @Test
+    void keepsFinanceStoriesForCnbcFilter() {
+        boolean relevant = filter.isRelevant(
+                NewsProviderType.CNBC_RSS,
+                "Nvidia lifts stocks as Treasury yields ease after inflation data",
+                "Markets tracked AI and semiconductor winners while traders watched Fed rate expectations.",
+                "Markets",
+                "https://www.reuters.com/world/us/nvidia-yields-test"
+        );
+
+        assertTrue(relevant);
     }
 }

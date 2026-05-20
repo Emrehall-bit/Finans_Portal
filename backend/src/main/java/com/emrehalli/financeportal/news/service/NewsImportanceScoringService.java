@@ -79,8 +79,8 @@ public class NewsImportanceScoringService {
         return switch (provider.trim().toUpperCase(Locale.ROOT)) {
             case "KAP" -> 14;
             case "AA_RSS" -> 12;
-            case "CNBC_RSS", "REUTERS_RSS" -> 10;
-            case "FINNHUB", "INVESTING_RSS" -> 8;
+            case "CNBC_RSS" -> 10;
+            case "WORLD_NEWS_API" -> 10;
             default -> 0;
         };
     }

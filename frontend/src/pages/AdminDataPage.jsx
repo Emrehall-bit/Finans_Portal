@@ -25,7 +25,9 @@ import {
   triggerIndexHistoryBackfill,
   updateMarketTapeConfig,
 } from "../api/adminApi";
+import { syncNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
+import { getNewsProviderLabel } from "../components/news/newsCardUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import KapManagementSection from "../components/admin/KapManagementSection";
@@ -253,6 +255,42 @@ export default function AdminDataPage() {
         description: t("admin.cards.stockFetch.description"),
         actionLabel: t("admin.cards.stockFetch.action"),
         onClick: () => startJob("stock-fetch", triggerStockFetch),
+      },
+      {
+        key: "news-sync-aa",
+        group: "live",
+        eyebrow: "News Sync",
+        title: "AA RSS",
+        description: "Anadolu Ajansı ekonomi akışını senkronize eder.",
+        actionLabel: `${getNewsProviderLabel("AA_RSS")} sync`,
+        onClick: () => runAction("news-sync-aa", () => syncNews({ provider: "AA_RSS" })),
+      },
+      {
+        key: "news-sync-cnbc",
+        group: "live",
+        eyebrow: "News Sync",
+        title: "CNBC RSS",
+        description: "CNBC RSS keşfini çalıştırır, article page fetch ile full content dener.",
+        actionLabel: `${getNewsProviderLabel("CNBC_RSS")} sync`,
+        onClick: () => runAction("news-sync-cnbc", () => syncNews({ provider: "CNBC_RSS" })),
+      },
+      {
+        key: "news-sync-world-news-api",
+        group: "live",
+        eyebrow: "News Sync",
+        title: "World News API",
+        description: "World News API search endpoint uzerinden full-content finans haberleri ceker. API key yoksa disabled kalir.",
+        actionLabel: `${getNewsProviderLabel("WORLD_NEWS_API")} sync`,
+        onClick: () => runAction("news-sync-world-news-api", () => syncNews({ provider: "WORLD_NEWS_API" })),
+      },
+      {
+        key: "news-sync-kap",
+        group: "live",
+        eyebrow: "News Sync",
+        title: "KAP",
+        description: "KAP bildirim akışını senkronize eder.",
+        actionLabel: `${getNewsProviderLabel("KAP")} sync`,
+        onClick: () => runAction("news-sync-kap", () => syncNews({ provider: "KAP" })),
       },
       {
         key: "tcmb-sync",

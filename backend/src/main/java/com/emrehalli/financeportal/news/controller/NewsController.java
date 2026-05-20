@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
+import com.emrehalli.financeportal.news.dto.response.NewsPurgeResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
@@ -110,6 +111,17 @@ public class NewsController {
                 .success(true)
                 .data(response)
                 .message(appMessageSource.get("news.importance.recalculated"))
+                .build();
+    }
+
+    @PostMapping("/admin/purge")
+    public ApiResponse<NewsPurgeResponseDto> purgeNewsByProvider(@RequestParam String provider) {
+        NewsPurgeResponseDto response = newsService.purgeByProvider(provider);
+
+        return ApiResponse.<NewsPurgeResponseDto>builder()
+                .success(true)
+                .data(response)
+                .message(appMessageSource.get("news.sync.completed"))
                 .build();
     }
 

@@ -1,34 +1,36 @@
-package com.emrehalli.financeportal.news.provider.investing;
+package com.emrehalli.financeportal.news.provider.world;
 
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.provider.common.NewsProvider;
+import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnostics;
+import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnosticsAware;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Locale;
 
 @Component
-public class InvestingRssNewsProvider implements NewsProvider {
+public class WorldNewsApiProvider implements NewsProvider, ProviderSyncDiagnosticsAware {
 
-    private final InvestingRssNewsClient investingRssNewsClient;
-    private final InvestingNewsProperties properties;
+    private final WorldNewsApiClient client;
 
-    public InvestingRssNewsProvider(InvestingRssNewsClient investingRssNewsClient, InvestingNewsProperties properties) {
-        this.investingRssNewsClient = investingRssNewsClient;
-        this.properties = properties;
+    public WorldNewsApiProvider(WorldNewsApiClient client) {
+        this.client = client;
     }
 
     @Override
     public String getProviderName() {
-        return "INVESTING_RSS";
+        return "WORLD_NEWS_API";
     }
 
     @Override
     public List<NewsItemDto> fetchLatestNews() {
-        if (!properties.isEnabled()) {
-            return List.of();
-        }
-        return investingRssNewsClient.fetchNews();
+        return client.fetchLatestNews();
+    }
+
+    @Override
+    public List<NewsItemDto> fetchLatestNews(int limit) {
+        return client.fetchLatestNews(limit);
     }
 
     @Override
@@ -37,12 +39,15 @@ public class InvestingRssNewsProvider implements NewsProvider {
         if (symbol == null || symbol.isBlank()) {
             return allNews;
         }
-
         String normalized = symbol.trim().toLowerCase(Locale.ROOT);
         return allNews.stream()
-                .filter(item -> containsIgnoreCase(item.getTitle(), normalized)
-                        || containsIgnoreCase(item.getSummary(), normalized))
+                .filter(item -> containsIgnoreCase(item.getTitle(), normalized) || containsIgnoreCase(item.getSummary(), normalized))
                 .toList();
+    }
+
+    @Override
+    public ProviderSyncDiagnostics getLastDiagnostics() {
+        return client.getLastDiagnostics();
     }
 
     private boolean containsIgnoreCase(String value, String normalizedKeyword) {

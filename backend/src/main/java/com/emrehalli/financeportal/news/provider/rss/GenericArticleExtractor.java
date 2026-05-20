@@ -53,7 +53,16 @@ public class GenericArticleExtractor implements ArticleExtractor {
         LocalDateTime publishedAt = extractPublishedAt(working);
         String content = extractContent(working);
 
-        return new ArticleExtractionResult(title, imageUrl, publishedAt, content);
+        return new ArticleExtractionResult(
+                title,
+                content,
+                imageUrl,
+                publishedAt,
+                null,
+                content == null ? 0 : content.length(),
+                content == null ? "NO_CONTENT" : "SUCCESS",
+                null
+        );
     }
 
     private void cleanNoise(Document document) {

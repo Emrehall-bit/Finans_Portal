@@ -17,7 +17,7 @@ import { formatNewsCategoryLabel, getNewsProviderLabel } from "../components/new
 import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
-const REGULAR_PROVIDERS = ["AA_RSS", "CNBC_RSS", "REUTERS_RSS"];
+const REGULAR_PROVIDERS = ["AA_RSS", "CNBC_RSS", "WORLD_NEWS_API"];
 const KAP_PROVIDERS = ["KAP"];
 const KNOWN_CATEGORIES = ["business", "ECONOMY", "top news", "general", "company"];
 const INITIAL_NEWS_PAGE = {
@@ -50,8 +50,6 @@ export default function NewsPage() {
   const [selectedProviders, setSelectedProviders] = useState([]);
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [feedType, setFeedType] = useState("news");
-  const [syncingProvider, setSyncingProvider] = useState("");
-  const [syncMessage, setSyncMessage] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -93,31 +91,11 @@ export default function NewsPage() {
   async function handleSync() {
     try {
       const provider = appliedFilters.provider || (feedType === "kap" ? "KAP" : undefined);
-      setSyncingProvider(provider || "ALL");
-      setSyncMessage("");
-      const response = await syncNews({ provider });
+      await syncNews({ provider });
       setCurrentPage(0);
       setRefreshKey((prev) => prev + 1);
-      setSyncMessage(buildSyncSummary(response, t));
     } catch (err) {
       setError(extractErrorMessage(err, t("news.syncError")));
-    } finally {
-      setSyncingProvider("");
-    }
-  }
-
-  async function handleProviderSync(provider) {
-    try {
-      setSyncingProvider(provider);
-      setSyncMessage("");
-      const response = await syncNews({ provider });
-      setCurrentPage(0);
-      setRefreshKey((prev) => prev + 1);
-      setSyncMessage(buildSyncSummary(response, t));
-    } catch (err) {
-      setError(extractErrorMessage(err, t("news.syncError")));
-    } finally {
-      setSyncingProvider("");
     }
   }
 
@@ -333,32 +311,6 @@ export default function NewsPage() {
         ) : null}
       />
 
-      {isAdmin ? (
-        <section className="panel-surface news-admin-sync-bar">
-          <div className="news-admin-sync-copy">
-            <p className="eyebrow">{t("news.adminSyncEyebrow")}</p>
-            <h3>{t("news.adminSyncTitle")}</h3>
-            <p>{t("news.adminSyncDescription")}</p>
-          </div>
-          <div className="actions-row news-admin-sync-actions">
-            {["AA_RSS", "CNBC_RSS", "REUTERS_RSS", "KAP"].map((provider) => (
-              <button
-                key={provider}
-                type="button"
-                className="secondary-button"
-                disabled={loading || syncingProvider === provider}
-                onClick={() => handleProviderSync(provider)}
-              >
-                {syncingProvider === provider
-                  ? t("news.syncingProvider", { provider: getNewsProviderLabel(provider) })
-                  : t("news.syncProvider", { provider: getNewsProviderLabel(provider) })}
-              </button>
-            ))}
-          </div>
-          {syncMessage ? <p className="news-admin-sync-result">{syncMessage}</p> : null}
-        </section>
-      ) : null}
-
       <NewsTopBar
         keyword={filters.keyword}
         onKeywordChange={(value) => setFilters((current) => ({ ...current, keyword: value }))}
@@ -463,18 +415,4 @@ export default function NewsPage() {
       />
     </div>
   );
-}
-
-function buildSyncSummary(response, t) {
-  if (!response || typeof response !== "object") {
-    return t("news.syncCompletedGeneric");
-  }
-
-  return t("news.syncCompletedSummary", {
-    provider: getNewsProviderLabel(response.provider || "NEWS"),
-    fetched: response.fetchedCount ?? 0,
-    saved: response.savedCount ?? 0,
-    existing: response.existingCount ?? 0,
-    invalid: response.invalidCount ?? 0,
-  });
 }

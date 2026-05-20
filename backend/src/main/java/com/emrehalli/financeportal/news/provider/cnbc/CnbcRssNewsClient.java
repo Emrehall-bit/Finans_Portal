@@ -3,9 +3,11 @@ package com.emrehalli.financeportal.news.provider.cnbc;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.enums.NewsQualityStatus;
+import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnostics;
 import com.emrehalli.financeportal.news.provider.rss.RssArticleEnrichment;
 import com.emrehalli.financeportal.news.provider.rss.RssArticleEnrichmentService;
 import com.emrehalli.financeportal.news.provider.rss.RssFeedSupport;
+import com.emrehalli.financeportal.news.provider.rss.RssProviderFetchResult;
 import com.emrehalli.financeportal.news.provider.rss.RssProviderRelevanceFilter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,6 +24,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -34,6 +37,8 @@ public class CnbcRssNewsClient {
     private final RssFeedSupport rssFeedSupport;
     private final RssArticleEnrichmentService enrichmentService;
     private final RssProviderRelevanceFilter relevanceFilter;
+    private final AtomicReference<ProviderSyncDiagnostics> lastDiagnostics =
+            new AtomicReference<>(ProviderSyncDiagnostics.empty(NewsProviderType.CNBC_RSS.name()));
 
     public CnbcRssNewsClient(
             RestTemplate restTemplate,
@@ -50,48 +55,118 @@ public class CnbcRssNewsClient {
     }
 
     public List<NewsItemDto> fetchNews() {
+        return fetchNewsWithDiagnostics().getItems();
+    }
+
+    public RssProviderFetchResult fetchNewsWithDiagnostics() {
+        List<String> feedUrls = properties.getFeedUrls();
+        if (!properties.isEnabled()) {
+            ProviderSyncDiagnostics diagnostics = ProviderSyncDiagnostics.builder()
+                    .provider(NewsProviderType.CNBC_RSS.name())
+                    .enabled(false)
+                    .feedUrlCount(feedUrls.size())
+                    .fetched(0)
+                    .skippedByRelevance(0)
+                    .errorMessage("Provider disabled by configuration")
+                    .build();
+            lastDiagnostics.set(diagnostics);
+            return RssProviderFetchResult.builder().items(List.of()).feedUrlCount(feedUrls.size()).skippedByRelevance(0).errorMessage(diagnostics.getErrorMessage()).build();
+        }
+
+        List<NewsItemDto> allItems = new ArrayList<>();
+        int totalSkippedByRelevance = 0;
+        String lastErrorMessage = null;
+        for (String feedUrl : feedUrls) {
+            RssProviderFetchResult result = fetchSingleFeed(feedUrl);
+            allItems.addAll(result.getItems());
+            totalSkippedByRelevance += result.getSkippedByRelevance();
+            if (result.getErrorMessage() != null) {
+                lastErrorMessage = result.getErrorMessage();
+            }
+        }
+        lastDiagnostics.set(ProviderSyncDiagnostics.builder()
+                .provider(NewsProviderType.CNBC_RSS.name())
+                .enabled(true)
+                .feedUrlCount(feedUrls.size())
+                .fetched(allItems.size())
+                .skippedByRelevance(totalSkippedByRelevance)
+                .errorMessage(lastErrorMessage)
+                .build());
+        return RssProviderFetchResult.builder()
+                .items(allItems)
+                .feedUrlCount(feedUrls.size())
+                .skippedByRelevance(totalSkippedByRelevance)
+                .errorMessage(lastErrorMessage)
+                .build();
+    }
+
+    public ProviderSyncDiagnostics getLastDiagnostics() {
+        return lastDiagnostics.get();
+    }
+
+    private RssProviderFetchResult fetchSingleFeed(String feedUrl) {
         try {
-            ResponseEntity<byte[]> response = restTemplate.exchange(properties.getRssUrl(), HttpMethod.GET, null, byte[].class);
+            ResponseEntity<byte[]> response = restTemplate.exchange(feedUrl, HttpMethod.GET, null, byte[].class);
             String payload = rssFeedSupport.decodeResponseBody(response, logger, "CNBC RSS");
             if (payload == null || payload.isBlank()) {
-                logger.warn("CNBC RSS response was empty");
-                return List.of();
+                logger.warn("CNBC RSS response was empty. url: {}", feedUrl);
+                return RssProviderFetchResult.builder().items(List.of()).feedUrlCount(1).skippedByRelevance(0).errorMessage("CNBC RSS response was empty").build();
             }
 
             AtomicInteger cycleCounter = enrichmentService.newCycleCounter();
-            List<NewsItemDto> items = parse(payload, cycleCounter);
-            logger.info("CNBC feed parsed. url: {}, fetched: {}, enrichedFetches: {}",
-                    properties.getRssUrl(), items.size(), cycleCounter.get());
-            return items;
+            ParseResult parsed = parse(payload, cycleCounter);
+            logger.info("CNBC feed parsed. url: {}, fetched: {}, skippedByRelevance: {}, enrichedFetches: {}",
+                    feedUrl, parsed.items().size(), parsed.skippedByRelevance(), cycleCounter.get());
+            return RssProviderFetchResult.builder()
+                    .items(parsed.items())
+                    .feedUrlCount(1)
+                    .skippedByRelevance(parsed.skippedByRelevance())
+                    .errorMessage(null)
+                    .build();
         } catch (RestClientException exception) {
-            logger.error("CNBC RSS fetch failed. url: {}", properties.getRssUrl(), exception);
-            return List.of();
+            logger.error("CNBC RSS fetch failed. url: {}", feedUrl, exception);
+            return RssProviderFetchResult.builder().items(List.of()).feedUrlCount(1).skippedByRelevance(0).errorMessage("CNBC RSS fetch failed: " + exception.getClass().getSimpleName()).build();
         } catch (Exception exception) {
-            logger.error("Unexpected CNBC RSS fetch failure. url: {}", properties.getRssUrl(), exception);
-            return List.of();
+            logger.error("Unexpected CNBC RSS fetch failure. url: {}", feedUrl, exception);
+            return RssProviderFetchResult.builder().items(List.of()).feedUrlCount(1).skippedByRelevance(0).errorMessage("Unexpected CNBC RSS fetch failure: " + exception.getClass().getSimpleName()).build();
         }
     }
 
-    List<NewsItemDto> parse(String payload, AtomicInteger cycleCounter) {
+    ParseResult parse(String payload, AtomicInteger cycleCounter) {
         if (payload == null || payload.isBlank()) {
-            return List.of();
+            return new ParseResult(List.of(), 0);
         }
 
         try {
             Document document = Jsoup.parse(payload, properties.getRssUrl(), Parser.xmlParser());
             Elements entries = document.select("channel > item, feed > entry");
             List<NewsItemDto> items = new ArrayList<>();
+            int skippedByRelevance = 0;
 
             for (Element entry : entries) {
                 NewsItemDto item = buildItem(entry, cycleCounter);
                 if (item != null) {
                     items.add(item);
+                } else {
+                    String title = rssFeedSupport.text(entry, "title");
+                    String link = rssFeedSupport.resolveXmlLink(entry);
+                    String descriptionHtml = rssFeedSupport.html(entry, "description");
+                    String summary = rssFeedSupport.firstNonBlank(
+                            rssFeedSupport.extractTextFromHtml(descriptionHtml),
+                            rssFeedSupport.text(entry, "description"),
+                            rssFeedSupport.text(entry, "summary"),
+                            rssFeedSupport.text(entry, "content")
+                    );
+                    String category = rssFeedSupport.firstNonBlank(rssFeedSupport.text(entry, "category"), properties.getDefaultCategory());
+                    if (!relevanceFilter.isRelevant(NewsProviderType.CNBC_RSS, title, summary, category, link)) {
+                        skippedByRelevance++;
+                    }
                 }
             }
-            return items;
+            return new ParseResult(items, skippedByRelevance);
         } catch (Exception exception) {
             logger.error("Failed to parse CNBC feed. url: {}", properties.getRssUrl(), exception);
-            return List.of();
+            return new ParseResult(List.of(), 0);
         }
     }
 
@@ -156,5 +231,8 @@ public class CnbcRssNewsClient {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private record ParseResult(List<NewsItemDto> items, int skippedByRelevance) {
     }
 }

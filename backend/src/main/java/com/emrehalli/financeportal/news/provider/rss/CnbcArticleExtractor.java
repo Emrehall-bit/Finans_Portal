@@ -55,7 +55,7 @@ public class CnbcArticleExtractor implements ArticleExtractor {
 
         Element body = working.selectFirst("[data-module=ArticleBody], .ArticleBody-articleBody, article");
         if (body == null) {
-            return new ArticleExtractionResult(title, imageUrl, publishedAt, null);
+            return new ArticleExtractionResult(title, null, imageUrl, publishedAt, null, 0, "NO_BODY", null);
         }
 
         List<String> parts = new ArrayList<>();
@@ -67,7 +67,17 @@ public class CnbcArticleExtractor implements ArticleExtractor {
             parts.add("h2".equals(element.tagName()) ? "## " + value : value);
         }
 
-        return new ArticleExtractionResult(title, imageUrl, publishedAt, parts.isEmpty() ? null : String.join("\n\n", parts));
+        String fullContent = parts.isEmpty() ? null : String.join("\n\n", parts);
+        return new ArticleExtractionResult(
+                title,
+                fullContent,
+                imageUrl,
+                publishedAt,
+                null,
+                fullContent == null ? 0 : fullContent.length(),
+                fullContent == null ? "NO_CONTENT" : "SUCCESS",
+                null
+        );
     }
 
     private String attr(Document document, String selector, String attr) {

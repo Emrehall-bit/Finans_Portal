@@ -1,6 +1,8 @@
 package com.emrehalli.financeportal.news.provider.cnbc;
 
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
+import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnostics;
+import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnosticsAware;
 import com.emrehalli.financeportal.news.provider.common.NewsProvider;
 import org.springframework.stereotype.Component;
 
@@ -8,14 +10,12 @@ import java.util.List;
 import java.util.Locale;
 
 @Component
-public class CnbcRssNewsProvider implements NewsProvider {
+public class CnbcRssNewsProvider implements NewsProvider, ProviderSyncDiagnosticsAware {
 
     private final CnbcRssNewsClient client;
-    private final CnbcNewsProperties properties;
 
     public CnbcRssNewsProvider(CnbcRssNewsClient client, CnbcNewsProperties properties) {
         this.client = client;
-        this.properties = properties;
     }
 
     @Override
@@ -25,10 +25,7 @@ public class CnbcRssNewsProvider implements NewsProvider {
 
     @Override
     public List<NewsItemDto> fetchLatestNews() {
-        if (!properties.isEnabled()) {
-            return List.of();
-        }
-        return client.fetchNews();
+        return client.fetchNewsWithDiagnostics().getItems();
     }
 
     @Override
@@ -47,5 +44,10 @@ public class CnbcRssNewsProvider implements NewsProvider {
 
     private boolean containsIgnoreCase(String value, String normalizedKeyword) {
         return value != null && value.toLowerCase(Locale.ROOT).contains(normalizedKeyword);
+    }
+
+    @Override
+    public ProviderSyncDiagnostics getLastDiagnostics() {
+        return client.getLastDiagnostics();
     }
 }

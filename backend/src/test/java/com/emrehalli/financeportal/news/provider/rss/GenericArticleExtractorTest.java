@@ -37,13 +37,14 @@ class GenericArticleExtractorTest {
         assertEquals("Oil prices rise on supply concerns", result.title());
         assertEquals("https://cdn.example.com/image.jpg", result.imageUrl());
         assertNotNull(result.publishedAt());
-        assertTrue(result.content().contains("Market context"));
-        assertTrue(result.content().contains("Oil prices gained more than two percent"));
+        assertTrue(result.fullContent().contains("Market context"));
+        assertTrue(result.fullContent().contains("Oil prices gained more than two percent"));
     }
 
     @Test
     void supportsAllProviders() {
         assertTrue(extractor.supports(NewsProviderType.CNBC_RSS));
-        assertTrue(extractor.supports(NewsProviderType.REUTERS_RSS));
+        assertTrue(extractor.supports(NewsProviderType.AA_RSS));
+        assertTrue(extractor.supports(NewsProviderType.KAP));
     }
 }

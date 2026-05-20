@@ -13,7 +13,8 @@ public class RssProviderRelevanceFilter {
             "market", "markets", "economy", "economic", "finance", "financial", "fed", "ecb", "central bank",
             "inflation", "interest rate", "rates", "stocks", "shares", "equity", "earnings", "ipo", "bank",
             "bond", "oil", "gas", "energy", "currency", "forex", "trade", "tariff", "recession", "growth",
-            "treasury", "macro", "business", "company", "companies"
+            "treasury", "macro", "business", "company", "companies", "crypto", "bitcoin", "ethereum", "ai",
+            "artificial intelligence", "semiconductor", "nvidia", "sanctions", "geopolitical", "yield"
     );
     private static final List<String> NON_FINANCE_KEYWORDS = List.of(
             "sports", "sport", "soccer", "football", "basketball", "tennis", "golf", "lifestyle", "travel",
@@ -21,7 +22,8 @@ public class RssProviderRelevanceFilter {
     );
 
     public boolean isRelevant(NewsProviderType providerType, String title, String summary, String category, String link) {
-        if (providerType != NewsProviderType.CNBC_RSS && providerType != NewsProviderType.REUTERS_RSS) {
+        if (providerType != NewsProviderType.CNBC_RSS
+                && providerType != NewsProviderType.WORLD_NEWS_API) {
             return true;
         }
 

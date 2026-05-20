@@ -10,17 +10,22 @@ import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
+import com.emrehalli.financeportal.news.dto.response.NewsPurgeResponseDto;
 import com.emrehalli.financeportal.news.dto.response.RelatedInstrumentDto;
 import com.emrehalli.financeportal.news.dto.response.RelatedNewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.entity.News;
+import com.emrehalli.financeportal.news.entity.NewsProviderSyncState;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.enums.NewsScope;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
+import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnostics;
+import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnosticsAware;
 import com.emrehalli.financeportal.news.provider.common.NewsProvider;
 import com.emrehalli.financeportal.news.repository.NewsRepository;
+import com.emrehalli.financeportal.news.repository.NewsProviderSyncStateRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
@@ -28,6 +33,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +56,15 @@ import java.util.stream.Collectors;
 public class NewsService {
 
     private static final Logger logger = LogManager.getLogger(NewsService.class);
+    private static final int TITLE_MAX_LENGTH = 500;
+    private static final int SOURCE_MAX_LENGTH = 100;
+    private static final int PROVIDER_MAX_LENGTH = 100;
+    private static final int LANGUAGE_MAX_LENGTH = 10;
+    private static final int REGION_SCOPE_MAX_LENGTH = 20;
+    private static final int CATEGORY_MAX_LENGTH = 100;
+    private static final int RELATED_SYMBOL_MAX_LENGTH = 30;
+    private static final int QUALITY_STATUS_MAX_LENGTH = 40;
+    private static final int DISCLOSURE_TYPE_MAX_LENGTH = 50;
     private static final int MAX_RELATED_NEWS = 4;
     private static final int MAX_RELATED_INSTRUMENTS = 6;
     private static final Pattern TOKEN_SPLIT_PATTERN = Pattern.compile("[^\\p{L}\\p{Nd}]+");
@@ -57,6 +72,7 @@ public class NewsService {
     private static final List<ThemeRule> THEME_RULES = createThemeRules();
 
     private final NewsRepository newsRepository;
+    private final NewsProviderSyncStateRepository newsProviderSyncStateRepository;
     private final Map<String, NewsProvider> providerMap;
     private final NewsImportanceScoringService newsImportanceScoringService;
     private final NotificationService notificationService;
@@ -67,6 +83,7 @@ public class NewsService {
     @Autowired
     public NewsService(
             NewsRepository newsRepository,
+            NewsProviderSyncStateRepository newsProviderSyncStateRepository,
             List<NewsProvider> providers,
             NewsImportanceScoringService newsImportanceScoringService,
             NotificationService notificationService,
@@ -75,6 +92,7 @@ public class NewsService {
             MarketQueryService marketQueryService
     ) {
         this.newsRepository = newsRepository;
+        this.newsProviderSyncStateRepository = newsProviderSyncStateRepository;
         this.newsImportanceScoringService = newsImportanceScoringService;
         this.notificationService = notificationService;
         this.notificationProperties = notificationProperties;
@@ -197,7 +215,7 @@ public class NewsService {
     public NewsSyncResponseDto syncLatestNews(String scope, String provider) {
         if (hasText(provider)) {
             NewsProviderType providerType = NewsProviderType.from(provider);
-            return syncSingleProvider(providerType, null);
+            return syncSingleProvider(providerType, null, false);
         }
 
         NewsScope newsScope = NewsScope.from(scope);
@@ -211,12 +229,28 @@ public class NewsService {
         }
         String normalizedSymbol = normalizeSymbol(symbol);
         NewsProviderType providerType = NewsProviderType.from(provider);
-        return syncSingleProvider(providerType, normalizedSymbol);
+        return syncSingleProvider(providerType, normalizedSymbol, false);
+    }
+
+    @Transactional
+    public NewsPurgeResponseDto purgeByProvider(String provider) {
+        NewsProviderType providerType = NewsProviderType.from(provider);
+        long deletedCount = newsRepository.deleteByProvider(providerType.name());
+        logger.warn("News records purged for provider {}. deletedCount={}", providerType.name(), deletedCount);
+        return NewsPurgeResponseDto.builder()
+                .provider(providerType.name())
+                .deletedCount(deletedCount)
+                .build();
     }
 
     @Transactional
     public NewsSyncResponseDto syncProvider(NewsProviderType providerType) {
-        return syncSingleProvider(providerType, null);
+        return syncSingleProvider(providerType, null, false);
+    }
+
+    @Transactional
+    public NewsSyncResponseDto syncProviderOnStartup(NewsProviderType providerType) {
+        return syncSingleProvider(providerType, null, true);
     }
 
     @Transactional
@@ -230,7 +264,7 @@ public class NewsService {
         int saved = 0;
 
         for (NewsProviderType providerType : providers) {
-            NewsSyncResponseDto result = syncSingleProvider(providerType, symbol);
+            NewsSyncResponseDto result = syncSingleProvider(providerType, symbol, false);
             fetched += result.getFetchedCount();
             valid += result.getValidCount();
             invalid += result.getInvalidCount();
@@ -243,6 +277,24 @@ public class NewsService {
 
         return NewsSyncResponseDto.builder()
                 .provider(scope.name())
+                .enabled(true)
+                  .feedUrlCount(providers.size())
+                  .fetched(fetched)
+                  .fetchedFromFeed(fetched)
+                  .fetchedFromApi(fetched)
+                  .canonicalResolved(0)
+                  .canonicalFailed(0)
+                  .extractedFullContent(saved)
+                  .skippedFullContentNotAvailable(invalid)
+                  .skippedCanonicalNotResolved(0)
+                  .skippedByRelevance(0)
+                  .duplicateSkipped(duplicate)
+                  .apiQuotaLeft(null)
+                  .apiQuotaUsed(null)
+                  .apiQuotaRequest(null)
+                  .startupSync(false)
+                  .errorMessage(null)
+                  .lastErrors(List.of())
                 .fetchedCount(fetched)
                 .validCount(valid)
                 .invalidCount(invalid)
@@ -253,15 +305,18 @@ public class NewsService {
                 .build();
     }
 
-    private NewsSyncResponseDto syncSingleProvider(NewsProviderType providerType, String symbol) {
+    private NewsSyncResponseDto syncSingleProvider(NewsProviderType providerType, String symbol, boolean startupSync) {
         NewsProvider provider = getProvider(providerType);
+        int startupLimit = resolveStartupLimit(providerType, startupSync);
+        LocalDateTime lastSuccessfulSyncAt = getLastSuccessfulSyncAt(providerType);
         long startedAt = System.nanoTime();
         LoggingContext.put(LoggingConstants.PROVIDER_NAME_KEY, providerType.name());
 
         try {
             List<NewsItemDto> items = hasText(symbol)
-                    ? provider.fetchCompanyNews(symbol)
-                    : provider.fetchLatestNews();
+                    ? provider.fetchCompanyNews(symbol, startupLimit)
+                    : provider.fetchLatestNews(startupLimit);
+            ProviderSyncDiagnostics diagnostics = resolveProviderDiagnostics(provider, providerType);
 
             PersistenceStats stats = saveNewsItems(items, providerType.name());
             double parseSuccessRatio = items.isEmpty() ? 0.0 : (double) stats.validCount() / items.size();
@@ -272,20 +327,45 @@ public class NewsService {
             LoggingContext.put(LoggingConstants.FETCHED_ITEM_COUNT_KEY, String.valueOf(items.size()));
 
             logger.info(
-                    "News sync stats. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, parseSuccessRatio: {}, durationMs: {}",
+                    "News sync stats. provider: {}, startupSync: {}, enabled: {}, feedUrlCount: {}, startupLimit: {}, lastSuccessfulSyncAt: {}, fetched: {}, skippedByRelevance: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, parseSuccessRatio: {}, durationMs: {}, errorMessage: {}",
                     providerType.name(),
+                    startupSync,
+                    diagnostics.isEnabled(),
+                    diagnostics.getFeedUrlCount(),
+                    startupLimit,
+                    lastSuccessfulSyncAt,
                     items.size(),
+                    diagnostics.getSkippedByRelevance(),
                     stats.validCount(),
                     stats.invalidCount(),
                     stats.duplicateCount(),
                     stats.existingCount(),
                     stats.savedCount(),
                     String.format("%.2f", parseSuccessRatio),
-                    durationMs
+                    durationMs,
+                    diagnostics.getErrorMessage()
             );
 
-            return NewsSyncResponseDto.builder()
+            NewsSyncResponseDto response = NewsSyncResponseDto.builder()
                     .provider(providerType.name())
+                    .enabled(diagnostics.isEnabled())
+                    .feedUrlCount(diagnostics.getFeedUrlCount())
+                    .fetched(items.size())
+                    .fetchedFromFeed(diagnostics.getFetchedFromFeed())
+                    .fetchedFromApi(diagnostics.getFetchedFromApi())
+                    .canonicalResolved(diagnostics.getCanonicalResolved())
+                    .canonicalFailed(diagnostics.getCanonicalFailed())
+                    .extractedFullContent(diagnostics.getExtractedFullContent())
+                    .skippedFullContentNotAvailable(diagnostics.getSkippedFullContentNotAvailable() + stats.skippedFullContentNotAvailableCount())
+                    .skippedCanonicalNotResolved(diagnostics.getSkippedCanonicalNotResolved())
+                    .skippedByRelevance(diagnostics.getSkippedByRelevance())
+                    .duplicateSkipped(stats.duplicateCount())
+                    .apiQuotaLeft(diagnostics.getApiQuotaLeft())
+                    .apiQuotaUsed(diagnostics.getApiQuotaUsed())
+                    .apiQuotaRequest(diagnostics.getApiQuotaRequest())
+                    .startupSync(startupSync)
+                    .errorMessage(diagnostics.getErrorMessage())
+                    .lastErrors(diagnostics.getLastErrors())
                     .fetchedCount(items.size())
                     .validCount(stats.validCount())
                     .invalidCount(stats.invalidCount())
@@ -294,20 +374,42 @@ public class NewsService {
                     .savedCount(stats.savedCount())
                     .parseSuccessRatio(parseSuccessRatio)
                     .build();
+            markSuccessfulSync(providerType, response);
+            return response;
         } catch (Exception ex) {
             long durationMs = (System.nanoTime() - startedAt) / 1_000_000;
             LoggingContext.put(LoggingConstants.SUCCESS_KEY, Boolean.FALSE.toString());
             LoggingContext.put(LoggingConstants.DURATION_MS_KEY, String.valueOf(durationMs));
             logger.error(
-                    "News provider sync failed. provider: {}, symbol: {}, durationMs: {}, message: {}",
+                    "News provider sync failed. provider: {}, symbol: {}, startupSync: {}, durationMs: {}, message: {}",
                     providerType.name(),
                     symbol,
+                    startupSync,
                     durationMs,
                     ex.getMessage(),
                     ex
             );
+            ProviderSyncDiagnostics diagnostics = resolveProviderDiagnostics(provider, providerType);
             return NewsSyncResponseDto.builder()
                     .provider(providerType.name())
+                    .enabled(diagnostics.isEnabled())
+                    .feedUrlCount(diagnostics.getFeedUrlCount())
+                    .fetched(0)
+                    .fetchedFromFeed(diagnostics.getFetchedFromFeed())
+                    .fetchedFromApi(diagnostics.getFetchedFromApi())
+                    .canonicalResolved(diagnostics.getCanonicalResolved())
+                    .canonicalFailed(diagnostics.getCanonicalFailed())
+                    .extractedFullContent(diagnostics.getExtractedFullContent())
+                    .skippedFullContentNotAvailable(diagnostics.getSkippedFullContentNotAvailable())
+                    .skippedCanonicalNotResolved(diagnostics.getSkippedCanonicalNotResolved())
+                    .skippedByRelevance(diagnostics.getSkippedByRelevance())
+                    .duplicateSkipped(0)
+                    .apiQuotaLeft(diagnostics.getApiQuotaLeft())
+                    .apiQuotaUsed(diagnostics.getApiQuotaUsed())
+                    .apiQuotaRequest(diagnostics.getApiQuotaRequest())
+                    .startupSync(startupSync)
+                    .errorMessage(hasText(diagnostics.getErrorMessage()) ? diagnostics.getErrorMessage() : ex.getMessage())
+                    .lastErrors(diagnostics.getLastErrors())
                     .fetchedCount(0)
                     .validCount(0)
                     .invalidCount(0)
@@ -322,6 +424,62 @@ public class NewsService {
             LoggingContext.remove(LoggingConstants.DURATION_MS_KEY);
             LoggingContext.remove(LoggingConstants.FETCHED_ITEM_COUNT_KEY);
         }
+    }
+
+    private int resolveStartupLimit(NewsProviderType providerType, boolean startupSync) {
+        if (!startupSync) {
+            return 0;
+        }
+        return switch (providerType) {
+            case WORLD_NEWS_API -> 2;
+            case CNBC_RSS -> 5;
+            default -> 0;
+        };
+    }
+
+    private LocalDateTime getLastSuccessfulSyncAt(NewsProviderType providerType) {
+        return newsProviderSyncStateRepository.findById(providerType.name())
+                .map(NewsProviderSyncState::getLastSuccessfulSyncAt)
+                .orElse(null);
+    }
+
+    private void markSuccessfulSync(NewsProviderType providerType, NewsSyncResponseDto response) {
+        if (response == null || response.getErrorMessage() != null) {
+            return;
+        }
+        NewsProviderSyncState state = newsProviderSyncStateRepository.findById(providerType.name())
+                .orElseGet(NewsProviderSyncState::new);
+        state.setProvider(providerType.name());
+        state.setLastSuccessfulSyncAt(LocalDateTime.now());
+        newsProviderSyncStateRepository.save(state);
+    }
+
+    private ProviderSyncDiagnostics resolveProviderDiagnostics(NewsProvider provider, NewsProviderType providerType) {
+        if (provider instanceof ProviderSyncDiagnosticsAware diagnosticsAware) {
+            ProviderSyncDiagnostics diagnostics = diagnosticsAware.getLastDiagnostics();
+            if (diagnostics != null) {
+                return diagnostics;
+            }
+        }
+        return ProviderSyncDiagnostics.builder()
+                .provider(providerType.name())
+                .enabled(true)
+                .feedUrlCount(0)
+                .fetched(0)
+                .fetchedFromFeed(0)
+                .fetchedFromApi(0)
+                .canonicalResolved(0)
+                .canonicalFailed(0)
+                .extractedFullContent(0)
+                .skippedFullContentNotAvailable(0)
+                .skippedCanonicalNotResolved(0)
+                .skippedByRelevance(0)
+                .apiQuotaLeft(null)
+                .apiQuotaUsed(null)
+                .apiQuotaRequest(null)
+                .errorMessage(null)
+                .lastErrors(List.of())
+                .build();
     }
 
     private PersistenceStats saveNewsItems(List<NewsItemDto> items, String providerName) {
@@ -339,16 +497,31 @@ public class NewsService {
         int missingUrlCount = 0;
         int missingSourceCount = 0;
         int missingDateCount = 0;
+        int invalidLengthCount = 0;
+        int skippedFullContentNotAvailableCount = 0;
         List<News> toSave = new ArrayList<>();
         Map<String, News> existingNewsByExternalId = findExistingNewsByExternalId(items);
         Set<String> existingExternalIds = existingNewsByExternalId.keySet();
         Set<String> seenExternalIds = new HashSet<>();
         List<News> existingToUpdate = new ArrayList<>();
+        FieldLengthStats fieldLengthStats = new FieldLengthStats();
 
         for (NewsItemDto item : items) {
+            fieldLengthStats.observe(item);
             ValidationResult validationResult = validateForPersistence(item);
             if (!validationResult.valid()) {
-                logger.debug("Skipping invalid news item. externalId: {}", item != null ? item.getExternalId() : null);
+                if (validationResult.invalidBecauseLength()) {
+                    logOversizedItem(providerName, item);
+                    invalidLengthCount++;
+                } else if (validationResult.skippedFullContentNotAvailable()) {
+                    skippedFullContentNotAvailableCount++;
+                    logger.debug("Skipping news item without full content. provider: {}, qualityStatus: {}, title: {}",
+                            providerName,
+                            item != null ? item.getQualityStatus() : null,
+                            truncateForLog(item != null ? item.getTitle() : null));
+                } else {
+                    logger.debug("Skipping invalid news item. externalId: {}", item != null ? item.getExternalId() : null);
+                }
                 invalidCount++;
                 missingExternalIdCount += validationResult.missingExternalId() ? 1 : 0;
                 missingTitleCount += validationResult.missingTitle() ? 1 : 0;
@@ -454,35 +627,30 @@ public class NewsService {
                     .build());
         }
 
+        logger.info(
+                "News persistence field lengths. provider: {}, maxTitleLength: {}, maxSummaryLength: {}, maxUrlLength: {}, maxExternalIdLength: {}, maxImageUrlLength: {}",
+                providerName,
+                fieldLengthStats.maxTitleLength,
+                fieldLengthStats.maxSummaryLength,
+                fieldLengthStats.maxUrlLength,
+                fieldLengthStats.maxExternalIdLength,
+                fieldLengthStats.maxImageUrlLength
+        );
+
         toSave.forEach(news -> news.setImportanceScore(newsImportanceScoringService.calculateScore(news)));
 
         if (!toSave.isEmpty()) {
-            List<News> saved = newsRepository.saveAll(toSave);
+            List<News> saved = persistNewItems(providerName, toSave);
             savedCount = saved.size();
-            if (notificationProperties.isEnabled()) {
-                int threshold = notificationProperties.getMinImportanceScore();
-                saved.stream()
-                        .filter(news -> news.getImportanceScore() != null && news.getImportanceScore() >= threshold)
-                        .forEach(news -> {
-                            String title = truncate(news.getTitle(), 255);
-                            String message = hasText(news.getSummary())
-                                    ? truncate(news.getSummary(), 1000)
-                                    : title;
-                            try {
-                                notificationService.createSystemBroadcastNotification(title, message);
-                            } catch (Exception ex) {
-                                logger.warn("Failed to send news notification. newsId: {}, reason: {}", news.getId(), ex.getMessage());
-                            }
-                        });
-            }
+            sendNotifications(saved);
         }
         if (!existingToUpdate.isEmpty()) {
-            newsRepository.saveAll(existingToUpdate);
+            persistExistingUpdates(providerName, existingToUpdate);
         }
 
         int validCount = items.size() - invalidCount;
         logger.info(
-                "News persistence completed. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, invalidBecauseMissingTitle: {}, invalidBecauseMissingUrl: {}, invalidBecauseMissingSource: {}, invalidBecauseMissingExternalId: {}, invalidBecauseMissingDate: {}",
+                "News persistence completed. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, invalidBecauseMissingTitle: {}, invalidBecauseMissingUrl: {}, invalidBecauseMissingSource: {}, invalidBecauseMissingExternalId: {}, invalidBecauseMissingDate: {}, invalidBecauseLength: {}, skippedFullContentNotAvailable: {}",
                 providerName,
                 items.size(),
                 validCount,
@@ -494,7 +662,9 @@ public class NewsService {
                 missingUrlCount,
                 missingSourceCount,
                 missingExternalIdCount,
-                missingDateCount
+                missingDateCount,
+                invalidLengthCount,
+                skippedFullContentNotAvailableCount
         );
         return new PersistenceStats(
                 validCount,
@@ -506,7 +676,8 @@ public class NewsService {
                 missingTitleCount,
                 missingUrlCount,
                 missingSourceCount,
-                missingDateCount
+                missingDateCount,
+                skippedFullContentNotAvailableCount
         );
     }
 
@@ -530,7 +701,7 @@ public class NewsService {
 
     private ValidationResult validateForPersistence(NewsItemDto item) {
         if (item == null) {
-            return ValidationResult.invalid(null, true, true, true, true);
+            return ValidationResult.invalid(null, true, true, true, true, false, false);
         }
         boolean missingExternalId = !hasText(item.getExternalId());
         boolean missingTitle = !hasText(item.getTitle());
@@ -538,15 +709,145 @@ public class NewsService {
         boolean missingUrl = !hasText(item.getUrl());
         boolean missingProvider = !hasText(item.getProvider());
         boolean missingRegionScope = !hasText(item.getRegionScope());
+        boolean skippedFullContentNotAvailable = !Boolean.TRUE.equals(item.getIsKapDisclosure())
+                && !isFullContentPersistable(item);
+        boolean invalidBecauseLength = exceedsLength(item.getTitle(), TITLE_MAX_LENGTH)
+                || exceedsLength(item.getSource(), SOURCE_MAX_LENGTH)
+                || exceedsLength(item.getProvider(), PROVIDER_MAX_LENGTH)
+                || exceedsLength(item.getLanguage(), LANGUAGE_MAX_LENGTH)
+                || exceedsLength(item.getRegionScope(), REGION_SCOPE_MAX_LENGTH)
+                || exceedsLength(item.getCategory(), CATEGORY_MAX_LENGTH)
+                || exceedsLength(item.getRelatedSymbol(), RELATED_SYMBOL_MAX_LENGTH)
+                || exceedsLength(item.getQualityStatus(), QUALITY_STATUS_MAX_LENGTH)
+                || exceedsLength(item.getDisclosureType(), DISCLOSURE_TYPE_MAX_LENGTH);
 
         return new ValidationResult(
                 item,
-                !(missingExternalId || missingTitle || missingSource || missingUrl || missingProvider || missingRegionScope),
+                !(missingExternalId || missingTitle || missingSource || missingUrl || missingProvider || missingRegionScope || invalidBecauseLength || skippedFullContentNotAvailable),
                 missingExternalId,
                 missingTitle,
                 missingUrl,
-                missingSource
+                missingSource,
+                invalidBecauseLength,
+                skippedFullContentNotAvailable
         );
+    }
+
+    private boolean isFullContentPersistable(NewsItemDto item) {
+        if (item == null) {
+            return false;
+        }
+        if (!"FULL_CONTENT".equalsIgnoreCase(item.getQualityStatus())) {
+            return false;
+        }
+        return hasText(item.getSummary()) && item.getSummary().trim().length() >= 500;
+    }
+
+    private List<News> persistNewItems(String providerName, List<News> toSave) {
+        try {
+            return newsRepository.saveAll(toSave);
+        } catch (DataIntegrityViolationException exception) {
+            logger.warn("Batch news insert failed. provider: {}, itemCount: {}, reason: {}. Falling back to single-row persistence.",
+                    providerName, toSave.size(), exception.getMostSpecificCause() != null ? exception.getMostSpecificCause().getMessage() : exception.getMessage());
+            List<News> saved = new ArrayList<>();
+            for (News news : toSave) {
+                try {
+                    saved.add(newsRepository.save(news));
+                } catch (DataIntegrityViolationException rowException) {
+                    logNewsEntityLengths(providerName, news, rowException);
+                }
+            }
+            return saved;
+        }
+    }
+
+    private void persistExistingUpdates(String providerName, List<News> existingToUpdate) {
+        try {
+            newsRepository.saveAll(existingToUpdate);
+        } catch (DataIntegrityViolationException exception) {
+            logger.warn("Batch news update failed. provider: {}, itemCount: {}, reason: {}. Falling back to single-row persistence.",
+                    providerName, existingToUpdate.size(), exception.getMostSpecificCause() != null ? exception.getMostSpecificCause().getMessage() : exception.getMessage());
+            for (News news : existingToUpdate) {
+                try {
+                    newsRepository.save(news);
+                } catch (DataIntegrityViolationException rowException) {
+                    logNewsEntityLengths(providerName, news, rowException);
+                }
+            }
+        }
+    }
+
+    private void sendNotifications(List<News> saved) {
+        if (!notificationProperties.isEnabled()) {
+            return;
+        }
+        int threshold = notificationProperties.getMinImportanceScore();
+        saved.stream()
+                .filter(news -> news.getImportanceScore() != null && news.getImportanceScore() >= threshold)
+                .forEach(news -> {
+                    String title = truncate(news.getTitle(), 255);
+                    String message = hasText(news.getSummary())
+                            ? truncate(news.getSummary(), 1000)
+                            : title;
+                    try {
+                        notificationService.createSystemBroadcastNotification(title, message);
+                    } catch (Exception ex) {
+                        logger.warn("Failed to send news notification. newsId: {}, reason: {}", news.getId(), ex.getMessage());
+                    }
+                });
+    }
+
+    private void logOversizedItem(String providerName, NewsItemDto item) {
+        logger.warn(
+                "Skipping oversized news item before persistence. provider: {}, titleLength: {}, summaryLength: {}, urlLength: {}, externalIdLength: {}, imageUrlLength: {}, sourceLength: {}, providerLength: {}, languageLength: {}, regionScopeLength: {}, categoryLength: {}, relatedSymbolLength: {}, qualityStatusLength: {}, disclosureTypeLength: {}, title: {}, urlPreview: {}",
+                providerName,
+                safeLength(item != null ? item.getTitle() : null),
+                safeLength(item != null ? item.getSummary() : null),
+                safeLength(item != null ? item.getUrl() : null),
+                safeLength(item != null ? item.getExternalId() : null),
+                safeLength(item != null ? item.getImageUrl() : null),
+                safeLength(item != null ? item.getSource() : null),
+                safeLength(item != null ? item.getProvider() : null),
+                safeLength(item != null ? item.getLanguage() : null),
+                safeLength(item != null ? item.getRegionScope() : null),
+                safeLength(item != null ? item.getCategory() : null),
+                safeLength(item != null ? item.getRelatedSymbol() : null),
+                safeLength(item != null ? item.getQualityStatus() : null),
+                safeLength(item != null ? item.getDisclosureType() : null),
+                truncateForLog(item != null ? item.getTitle() : null),
+                truncateForLog(item != null ? item.getUrl() : null)
+        );
+    }
+
+    private void logNewsEntityLengths(String providerName, News news, DataIntegrityViolationException exception) {
+        logger.warn(
+                "Skipping news row after persistence failure. provider: {}, reason: {}, titleLength: {}, summaryLength: {}, urlLength: {}, externalIdLength: {}, imageUrlLength: {}, title: {}, urlPreview: {}",
+                providerName,
+                exception.getMostSpecificCause() != null ? exception.getMostSpecificCause().getMessage() : exception.getMessage(),
+                safeLength(news.getTitle()),
+                safeLength(news.getSummary()),
+                safeLength(news.getUrl()),
+                safeLength(news.getExternalId()),
+                safeLength(news.getImageUrl()),
+                truncateForLog(news.getTitle()),
+                truncateForLog(news.getUrl())
+        );
+    }
+
+    private boolean exceedsLength(String value, int maxLength) {
+        return hasText(value) && value.trim().length() > maxLength;
+    }
+
+    private int safeLength(String value) {
+        return value == null ? 0 : value.length();
+    }
+
+    private String truncateForLog(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.length() <= 180 ? trimmed : trimmed.substring(0, 177) + "...";
     }
 
     private void validateDateRange(NewsSearchRequest request) {
@@ -1173,16 +1474,20 @@ public class NewsService {
             boolean missingExternalId,
             boolean missingTitle,
             boolean missingUrl,
-            boolean missingSource
+            boolean missingSource,
+            boolean invalidBecauseLength,
+            boolean skippedFullContentNotAvailable
     ) {
         private static ValidationResult invalid(
                 NewsItemDto item,
                 boolean missingExternalId,
                 boolean missingTitle,
                 boolean missingUrl,
-                boolean missingSource
+                boolean missingSource,
+                boolean invalidBecauseLength,
+                boolean skippedFullContentNotAvailable
         ) {
-            return new ValidationResult(item, false, missingExternalId, missingTitle, missingUrl, missingSource);
+            return new ValidationResult(item, false, missingExternalId, missingTitle, missingUrl, missingSource, invalidBecauseLength, skippedFullContentNotAvailable);
         }
     }
 
@@ -1196,10 +1501,34 @@ public class NewsService {
             int missingTitleCount,
             int missingUrlCount,
             int missingSourceCount,
-            int missingDateCount
+            int missingDateCount,
+            int skippedFullContentNotAvailableCount
     ) {
         private static PersistenceStats empty() {
-            return new PersistenceStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            return new PersistenceStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        }
+    }
+
+    private static final class FieldLengthStats {
+        private int maxTitleLength;
+        private int maxSummaryLength;
+        private int maxUrlLength;
+        private int maxExternalIdLength;
+        private int maxImageUrlLength;
+
+        private void observe(NewsItemDto item) {
+            if (item == null) {
+                return;
+            }
+            maxTitleLength = Math.max(maxTitleLength, lengthOf(item.getTitle()));
+            maxSummaryLength = Math.max(maxSummaryLength, lengthOf(item.getSummary()));
+            maxUrlLength = Math.max(maxUrlLength, lengthOf(item.getUrl()));
+            maxExternalIdLength = Math.max(maxExternalIdLength, lengthOf(item.getExternalId()));
+            maxImageUrlLength = Math.max(maxImageUrlLength, lengthOf(item.getImageUrl()));
+        }
+
+        private int lengthOf(String value) {
+            return value == null ? 0 : value.length();
         }
     }
 }

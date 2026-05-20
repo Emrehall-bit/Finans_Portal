@@ -1,12 +1,11 @@
 package com.emrehalli.financeportal;
 
 import com.emrehalli.financeportal.ai.config.AiProperties;
+import com.emrehalli.financeportal.news.config.NewsStartupSyncProperties;
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
 import com.emrehalli.financeportal.news.provider.cnbc.CnbcNewsProperties;
-import com.emrehalli.financeportal.news.provider.finnhub.FinnhubProperties;
-import com.emrehalli.financeportal.news.provider.investing.InvestingNewsProperties;
 import com.emrehalli.financeportal.news.provider.kap.KapNewsProperties;
-import com.emrehalli.financeportal.news.provider.reuters.ReutersNewsProperties;
+import com.emrehalli.financeportal.news.provider.world.WorldNewsApiProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -20,12 +19,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableCaching
 @EnableConfigurationProperties({
         AiProperties.class,
+        NewsStartupSyncProperties.class,
         AaNewsProperties.class,
         CnbcNewsProperties.class,
-        FinnhubProperties.class,
-        InvestingNewsProperties.class,
-        KapNewsProperties.class,
-        ReutersNewsProperties.class
+        WorldNewsApiProperties.class,
+        KapNewsProperties.class
 })
 public class BackendApplication {
 

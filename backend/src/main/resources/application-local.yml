@@ -68,6 +68,12 @@ ai:
       primary: GROQ
       fallback: GEMINI
 
+news:
+  providers:
+    kap:
+      scheduler-enabled: true
+      startup-sync-enabled: true
+
 logging:
   level:
     com.emrehalli.financeportal: DEBUG

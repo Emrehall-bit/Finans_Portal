@@ -10,7 +10,23 @@ public interface NewsProvider {
 
     List<NewsItemDto> fetchLatestNews();
 
+    default List<NewsItemDto> fetchLatestNews(int limit) {
+        List<NewsItemDto> items = fetchLatestNews();
+        if (limit <= 0 || items.size() <= limit) {
+            return items;
+        }
+        return items.subList(0, limit);
+    }
+
     List<NewsItemDto> fetchCompanyNews(String symbol);
+
+    default List<NewsItemDto> fetchCompanyNews(String symbol, int limit) {
+        List<NewsItemDto> items = fetchCompanyNews(symbol);
+        if (limit <= 0 || items.size() <= limit) {
+            return items;
+        }
+        return items.subList(0, limit);
+    }
 }
 
 

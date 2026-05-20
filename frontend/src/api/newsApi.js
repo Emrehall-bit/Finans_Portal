@@ -70,3 +70,8 @@ export async function syncNews(params = {}) {
   const response = await axiosClient.post(`${API_CONFIG.ENDPOINTS.news}/sync`, null, { params: compactParams(params) });
   return normalizeApiResponse(response).data ?? null;
 }
+
+export async function purgeNews(params = {}) {
+  const response = await axiosClient.post(`${API_CONFIG.ENDPOINTS.news}/admin/purge`, null, { params: compactParams(params) });
+  return normalizeApiResponse(response).data ?? null;
+}

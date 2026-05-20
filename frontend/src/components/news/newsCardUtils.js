@@ -1,43 +1,37 @@
 import { formatDateTime } from "../../utils/formatters.js";
 
 const PROVIDER_LABELS = {
-  AA_RSS: "Anadolu Ajansı",
+  AA_RSS: "Anadolu Ajansi",
   CNBC_RSS: "CNBC",
-  FINNHUB: "Finnhub",
-  INVESTING_RSS: "Investing.com",
+  WORLD_NEWS_API: "World News API",
   KAP: "KAP",
-  REUTERS_RSS: "Reuters",
 };
 
 const PROVIDER_INITIALS = {
   AA_RSS: "AA",
   CNBC_RSS: "CNBC",
-  FINNHUB: "FH",
-  INVESTING_RSS: "IN",
+  WORLD_NEWS_API: "WNA",
   KAP: "KAP",
-  REUTERS_RSS: "RT",
 };
 
 const PROVIDER_DOMAINS = {
   AA_RSS: "aa.com.tr",
   CNBC_RSS: "cnbc.com",
-  FINNHUB: "finnhub.io",
-  INVESTING_RSS: "investing.com",
+  WORLD_NEWS_API: "worldnewsapi.com",
   KAP: "kap.org.tr",
-  REUTERS_RSS: "reuters.com",
 };
 
 const QUALITY_LABELS = {
   FULL_CONTENT: "Tam metin",
-  SUMMARY_ONLY: "Özet",
+  SUMMARY_ONLY: "Ozet",
   SOURCE_LINK_ONLY: "Kaynak linki",
   KAP_DISCLOSURE: "KAP bildirimi",
 };
 
 const DISCLOSURE_TYPE_LABELS = {
   FINANCIAL: "Finansal rapor",
-  RIGHTS: "Hak kullanımı",
-  SPECIAL: "Özel durum",
+  RIGHTS: "Hak kullanimi",
+  SPECIAL: "Ozel durum",
   GENERAL: "Genel bildirim",
 };
 
@@ -58,11 +52,11 @@ export function getNewsLanguageLabel(language) {
   return language ? language.toUpperCase() : null;
 }
 
-export function getNewsSummaryText(summary, fallback = "Özet bilgisi bulunmuyor.") {
+export function getNewsSummaryText(summary, fallback = "Ozet bilgisi bulunmuyor.") {
   return summary?.trim() || fallback;
 }
 
-export function getNewsPreviewText(item, fallback = "İçerik önizlemesi bulunmuyor.") {
+export function getNewsPreviewText(item, fallback = "Icerik onizlemesi bulunmuyor.") {
   const preview = item?.contentPreview?.trim();
   if (preview) {
     return preview;
@@ -76,7 +70,7 @@ export function getNewsPreviewText(item, fallback = "İçerik önizlemesi bulunm
   return fallback;
 }
 
-export function formatNewsPublishedAt(value, emptyLabel = "Tarih bilgisi alınamadı") {
+export function formatNewsPublishedAt(value, emptyLabel = "Tarih bilgisi alinamadi") {
   return value ? formatDateTime(value) : emptyLabel;
 }
 
@@ -153,7 +147,7 @@ export function shouldShowSourceCta(item) {
   return status === "SOURCE_LINK_ONLY" || status === "SUMMARY_ONLY" || isKapDisclosure(item);
 }
 
-export function getNewsPrimaryActionLabel(item, fallback = "Haberi aç") {
+export function getNewsPrimaryActionLabel(item, fallback = "Haberi ac") {
   return shouldShowSourceCta(item) ? "Kaynakta oku" : fallback;
 }
 

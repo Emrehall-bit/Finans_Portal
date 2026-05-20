@@ -68,14 +68,14 @@ class NewsPresentationMapperTest {
     void fallsBackToSourceLinkOnlyWhenSummaryMissing() {
         News news = News.builder()
                 .id(13L)
-                .externalId("INV-1")
+                .externalId("CNBC-1")
                 .title("Petrol fiyatlari yukseldi")
-                .source("Investing.com")
-                .provider("INVESTING_RSS")
+                .source("CNBC")
+                .provider("CNBC_RSS")
                 .language("en")
                 .regionScope("GLOBAL")
                 .category("ECONOMY")
-                .url("https://www.investing.com/news/test")
+                .url("https://www.cnbc.com/2026/05/19/test.html")
                 .publishedAt(LocalDateTime.of(2026, 5, 19, 12, 0))
                 .importanceScore(40)
                 .build();

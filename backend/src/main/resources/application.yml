@@ -66,15 +66,9 @@ management:
     tags:
       application: finance-portal-backend
 
-finnhub:
-  enabled: false
-  api:
-    url: https://finnhub.io/api/v1
-    key: ${FINNHUB_API_KEY:}
-  sync:
-    default-days-back: 3
-
 news:
+  startup-sync:
+    enabled: true
   providers:
     aa:
       enabled: true
@@ -85,21 +79,24 @@ news:
     cnbc:
       enabled: true
       rss-url: ${CNBC_RSS_URL:https://www.cnbc.com/id/100003114/device/rss/rss.html}
+      feed-urls:
+        - ${CNBC_RSS_URL:https://www.cnbc.com/id/100003114/device/rss/rss.html}
       default-category: ECONOMY
       default-language: en
       default-region-scope: GLOBAL
-    reuters:
+    world-news-api:
       enabled: true
-      rss-url: ${REUTERS_RSS_URL:https://www.reuters.com/business/?rpc=401&feedType=rss}
-      default-category: ECONOMY
-      default-language: en
-      default-region-scope: GLOBAL
-    investing:
-      enabled: false
-      rss-url: ${INVESTING_RSS_URL:https://www.investing.com/rss/news_14.rss}
-      default-category: ECONOMY
-      default-language: en
-      default-region-scope: GLOBAL
+      base-url: https://api.worldnewsapi.com
+      api-key: ${WORLD_NEWS_API_KEY:}
+      categories: business
+      language: en
+      max-items-per-sync: 4
+      min-content-length: 500
+      scheduler-enabled: true
+      startup-enabled: false
+      sync-rate-hours: 6
+      connect-timeout-ms: 3000
+      read-timeout-ms: 20000
     kap:
       enabled: true
       scheduler-enabled: false
@@ -108,7 +105,17 @@ news:
       default-category: DISCLOSURE
       default-language: tr
       default-region-scope: TR
-      max-items: 25
+      max-results: 50
+      lookback-days: 7
+      startup-lookback-days: 30
+      max-range-days: 90
+      fetch-detail-enabled: false
+      startup-sync-enabled: false
+      disclosure-types:
+        - ODA
+        - FR
+      member-types:
+        - IGS
   notification:
     enabled: false
     min-importance-score: 70
