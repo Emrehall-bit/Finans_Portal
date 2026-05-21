@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getMarketBySymbol } from "../api/marketApi";
+import { getMarketBySymbol, getMarketHistory } from "../api/marketApi";
 import { formatCurrency } from "../utils/formatters";
 
 const CURRENCY_STORAGE_KEY = "fp:currency:v1";
@@ -19,7 +19,8 @@ export function CurrencyProvider({ children }) {
     let active = true;
 
     async function loadUsdRate() {
-      for (const sym of ["USDTRY", "TCMB:USD:SELL"]) {
+      // 1. Canlı quote dene (Redis'ten gelir)
+      for (const sym of ["TCMB:USD:SELL", "USDTRY"]) {
         try {
           const data = await getMarketBySymbol(sym);
           const rate = Number(data?.price ?? data?.sellRate);
@@ -28,7 +29,24 @@ export function CurrencyProvider({ children }) {
             return;
           }
         } catch {
-          // try next symbol
+          // sonraki adıma geç
+        }
+      }
+
+      // 2. DB'deki son kapanış fiyatına bak
+      const today = new Date().toISOString().slice(0, 10);
+      const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      for (const sym of ["TCMB:USD:SELL", "USDTRY"]) {
+        try {
+          const history = await getMarketHistory(sym, { from: monthAgo, to: today });
+          const lastPoint = Array.isArray(history) && history.length > 0 ? history[history.length - 1] : null;
+          const rate = Number(lastPoint?.closePrice ?? lastPoint?.close ?? lastPoint?.price);
+          if (Number.isFinite(rate) && rate > 1) {
+            if (active) setUsdRate(rate);
+            return;
+          }
+        } catch {
+          // sonraki adıma geç
         }
       }
     }

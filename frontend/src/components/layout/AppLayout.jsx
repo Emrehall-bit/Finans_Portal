@@ -44,6 +44,8 @@ const PRIORITY_SYMBOLS = [
   "ETH",
 ];
 
+const USER_TAPE_SYMBOLS_STORAGE_PREFIX = "fp:market-tape:user-symbols:";
+
 function getInitials(user) {
   const source = user?.fullName || user?.email || "FP";
   return source
@@ -62,6 +64,61 @@ function getNotificationAudienceLabel(notification, t) {
 
 function getNotificationTypeLabel(notification, t) {
   return t(`layout.notificationTypes.${notification?.type ?? "SYSTEM"}`);
+}
+
+function readStoredUserTapeSymbols(userId) {
+  if (typeof window === "undefined" || !userId) {
+    return [];
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(`${USER_TAPE_SYMBOLS_STORAGE_PREFIX}${userId}`);
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeUserTapeSymbols(userId, symbols) {
+  if (typeof window === "undefined" || !userId || !Array.isArray(symbols) || symbols.length === 0) {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(
+      `${USER_TAPE_SYMBOLS_STORAGE_PREFIX}${userId}`,
+      JSON.stringify(symbols.filter(Boolean)),
+    );
+  } catch {
+    // Session storage is an optimization only.
+  }
+}
+
+function scheduleBackgroundTask(task, delay = 900) {
+  if (typeof window === "undefined") {
+    return { cancel() {} };
+  }
+
+  if (typeof window.requestIdleCallback === "function") {
+    const idleId = window.requestIdleCallback(task, { timeout: delay + 600 });
+    return {
+      cancel() {
+        window.cancelIdleCallback(idleId);
+      },
+    };
+  }
+
+  const timeoutId = window.setTimeout(task, delay);
+  return {
+    cancel() {
+      window.clearTimeout(timeoutId);
+    },
+  };
 }
 
 export default function AppLayout() {
@@ -85,6 +142,7 @@ export default function AppLayout() {
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
   const userMenuRef = useRef(null);
   const notificationMenuRef = useRef(null);
+  const hydratedUserTapeRef = useRef("");
   const displayName = user?.fullName || user?.email || t("layout.guest");
   const profileLabel = isAuthenticated ? t(`layout.roleLabels.${role || "USER"}`) : t("layout.openAccess");
   const showAdminTopbarLabel = isAdmin && !location.pathname.startsWith("/admin");
@@ -166,6 +224,49 @@ export default function AppLayout() {
 
   useEffect(() => {
     let active = true;
+    let userSymbolsTask = null;
+
+    async function loadUserSpecificTapeSymbols(adminSymbols) {
+      if (!isAuthenticated || !userId || !active) {
+        return;
+      }
+
+      const [watchlistResult, alertsResult, portfoliosResult] = await Promise.allSettled([
+        getUserWatchlist(userId),
+        getUserAlerts(userId),
+        getUserPortfolios(userId),
+      ]);
+
+      if (!active) return;
+
+      const watchlistCodes = watchlistResult.status === "fulfilled"
+        ? (watchlistResult.value ?? []).map((item) => item.instrumentCode).filter(Boolean)
+        : [];
+
+      const alertCodes = alertsResult.status === "fulfilled"
+        ? (alertsResult.value ?? []).map((item) => item.instrumentCode).filter(Boolean)
+        : [];
+
+      const portfolios = portfoliosResult.status === "fulfilled"
+        ? (portfoliosResult.value ?? []).slice(0, 5)
+        : [];
+
+      const holdingsResults = await Promise.allSettled(
+        portfolios.map((portfolio) => getPortfolioHoldings(portfolio.portfolioId)),
+      );
+
+      if (!active) return;
+
+      const portfolioCodes = holdingsResults
+        .filter((result) => result.status === "fulfilled")
+        .flatMap((result) => (result.value ?? []).map((holding) => holding.instrumentCode).filter(Boolean));
+
+      const userSymbols = [...new Set([...portfolioCodes, ...watchlistCodes, ...alertCodes])];
+      const resolvedSymbols = userSymbols.length > 0 ? userSymbols : adminSymbols;
+
+      storeUserTapeSymbols(userId, resolvedSymbols);
+      setMarketTapeSymbols(resolvedSymbols);
+    }
 
     async function loadTickerState() {
       try {
@@ -186,46 +287,22 @@ export default function AppLayout() {
 
         setTickerQuotes(quotes);
         setTickerReady(true);
+        setMarketTapeSymbols(adminSymbols);
 
         if (isAuthenticated && userId) {
-          // Kullanıcıya özel: portföy + izleme listesi + alarmlar
-          const [watchlistResult, alertsResult, portfoliosResult] = await Promise.allSettled([
-            getUserWatchlist(userId),
-            getUserAlerts(userId),
-            getUserPortfolios(userId),
-          ]);
+          const cachedUserSymbols = readStoredUserTapeSymbols(userId);
+          if (cachedUserSymbols.length > 0) {
+            setMarketTapeSymbols(cachedUserSymbols);
+          }
 
-          if (!active) return;
-
-          const watchlistCodes = watchlistResult.status === "fulfilled"
-            ? (watchlistResult.value ?? []).map((item) => item.instrumentCode).filter(Boolean)
-            : [];
-
-          const alertCodes = alertsResult.status === "fulfilled"
-            ? (alertsResult.value ?? []).map((item) => item.instrumentCode).filter(Boolean)
-            : [];
-
-          const portfolios = portfoliosResult.status === "fulfilled"
-            ? (portfoliosResult.value ?? []).slice(0, 5)
-            : [];
-
-          const holdingsResults = await Promise.allSettled(
-            portfolios.map((p) => getPortfolioHoldings(p.portfolioId)),
-          );
-
-          if (!active) return;
-
-          const portfolioCodes = holdingsResults
-            .filter((r) => r.status === "fulfilled")
-            .flatMap((r) => (r.value ?? []).map((h) => h.instrumentCode).filter(Boolean));
-
-          // Portföy > izleme listesi > alarmlar önceliği, tekrarlar temizlenir
-          const userSymbols = [...new Set([...portfolioCodes, ...watchlistCodes, ...alertCodes])];
-
-          setMarketTapeSymbols(userSymbols.length > 0 ? userSymbols : adminSymbols);
+          if (hydratedUserTapeRef.current !== String(userId)) {
+            hydratedUserTapeRef.current = String(userId);
+            userSymbolsTask = scheduleBackgroundTask(() => {
+              loadUserSpecificTapeSymbols(adminSymbols).catch(() => {});
+            });
+          }
         } else {
-          // Guest: admin tarafından belirlenen varsayılan liste
-          setMarketTapeSymbols(adminSymbols);
+          hydratedUserTapeRef.current = "";
         }
       } catch {
         if (active) {
@@ -246,6 +323,7 @@ export default function AppLayout() {
 
     return () => {
       active = false;
+      userSymbolsTask?.cancel();
       window.removeEventListener("market-tape-config-updated", handleConfigUpdated);
     };
   }, [isAuthenticated, userId]);
