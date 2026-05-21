@@ -38,7 +38,7 @@ public class PortfolioService {
 
         Portfolio portfolio = Portfolio.builder()
                 .portfolioName(request.getPortfolioName())
-                .visibilityStatus(request.getVisibilityStatus())
+                .visibilityStatus(PortfolioVisibility.PRIVATE)
                 .createdAt(LocalDateTime.now())
                 .user(user)
                 .build();
@@ -58,7 +58,6 @@ public class PortfolioService {
     public PortfolioResponseDto updatePortfolio(Long portfolioId, UpdatePortfolioRequest request) {
         Portfolio portfolio = getPortfolioEntityById(portfolioId);
         portfolio.setPortfolioName(request.getPortfolioName());
-        portfolio.setVisibilityStatus(request.getVisibilityStatus());
         return toResponseDto(portfolioRepository.save(portfolio));
     }
 
@@ -84,7 +83,6 @@ public class PortfolioService {
         return PortfolioResponseDto.builder()
                 .portfolioId(portfolio.getId())
                 .portfolioName(portfolio.getPortfolioName())
-                .visibilityStatus(portfolio.getVisibilityStatus())
                 .createdAt(portfolio.getCreatedAt())
                 .userId(portfolio.getUser() != null ? portfolio.getUser().getId() : null)
                 .build();

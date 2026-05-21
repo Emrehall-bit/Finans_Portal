@@ -4,15 +4,12 @@ import {
   buildNewsPlaceholderLabel,
   formatNewsCategoryLabel,
   formatNewsPublishedAt,
-  getImportanceLevelKey,
-  getImportanceTone,
   getNewsDisclosureTypeLabel,
   getNewsFallbackLogoUrl,
   getNewsLanguageLabel,
   getNewsPreviewText,
   getNewsPrimaryActionLabel,
   getNewsProviderLabel,
-  getNewsQualityStatusLabel,
   getNewsSourceName,
   getNewsSourceUrl,
   isKapDisclosure,
@@ -49,7 +46,7 @@ function Placeholder({ item, providerLabel, logoUrl, logoFailed, onLogoError }) 
   );
 }
 
-export default function NewsCard({ item, onClick, expandedKapId, onKapToggle }) {
+export default function NewsCard({ item, onClick }) {
   const { t } = useTranslation();
   const [imageFailed, setImageFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
@@ -64,11 +61,8 @@ export default function NewsCard({ item, onClick, expandedKapId, onKapToggle }) 
   const publishedAtLabel = formatNewsPublishedAt(item?.publishedAt);
   const previewText = getNewsPreviewText(item, t("news.previewMissing"));
   const sourceUrl = getNewsSourceUrl(item);
-  const importanceTone = getImportanceTone(item?.importanceScore);
-  const qualityLabel = getNewsQualityStatusLabel(item?.qualityStatus);
   const primaryActionLabel = getNewsPrimaryActionLabel(item, t("news.openNews"));
   const disclosureTypeLabel = getNewsDisclosureTypeLabel(item?.disclosureType);
-  const importanceLevelLabel = t(`news.importanceLevels.${getImportanceLevelKey(item?.importanceScore)}`);
 
   useEffect(() => {
     setImageFailed(false);
@@ -78,72 +72,36 @@ export default function NewsCard({ item, onClick, expandedKapId, onKapToggle }) 
   const shellClassName = `news-card news-card-shell${kapDisclosure ? " kap" : ""}`;
 
   if (kapDisclosure) {
-    const isExpanded = expandedKapId === item?.id;
-
     return (
-      <article className={`${shellClassName}${isExpanded ? " is-expanded" : ""}`}>
-        <button
-          className="news-card-main"
-          onClick={() => onKapToggle?.(item?.id)}
-          type="button"
-          aria-expanded={isExpanded}
-        >
-          <div className="news-card-body news-card-body-kap">
-            <div className="news-card-meta">
-              <span className="news-card-badge provider">{providerLabel}</span>
-              <span className="news-card-badge neutral">{disclosureTypeLabel}</span>
-              <span className={`news-card-badge importance ${importanceTone}`}>
-                {importanceLevelLabel}
-              </span>
-            </div>
-
-            <h3 className="news-card-title">{item?.title || t("news.titleMissing")}</h3>
-            <p className="news-card-summary">{previewText}</p>
-
-            <div className="news-kap-chip-row">
-              {item?.relatedSymbol ? (
-                <>
-                  <span className="news-kap-chip-symbol">{item.relatedSymbol}</span>
-                  <span className="news-kap-bullet">•</span>
-                </>
-              ) : null}
-              <span>{disclosureTypeLabel}</span>
-              <span className="news-kap-bullet">•</span>
-              <time dateTime={item?.publishedAt || ""}>{publishedAtLabel}</time>
-              <span className="news-kap-bullet">•</span>
-              <span>{sourceName}</span>
-            </div>
-
-            <div className="news-card-footer">
-              <span className={`news-card-link${isExpanded ? " is-active" : ""}`}>
-                {isExpanded ? t("news.detailsCollapse") : t("news.detailsExpand")}
-              </span>
-            </div>
+      <article className={shellClassName}>
+        <div className="news-kap-card-inner">
+          <div className="news-card-meta">
+            <span className="news-card-badge provider">{providerLabel}</span>
+            <span className="news-card-badge neutral">{disclosureTypeLabel}</span>
           </div>
-        </button>
 
-        <div className={`news-kap-expand${isExpanded ? " open" : ""}`}>
-          <div className="news-kap-expand-inner">
-            <h4 className="news-kap-expand-title">{t("news.kapExpandTitle")}</h4>
+          <h3 className="news-card-title">{item?.title || t("news.titleMissing")}</h3>
+          <p className="news-card-summary">{previewText}</p>
 
-            {item?.summary ? (
-              <p className="news-kap-expand-summary">{item.summary}</p>
-            ) : (
-              <p className="news-kap-expand-summary is-fallback">{t("news.kapExpandNoSummary")}</p>
-            )}
+          <div className="news-kap-chip-row">
+            {item?.relatedSymbol ? (
+              <>
+                <span className="news-kap-chip-symbol">{item.relatedSymbol}</span>
+                <span className="news-kap-bullet">•</span>
+              </>
+            ) : null}
+            <time dateTime={item?.publishedAt || ""}>{publishedAtLabel}</time>
+            <span className="news-kap-bullet">•</span>
+            <span>{sourceName}</span>
+          </div>
 
-            {sourceUrl ? (
-              <a
-                className="primary-button news-kap-cta-btn"
-                href={sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-              >
+          {sourceUrl ? (
+            <div className="news-kap-cta-row">
+              <a className="news-kap-cta-btn" href={sourceUrl} target="_blank" rel="noreferrer">
                 {t("news.viewOfficialKap")}
               </a>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
       </article>
     );
@@ -190,9 +148,6 @@ export default function NewsCard({ item, onClick, expandedKapId, onKapToggle }) 
           <p className={`news-card-summary${item?.summary || item?.contentPreview ? "" : " is-fallback"}`}>{previewText}</p>
 
           <div className="news-card-footer">
-            <div className="news-card-footer-meta">
-              <span className="news-card-quality">{qualityLabel}</span>
-            </div>
             <span className="news-card-link">{primaryActionLabel}</span>
           </div>
         </div>

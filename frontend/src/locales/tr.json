@@ -245,20 +245,9 @@
     "openNews": "Haberi aç",
     "openDisclosure": "Bildirimi aç",
     "readAtSource": "Kaynakta oku",
-    "detailsExpand": "Detayı Gör",
-    "detailsCollapse": "Kapat",
-    "kapExpandTitle": "Bildirim Özeti",
-    "kapExpandNoSummary": "Bu KAP bildirimi tablo veya ek içeriği barındırıyor olabilir. Tam ve resmi içerik KAP üzerinde görüntülenmelidir.",
     "viewOfficialKap": "Resmi KAP Bildirimini Aç ↗",
-    "kapViewLink": "KAP'ta görüntüle",
     "previewMissing": "Bu kayıt için gösterilebilir içerik özeti yok.",
     "titleMissing": "Başlık bulunmuyor",
-    "importanceLabel": "Önem",
-    "importanceLevels": {
-      "low": "Düşük önem",
-      "medium": "Orta önem",
-      "high": "Yüksek önem"
-    },
     "kapDisclosure": "KAP bildirimi",
     "kapFields": {
       "companyCode": "Şirket / Kod",
@@ -392,11 +381,6 @@
     "listTitle": "Portföylerin",
     "name": "Portföy adı",
     "namePlaceholder": "Örn. Uzun Vade",
-    "visibility": "Görünürlük",
-    "visibilityOptions": {
-      "PRIVATE": "Özel",
-      "PUBLIC": "Herkese Açık"
-    },
     "create": "Portföy oluştur",
     "loadingList": "Portföyler yükleniyor...",
     "emptyListTitle": "Portföy yok",
@@ -575,8 +559,6 @@
   "portfolioDetail": {
     "loadError": "Portföy detayı yüklenemedi.",
     "manualSymbol": "Manuel sembol girisi",
-    "visibilityConfirmPublic": "Bu portföyü PUBLIC yaparsan ileride diğer kullanıcılar tarafından görünür hale gelebilir. Devam etmek istiyor musun?",
-    "visibilityConfirmPrivate": "Bu portföyü PRIVATE yaparsan sadece sen görebileceksin. Devam etmek istiyor musun?",
     "settingsSaved": "Portföy ayarları kaydedildi.",
     "settingsUpdateError": "Portföy ayarları güncellenemedi.",
     "validationError": "Lütfen bir enstrüman seç ve geçerli miktar ile alış fiyatı gir.",
@@ -595,8 +577,6 @@
     "settingsTitle": "Portföy Ayarları",
     "name": "Ad",
     "namePlaceholder": "Portföy adı",
-    "visibility": "Görünürlük",
-    "visibilityNote": "Görünürlük değişikliği portföyün ileride nasıl görüneceğini etkiler. Kayıt öncesi onay istenir.",
     "saveSettings": "Ayarları kaydet",
     "totalHoldings": "Toplam Holding",
     "valuationReady": "Değerlenenler",

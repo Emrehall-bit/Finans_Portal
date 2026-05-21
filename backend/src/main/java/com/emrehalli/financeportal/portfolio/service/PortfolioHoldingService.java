@@ -9,6 +9,7 @@ import com.emrehalli.financeportal.portfolio.dto.PortfolioSummaryResponse;
 import com.emrehalli.financeportal.portfolio.dto.UpdatePortfolioHoldingRequest;
 import com.emrehalli.financeportal.portfolio.entity.Portfolio;
 import com.emrehalli.financeportal.portfolio.entity.PortfolioHolding;
+import com.emrehalli.financeportal.portfolio.enums.PriceStatus;
 import com.emrehalli.financeportal.portfolio.enums.SummaryStatus;
 import com.emrehalli.financeportal.portfolio.repository.PortfolioHoldingRepository;
 import com.emrehalli.financeportal.portfolio.repository.PortfolioRepository;
@@ -17,8 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class PortfolioHoldingService {
@@ -92,8 +97,137 @@ public class PortfolioHoldingService {
 
     @Transactional(readOnly = true)
     public PortfolioValuationResult getPortfolioValuation(Long portfolioId) {
-        List<PortfolioHoldingDto> holdings = getHoldingsByPortfolioId(portfolioId);
+        List<PortfolioHoldingDto> rawHoldings = getHoldingsByPortfolioId(portfolioId);
+        List<PortfolioHoldingDto> holdings = aggregateByInstrument(rawHoldings);
         return new PortfolioValuationResult(holdings, buildSummary(holdings));
+    }
+
+    private List<PortfolioHoldingDto> aggregateByInstrument(List<PortfolioHoldingDto> rawHoldings) {
+        Map<String, List<PortfolioHoldingDto>> grouped = new LinkedHashMap<>();
+        for (PortfolioHoldingDto holding : rawHoldings) {
+            String key = holding.getInstrumentCode() == null ? "" : holding.getInstrumentCode().trim().toUpperCase();
+            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(holding);
+        }
+
+        List<PortfolioHoldingDto> result = new ArrayList<>(grouped.size());
+        for (List<PortfolioHoldingDto> group : grouped.values()) {
+            result.add(group.size() == 1 ? wrapSingle(group.get(0)) : mergeGroup(group));
+        }
+        return result;
+    }
+
+    private PortfolioHoldingDto wrapSingle(PortfolioHoldingDto holding) {
+        return PortfolioHoldingDto.builder()
+                .holdingId(holding.getHoldingId())
+                .instrumentCode(holding.getInstrumentCode())
+                .quantity(holding.getQuantity())
+                .buyPrice(holding.getBuyPrice())
+                .currentPrice(holding.getCurrentPrice())
+                .currentValue(holding.getCurrentValue())
+                .dailyProfitLoss(holding.getDailyProfitLoss())
+                .dailyChangePercent(holding.getDailyChangePercent())
+                .profitLoss(holding.getProfitLoss())
+                .profitLossPercent(holding.getProfitLossPercent())
+                .priceStatus(holding.getPriceStatus())
+                .lastPriceUpdateTime(holding.getLastPriceUpdateTime())
+                .valuationAvailable(holding.isValuationAvailable())
+                .purchaseDate(holding.getPurchaseDate())
+                .createdAt(holding.getCreatedAt())
+                .updatedAt(holding.getUpdatedAt())
+                .entryCount(1)
+                .sourceHoldingIds(List.of(holding.getHoldingId()))
+                .build();
+    }
+
+    private PortfolioHoldingDto mergeGroup(List<PortfolioHoldingDto> group) {
+        BigDecimal totalQuantity = BigDecimal.ZERO;
+        BigDecimal totalCost = BigDecimal.ZERO;
+        BigDecimal totalCurrentValue = BigDecimal.ZERO;
+        BigDecimal totalDailyProfitLoss = BigDecimal.ZERO;
+        BigDecimal totalDailyChangePercent = BigDecimal.ZERO;
+        boolean anyValuationAvailable = false;
+        boolean anyDailyPnl = false;
+        PriceStatus bestPriceStatus = PriceStatus.UNAVAILABLE;
+        LocalDateTime latestPriceUpdateTime = null;
+        LocalDateTime earliestCreatedAt = null;
+        LocalDateTime latestUpdatedAt = null;
+        LocalDate earliestPurchaseDate = null;
+        List<Long> sourceIds = new ArrayList<>(group.size());
+
+        for (PortfolioHoldingDto h : group) {
+            BigDecimal qty = zeroIfNull(h.getQuantity());
+            totalQuantity = totalQuantity.add(qty);
+            totalCost = totalCost.add(qty.multiply(zeroIfNull(h.getBuyPrice())));
+            sourceIds.add(h.getHoldingId());
+
+            if (h.isValuationAvailable() && h.getCurrentValue() != null) {
+                anyValuationAvailable = true;
+                totalCurrentValue = totalCurrentValue.add(h.getCurrentValue());
+            }
+            if (h.getDailyProfitLoss() != null) {
+                anyDailyPnl = true;
+                totalDailyProfitLoss = totalDailyProfitLoss.add(h.getDailyProfitLoss());
+            }
+            if (h.getDailyChangePercent() != null) {
+                totalDailyChangePercent = totalDailyChangePercent.add(h.getDailyChangePercent());
+            }
+            if (h.getPriceStatus() == PriceStatus.LIVE) {
+                bestPriceStatus = PriceStatus.LIVE;
+            } else if (h.getPriceStatus() == PriceStatus.STALE && bestPriceStatus == PriceStatus.UNAVAILABLE) {
+                bestPriceStatus = PriceStatus.STALE;
+            }
+            if (h.getLastPriceUpdateTime() != null && (latestPriceUpdateTime == null || h.getLastPriceUpdateTime().isAfter(latestPriceUpdateTime))) {
+                latestPriceUpdateTime = h.getLastPriceUpdateTime();
+            }
+            if (h.getCreatedAt() != null && (earliestCreatedAt == null || h.getCreatedAt().isBefore(earliestCreatedAt))) {
+                earliestCreatedAt = h.getCreatedAt();
+            }
+            if (h.getUpdatedAt() != null && (latestUpdatedAt == null || h.getUpdatedAt().isAfter(latestUpdatedAt))) {
+                latestUpdatedAt = h.getUpdatedAt();
+            }
+            if (h.getPurchaseDate() != null && (earliestPurchaseDate == null || h.getPurchaseDate().isBefore(earliestPurchaseDate))) {
+                earliestPurchaseDate = h.getPurchaseDate();
+            }
+        }
+
+        PortfolioHoldingDto first = group.get(0);
+        BigDecimal avgBuyPrice = totalQuantity.compareTo(BigDecimal.ZERO) > 0
+                ? totalCost.divide(totalQuantity, 8, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        BigDecimal currentPrice = anyValuationAvailable && totalQuantity.compareTo(BigDecimal.ZERO) > 0
+                ? totalCurrentValue.divide(totalQuantity, 8, RoundingMode.HALF_UP)
+                : null;
+        BigDecimal profitLoss = anyValuationAvailable ? totalCurrentValue.subtract(totalCost) : null;
+        BigDecimal profitLossPercent = null;
+        if (profitLoss != null && totalCost.compareTo(BigDecimal.ZERO) > 0) {
+            profitLossPercent = profitLoss.multiply(BigDecimal.valueOf(100))
+                    .divide(totalCost, 4, RoundingMode.HALF_UP);
+        }
+
+        return PortfolioHoldingDto.builder()
+                .holdingId(first.getHoldingId())
+                .instrumentCode(first.getInstrumentCode())
+                .quantity(totalQuantity)
+                .buyPrice(avgBuyPrice)
+                .currentPrice(currentPrice)
+                .currentValue(anyValuationAvailable ? totalCurrentValue : null)
+                .dailyProfitLoss(anyDailyPnl ? totalDailyProfitLoss : null)
+                .dailyChangePercent(anyDailyPnl ? totalDailyChangePercent : null)
+                .profitLoss(profitLoss)
+                .profitLossPercent(profitLossPercent)
+                .priceStatus(bestPriceStatus)
+                .lastPriceUpdateTime(latestPriceUpdateTime)
+                .valuationAvailable(anyValuationAvailable)
+                .purchaseDate(earliestPurchaseDate)
+                .createdAt(earliestCreatedAt)
+                .updatedAt(latestUpdatedAt)
+                .entryCount(group.size())
+                .sourceHoldingIds(sourceIds)
+                .build();
+    }
+
+    private static BigDecimal zeroIfNull(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private PortfolioSummaryResponse buildSummary(List<PortfolioHoldingDto> holdings) {

@@ -25,6 +25,7 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import useToast from "../hooks/useToast";
 import { useTheme } from "../theme/ThemeContext";
+import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -148,6 +149,7 @@ export default function PortfolioPage() {
   const { t } = useTranslation();
   const { userId } = useAuth();
   const { chartTheme } = useTheme();
+  const { formatAmount, convertAmount, currency } = useCurrency();
   const { toast, showToast } = useToast();
   const [portfolios, setPortfolios] = useState([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState(null);
@@ -161,7 +163,7 @@ export default function PortfolioPage() {
   const [riskSummary, setRiskSummary] = useState(null);
   const [riskSummaryError, setRiskSummaryError] = useState("");
   const [watchlist, setWatchlist] = useState([]);
-  const [newPortfolio, setNewPortfolio] = useState({ portfolioName: "", visibilityStatus: "PRIVATE" });
+  const [newPortfolio, setNewPortfolio] = useState({ portfolioName: "" });
   const [isCreatePortfolioModalOpen, setCreatePortfolioModalOpen] = useState(false);
   const [isHoldingModalOpen, setHoldingModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState(null);
@@ -409,7 +411,7 @@ export default function PortfolioPage() {
       setError("");
       const created = await createPortfolio(userId, newPortfolio);
       showToast("success", t("portfolio.createSuccess"));
-      setNewPortfolio({ portfolioName: "", visibilityStatus: "PRIVATE" });
+      setNewPortfolio({ portfolioName: "" });
       setCreatePortfolioModalOpen(false);
       await loadPortfolios(created?.portfolioId ?? null);
     } catch (err) {
@@ -423,7 +425,7 @@ export default function PortfolioPage() {
 
   function closeCreatePortfolioModal() {
     setCreatePortfolioModalOpen(false);
-    setNewPortfolio({ portfolioName: "", visibilityStatus: "PRIVATE" });
+    setNewPortfolio({ portfolioName: "" });
   }
 
   function openAddHoldingModal() {
@@ -597,7 +599,7 @@ export default function PortfolioPage() {
   const totalValue = toNumber(summary?.currentValue ?? summary?.totalCurrentValue);
   const totalProfitLoss = toNumber(summary?.profitLoss ?? summary?.totalProfitLoss);
   const totalProfitLossPercent = toMaybeNumber(summary?.profitLossPercent);
-  const aggregatedHoldings = useMemo(() => aggregatePortfolioHoldings(holdings), [holdings]);
+  const aggregatedHoldings = holdings;
   const hasDailyPerformance = aggregatedHoldings.some((holding) => Number.isFinite(Number(holding.dailyProfitLoss)));
   const dailyProfitLoss = hasDailyPerformance
     ? aggregatedHoldings.reduce((sum, holding) => sum + toNumber(holding.dailyProfitLoss), 0)
@@ -727,8 +729,9 @@ export default function PortfolioPage() {
         totalValue,
         totalProfitLoss,
         totalProfitLossPercent,
+        formatMoney: formatAmount,
       }),
-    [aiAnalysisData, riskAlert, topHolding, volatilityScore, liquidityScore, diversificationScore, totalValue, totalProfitLoss, totalProfitLossPercent],
+    [aiAnalysisData, riskAlert, topHolding, volatilityScore, liquidityScore, diversificationScore, totalValue, totalProfitLoss, totalProfitLossPercent, formatAmount],
   );
   const filteredAndSortedHoldings = useMemo(() => {
     let items = [...aggregatedHoldings];
@@ -766,6 +769,15 @@ export default function PortfolioPage() {
       })),
     [performancePoints],
   );
+  const displayPerformanceChartData = useMemo(() => {
+    if (currency === "TRY") return performanceChartData;
+    return performanceChartData.map((point) => ({
+      ...point,
+      totalValue: convertAmount(point.totalValue),
+      totalCost: convertAmount(point.totalCost),
+      profitLoss: convertAmount(point.profitLoss),
+    }));
+  }, [performanceChartData, currency, convertAmount]);
   const performanceAxisTicks = useMemo(
     () => buildPerformanceAxisTicks(performanceChartData, performanceRangeKey),
     [performanceChartData, performanceRangeKey],
@@ -788,7 +800,7 @@ export default function PortfolioPage() {
       .map((holding) => ({
         title: `${formatInstrumentLabel(holding.instrumentCode)} pozisyonu güncellendi`,
         timestamp: holding.updatedAt || holding.createdAt || selectedPortfolio?.updatedAt || selectedPortfolio?.createdAt,
-        detail: `${formatNumber(holding.quantity)} adet · ${formatCurrency(holding.buyPrice)}`,
+        detail: `${formatNumber(holding.quantity)} adet · ${formatAmount(holding.buyPrice)}`,
         tone: toNumber(holding.profitLoss) >= 0 ? "positive" : "negative",
       }));
 
@@ -796,13 +808,13 @@ export default function PortfolioPage() {
       rows.push({
         title: "Portföy değeri hesaplandı",
         timestamp: selectedPortfolio.updatedAt || selectedPortfolio.createdAt,
-        detail: `${formatCurrency(totalValue || totalCost)} · ${formatNumber(holdings.length, 0)} varlık`,
+        detail: `${formatAmount(totalValue || totalCost)} · ${formatNumber(holdings.length, 0)} varlık`,
         tone: "neutral",
       });
     }
 
     return rows;
-  }, [holdings, selectedPortfolio, totalCost, totalValue]);
+  }, [holdings, selectedPortfolio, totalCost, totalValue, formatAmount]);
 
   const watchlistItems = useMemo(() => {
     if (Array.isArray(watchlist) && watchlist.length > 0) {
@@ -899,30 +911,15 @@ export default function PortfolioPage() {
                   </select>
                 </label>
               </div>
-              <div className="portfolio-hero-value-row">
-                <div className="portfolio-hero-value-block">
-                  <span className="portfolio-hero-value-label">Toplam portföy değeri</span>
-                  <strong className="portfolio-hero-value">{formatCurrency(totalValue)}</strong>
-                </div>
-                <div className="portfolio-hero-trend-group">
-                  <span className={`portfolio-hero-trend-pill is-${resolveTone(dailyProfitLoss)}`}>
-                    Günlük {dailyProfitLoss == null ? "Henüz yok" : formatCurrency(dailyProfitLoss)}
-                    {dailyProfitLossPercent == null ? null : <small>{formatPercent(dailyProfitLossPercent)}</small>}
-                  </span>
-                  <span className={`portfolio-hero-trend-pill is-${resolveTone(totalProfitLoss)}`}>
-                    Toplam {formatCurrency(totalProfitLoss)}
-                    {totalProfitLossPercent == null ? null : <small>{formatPercent(totalProfitLossPercent)}</small>}
-                  </span>
-                </div>
-              </div>
               <p className="portfolio-detail-meta portfolio-detail-meta--topbar">
-                {formatVisibilityStatus(selectedPortfolio?.visibilityStatus || "PRIVATE", t)} · {t("portfolio.createdAt", { value: formatDateTime(selectedPortfolio?.createdAt) })}
+                {t("portfolio.createdAt", { value: formatDateTime(selectedPortfolio?.createdAt) })}
               </p>
               <p className="portfolio-hero-meta">
                 {formatNumber(holdings.length, 0)} varlık • Son güncelleme {formatDateTime(selectedPortfolio?.updatedAt || selectedPortfolio?.createdAt)}
               </p>
             </div>
             <div className="actions-row portfolio-top-actions">
+              <CurrencyToggle />
               <button type="button" className="secondary-button portfolio-watchlist-trigger" onClick={openWatchlistDrawer}>
                 <Star size={15} />
                 Watchlist
@@ -948,17 +945,17 @@ export default function PortfolioPage() {
             <>
               <section className="panel-surface portfolio-summary-strip portfolio-summary-strip--standalone portfolio-summary-strip--hero">
                 <div className="portfolio-summary-grid">
-                  <PortfolioMetricCard label={t("portfolio.summary.totalCost")} value={formatCurrency(totalCost)} tone="neutral" />
-                  <PortfolioMetricCard label={t("portfolio.summary.currentValue")} value={formatCurrency(totalValue)} tone="accent" />
+                  <PortfolioMetricCard label={t("portfolio.summary.totalCost")} value={formatAmount(totalCost)} tone="neutral" />
+                  <PortfolioMetricCard label={t("portfolio.summary.currentValue")} value={formatAmount(totalValue)} tone="accent" />
                   <PortfolioMetricCard
                     label="Günlük K/Z"
-                    value={dailyProfitLoss == null ? "Henüz yok" : formatCurrency(dailyProfitLoss)}
+                    value={dailyProfitLoss == null ? "Henüz yok" : formatAmount(dailyProfitLoss)}
                     subvalue={dailyProfitLossPercent == null ? null : formatPercent(dailyProfitLossPercent)}
                     tone={resolveTone(dailyProfitLoss)}
                   />
                   <PortfolioMetricCard
                     label="Toplam K/Z"
-                    value={formatCurrency(totalProfitLoss)}
+                    value={formatAmount(totalProfitLoss)}
                     subvalue={totalProfitLossPercent == null ? null : formatPercent(totalProfitLossPercent)}
                     tone={resolveTone(totalProfitLoss)}
                   />
@@ -981,13 +978,13 @@ export default function PortfolioPage() {
                       <div className="portfolio-distribution-chart-wrap">
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
-                            <Pie data={distributionData} dataKey="value" nameKey="label" outerRadius={86} innerRadius={54}>
+                            <Pie data={distributionData} dataKey="value" nameKey="label" outerRadius={96} innerRadius={58}>
                               {distributionData.map((entry) => (
                                 <Cell key={entry.key} fill={entry.color} />
                               ))}
                             </Pie>
                             <Tooltip
-                              formatter={(value) => formatCurrency(value)}
+                              formatter={(value) => formatAmount(value)}
                               contentStyle={chartTheme.tooltipContentStyle}
                               itemStyle={chartTheme.tooltipItemStyle}
                               labelStyle={chartTheme.tooltipLabelStyle}
@@ -1008,7 +1005,7 @@ export default function PortfolioPage() {
                             </div>
                             <div className="portfolio-distribution-list-metrics">
                               <strong>{formatNumber(entry.weight, 1)}%</strong>
-                              <span>{formatCurrency(entry.value)}</span>
+                              <span>{formatAmount(entry.value)}</span>
                             </div>
                           </div>
                         ))}
@@ -1106,13 +1103,13 @@ export default function PortfolioPage() {
                                   </div>
                                 </td>
                                 <td>{formatNumber(holding.quantity)}</td>
-                                <td>{formatCurrency(holding.buyPrice)}</td>
-                                <td>{holding.valuationAvailable ? formatCurrency(holding.currentPrice) : t("portfolio.priceMissing")}</td>
-                                <td>{holding.valuationAvailable ? formatCurrency(holding.currentValue) : formatCurrency(currentValue)}</td>
+                                <td>{formatAmount(holding.buyPrice)}</td>
+                                <td>{holding.valuationAvailable ? formatAmount(holding.currentPrice) : t("portfolio.priceMissing")}</td>
+                                <td>{holding.valuationAvailable ? formatAmount(holding.currentValue) : formatAmount(currentValue)}</td>
                                 <td className={holding.valuationAvailable ? getPnLCellClass(holding.profitLoss) : undefined}>
                                   {holding.valuationAvailable ? (
                                     <div className="portfolio-cell-stack">
-                                      <strong>{formatCurrency(holding.profitLoss)}</strong>
+                                      <strong>{formatAmount(holding.profitLoss)}</strong>
                                       <span className="muted">{formatPercent(holding.profitLossPercent)}</span>
                                     </div>
                                   ) : (
@@ -1134,10 +1131,10 @@ export default function PortfolioPage() {
                           })}
                           <tr className="portfolio-holdings-total-row">
                             <td colSpan={4}>Toplam ({formatNumber(filteredAndSortedHoldings.length, 0)} varlık)</td>
-                            <td>{formatCurrency(totalValue)}</td>
+                            <td>{formatAmount(totalValue)}</td>
                             <td className={getPnLCellClass(totalProfitLoss)}>
                               <div className="portfolio-cell-stack">
-                                <strong>{formatCurrency(totalProfitLoss)}</strong>
+                                <strong>{formatAmount(totalProfitLoss)}</strong>
                                 <span>{formatPercent(totalProfitLossPercent)}</span>
                               </div>
                             </td>
@@ -1195,12 +1192,12 @@ export default function PortfolioPage() {
                       <div className="portfolio-performance-stat-strip">
                         <div className="portfolio-performance-stat portfolio-performance-stat--primary">
                           <small>Son değer</small>
-                          <strong>{formatCurrency(performanceLastPoint?.totalValue)}</strong>
+                          <strong>{formatAmount(performanceLastPoint?.totalValue)}</strong>
                         </div>
                         <div className="portfolio-performance-stat">
                           <small>Dönem değişimi</small>
                           <strong className={getPnLTextClass(performanceDelta)}>
-                            {performanceDelta == null ? "-" : formatCurrency(performanceDelta)}
+                            {performanceDelta == null ? "-" : formatAmount(performanceDelta)}
                           </strong>
                         </div>
                         <div className="portfolio-performance-stat">
@@ -1213,7 +1210,7 @@ export default function PortfolioPage() {
 
                       <div className="portfolio-performance-chart-shell">
                         <ResponsiveContainer width="100%" height={290}>
-                          <LineChart data={performanceChartData} margin={{ top: 14, right: 12, left: 0, bottom: 0 }}>
+                          <LineChart data={displayPerformanceChartData} margin={{ top: 14, right: 12, left: 0, bottom: 0 }}>
                             <defs>
                               <linearGradient id="portfolioPerformanceFill" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor="#2563eb" stopOpacity={0.24} />
@@ -1241,7 +1238,18 @@ export default function PortfolioPage() {
                               width={72}
                               tickFormatter={(value) => formatCompactNumber(value)}
                             />
-                            <Tooltip content={<PortfolioPerformanceTooltip chartTheme={chartTheme} />} />
+                            <Tooltip
+                              content={
+                                <PortfolioPerformanceTooltip
+                                  chartTheme={chartTheme}
+                                  currency={currency}
+                                  labels={{
+                                    totalValue: t("portfolio.summary.currentValue"),
+                                    totalCost: t("portfolio.summary.totalCost"),
+                                  }}
+                                />
+                              }
+                            />
                             <Area type="monotone" dataKey="totalValue" stroke="none" fill="url(#portfolioPerformanceFill)" />
                             <Line type="monotone" dataKey="totalCost" name="Toplam maliyet" stroke="#94a3b8" strokeWidth={1.9} dot={false} strokeDasharray="4 4" />
                             <Line type="monotone" dataKey="totalValue" name="Portföy değeri" stroke="#2563eb" strokeWidth={2.8} dot={false} />
@@ -1289,16 +1297,6 @@ export default function PortfolioPage() {
                   onChange={(event) => setNewPortfolio((current) => ({ ...current, portfolioName: event.target.value }))}
                   placeholder={t("portfolio.namePlaceholder")}
                 />
-              </label>
-              <label className="portfolio-field">
-                <span>{t("portfolio.visibility")}</span>
-                <select
-                  value={newPortfolio.visibilityStatus}
-                  onChange={(event) => setNewPortfolio((current) => ({ ...current, visibilityStatus: event.target.value }))}
-                >
-                  <option value="PRIVATE">{t("portfolio.visibilityOptions.PRIVATE")}</option>
-                  <option value="PUBLIC">{t("portfolio.visibilityOptions.PUBLIC")}</option>
-                </select>
               </label>
               <div className="instrument-action-footer">
                 <button type="submit">+ Yeni Portföy Oluştur</button>
@@ -1472,7 +1470,7 @@ export default function PortfolioPage() {
                               {item.changePercent == null ? "Nötr" : formatSignedPercent(item.changePercent)}
                             </span>
                           </div>
-                          <div className="portfolio-watchlist-drawer-price">{item.price == null ? "-" : formatCurrency(item.price)}</div>
+                          <div className="portfolio-watchlist-drawer-price">{item.price == null ? "-" : formatAmount(item.price)}</div>
                         </button>
                       );
                     })}
@@ -1649,13 +1647,14 @@ function buildAiInsightSections({
   totalValue,
   totalProfitLoss,
   totalProfitLossPercent,
+  formatMoney = formatCurrency,
 }) {
   const summary = getNonEmptyText(
     aiAnalysisData?.summary,
     aiAnalysisData?.finalComment,
     aiAnalysisData?.allocationComment,
     aiAnalysisData?.riskComment,
-    `Toplam portföy değeri ${formatCurrency(totalValue)} seviyesinde. Toplam fark ${formatCurrency(totalProfitLoss)} ve getirisi ${formatPercent(
+    `Toplam portföy değeri ${formatMoney(totalValue)} seviyesinde. Toplam fark ${formatMoney(totalProfitLoss)} ve getirisi ${formatPercent(
       totalProfitLossPercent,
     )} olarak izleniyor.`,
   );
@@ -1678,7 +1677,7 @@ function buildAiInsightSections({
     ...(Array.isArray(aiAnalysisData?.strongestPositions) ? aiAnalysisData.strongestPositions : []),
     liquidityScore.value >= 65 ? "Likidite görünümü güçlü; yeniden dengeleme veya nakde dönüş kararları daha rahat uygulanabilir." : null,
     diversificationScore.value >= 60 ? "Çeşitlilik görünümü dengeli; baskın tek pozisyon etkisi kontrol altında." : null,
-    totalProfitLoss > 0 ? `Portföy genelinde pozitif fark ${formatCurrency(totalProfitLoss)} seviyesinde izleniyor.` : null,
+    totalProfitLoss > 0 ? `Portföy genelinde pozitif fark ${formatMoney(totalProfitLoss)} seviyesinde izleniyor.` : null,
   ]);
 
   const actionItems = uniqueStrings([
@@ -1745,10 +1744,15 @@ function uniqueStrings(values) {
     });
 }
 
-function PortfolioPerformanceTooltip({ active, payload, label, chartTheme }) {
+function PortfolioPerformanceTooltip({ active, payload, label, chartTheme, currency = "TRY", labels = {} }) {
   if (!active || !payload?.length) {
     return null;
   }
+
+  const uniquePayload = payload.filter((item, index, items) => {
+    const key = item.dataKey || item.name;
+    return items.findIndex((candidate) => (candidate.dataKey || candidate.name) === key) === index;
+  });
 
   return (
     <div
@@ -1760,10 +1764,10 @@ function PortfolioPerformanceTooltip({ active, payload, label, chartTheme }) {
       }}
     >
       <strong>{label}</strong>
-      {payload.map((item, index) => (
+      {uniquePayload.map((item, index) => (
         <div key={`${item.dataKey}-${item.name}-${index}`} className="chart-tooltip-row">
-          <span>{item.name}</span>
-          <strong>{formatCurrency(item.value)}</strong>
+          <span>{labels[item.dataKey] || item.name || item.dataKey}</span>
+          <strong>{formatCurrency(item.value, currency)}</strong>
         </div>
       ))}
     </div>
@@ -2131,13 +2135,6 @@ function formatPriceStatus(value, t) {
   }[value] ?? t("portfolio.status.UNAVAILABLE");
 }
 
-function formatVisibilityStatus(value, t) {
-  return {
-    PRIVATE: t("portfolio.visibilityOptions.PRIVATE"),
-    PUBLIC: t("portfolio.visibilityOptions.PUBLIC"),
-  }[value] ?? (value || "-");
-}
-
 function getHoldingActivityTimestamp(holding) {
   const timestamp = holding?.updatedAt || holding?.createdAt;
   return timestamp ? new Date(timestamp).getTime() : 0;
@@ -2150,53 +2147,6 @@ function resolveHoldingValue(holding) {
   return toNumber(holding?.buyPrice) * toNumber(holding?.quantity);
 }
 
-function aggregatePortfolioHoldings(holdings) {
-  const groups = new Map();
-
-  holdings.forEach((holding) => {
-    const key = normalizeCode(holding.instrumentCode);
-    const quantity = toNumber(holding.quantity);
-    const totalCostValue = quantity * toNumber(holding.buyPrice);
-    const currentValue = resolveHoldingValue(holding);
-    const bucket =
-      groups.get(key) ??
-      {
-        ...holding,
-        holdingId: holding.holdingId ?? null,
-        quantity: 0,
-        buyPrice: 0,
-        currentPrice: 0,
-        currentValue: 0,
-        profitLoss: 0,
-        profitLossPercent: null,
-        dailyProfitLoss: 0,
-        dailyChangePercent: 0,
-        valuationAvailable: false,
-        entryCount: 0,
-        totalCostValue: 0,
-        sourceHoldingIds: [],
-        sourceHoldings: [],
-      };
-
-    bucket.quantity += quantity;
-    bucket.totalCostValue += totalCostValue;
-    bucket.currentValue += currentValue;
-    bucket.dailyProfitLoss += toNumber(holding.dailyProfitLoss);
-    bucket.dailyChangePercent += toNumber(holding.dailyChangePercent);
-    bucket.entryCount += 1;
-    bucket.sourceHoldingIds.push(holding.holdingId);
-    bucket.sourceHoldings.push(holding);
-    bucket.valuationAvailable = bucket.valuationAvailable || Boolean(holding.valuationAvailable);
-    bucket.buyPrice = bucket.quantity > 0 ? bucket.totalCostValue / bucket.quantity : bucket.buyPrice;
-    bucket.currentPrice = bucket.quantity > 0 ? bucket.currentValue / bucket.quantity : bucket.currentPrice;
-    bucket.profitLoss = bucket.currentValue - bucket.totalCostValue;
-    bucket.profitLossPercent = bucket.totalCostValue > 0 ? (bucket.profitLoss / bucket.totalCostValue) * 100 : null;
-
-    groups.set(key, bucket);
-  });
-
-  return [...groups.values()];
-}
 
 function resolveTone(value) {
   const numeric = Number(value);

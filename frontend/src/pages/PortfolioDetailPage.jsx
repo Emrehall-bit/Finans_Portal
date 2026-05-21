@@ -20,6 +20,7 @@ import LoadingSpinner from "../components/common/LoadingSpinner";
 import SummaryCard from "../components/common/SummaryCard";
 import useToast from "../hooks/useToast";
 import { useTheme } from "../theme/ThemeContext";
+import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
 
 const CHART_COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4f46e5"];
@@ -45,11 +46,12 @@ const FX_CODE_LABELS = {
 export default function PortfolioDetailPage() {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
+  const { formatAmount } = useCurrency();
   const { portfolioId } = useParams();
   const [portfolioInfo, setPortfolioInfo] = useState(null);
   const [summary, setSummary] = useState(null);
   const [holdings, setHoldings] = useState([]);
-  const [settingsForm, setSettingsForm] = useState({ portfolioName: "", visibilityStatus: "PRIVATE" });
+  const [settingsForm, setSettingsForm] = useState({ portfolioName: "" });
   const [holdingForm, setHoldingForm] = useState({
     instrumentSearch: "",
     instrumentCode: "",
@@ -74,12 +76,10 @@ export default function PortfolioDetailPage() {
         setPortfolioInfo({
           portfolioId: details.portfolioId,
           portfolioName: details.portfolioName,
-          visibilityStatus: details.visibilityStatus,
           createdAt: details.createdAt,
         });
         setSettingsForm({
           portfolioName: details.portfolioName || "",
-          visibilityStatus: details.visibilityStatus || "PRIVATE",
         });
         setSummary(details.summary || null);
         setHoldings(details.holdings || []);
@@ -94,7 +94,6 @@ export default function PortfolioDetailPage() {
       setPortfolioInfo(portfolio);
       setSettingsForm({
         portfolioName: portfolio?.portfolioName || "",
-        visibilityStatus: portfolio?.visibilityStatus || "PRIVATE",
       });
       setSummary(summaryData);
       setHoldings(holdingsData);
@@ -141,30 +140,15 @@ export default function PortfolioDetailPage() {
 
   async function handleSaveSettings(event) {
     event.preventDefault();
-    const visibilityChanged = portfolioInfo?.visibilityStatus && portfolioInfo.visibilityStatus !== settingsForm.visibilityStatus;
-
-    if (visibilityChanged) {
-      const confirmed = window.confirm(
-        settingsForm.visibilityStatus === "PUBLIC"
-          ? t("portfolioDetail.visibilityConfirmPublic")
-          : t("portfolioDetail.visibilityConfirmPrivate"),
-      );
-
-      if (!confirmed) {
-        return;
-      }
-    }
 
     try {
       const payload = {
         portfolioName: settingsForm.portfolioName,
-        visibilityStatus: settingsForm.visibilityStatus,
       };
       const updated = await updatePortfolio(portfolioId, payload);
       setPortfolioInfo(updated);
       setSettingsForm({
         portfolioName: updated?.portfolioName || settingsForm.portfolioName,
-        visibilityStatus: updated?.visibilityStatus || settingsForm.visibilityStatus,
       });
       setIsSettingsOpen(false);
       showToast("success", t("portfolioDetail.settingsSaved"));
@@ -326,6 +310,7 @@ export default function PortfolioDetailPage() {
                   </p>
                 </div>
                 <div className="portfolio-hero-actions">
+                  <CurrencyToggle />
                   <Link className="secondary-button portfolio-back-link" to="/portfolio">
                     {t("portfolioDetail.back")}
                   </Link>
@@ -354,19 +339,7 @@ export default function PortfolioDetailPage() {
                         placeholder={t("portfolioDetail.namePlaceholder")}
                       />
                     </label>
-                    <label className="portfolio-field">
-                      <span>{t("portfolioDetail.visibility")}</span>
-                      <select
-                        required
-                        value={settingsForm.visibilityStatus}
-                        onChange={(event) => setSettingsForm((prev) => ({ ...prev, visibilityStatus: event.target.value }))}
-                      >
-                        <option value="PRIVATE">{t("portfolio.visibilityOptions.PRIVATE")}</option>
-                        <option value="PUBLIC">{t("portfolio.visibilityOptions.PUBLIC")}</option>
-                      </select>
-                    </label>
                   </div>
-                  <div className="portfolio-inline-settings-note">{t("portfolioDetail.visibilityNote")}</div>
                   <div className="actions-row">
                     <button type="submit">{t("portfolioDetail.saveSettings")}</button>
                   </div>
@@ -385,10 +358,6 @@ export default function PortfolioDetailPage() {
                   <span>{t("portfolioDetail.missingPrices")}</span>
                   <strong>{formatNumber(summary?.missingPriceCount, 0)}</strong>
                 </div>
-                <div className="portfolio-kpi">
-                  <span>{t("portfolioDetail.visibility")}</span>
-                  <strong>{formatVisibilityStatus(portfolioInfo?.visibilityStatus, t)}</strong>
-                </div>
               </div>
             </div>
           </section>
@@ -404,9 +373,9 @@ export default function PortfolioDetailPage() {
               </span>
             </div>
             <div className="cards-grid compact">
-              <SummaryCard title={t("portfolioDetail.cards.totalCost")} value={formatCurrency(summary?.totalCost)} subtitle={t("portfolioDetail.cards.totalCostSubtitle")} tone="cool" />
-              <SummaryCard title={t("portfolioDetail.cards.currentValue")} value={formatCurrency(summary?.currentValue ?? summary?.totalCurrentValue)} subtitle={t("portfolioDetail.cards.currentValueSubtitle")} tone={getSummaryTone()} />
-              <SummaryCard title={t("portfolioDetail.cards.profitLoss")} value={formatCurrency(summary?.profitLoss ?? summary?.totalProfitLoss)} subtitle={t("portfolioDetail.cards.profitLossSubtitle")} tone={getSummaryTone()} />
+              <SummaryCard title={t("portfolioDetail.cards.totalCost")} value={formatAmount(summary?.totalCost)} subtitle={t("portfolioDetail.cards.totalCostSubtitle")} tone="cool" />
+              <SummaryCard title={t("portfolioDetail.cards.currentValue")} value={formatAmount(summary?.currentValue ?? summary?.totalCurrentValue)} subtitle={t("portfolioDetail.cards.currentValueSubtitle")} tone={getSummaryTone()} />
+              <SummaryCard title={t("portfolioDetail.cards.profitLoss")} value={formatAmount(summary?.profitLoss ?? summary?.totalProfitLoss)} subtitle={t("portfolioDetail.cards.profitLossSubtitle")} tone={getSummaryTone()} />
               <SummaryCard title={t("portfolioDetail.cards.profitLossPercent")} value={formatPercent(summary?.profitLossPercent)} subtitle={t("portfolioDetail.cards.profitLossPercentSubtitle")} tone="cool" />
               <SummaryCard title={t("portfolioDetail.cards.pricedHoldings")} value={`${formatNumber(valuationReadyCount, 0)} / ${formatNumber(holdings.length, 0)}`} subtitle={t("portfolioDetail.cards.pricedHoldingsSubtitle")} tone="cool" />
               <SummaryCard title={t("portfolioDetail.cards.missingPriceCount")} value={formatNumber(summary?.missingPriceCount, 0)} subtitle={t("portfolioDetail.cards.missingPriceCountSubtitle")} tone="warm" />
@@ -563,7 +532,7 @@ export default function PortfolioDetailPage() {
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value) => formatCurrency(value)}
+                          formatter={(value) => formatAmount(value)}
                           contentStyle={chartTheme.tooltipContentStyle}
                           itemStyle={chartTheme.tooltipItemStyle}
                           labelStyle={chartTheme.tooltipLabelStyle}
@@ -582,7 +551,7 @@ export default function PortfolioDetailPage() {
                           </div>
                         </div>
                         <span className="muted">
-                          {formatCurrency(entry.value)} ({formatNumber(entry.percentage, 2)}%)
+                          {formatAmount(entry.value)} ({formatNumber(entry.percentage, 2)}%)
                         </span>
                       </div>
                     ))}
@@ -632,12 +601,12 @@ export default function PortfolioDetailPage() {
                         </div>
                       </td>
                       <td>{formatNumber(holding.quantity)}</td>
-                      <td>{formatCurrency(holding.buyPrice)}</td>
-                      <td>{formatCurrency(holding.currentPrice)}</td>
-                      <td>{formatCurrency(holding.currentValue)}</td>
+                      <td>{formatAmount(holding.buyPrice)}</td>
+                      <td>{formatAmount(holding.currentPrice)}</td>
+                      <td>{formatAmount(holding.currentValue)}</td>
                       <td>
                         <div className="portfolio-cell-stack">
-                          <strong>{formatCurrency(holding.profitLoss)}</strong>
+                          <strong>{formatAmount(holding.profitLoss)}</strong>
                           <span className="muted">{formatPercent(holding.profitLossPercent)}</span>
                         </div>
                       </td>
@@ -667,13 +636,6 @@ export default function PortfolioDetailPage() {
       ) : null}
     </div>
   );
-}
-
-function formatVisibilityStatus(value, t) {
-  return {
-    PRIVATE: t("portfolio.visibilityOptions.PRIVATE"),
-    PUBLIC: t("portfolio.visibilityOptions.PUBLIC"),
-  }[value] ?? (value || "-");
 }
 
 function formatSummaryStatus(value, t) {

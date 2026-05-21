@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { compareTechnicalAnalysis, getMarkets, getTechnicalAnalysis } from "../api/marketApi";
+import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { extractErrorMessage } from "../api/responseUtils";
 import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPanel";
 import AnalysisInsightPanel from "../components/analysis/AnalysisInsightPanel";
@@ -14,6 +15,7 @@ import InstrumentChartPanel from "../components/market-detail/InstrumentChartPan
 
 export default function AnalysisPage() {
   const { t } = useTranslation();
+  const { convertAmount, currency } = useCurrency();
   const [quotes, setQuotes] = useState([]);
   const [quotesLoading, setQuotesLoading] = useState(true);
   const [quotesError, setQuotesError] = useState("");
@@ -144,6 +146,16 @@ export default function AnalysisPage() {
   }, [dateRange, selectedSymbols, t]);
 
   const chartData = useMemo(() => buildChartData(Array.isArray(analysis?.points) ? analysis.points : []), [analysis]);
+  const displayChartData = useMemo(() => {
+    if (currency === "TRY") return chartData;
+    return chartData.map((point) => ({
+      ...point,
+      close: convertAmount(point.close),
+      SMA7: point.SMA7 != null ? convertAmount(point.SMA7) : null,
+      SMA20: point.SMA20 != null ? convertAmount(point.SMA20) : null,
+      SMA50: point.SMA50 != null ? convertAmount(point.SMA50) : null,
+    }));
+  }, [chartData, currency, convertAmount]);
 
   function handlePrimaryChange(symbol) {
     setPrimarySymbol(symbol);
@@ -196,11 +208,14 @@ export default function AnalysisPage() {
 
   return (
     <div className="dashboard-stack analysis-lab-shell">
-      <PageHeader
-        eyebrow={t("analysis.eyebrow")}
-        title={t("analysis.title")}
-        description={t("analysis.description")}
-      />
+      <div className="analysis-page-header-row">
+        <PageHeader
+          eyebrow={t("analysis.eyebrow")}
+          title={t("analysis.title")}
+          description={t("analysis.description")}
+        />
+        <CurrencyToggle className="analysis-currency-toggle" />
+      </div>
 
       {quotesLoading ? <LoadingSpinner label={t("analysis.quotesLoading")} /> : null}
       {quotesError ? <ErrorMessage message={quotesError} /> : null}
@@ -233,7 +248,7 @@ export default function AnalysisPage() {
                   onToggleIndicator={toggleIndicator}
                   loading={analysisLoading}
                   error={analysisError}
-                  chartData={chartData}
+                  chartData={displayChartData}
                   presets={ANALYSIS_RANGE_PRESETS}
                 />
               ) : (

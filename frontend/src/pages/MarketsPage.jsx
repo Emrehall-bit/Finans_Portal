@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
@@ -11,10 +11,12 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import useToast from "../hooks/useToast";
+import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatNumber } from "../utils/formatters";
 import { getCountryCodeForInstrument } from "../utils/currencyToCountryMap";
 
 const CATEGORY_OPTIONS = ["FX", "CRYPTO", "STOCK", "FUND", "FUTURES", "BOND", "INDEX", "COMMODITY"];
+const CURRENCY_CONVERTIBLE_CATEGORIES = new Set(["STOCK", "FUND", "COMMODITY", "INDEX", "FUTURES"]);
 
 
 const FUND_RETURN_COLUMNS = [
@@ -32,6 +34,7 @@ export default function MarketsPage() {
   const navigate = useNavigate();
   const { userId, login } = useAuth();
   const { toast, showToast } = useToast();
+  const { formatAmount } = useCurrency();
 
   // Market list state
   const [quotes, setQuotes] = useState([]);
@@ -100,6 +103,18 @@ export default function MarketsPage() {
     loadWatchlist();
     return () => { active = false; };
   }, [userId]);
+
+  // ── Currency-aware price formatter ────────────────────────────────────────
+  const formatRateConverted = useCallback(
+    (value) => {
+      if (value === null || value === undefined || value === "") return "-";
+      if (CURRENCY_CONVERTIBLE_CATEGORIES.has(categoryFilter)) {
+        return formatAmount(Number(value));
+      }
+      return formatRate(value);
+    },
+    [categoryFilter, formatAmount],
+  );
 
   // ── Derived market list data ────────────────────────────────────────────────
   const sortOptions = useMemo(
@@ -266,6 +281,13 @@ export default function MarketsPage() {
                   <span className="market-favorites-knob" />
                 </button>
               </div>
+
+              {CURRENCY_CONVERTIBLE_CATEGORIES.has(categoryFilter) ? (
+                <div className="market-filter-field market-currency-toggle-wrap">
+                  <span>Para Birimi</span>
+                  <CurrencyToggle />
+                </div>
+              ) : null}
             </div>
           </section>
 
@@ -390,7 +412,7 @@ export default function MarketsPage() {
                               <span className={`fund-risk-badge ${getRiskToneClass(item.riskDegeri)}`}>{formatFundRisk(item.riskDegeri)}</span>
                             </td>
                             <td className="fund-price-cell">
-                              <strong>{formatRate(item.price)}</strong>
+                              <strong>{formatRateConverted(item.price)}</strong>
                               <span className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</span>
                             </td>
                             {FUND_RETURN_COLUMNS.map((column) => (
@@ -444,9 +466,9 @@ export default function MarketsPage() {
                                 <MarketInstrumentLabel item={item} categoryFilter={categoryFilter} variant="table" />
                               </button>
                             </td>
-                            {isFxTable ? <td>{formatRate(item.buyRate)}</td> : null}
-                            {isFxTable ? <td>{formatRate(item.sellRate)}</td> : null}
-                            {!isFxTable ? <td>{formatRate(item.price)}</td> : null}
+                            {isFxTable ? <td>{formatRateConverted(item.buyRate)}</td> : null}
+                            {isFxTable ? <td>{formatRateConverted(item.sellRate)}</td> : null}
+                            {!isFxTable ? <td>{formatRateConverted(item.price)}</td> : null}
                             <td className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</td>
                             <td>{item.source || "-"}</td>
                           </tr>
@@ -482,7 +504,7 @@ export default function MarketsPage() {
                           <div className="market-quote-card-body fund-quote-card-body">
                             <div>
                               <span className="eyebrow">{t("markets.columns.lastPrice")}</span>
-                              <strong>{formatRate(item.price)}</strong>
+                              <strong>{formatRateConverted(item.price)}</strong>
                             </div>
                             <div>
                               <span className="eyebrow">{t("markets.columns.change")}</span>
@@ -534,12 +556,12 @@ export default function MarketsPage() {
                               <span className="eyebrow">
                                 {isFxTable ? t("markets.columns.buy") : t("markets.columns.lastPrice")}
                               </span>
-                              <strong>{formatRate(isFxTable ? item.buyRate : item.price)}</strong>
+                              <strong>{formatRateConverted(isFxTable ? item.buyRate : item.price)}</strong>
                             </div>
                             {isFxTable ? (
                               <div>
                                 <span className="eyebrow">{t("markets.columns.sell")}</span>
-                                <strong>{formatRate(item.sellRate)}</strong>
+                                <strong>{formatRateConverted(item.sellRate)}</strong>
                               </div>
                             ) : null}
                           </div>

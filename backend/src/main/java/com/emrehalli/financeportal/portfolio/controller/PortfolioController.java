@@ -95,7 +95,6 @@ public class PortfolioController {
         PortfolioResponseDto data = PortfolioResponseDto.builder()
                 .portfolioId(portfolio.getId())
                 .portfolioName(portfolio.getPortfolioName())
-                .visibilityStatus(portfolio.getVisibilityStatus())
                 .createdAt(portfolio.getCreatedAt())
                 .userId(portfolio.getUser() != null ? portfolio.getUser().getId() : null)
                 .build();
@@ -125,7 +124,6 @@ public class PortfolioController {
         PortfolioDetailResponse response = PortfolioDetailResponse.builder()
                 .portfolioId(portfolio.getId())
                 .portfolioName(portfolio.getPortfolioName())
-                .visibilityStatus(portfolio.getVisibilityStatus())
                 .createdAt(portfolio.getCreatedAt())
                 .summary(valuation.summary())
                 .holdings(valuation.holdings())

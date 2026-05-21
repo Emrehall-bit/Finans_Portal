@@ -9,6 +9,7 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
+import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
 
 const FUTURE_PERCENT_PRESETS = [-20, -10, -5, 5, 10, 25];
@@ -16,6 +17,7 @@ const FUTURE_PERCENT_PRESETS = [-20, -10, -5, 5, 10, 25];
 export default function SimulationPage() {
   const { t } = useTranslation();
   const { userId } = useAuth();
+  const { formatAmount } = useCurrency();
   const [quotes, setQuotes] = useState([]);
   const [portfolios, setPortfolios] = useState([]);
   const [selectedPortfolioDetails, setSelectedPortfolioDetails] = useState(null);
@@ -212,11 +214,14 @@ export default function SimulationPage() {
 
   return (
     <div className="dashboard-stack simulation-shell">
-      <PageHeader
-        eyebrow={t("simulation.eyebrow")}
-        title={t("simulation.title")}
-        description={t("simulation.description")}
-      />
+      <div className="analysis-page-header-row">
+        <PageHeader
+          eyebrow={t("simulation.eyebrow")}
+          title={t("simulation.title")}
+          description={t("simulation.description")}
+        />
+        <CurrencyToggle className="analysis-currency-toggle" />
+      </div>
 
       {loading ? <LoadingSpinner label={t("simulation.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
@@ -289,14 +294,14 @@ export default function SimulationPage() {
 
             {pastResult ? (
               <div className="cards-grid compact simulation-results-grid">
-                <SummaryCard title={t("simulation.past.cards.buyPrice")} value={formatCurrency(pastResult.historicalPrice)} subtitle={pastResult.priceDate} tone="neutral" />
-                <SummaryCard title={t("simulation.past.cards.currentPrice")} value={formatCurrency(pastResult.currentPrice)} subtitle={pastResult.source} tone="cool" />
+                <SummaryCard title={t("simulation.past.cards.buyPrice")} value={formatAmount(pastResult.historicalPrice)} subtitle={pastResult.priceDate} tone="neutral" />
+                <SummaryCard title={t("simulation.past.cards.currentPrice")} value={formatAmount(pastResult.currentPrice)} subtitle={pastResult.source} tone="cool" />
                 <div className={`summary-card summary-card-${pastResult.profitLoss >= 0 ? "cool" : "warm"} simulation-today-value-card`}>
                   <div className="summary-card-top">
                     <p className="summary-card-title">{t("simulation.past.cards.todayValue")}</p>
                   </div>
-                  <h3>{formatCurrency(pastResult.todayValue)}</h3>
-                  <p className="summary-card-subtitle">{formatSigned(pastResult.profitLoss)}</p>
+                  <h3>{formatAmount(pastResult.todayValue)}</h3>
+                  <p className="summary-card-subtitle">{formatSigned(pastResult.profitLoss, formatAmount)}</p>
                   <p className="simulation-quantity-note">
                     {t("simulation.past.cards.calculatedQuantity", { value: formatNumber(pastResult.quantity, 0) })}
                   </p>
@@ -308,7 +313,7 @@ export default function SimulationPage() {
                     <span />
                   </div>
                 </div>
-                <SummaryCard title={t("simulation.past.cards.netProfitLoss")} value={formatCurrency(pastResult.profitLoss)} subtitle={formatSigned(pastResult.profitLoss)} tone={pastResult.profitLoss >= 0 ? "cool" : "warm"} />
+                <SummaryCard title={t("simulation.past.cards.netProfitLoss")} value={formatAmount(pastResult.profitLoss)} subtitle={formatSigned(pastResult.profitLoss, formatAmount)} tone={pastResult.profitLoss >= 0 ? "cool" : "warm"} />
               </div>
             ) : null}
           </section>
@@ -405,7 +410,7 @@ export default function SimulationPage() {
               <div className="cards-grid compact simulation-results-grid simulation-future-results">
                 <SummaryCard
                   title={futureScenario.type === "instrument" ? t("simulation.future.cards.currentPrice") : t("simulation.future.cards.currentPortfolioValue")}
-                  value={formatCurrency(futureScenario.baseValue)}
+                  value={formatAmount(futureScenario.baseValue)}
                   subtitle={t("simulation.future.cards.baseValue")}
                   tone="neutral"
                 />
@@ -417,14 +422,14 @@ export default function SimulationPage() {
                 />
                 <SummaryCard
                   title={t("simulation.future.cards.projectedResult")}
-                  value={formatCurrency(futureScenario.projectedValue)}
+                  value={formatAmount(futureScenario.projectedValue)}
                   subtitle={t("simulation.future.cards.projectedValue")}
                   tone={futureScenario.difference >= 0 ? "cool" : "warm"}
                 />
                 <SummaryCard
                   title={t("simulation.future.cards.netDifference")}
-                  value={formatCurrency(futureScenario.difference)}
-                  subtitle={formatSigned(futureScenario.difference)}
+                  value={formatAmount(futureScenario.difference)}
+                  subtitle={formatSigned(futureScenario.difference, formatAmount)}
                   tone={futureScenario.difference >= 0 ? "cool" : "warm"}
                 />
               </div>
@@ -436,7 +441,7 @@ export default function SimulationPage() {
                 {t("simulation.note.description")}
               </p>
               {selectedPortfolioDetails?.summary?.currentValue ? (
-                <span>{t("simulation.note.portfolioValue", { value: formatCurrency(selectedPortfolioDetails.summary.currentValue) })}</span>
+                <span>{t("simulation.note.portfolioValue", { value: formatAmount(selectedPortfolioDetails.summary.currentValue) })}</span>
               ) : null}
             </section>
           </section>
@@ -459,12 +464,12 @@ function normalizeCode(value) {
   return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
-function formatSigned(value) {
+function formatSigned(value, formatter = formatCurrency) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
     return "-";
   }
 
-  return `${numeric >= 0 ? "+" : ""}${formatCurrency(numeric)}`;
+  return `${numeric >= 0 ? "+" : ""}${formatter(numeric)}`;
 }
 

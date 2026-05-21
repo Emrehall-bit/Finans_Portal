@@ -72,6 +72,7 @@ export default function AppLayout() {
   const location = useLocation();
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [tickerQuotes, setTickerQuotes] = useState([]);
+  const [tickerReady, setTickerReady] = useState(false);
   const [marketTapeSymbols, setMarketTapeSymbols] = useState(PRIORITY_SYMBOLS);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
@@ -184,6 +185,7 @@ export default function AppLayout() {
             : PRIORITY_SYMBOLS;
 
         setTickerQuotes(quotes);
+        setTickerReady(true);
 
         if (isAuthenticated && userId) {
           // Kullanıcıya özel: portföy + izleme listesi + alarmlar
@@ -229,6 +231,7 @@ export default function AppLayout() {
         if (active) {
           setTickerQuotes([]);
           setMarketTapeSymbols(PRIORITY_SYMBOLS);
+          setTickerReady(true);
         }
       }
     }
@@ -272,13 +275,21 @@ export default function AppLayout() {
 
     const configuredSymbols = marketTapeSymbols.length > 0 ? marketTapeSymbols : PRIORITY_SYMBOLS;
 
-    const configuredMatches = configuredSymbols.map((symbol) =>
-      tickerQuotes.find((item) => item.symbol?.toUpperCase() === symbol),
-    ).filter((item) => item && Number(item.price) !== 0);
+    const findBySymbol = (symbol) =>
+      tickerQuotes.find(
+        (item) =>
+          item.symbol?.toUpperCase() === symbol ||
+          item.code?.toUpperCase() === symbol ||
+          item.displayName?.toUpperCase().replace(/[^A-Z0-9]/g, "") === symbol.replace(/[^A-Z0-9]/g, ""),
+      );
 
-    const fallbackMatches = PRIORITY_SYMBOLS.map((symbol) =>
-      tickerQuotes.find((item) => item.symbol?.toUpperCase() === symbol),
-    ).filter((item) => item && Number(item.price) !== 0);
+    const configuredMatches = configuredSymbols
+      .map(findBySymbol)
+      .filter((item) => item && Number(item.price) !== 0);
+
+    const fallbackMatches = PRIORITY_SYMBOLS
+      .map(findBySymbol)
+      .filter((item) => item && Number(item.price) !== 0);
 
     const merged = configuredMatches.length > 0 ? configuredMatches : fallbackMatches.length > 0 ? fallbackMatches : tickerQuotes.slice(0, 10);
     const unique = [];
@@ -471,8 +482,8 @@ export default function AppLayout() {
 
   return (
     <>
-      {tapeItems.length > 0 ? (
-        <div className="market-tape-shell" aria-label={t("layout.liveTape")}>
+      <div className={`market-tape-shell${!tickerReady || tapeItems.length === 0 ? " market-tape-loading" : ""}`} aria-label={t("layout.liveTape")}>
+        {tickerReady && tapeItems.length > 0 ? (
           <div className="market-tape-track">
             {[...tapeItems, ...tapeItems].map((item, index) => (
               <div key={`${item.symbol}-${index}`} className="market-tape-item">
@@ -484,8 +495,10 @@ export default function AppLayout() {
               </div>
             ))}
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <div className="market-tape-skeleton" aria-hidden="true" />
+        )}
+      </div>
 
       <div className="app-shell">
         <aside className="app-sidebar">

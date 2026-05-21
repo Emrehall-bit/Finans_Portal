@@ -64,7 +64,15 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -Filter \"*.java\")",
       "Bash(python *)",
       "Bash(git restore *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\)\\); const a=d?.data||{}; console.log\\('fx:',a.fx?.length,'crypto:',a.crypto?.length,'stocks:',a.stocks?.length,'funds:',a.funds?.length\\)\")",
+      "PowerShell($r = Invoke-RestMethod -Uri \"http://localhost:8080/api/v1/markets\" -Method Get; $a = $r.data; \"fx: $\\($a.fx.Count\\) | crypto: $\\($a.crypto.Count\\) | stocks: $\\($a.stocks.Count\\) | funds: $\\($a.funds.Count\\)\")",
+      "PowerShell($r = Invoke-RestMethod -Uri \"http://localhost:8080/api/v1/markets\" -Method Get; $a = $r.data; \"=== FX samples ===\"; $a.fx | Select-Object -First 3 | ConvertTo-Json -Depth 2)",
+      "PowerShell($r = Invoke-RestMethod -Uri \"http://localhost:8080/api/v1/markets\" -Method Get; $a = $r.data; \"=== Crypto samples ===\"; $a.crypto | Select-Object -First 3 | ConvertTo-Json -Depth 2)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8080/api/v1/markets/tape/config\" -Method Get | ConvertTo-Json -Depth 3)",
+      "PowerShell($r = Invoke-RestMethod -Uri \"http://localhost:8080/api/v1/markets\" -Method Get; $a = $r.data; \"=== Stock samples ===\"; $a.stocks | Select-Object -First 5 | ForEach-Object { \"symbol=$\\($_.symbol\\) price=$\\($_.price\\)\" })",
+      "PowerShell($r = Invoke-RestMethod -Uri \"http://localhost:8080/api/v1/markets\" -Method Get; $a = $r.data; $matches = $a.stocks | Where-Object { $_.symbol -in @\\(\"THYAO\",\"TUPRS\",\"ASELS\"\\) }; \"Tape config stocks found:\"; $matches | ForEach-Object { \"symbol=$\\($_.symbol\\) price=$\\($_.price\\)\" })",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\(p.dependencies['lucide-react'] || 'NOT FOUND'\\)\")"
     ]
   }
 }

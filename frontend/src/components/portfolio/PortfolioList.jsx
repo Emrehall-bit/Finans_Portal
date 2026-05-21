@@ -22,7 +22,6 @@ export default function PortfolioList({ portfolios = [] }) {
           >
 
             <strong style={{ color: "navy" }}>{portfolio.portfolioName}</strong>
-            <span className="muted">{portfolio.visibilityStatus || t("portfolioDetail.notAvailable")}</span>
             <span className="muted">{formatDateTime(portfolio.createdAt)}</span>
           </button>
         ))}

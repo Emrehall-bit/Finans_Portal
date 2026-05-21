@@ -252,20 +252,9 @@
     "openNews": "Open news",
     "openDisclosure": "Open disclosure",
     "readAtSource": "Read at source",
-    "detailsExpand": "View Details",
-    "detailsCollapse": "Collapse",
-    "kapExpandTitle": "Disclosure Summary",
-    "kapExpandNoSummary": "This KAP disclosure may contain tables or attachments. The full official content should be viewed on KAP.",
     "viewOfficialKap": "Open Official KAP Disclosure ↗",
-    "kapViewLink": "View on KAP",
     "previewMissing": "No renderable content preview is available for this record.",
     "titleMissing": "Title unavailable",
-    "importanceLabel": "Importance",
-    "importanceLevels": {
-      "low": "Low importance",
-      "medium": "Medium importance",
-      "high": "High importance"
-    },
     "kapDisclosure": "KAP disclosure",
     "kapFields": {
       "companyCode": "Company / Code",
@@ -399,11 +388,6 @@
     "listTitle": "Your portfolios",
     "name": "Portfolio name",
     "namePlaceholder": "e.g. Long Term",
-    "visibility": "Visibility",
-    "visibilityOptions": {
-      "PRIVATE": "Private",
-      "PUBLIC": "Public"
-    },
     "create": "Create portfolio",
     "loadingList": "Loading portfolios...",
     "emptyListTitle": "No portfolio",
@@ -582,8 +566,6 @@
   "portfolioDetail": {
     "loadError": "Portfolio detail could not be loaded.",
     "manualSymbol": "Manual symbol entry",
-    "visibilityConfirmPublic": "If you make this portfolio PUBLIC, it may become visible to other users later. Do you want to continue?",
-    "visibilityConfirmPrivate": "If you make this portfolio PRIVATE, only you will be able to see it. Do you want to continue?",
     "settingsSaved": "Portfolio settings saved.",
     "settingsUpdateError": "Portfolio settings update failed.",
     "validationError": "Please choose an instrument and enter valid quantity and buy price values.",
@@ -602,8 +584,6 @@
     "settingsTitle": "Portfolio Settings",
     "name": "Name",
     "namePlaceholder": "Portfolio name",
-    "visibility": "Visibility",
-    "visibilityNote": "A visibility change affects how the portfolio may appear later. Confirmation is requested before saving.",
     "saveSettings": "Save Settings",
     "totalHoldings": "Total Holdings",
     "valuationReady": "Valuation Ready",

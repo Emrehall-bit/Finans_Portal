@@ -1,6 +1,10 @@
 import { useTranslation } from "react-i18next";
 
-function FilterSection({ title, options, selectedValues, onToggle, formatter = (value) => value }) {
+function FilterSection({ title, options, selectedValues, onToggle }) {
+  if (!options || options.length === 0) {
+    return null;
+  }
+
   return (
     <section className="news-sidebar-section">
       <div className="news-sidebar-section-head">
@@ -14,7 +18,7 @@ function FilterSection({ title, options, selectedValues, onToggle, formatter = (
             <label key={option.value} className={`news-sidebar-option${checked ? " is-selected" : ""}`}>
               <input type="checkbox" checked={checked} onChange={() => onToggle(option.value)} />
               <span className="news-sidebar-checkbox" aria-hidden="true" />
-              <span className="news-sidebar-option-copy">{formatter(option.label ?? option.value)}</span>
+              <span className="news-sidebar-option-copy">{option.label ?? option.value}</span>
             </label>
           );
         })}

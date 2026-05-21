@@ -6,6 +6,7 @@ import { AuthProvider } from "./auth/AuthContext.jsx";
 import { initKeycloak } from "./auth/keycloak.js";
 import "./i18n";
 import { ThemeProvider } from "./theme/ThemeContext.jsx";
+import { CurrencyProvider } from "./currency/CurrencyContext.jsx";
 import "./styles/global.css";
 import "./styles/dashboard-theme.css";
 
@@ -21,11 +22,13 @@ async function bootstrapApplication() {
   root.render(
     <StrictMode>
       <ThemeProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </AuthProvider>
+        <CurrencyProvider>
+          <AuthProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </AuthProvider>
+        </CurrencyProvider>
       </ThemeProvider>
     </StrictMode>,
   );

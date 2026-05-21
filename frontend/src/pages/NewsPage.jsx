@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { RefreshCw, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
 import { getNews, syncNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
-import PageHeader from "../components/common/PageHeader";
 import PaginationControls from "../components/common/PaginationControls";
 import NewsCard from "../components/news/NewsCard";
 import NewsFilterDrawer from "../components/news/NewsFilterDrawer";
 import NewsFeedSkeleton from "../components/news/NewsFeedSkeleton";
 import NewsSidebarFilters from "../components/news/NewsSidebarFilters";
-import NewsTopBar from "../components/news/NewsTopBar";
 import { formatNewsCategoryLabel, getNewsProviderLabel } from "../components/news/newsCardUtils";
 import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
@@ -50,7 +49,6 @@ export default function NewsPage() {
   const [selectedProviders, setSelectedProviders] = useState([]);
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [feedType, setFeedType] = useState("news");
-  const [expandedKapId, setExpandedKapId] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -248,10 +246,6 @@ export default function NewsPage() {
     setCurrentPage(0);
   }
 
-  function handleKapToggle(id) {
-    setExpandedKapId((prev) => (prev === id ? null : id));
-  }
-
   function handleFeedTypeChange(nextFeedType) {
     if (nextFeedType === feedType) {
       return;
@@ -259,7 +253,6 @@ export default function NewsPage() {
 
     setFeedType(nextFeedType);
     setCurrentPage(0);
-    setExpandedKapId(null);
     setSelectedCategories([]);
     setSelectedProviders([]);
   }
@@ -288,7 +281,6 @@ export default function NewsPage() {
     if (loading || page === currentPage || page < 0 || page >= newsPage.totalPages) {
       return;
     }
-    setExpandedKapId(null);
     setCurrentPage(page);
   }
 
@@ -302,50 +294,107 @@ export default function NewsPage() {
 
   return (
     <div className="news-page-stack">
-      <PageHeader
-        title={t("news.title")}
-        description={t("news.description")}
-        eyebrow={t("news.eyebrow")}
-        actions={isAdmin ? (
-          <div className="actions-row">
-            <button onClick={handleReload} disabled={loading}>
-              {t("news.refresh")}
+      <div className="news-page-header panel-surface">
+        <div className="news-page-header-title-row">
+          <div className="news-page-header-copy">
+            <p className="eyebrow">{t("news.eyebrow")}</p>
+            <h1 className="news-page-h1">{t("news.title")}</h1>
+          </div>
+          {isAdmin ? (
+            <div className="news-header-actions">
+              <button
+                type="button"
+                className="news-header-icon-btn"
+                onClick={handleReload}
+                disabled={loading}
+                title={t("news.refresh")}
+              >
+                <RotateCcw size={15} />
+              </button>
+              <button
+                type="button"
+                className="news-header-icon-btn"
+                onClick={handleSync}
+                disabled={loading}
+                title={t("news.sync")}
+              >
+                <RefreshCw size={15} />
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="news-page-header-search-row">
+          <label className="news-search-field" htmlFor="news-search-input">
+            <Search size={16} className="news-search-icon" aria-hidden="true" />
+            <input
+              id="news-search-input"
+              value={filters.keyword}
+              onChange={(e) => setFilters((current) => ({ ...current, keyword: e.target.value }))}
+              placeholder={t("news.searchPlaceholder")}
+            />
+          </label>
+          <select
+            className="news-compact-sort"
+            value={sortBy}
+            onChange={(e) => handleSortChange(e.target.value)}
+            aria-label={t("news.sort")}
+          >
+            <option value="publishedAt">{t("news.sortNewest")}</option>
+            <option value="importanceScore">{t("news.sortImportance")}</option>
+          </select>
+          <button
+            type="button"
+            className="news-header-icon-btn news-header-filter-btn"
+            onClick={() => setMobileFiltersOpen(true)}
+          >
+            <SlidersHorizontal size={16} />
+            {activeFilters.length > 0 ? (
+              <span className="news-filter-badge">{activeFilters.length}</span>
+            ) : null}
+          </button>
+        </div>
+
+        <div className="news-page-header-bottom-row">
+          <div className="news-feed-segmented" role="tablist" aria-label={t("news.feedTabs")}>
+            <button
+              type="button"
+              role="tab"
+              className={`news-feed-seg-btn${feedType === "news" ? " active" : ""}`}
+              onClick={() => handleFeedTypeChange("news")}
+            >
+              {t("news.tabs.news")}
             </button>
-            <button onClick={handleSync} disabled={loading}>
-              {t("news.sync")}
+            <button
+              type="button"
+              role="tab"
+              className={`news-feed-seg-btn${feedType === "kap" ? " active" : ""}`}
+              onClick={() => handleFeedTypeChange("kap")}
+            >
+              {t("news.tabs.kap")}
             </button>
           </div>
+          <span className="news-result-count">
+            {t("news.listedCount", { count: newsPage.totalElements })}
+          </span>
+        </div>
+
+        {activeFilters.length > 0 ? (
+          <div className="news-active-filter-row" aria-label={t("news.activeFilters")}>
+            {activeFilters.map((filter) => (
+              <button
+                key={`${filter.type}:${filter.value}`}
+                type="button"
+                className="news-active-filter-chip"
+                onClick={() => handleRemoveActiveFilter(filter)}
+              >
+                <span>{filter.label}</span>
+                <span className="news-active-filter-chip-close" aria-hidden="true">x</span>
+              </button>
+            ))}
+          </div>
         ) : null}
-      />
-
-      <NewsTopBar
-        keyword={filters.keyword}
-        onKeywordChange={(value) => setFilters((current) => ({ ...current, keyword: value }))}
-        sortBy={sortBy}
-        onSortChange={handleSortChange}
-        resultCount={newsPage.totalElements}
-        activeFilterCount={activeFilters.length}
-        activeFilters={activeFilters}
-        onRemoveActiveFilter={handleRemoveActiveFilter}
-        onOpenFilters={() => setMobileFiltersOpen(true)}
-      />
-
-      <section className="news-feed-tabs" aria-label={t("news.feedTabs")}>
-        <button
-          type="button"
-          className={feedType === "news" ? "news-feed-tab active" : "news-feed-tab"}
-          onClick={() => handleFeedTypeChange("news")}
-        >
-          {t("news.tabs.news")}
-        </button>
-        <button
-          type="button"
-          className={feedType === "kap" ? "news-feed-tab active" : "news-feed-tab"}
-          onClick={() => handleFeedTypeChange("kap")}
-        >
-          {t("news.tabs.kap")}
-        </button>
-      </section>
+      </div>
 
       <div className="news-layout-grid">
         <aside className="news-sidebar-column">
@@ -366,12 +415,10 @@ export default function NewsPage() {
 
         <div className="news-content-column">
           {!loading && !error && items.length > 0 ? (
-            <section className="news-feed-header">
-              <div className="news-feed-copy">
-                <p className="eyebrow">{t("news.publishFlowEyebrow")}</p>
-                <h3>{isKapFeed ? t("news.kapFlowTitle") : t("news.publishFlowTitle")}</h3>
-              </div>
-            </section>
+            <div className="news-feed-section-label">
+              <span className="eyebrow">{t("news.publishFlowEyebrow")}</span>
+              <h3>{isKapFeed ? t("news.kapFlowTitle") : t("news.publishFlowTitle")}</h3>
+            </div>
           ) : null}
 
           {loading && items.length === 0 ? <NewsFeedSkeleton /> : null}
@@ -383,7 +430,7 @@ export default function NewsPage() {
           {!loading && !error && items.length > 0 ? (
             <section className={`news-grid news-grid-portal${isKapFeed ? " news-grid-kap" : ""}`}>
               {items.map((item) => (
-                <NewsCard key={item.id || item.externalId || item.url} item={item} onClick={handleOpen} expandedKapId={expandedKapId} onKapToggle={handleKapToggle} />
+                <NewsCard key={item.id || item.externalId || item.url} item={item} onClick={handleOpen} />
               ))}
             </section>
           ) : null}
