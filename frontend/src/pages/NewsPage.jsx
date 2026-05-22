@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { RefreshCw, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
-import { getNews, syncNews } from "../api/newsApi";
+import { syncNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
@@ -13,6 +13,7 @@ import NewsFilterDrawer from "../components/news/NewsFilterDrawer";
 import NewsFeedSkeleton from "../components/news/NewsFeedSkeleton";
 import NewsSidebarFilters from "../components/news/NewsSidebarFilters";
 import { formatNewsCategoryLabel, getNewsProviderLabel } from "../components/news/newsCardUtils";
+import { useNewsList } from "../hooks/useNewsQueries";
 import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
@@ -35,66 +36,39 @@ export default function NewsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
-  const [newsPage, setNewsPage] = useState(INITIAL_NEWS_PAGE);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [filters, setFilters] = useState({ keyword: "", category: "", provider: "" });
   const [appliedFilters, setAppliedFilters] = useState({ keyword: "", category: "", provider: "", language: "" });
   const [sortBy, setSortBy] = useState("publishedAt");
   const [appliedSortBy, setAppliedSortBy] = useState("publishedAt");
   const [currentPage, setCurrentPage] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedProviders, setSelectedProviders] = useState([]);
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [feedType, setFeedType] = useState("news");
 
-  useEffect(() => {
-    let active = true;
+  const newsQueryParams = useMemo(
+    () => buildNewsQueryParams(appliedFilters, currentPage, appliedSortBy, feedType),
+    [appliedFilters, currentPage, appliedSortBy, feedType],
+  );
 
-    async function loadNews() {
-      try {
-        setLoading(true);
-        setError("");
-        const requestParams = buildNewsQueryParams(appliedFilters, currentPage, appliedSortBy, feedType);
-        const result = await getNews(requestParams);
+  const {
+    data: newsPage = INITIAL_NEWS_PAGE,
+    isLoading: loading,
+    error: newsError,
+    refetch,
+  } = useNewsList(newsQueryParams);
 
-        if (!active) {
-          return;
-        }
-
-        setNewsPage(result);
-      } catch (err) {
-        if (!active) {
-          return;
-        }
-        setError(extractErrorMessage(err, t("news.loadError")));
-        if (currentPage === 0) {
-          setNewsPage(INITIAL_NEWS_PAGE);
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadNews();
-
-    return () => {
-      active = false;
-    };
-  }, [appliedFilters, appliedSortBy, currentPage, feedType, refreshKey, t]);
+  const error = newsError ? extractErrorMessage(newsError, t("news.loadError")) : "";
 
   async function handleSync() {
     try {
       const provider = appliedFilters.provider || (feedType === "kap" ? "KAP" : undefined);
       await syncNews({ provider });
       setCurrentPage(0);
-      setRefreshKey((prev) => prev + 1);
+      refetch();
     } catch (err) {
-      setError(extractErrorMessage(err, t("news.syncError")));
+      // sync errors don't need state — user sees the old data
     }
   }
 
@@ -237,7 +211,7 @@ export default function NewsPage() {
   }
 
   function handleReload() {
-    setRefreshKey((prev) => prev + 1);
+    refetch();
   }
 
   function handleSortChange(value) {

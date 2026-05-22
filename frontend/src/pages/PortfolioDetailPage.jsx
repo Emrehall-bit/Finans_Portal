@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Pie, PieChart, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import {
   createPortfolioHolding,
   deletePortfolioHolding,
-  getPortfolioById,
-  getPortfolioDetails,
-  getPortfolioHoldings,
-  getPortfolioSummary,
   updatePortfolio,
   updatePortfolioHolding,
 } from "../api/portfolioApi";
+import { portfolioKeys } from "../api/queryKeys";
 import { extractErrorMessage } from "../api/responseUtils";
 import AiPortfolioAnalysisCard from "../components/ai/AiPortfolioAnalysisCard";
 import EmptyState from "../components/common/EmptyState";
@@ -19,6 +17,7 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import SummaryCard from "../components/common/SummaryCard";
 import useToast from "../hooks/useToast";
+import { usePortfolioDetails } from "../hooks/usePortfolioQueries";
 import { useTheme } from "../theme/ThemeContext";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
@@ -48,9 +47,7 @@ export default function PortfolioDetailPage() {
   const { chartTheme } = useTheme();
   const { formatAmount } = useCurrency();
   const { portfolioId } = useParams();
-  const [portfolioInfo, setPortfolioInfo] = useState(null);
-  const [summary, setSummary] = useState(null);
-  const [holdings, setHoldings] = useState([]);
+  const queryClient = useQueryClient();
   const [settingsForm, setSettingsForm] = useState({ portfolioName: "" });
   const [holdingForm, setHoldingForm] = useState({
     instrumentSearch: "",
@@ -62,51 +59,22 @@ export default function PortfolioDetailPage() {
   const [isInstrumentMenuOpen, setIsInstrumentMenuOpen] = useState(false);
   const [highlightedInstrumentIndex, setHighlightedInstrumentIndex] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { toast, showToast } = useToast();
 
-  async function loadPortfolioData() {
-    if (!portfolioId) return;
-    try {
-      setLoading(true);
-      setError("");
-      const details = await getPortfolioDetails(portfolioId);
-      if (details) {
-        setPortfolioInfo({
-          portfolioId: details.portfolioId,
-          portfolioName: details.portfolioName,
-          createdAt: details.createdAt,
-        });
-        setSettingsForm({
-          portfolioName: details.portfolioName || "",
-        });
-        setSummary(details.summary || null);
-        setHoldings(details.holdings || []);
-        return;
-      }
-
-      const [portfolio, summaryData, holdingsData] = await Promise.all([
-        getPortfolioById(portfolioId),
-        getPortfolioSummary(portfolioId),
-        getPortfolioHoldings(portfolioId),
-      ]);
-      setPortfolioInfo(portfolio);
-      setSettingsForm({
-        portfolioName: portfolio?.portfolioName || "",
-      });
-      setSummary(summaryData);
-      setHoldings(holdingsData);
-    } catch (err) {
-      setError(extractErrorMessage(err, t("portfolioDetail.loadError")));
-    } finally {
-      setLoading(false);
-    }
-  }
+  const { data: details = null, isLoading: loading, error: detailsError } = usePortfolioDetails(portfolioId);
+  const portfolioInfo = details
+    ? { portfolioId: details.portfolioId, portfolioName: details.portfolioName, createdAt: details.createdAt }
+    : null;
+  const summary = details?.summary || null;
+  const holdings = details?.holdings || [];
+  const loadError = detailsError ? extractErrorMessage(detailsError, t("portfolioDetail.loadError")) : "";
 
   useEffect(() => {
-    loadPortfolioData();
-  }, [portfolioId]);
+    if (details?.portfolioName && !settingsForm.portfolioName) {
+      setSettingsForm({ portfolioName: details.portfolioName });
+    }
+  }, [details?.portfolioName]);
 
   const allocationData = useMemo(() => {
     const totalValue = holdings.reduce((sum, holding) => sum + Number(holding.currentValue || 0), 0);
@@ -145,11 +113,8 @@ export default function PortfolioDetailPage() {
       const payload = {
         portfolioName: settingsForm.portfolioName,
       };
-      const updated = await updatePortfolio(portfolioId, payload);
-      setPortfolioInfo(updated);
-      setSettingsForm({
-        portfolioName: updated?.portfolioName || settingsForm.portfolioName,
-      });
+      await updatePortfolio(portfolioId, payload);
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.details(portfolioId) });
       setIsSettingsOpen(false);
       showToast("success", t("portfolioDetail.settingsSaved"));
     } catch (err) {
@@ -220,7 +185,7 @@ export default function PortfolioDetailPage() {
       }
 
       resetHoldingForm();
-      await loadPortfolioData();
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.details(portfolioId) });
     } catch (err) {
       setError(extractErrorMessage(err, t("portfolioDetail.holdingSaveError")));
     }
@@ -234,7 +199,7 @@ export default function PortfolioDetailPage() {
         resetHoldingForm();
       }
       showToast("success", t("portfolioDetail.holdingRemoved"));
-      await loadPortfolioData();
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.details(portfolioId) });
     } catch (err) {
       setError(extractErrorMessage(err, t("portfolioDetail.holdingDeleteError")));
     }
@@ -293,6 +258,7 @@ export default function PortfolioDetailPage() {
     <div className="portfolio-page-stack">
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
       {loading ? <LoadingSpinner label={t("portfolioDetail.loading")} /> : null}
+      {loadError ? <ErrorMessage message={loadError} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {!loading && !error ? (

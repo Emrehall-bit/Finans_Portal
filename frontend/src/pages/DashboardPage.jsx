@@ -1,113 +1,55 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { getUserAlerts } from "../api/alertApi";
-import { buildMarketDetailPath, getMarketQuotes } from "../api/marketApi";
-import { getNews } from "../api/newsApi";
-import { getPortfolioDetails, getUserPortfolios } from "../api/portfolioApi";
-import { extractErrorMessage } from "../api/responseUtils";
-import { getUserWatchlist } from "../api/watchlistApi";
+import { useQueries } from "@tanstack/react-query";
+import { buildMarketDetailPath } from "../api/marketApi";
+import { getPortfolioDetails } from "../api/portfolioApi";
+import { portfolioKeys } from "../api/queryKeys";
 import { useAuth } from "../auth/AuthContext";
 import AiMarketSummaryCard from "../components/ai/AiMarketSummaryCard";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import { useUserAlerts } from "../hooks/useAlertQueries";
+import { useMarketQuotes } from "../hooks/useMarketQueries";
+import { useNewsList } from "../hooks/useNewsQueries";
+import { useUserPortfolios } from "../hooks/usePortfolioQueries";
+import { useUserWatchlist } from "../hooks/useWatchlistQueries";
 import { formatCurrency, formatDateTime, formatNumber } from "../utils/formatters";
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { userId } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [marketQuotes, setMarketQuotes] = useState([]);
-  const [newsItems, setNewsItems] = useState([]);
-  const [watchlistItems, setWatchlistItems] = useState([]);
-  const [alerts, setAlerts] = useState([]);
-  const [portfolioSnapshots, setPortfolioSnapshots] = useState([]);
-  const [sectionErrors, setSectionErrors] = useState({});
 
-  useEffect(() => {
-    let active = true;
+  const { data: marketQuotes = [], isLoading: quotesLoading, error: quotesError } = useMarketQuotes();
+  const { data: newsPage, isLoading: newsLoading, error: newsError } = useNewsList(
+    { size: 6, isKapDisclosure: false },
+    { staleTime: 2 * 60_000 },
+  );
+  const { data: watchlistItems = [], error: watchlistError } = useUserWatchlist(userId);
+  const { data: alerts = [], error: alertsError } = useUserAlerts(userId);
+  const { data: portfolios = [], isLoading: portfoliosLoading, error: portfoliosError } = useUserPortfolios(userId);
 
-    async function loadDashboard() {
-      try {
-        setLoading(true);
-        setSectionErrors({});
+  const portfolioDetailQueries = useQueries({
+    queries: portfolios.map((p) => ({
+      queryKey: portfolioKeys.details(p.portfolioId),
+      queryFn: () => getPortfolioDetails(p.portfolioId),
+      staleTime: 30_000,
+    })),
+  });
 
-        // Public veriler her zaman yüklenir (giriş gerektirmez)
-        const publicRequests = [getMarketQuotes(), getNews({ size: 6, isKapDisclosure: false })];
+  const loading = quotesLoading || newsLoading || portfoliosLoading;
+  const newsItems = (newsPage?.content ?? []).slice(0, 4);
+  const portfolioSnapshots = portfolioDetailQueries
+    .filter((q) => q.status === "fulfilled" && q.data)
+    .map((q) => q.data);
 
-        // Kullanıcıya özel veriler yalnızca giriş yapılmışsa yüklenir
-        const userRequests = userId
-          ? [getUserWatchlist(userId), getUserAlerts(userId), getUserPortfolios(userId)]
-          : [Promise.resolve([]), Promise.resolve([]), Promise.resolve([])];
-
-        const [marketResult, newsResult, watchlistResult, alertsResult, portfoliosResult] =
-          await Promise.allSettled([...publicRequests, ...userRequests]);
-
-        if (!active) {
-          return;
-        }
-
-        const nextErrors = {};
-
-        const resolvedMarketQuotes = marketResult.status === "fulfilled" ? marketResult.value ?? [] : [];
-        const resolvedNews = newsResult.status === "fulfilled"
-          ? (newsResult.value?.content ?? []).slice(0, 4)
-          : [];
-        const resolvedWatchlist = watchlistResult.status === "fulfilled" ? watchlistResult.value ?? [] : [];
-        const resolvedAlerts = alertsResult.status === "fulfilled" ? alertsResult.value ?? [] : [];
-        const portfolios = portfoliosResult.status === "fulfilled" ? portfoliosResult.value ?? [] : [];
-
-        if (marketResult.status === "rejected") {
-          nextErrors.market = extractErrorMessage(marketResult.reason, t("dashboard.marketError"));
-        }
-        if (newsResult.status === "rejected") {
-          nextErrors.news = extractErrorMessage(newsResult.reason, t("dashboard.newsError"));
-        }
-        if (userId && watchlistResult.status === "rejected") {
-          nextErrors.watchlist = extractErrorMessage(watchlistResult.reason, t("dashboard.watchlistError"));
-        }
-        if (userId && alertsResult.status === "rejected") {
-          nextErrors.alerts = extractErrorMessage(alertsResult.reason, t("dashboard.alertsError"));
-        }
-        if (userId && portfoliosResult.status === "rejected") {
-          nextErrors.portfolios = extractErrorMessage(portfoliosResult.reason, t("dashboard.portfoliosError"));
-        }
-
-        const detailResults = await Promise.allSettled(
-          portfolios.map((portfolio) => getPortfolioDetails(portfolio.portfolioId)),
-        );
-
-        if (!active) {
-          return;
-        }
-
-        const resolvedSnapshots = detailResults
-          .filter((result) => result.status === "fulfilled" && result.value)
-          .map((result) => result.value);
-
-        if (detailResults.some((result) => result.status === "rejected")) {
-          nextErrors.portfolioDetails = t("dashboard.portfolioDetailsError");
-        }
-
-        setMarketQuotes(resolvedMarketQuotes);
-        setNewsItems(resolvedNews);
-        setWatchlistItems(resolvedWatchlist);
-        setAlerts(resolvedAlerts);
-        setPortfolioSnapshots(resolvedSnapshots);
-        setSectionErrors(nextErrors);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadDashboard();
-
-    return () => {
-      active = false;
-    };
-  }, [t, userId]);
+  const sectionErrors = {
+    market: quotesError ? t("dashboard.marketError") : null,
+    news: newsError ? t("dashboard.newsError") : null,
+    watchlist: watchlistError && userId ? t("dashboard.watchlistError") : null,
+    alerts: alertsError && userId ? t("dashboard.alertsError") : null,
+    portfolios: portfoliosError && userId ? t("dashboard.portfoliosError") : null,
+  };
 
   const quoteBySymbol = useMemo(() => {
     return new Map(

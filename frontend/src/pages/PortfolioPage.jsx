@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowUpDown, ChartPie, Filter, GripVertical, LayoutGrid, RotateCcw, ShieldAlert, Sparkles, Star, X } from "lucide-react";
 import { Area, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Responsive, WidthProvider } from "react-grid-layout/legacy";
@@ -8,12 +9,9 @@ import {
   createPortfolio,
   createPortfolioHolding,
   deletePortfolioHolding,
-  getPortfolioDetails,
-  getPortfolioPerformanceHistory,
-  getPortfolioRiskSummary,
-  getUserPortfolios,
   updatePortfolioHolding,
 } from "../api/portfolioApi";
+import { portfolioKeys } from "../api/queryKeys";
 
 import { getPortfolioAiAnalysis } from "../api/aiApi";
 import { getPriceOnDate, searchInstruments } from "../api/marketApi";
@@ -24,6 +22,7 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import useToast from "../hooks/useToast";
+import { usePortfolioDetails, usePortfolioPerformance, usePortfolioRisk, useUserPortfolios } from "../hooks/usePortfolioQueries";
 import { useTheme } from "../theme/ThemeContext";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
@@ -151,17 +150,9 @@ export default function PortfolioPage() {
   const { chartTheme } = useTheme();
   const { formatAmount, convertAmount, currency } = useCurrency();
   const { toast, showToast } = useToast();
-  const [portfolios, setPortfolios] = useState([]);
+  const queryClient = useQueryClient();
   const [selectedPortfolioId, setSelectedPortfolioId] = useState(null);
-  const [selectedPortfolio, setSelectedPortfolio] = useState(null);
-  const [performanceHistory, setPerformanceHistory] = useState(null);
-  const [loadingList, setLoadingList] = useState(false);
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
-  const [loadingPerformanceHistory, setLoadingPerformanceHistory] = useState(false);
-  const [performanceHistoryError, setPerformanceHistoryError] = useState("");
-  const [riskSummary, setRiskSummary] = useState(null);
-  const [riskSummaryError, setRiskSummaryError] = useState("");
   const [watchlist, setWatchlist] = useState([]);
   const [newPortfolio, setNewPortfolio] = useState({ portfolioName: "" });
   const [isCreatePortfolioModalOpen, setCreatePortfolioModalOpen] = useState(false);
@@ -198,6 +189,36 @@ export default function PortfolioPage() {
   const searchDebounceRef = useRef(null);
   const canEditWidgetLayout = widgetBreakpoint === "lg" || widgetBreakpoint === "md";
 
+  // ── React Query data fetching ───────────────────────────────────────────────
+  const { data: portfolios = [], isLoading: loadingList } = useUserPortfolios(userId);
+  const performanceParams = useMemo(() => buildPerformanceHistoryParams(performanceRangeKey), [performanceRangeKey]);
+  const { data: selectedPortfolio = null, isLoading: loadingDetail } = usePortfolioDetails(selectedPortfolioId);
+  const { data: performanceHistory = null, isLoading: loadingPerformanceHistory, error: performanceQueryError } = usePortfolioPerformance(selectedPortfolioId, performanceParams);
+  const { data: riskSummary = null, error: riskQueryError } = usePortfolioRisk(selectedPortfolioId);
+  const performanceHistoryError = performanceQueryError ? extractErrorMessage(performanceQueryError, "Performans geçmişi yüklenemedi.") : "";
+  const riskSummaryError = riskQueryError ? extractErrorMessage(riskQueryError, "Risk analizi yüklenemedi.") : "";
+
+  // Initialize selectedPortfolioId from portfolio list
+  useEffect(() => {
+    if (!portfolios.length) {
+      setSelectedPortfolioId(null);
+      return;
+    }
+    setSelectedPortfolioId((current) => {
+      if (current && portfolios.some((p) => p.portfolioId === current)) return current;
+      return portfolios[0].portfolioId;
+    });
+  }, [portfolios]);
+
+  // Load watchlist when user changes
+  useEffect(() => {
+    if (!userId) {
+      setWatchlist([]);
+      return;
+    }
+    loadWatchlist();
+  }, [userId]);
+
   const openAiDrawer = useCallback(() => {
     setAiDrawerVisible(true);
     window.requestAnimationFrame(() => setAiDrawerOpen(true));
@@ -221,27 +242,6 @@ export default function PortfolioPage() {
       setWidgetEditMode(false);
     }
   }, [canEditWidgetLayout, isWidgetEditMode]);
-
-  useEffect(() => {
-    if (userId) {
-      loadPortfolios();
-      loadWatchlist();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (selectedPortfolioId) {
-      loadPortfolioDetails(selectedPortfolioId);
-      loadPortfolioPerformanceHistory(selectedPortfolioId, performanceRangeKey);
-      loadPortfolioRiskSummary(selectedPortfolioId);
-    } else {
-      setSelectedPortfolio(null);
-      setPerformanceHistory(null);
-      setPerformanceHistoryError("");
-      setRiskSummary(null);
-      setRiskSummaryError("");
-    }
-  }, [selectedPortfolioId, performanceRangeKey]);
 
   useEffect(() => {
     if (!isAiDrawerVisible && !isWatchlistDrawerVisible) {
@@ -330,78 +330,12 @@ export default function PortfolioPage() {
     return () => window.clearTimeout(timer);
   }, [isWatchlistDrawerOpen, isWatchlistDrawerVisible]);
 
-  async function loadPortfolios(preferredId = null) {
-    try {
-      setLoadingList(true);
-      setError("");
-      const list = await getUserPortfolios(userId);
-      setPortfolios(list);
-
-      if (list.length === 0) {
-        setSelectedPortfolioId(null);
-        return;
-      }
-
-      const resolvedId =
-        preferredId && list.some((item) => item.portfolioId === preferredId)
-          ? preferredId
-          : selectedPortfolioId && list.some((item) => item.portfolioId === selectedPortfolioId)
-            ? selectedPortfolioId
-            : list[0].portfolioId;
-
-      setSelectedPortfolioId(resolvedId);
-    } catch (err) {
-      setError(extractErrorMessage(err, t("portfolio.loadListError")));
-    } finally {
-      setLoadingList(false);
-    }
-  }
-
   async function loadWatchlist() {
     try {
       const rows = await getUserWatchlist(userId);
       setWatchlist(Array.isArray(rows) ? rows : []);
     } catch {
       setWatchlist([]);
-    }
-  }
-
-  async function loadPortfolioDetails(portfolioId) {
-    try {
-      setLoadingDetail(true);
-      setError("");
-      const details = await getPortfolioDetails(portfolioId);
-      setSelectedPortfolio(details);
-    } catch (err) {
-      setSelectedPortfolio(null);
-      setError(extractErrorMessage(err, t("portfolio.loadDetailError")));
-    } finally {
-      setLoadingDetail(false);
-    }
-  }
-
-  async function loadPortfolioPerformanceHistory(portfolioId, rangeKey) {
-    try {
-      setLoadingPerformanceHistory(true);
-      setPerformanceHistoryError("");
-      const history = await getPortfolioPerformanceHistory(portfolioId, buildPerformanceHistoryParams(rangeKey));
-      setPerformanceHistory(history);
-    } catch (err) {
-      setPerformanceHistory(null);
-      setPerformanceHistoryError(extractErrorMessage(err, "Performans geçmişi yüklenemedi."));
-    } finally {
-      setLoadingPerformanceHistory(false);
-    }
-  }
-
-  async function loadPortfolioRiskSummary(portfolioId) {
-    try {
-      setRiskSummaryError("");
-      const summary = await getPortfolioRiskSummary(portfolioId);
-      setRiskSummary(summary);
-    } catch (err) {
-      setRiskSummary(null);
-      setRiskSummaryError(extractErrorMessage(err, "Risk analizi yüklenemedi."));
     }
   }
 
@@ -413,7 +347,8 @@ export default function PortfolioPage() {
       showToast("success", t("portfolio.createSuccess"));
       setNewPortfolio({ portfolioName: "" });
       setCreatePortfolioModalOpen(false);
-      await loadPortfolios(created?.portfolioId ?? null);
+      if (created?.portfolioId) setSelectedPortfolioId(created.portfolioId);
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.byUser(userId) });
     } catch (err) {
       setError(extractErrorMessage(err, t("portfolio.createError")));
     }
@@ -561,11 +496,9 @@ export default function PortfolioPage() {
       }
 
       closeHoldingModal();
-      await Promise.all([
-        loadPortfolioDetails(selectedPortfolio.portfolioId),
-        loadPortfolioPerformanceHistory(selectedPortfolio.portfolioId, performanceRangeKey),
-        loadPortfolioRiskSummary(selectedPortfolio.portfolioId),
-      ]);
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.details(selectedPortfolio.portfolioId) });
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.performance(selectedPortfolio.portfolioId) });
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.risk(selectedPortfolio.portfolioId) });
     } catch (err) {
       setError(extractErrorMessage(err, t("portfolio.holdingSaveError")));
     } finally {
@@ -583,11 +516,9 @@ export default function PortfolioPage() {
       const ids = Array.isArray(holding?.sourceHoldingIds) && holding.sourceHoldingIds.length > 0 ? holding.sourceHoldingIds : [holding?.holdingId];
       await Promise.all(ids.filter(Boolean).map((holdingId) => deletePortfolioHolding(selectedPortfolio.portfolioId, holdingId)));
       showToast("success", t("portfolio.holdingDeleteSuccess"));
-      await Promise.all([
-        loadPortfolioDetails(selectedPortfolio.portfolioId),
-        loadPortfolioPerformanceHistory(selectedPortfolio.portfolioId, performanceRangeKey),
-        loadPortfolioRiskSummary(selectedPortfolio.portfolioId),
-      ]);
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.details(selectedPortfolio.portfolioId) });
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.performance(selectedPortfolio.portfolioId) });
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.risk(selectedPortfolio.portfolioId) });
     } catch (err) {
       setError(extractErrorMessage(err, t("portfolio.holdingDeleteError")));
     }

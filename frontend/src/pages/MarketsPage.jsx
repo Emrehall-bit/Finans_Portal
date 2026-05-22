@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
 import { LayoutGrid, Star, TrendingDown, TrendingUp } from "lucide-react";
-import { buildMarketDetailPath, getMarketsByType } from "../api/marketApi";
+import { buildMarketDetailPath } from "../api/marketApi";
 import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../api/watchlistApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
@@ -11,6 +11,7 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import useToast from "../hooks/useToast";
+import { useMarketsByType } from "../hooks/useMarketQueries";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatNumber } from "../utils/formatters";
 import { getCountryCodeForInstrument } from "../utils/currencyToCountryMap";
@@ -36,10 +37,6 @@ export default function MarketsPage() {
   const { toast, showToast } = useToast();
   const { formatAmount } = useCurrency();
 
-  // Market list state
-  const [quotes, setQuotes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [movementFilter, setMovementFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("FX");
@@ -50,37 +47,18 @@ export default function MarketsPage() {
   const [favoriteBusyKey, setFavoriteBusyKey] = useState("");
   const deferredSearch = useDeferredValue(search);
 
-
   // ── Market list data ────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (categoryFilter === "MACRO") return;
-
-    let active = true;
-
-    async function load() {
-      try {
-        setLoading(true);
-        setError("");
-        const data = await getMarketsByType(categoryFilter);
-        if (!active) return;
-
-        const normalizedQuotes = Array.isArray(data) ? data : [];
-        setQuotes(
-          normalizedQuotes
-            .filter((item) => item && typeof item === "object")
-            .map((item) => ({ ...item, marketCategory: classifyCategory(item, categoryFilter) })),
-        );
-      } catch (err) {
-        if (!active) return;
-        setError(extractErrorMessage(err, t("markets.loadError")));
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
-    load();
-    return () => { active = false; };
-  }, [categoryFilter, t]);
+  const { data: rawQuotes = [], isLoading: loading, error: queryError } = useMarketsByType(
+    categoryFilter !== "MACRO" ? categoryFilter : null,
+  );
+  const error = queryError ? extractErrorMessage(queryError, t("markets.loadError")) : "";
+  const quotes = useMemo(
+    () =>
+      rawQuotes
+        .filter((item) => item && typeof item === "object")
+        .map((item) => ({ ...item, marketCategory: classifyCategory(item, categoryFilter) })),
+    [rawQuotes, categoryFilter],
+  );
 
   useEffect(() => {
     if (!userId) {

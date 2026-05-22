@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { getNewsDetail, getNewsRelated } from "../api/newsApi";
 import { buildMarketDetailPath } from "../api/marketApi";
 import AiNewsImpactCard from "../components/ai/AiNewsImpactCard";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -9,6 +8,7 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
+import { useNewsDetail, useNewsRelated } from "../hooks/useNewsQueries";
 import { formatCurrency, formatDateTime, formatPercent } from "../utils/formatters";
 import {
   buildNewsPlaceholderLabel,
@@ -29,88 +29,18 @@ export default function NewsDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
-  const [item, setItem] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [relatedData, setRelatedData] = useState(EMPTY_RELATED);
-  const [relatedLoading, setRelatedLoading] = useState(true);
-  const [relatedError, setRelatedError] = useState("");
   const [imageFailed, setImageFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  const { data: item = null, isLoading: loading, error: detailError } = useNewsDetail(id);
+  const { data: relatedRaw, isLoading: relatedLoading, error: relatedQueryError } = useNewsRelated(id);
 
-    async function load() {
-      try {
-        setLoading(true);
-        setError("");
-        const detail = await getNewsDetail(id);
-        if (active) {
-          setItem(detail);
-          setImageFailed(false);
-          setLogoFailed(false);
-        }
-      } catch (err) {
-        if (active) {
-          setItem(null);
-          setError(extractErrorMessage(err, t("newsDetail.loadError")));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    if (id) {
-      load();
-    } else {
-      setLoading(false);
-      setError(t("newsDetail.missingId"));
-    }
-
-    return () => {
-      active = false;
-    };
-  }, [id, t]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadRelated() {
-      try {
-        setRelatedLoading(true);
-        setRelatedError("");
-        const response = await getNewsRelated(id);
-        if (active) {
-          setRelatedData({
-            relatedInstruments: Array.isArray(response?.relatedInstruments) ? response.relatedInstruments : [],
-            relatedNews: Array.isArray(response?.relatedNews) ? response.relatedNews : [],
-          });
-        }
-      } catch (err) {
-        if (active) {
-          setRelatedData(EMPTY_RELATED);
-          setRelatedError(extractErrorMessage(err, t("newsDetail.relatedLoadError")));
-        }
-      } finally {
-        if (active) {
-          setRelatedLoading(false);
-        }
-      }
-    }
-
-    if (id) {
-      loadRelated();
-    } else {
-      setRelatedLoading(false);
-    }
-
-    return () => {
-      active = false;
-    };
-  }, [id, t]);
+  const error = !id ? t("newsDetail.missingId") : detailError ? extractErrorMessage(detailError, t("newsDetail.loadError")) : "";
+  const relatedError = relatedQueryError ? extractErrorMessage(relatedQueryError, t("newsDetail.relatedLoadError")) : "";
+  const relatedData = {
+    relatedInstruments: Array.isArray(relatedRaw?.relatedInstruments) ? relatedRaw.relatedInstruments : [],
+    relatedNews: Array.isArray(relatedRaw?.relatedNews) ? relatedRaw.relatedNews : [],
+  };
 
   const kapDisclosure = isKapDisclosure(item);
   const sourceName = getNewsSourceName(item);

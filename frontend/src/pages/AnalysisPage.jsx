@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { compareTechnicalAnalysis, getMarkets, getTechnicalAnalysis } from "../api/marketApi";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { extractErrorMessage } from "../api/responseUtils";
+import { useComparisonAnalysis, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
 import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPanel";
 import AnalysisInsightPanel from "../components/analysis/AnalysisInsightPanel";
 import AnalysisSymbolPicker from "../components/analysis/AnalysisSymbolPicker";
@@ -16,134 +16,53 @@ import InstrumentChartPanel from "../components/market-detail/InstrumentChartPan
 export default function AnalysisPage() {
   const { t } = useTranslation();
   const { convertAmount, currency } = useCurrency();
-  const [quotes, setQuotes] = useState([]);
-  const [quotesLoading, setQuotesLoading] = useState(true);
-  const [quotesError, setQuotesError] = useState("");
   const [primarySymbol, setPrimarySymbol] = useState("");
   const [selectedSymbols, setSelectedSymbols] = useState([]);
   const [activeRange, setActiveRange] = useState("3M");
   const [dateRange, setDateRange] = useState(() => buildPresetRange(90));
   const [selectedIndicators, setSelectedIndicators] = useState(() => new Set(DEFAULT_INDICATORS));
-  const [analysis, setAnalysis] = useState(null);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [analysisError, setAnalysisError] = useState("");
-  const [comparison, setComparison] = useState(null);
-  const [comparisonLoading, setComparisonLoading] = useState(false);
-  const [comparisonError, setComparisonError] = useState("");
   const [comparisonMode, setComparisonMode] = useState("normalized");
 
-  useEffect(() => {
-    let active = true;
+  const { data: rawQuotes = [], isLoading: quotesLoading, error: quotesQueryError } = useMarketQuotes();
+  const quotes = useMemo(() => (Array.isArray(rawQuotes) ? rawQuotes : []), [rawQuotes]);
+  const quotesError = quotesQueryError ? extractErrorMessage(quotesQueryError, t("analysis.quotesError")) : "";
 
-    async function loadQuotes() {
-      try {
-        setQuotesLoading(true);
-        setQuotesError("");
-        const data = await getMarkets();
-        if (!active) {
-          return;
-        }
-        const normalizedData = Array.isArray(data) ? data : [];
-        setQuotes(normalizedData);
-        if (normalizedData.length > 0) {
-          setPrimarySymbol((current) => current || normalizedData[0].symbol || "");
-          setSelectedSymbols((current) => (current.length > 0 ? current : normalizedData[0]?.symbol ? [normalizedData[0].symbol] : []));
-        }
-      } catch (err) {
-        if (active) {
-          setQuotesError(extractErrorMessage(err, t("analysis.quotesError")));
-          setQuotes([]);
-        }
-      } finally {
-        if (active) {
-          setQuotesLoading(false);
-        }
-      }
+  useMemo(() => {
+    if (quotes.length > 0 && !primarySymbol) {
+      setPrimarySymbol(quotes[0]?.symbol || "");
+      setSelectedSymbols((current) => (current.length > 0 ? current : quotes[0]?.symbol ? [quotes[0].symbol] : []));
     }
+  }, [quotes]);
 
-    loadQuotes();
-    return () => {
-      active = false;
-    };
-  }, [t]);
+  const analysisParams = useMemo(
+    () => ({
+      from: dateRange.from,
+      to: dateRange.to,
+      indicators: Array.from(selectedIndicators).join(","),
+    }),
+    [dateRange, selectedIndicators],
+  );
 
-  useEffect(() => {
-    if (!primarySymbol || !dateRange.from || !dateRange.to) {
-      setAnalysis(null);
-      return;
-    }
+  const { data: analysis = null, isLoading: analysisLoading, error: analysisQueryError } = useTechnicalAnalysis(
+    primarySymbol,
+    analysisParams,
+    { enabled: !!(primarySymbol && dateRange.from && dateRange.to) },
+  );
+  const analysisError = analysisQueryError ? extractErrorMessage(analysisQueryError, t("analysis.analysisError")) : "";
 
-    let active = true;
+  const comparisonParams = useMemo(
+    () =>
+      selectedSymbols.length >= 2 && dateRange.from && dateRange.to
+        ? { symbols: selectedSymbols.join(","), from: dateRange.from, to: dateRange.to }
+        : null,
+    [selectedSymbols, dateRange],
+  );
 
-    async function loadAnalysis() {
-      try {
-        setAnalysisLoading(true);
-        setAnalysisError("");
-        const data = await getTechnicalAnalysis(
-          primarySymbol,
-          dateRange.from,
-          dateRange.to,
-          Array.from(selectedIndicators).join(","),
-        );
-        if (active) {
-          setAnalysis(data ?? null);
-        }
-      } catch (err) {
-        if (active) {
-          setAnalysis(null);
-          setAnalysisError(extractErrorMessage(err, t("analysis.analysisError")));
-        }
-      } finally {
-        if (active) {
-          setAnalysisLoading(false);
-        }
-      }
-    }
-
-    loadAnalysis();
-    return () => {
-      active = false;
-    };
-  }, [dateRange, primarySymbol, selectedIndicators, t]);
-
-  useEffect(() => {
-    if (selectedSymbols.length < 2 || !dateRange.from || !dateRange.to) {
-      setComparison(null);
-      setComparisonError("");
-      return;
-    }
-
-    let active = true;
-
-    async function loadComparison() {
-      try {
-        setComparisonLoading(true);
-        setComparisonError("");
-        const data = await compareTechnicalAnalysis({
-          symbols: selectedSymbols.join(","),
-          from: dateRange.from,
-          to: dateRange.to,
-        });
-        if (active) {
-          setComparison(data);
-        }
-      } catch (err) {
-        if (active) {
-          setComparison(null);
-          setComparisonError(extractErrorMessage(err, t("analysis.comparisonError")));
-        }
-      } finally {
-        if (active) {
-          setComparisonLoading(false);
-        }
-      }
-    }
-
-    loadComparison();
-    return () => {
-      active = false;
-    };
-  }, [dateRange, selectedSymbols, t]);
+  const { data: comparison = null, isLoading: comparisonLoading, error: comparisonQueryError } = useComparisonAnalysis(
+    comparisonParams,
+    { enabled: !!comparisonParams },
+  );
+  const comparisonError = comparisonQueryError ? extractErrorMessage(comparisonQueryError, t("analysis.comparisonError")) : "";
 
   const chartData = useMemo(() => buildChartData(Array.isArray(analysis?.points) ? analysis.points : []), [analysis]);
   const displayChartData = useMemo(() => {

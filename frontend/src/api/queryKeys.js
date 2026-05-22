@@ -1,0 +1,38 @@
+export const marketKeys = {
+  all: ["markets"],
+  quotes: () => [...marketKeys.all, "quotes"],
+  byType: (type) => [...marketKeys.all, "type", type],
+  bySymbol: (symbol) => [...marketKeys.all, "symbol", symbol],
+  history: (symbol, params) => [...marketKeys.all, "history", symbol, params],
+  technicalAnalysis: (symbol, params) => [...marketKeys.all, "technical", symbol, params],
+  tapeConfig: () => [...marketKeys.all, "tape-config"],
+  search: (query) => [...marketKeys.all, "search", query],
+};
+
+export const portfolioKeys = {
+  all: ["portfolios"],
+  byUser: (userId) => [...portfolioKeys.all, "user", userId],
+  detail: (portfolioId) => [...portfolioKeys.all, portfolioId],
+  summary: (portfolioId) => [...portfolioKeys.all, portfolioId, "summary"],
+  details: (portfolioId) => [...portfolioKeys.all, portfolioId, "details"],
+  performance: (portfolioId, params) => [...portfolioKeys.all, portfolioId, "performance", params],
+  risk: (portfolioId) => [...portfolioKeys.all, portfolioId, "risk"],
+  holdings: (portfolioId) => [...portfolioKeys.all, portfolioId, "holdings"],
+};
+
+export const newsKeys = {
+  all: ["news"],
+  list: (params) => [...newsKeys.all, "list", params],
+  detail: (id) => [...newsKeys.all, id],
+  related: (id) => [...newsKeys.all, id, "related"],
+};
+
+export const watchlistKeys = {
+  all: ["watchlist"],
+  byUser: (userId) => [...watchlistKeys.all, "user", userId],
+};
+
+export const alertKeys = {
+  all: ["alerts"],
+  byUser: (userId) => [...alertKeys.all, "user", userId],
+};

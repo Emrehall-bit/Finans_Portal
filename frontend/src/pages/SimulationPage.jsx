@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getMarketHistory, getMarketQuote, getMarketQuotes } from "../api/marketApi";
-import { getPortfolioDetails, getUserPortfolios } from "../api/portfolioApi";
+import { getMarketHistory, getMarketQuote } from "../api/marketApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
@@ -10,7 +9,9 @@ import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
-import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
+import { useMarketQuotes } from "../hooks/useMarketQueries";
+import { usePortfolioDetails, useUserPortfolios } from "../hooks/usePortfolioQueries";
+import { formatCurrency, formatNumber, formatPercent } from "../utils/formatters";
 
 const FUTURE_PERCENT_PRESETS = [-20, -10, -5, 5, 10, 25];
 
@@ -18,11 +19,6 @@ export default function SimulationPage() {
   const { t } = useTranslation();
   const { userId } = useAuth();
   const { formatAmount } = useCurrency();
-  const [quotes, setQuotes] = useState([]);
-  const [portfolios, setPortfolios] = useState([]);
-  const [selectedPortfolioDetails, setSelectedPortfolioDetails] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const [pastForm, setPastForm] = useState({
     instrumentCode: "",
@@ -40,82 +36,34 @@ export default function SimulationPage() {
     percentChange: "",
   });
 
-  useEffect(() => {
-    if (!userId) {
-      return;
+  const { data: quotes = [], isLoading: quotesLoading, error: quotesError } = useMarketQuotes();
+  const { data: portfolios = [], isLoading: portfoliosLoading, error: portfoliosError } = useUserPortfolios(userId);
+  const { data: selectedPortfolioDetails } = usePortfolioDetails(
+    futureForm.mode === "portfolio" ? futureForm.portfolioId : null,
+  );
+
+  const loading = quotesLoading || portfoliosLoading;
+  const error = quotesError || portfoliosError
+    ? extractErrorMessage(quotesError || portfoliosError, t("simulation.loadError"))
+    : "";
+
+  useMemo(() => {
+    if (quotes.length > 0 && !pastForm.instrumentCode) {
+      setPastForm((current) => ({ ...current, instrumentCode: current.instrumentCode || quotes[0]?.symbol || "" }));
     }
+  }, [quotes]);
 
-    let active = true;
-
-    async function loadData() {
-      try {
-        setLoading(true);
-        setError("");
-        const [marketQuotes, userPortfolios] = await Promise.all([
-          getMarketQuotes().catch(() => []),
-          getUserPortfolios(userId).catch(() => []),
-        ]);
-
-        if (!active) {
-          return;
-        }
-
-        setQuotes(marketQuotes ?? []);
-        setPortfolios(userPortfolios ?? []);
-        setPastForm((current) => ({
-          ...current,
-          instrumentCode: current.instrumentCode || marketQuotes?.[0]?.symbol || "",
-        }));
-        setFutureForm((current) => ({
-          ...current,
-          instrumentCode: current.instrumentCode || marketQuotes?.[0]?.symbol || "",
-          portfolioId: current.portfolioId || userPortfolios?.[0]?.portfolioId || "",
-        }));
-      } catch (err) {
-        if (active) {
-          setError(extractErrorMessage(err, t("simulation.loadError")));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
+  useMemo(() => {
+    if (quotes.length > 0 && !futureForm.instrumentCode) {
+      setFutureForm((current) => ({ ...current, instrumentCode: current.instrumentCode || quotes[0]?.symbol || "" }));
     }
+  }, [quotes]);
 
-    loadData();
-
-    return () => {
-      active = false;
-    };
-  }, [userId]);
-
-  useEffect(() => {
-    if (futureForm.mode !== "portfolio" || !futureForm.portfolioId) {
-      setSelectedPortfolioDetails(null);
-      return;
+  useMemo(() => {
+    if (portfolios.length > 0 && !futureForm.portfolioId) {
+      setFutureForm((current) => ({ ...current, portfolioId: current.portfolioId || portfolios[0]?.portfolioId || "" }));
     }
-
-    let active = true;
-
-    async function loadPortfolioDetails() {
-      try {
-        const details = await getPortfolioDetails(futureForm.portfolioId);
-        if (active) {
-          setSelectedPortfolioDetails(details);
-        }
-      } catch {
-        if (active) {
-          setSelectedPortfolioDetails(null);
-        }
-      }
-    }
-
-    loadPortfolioDetails();
-
-    return () => {
-      active = false;
-    };
-  }, [futureForm.mode, futureForm.portfolioId]);
+  }, [portfolios]);
 
   const selectedInstrumentQuote = useMemo(
     () => quotes.find((item) => normalizeCode(item.symbol) === normalizeCode(futureForm.instrumentCode)) || null,
