@@ -17,6 +17,8 @@ public interface NewsRepository extends JpaRepository<News, Long>, JpaSpecificat
 
     Set<News> findByExternalIdIn(Collection<String> externalIds);
 
+    Set<News> findByUrlIn(Collection<String> urls);
+
     Optional<News> findByExternalId(String externalId);
 
     Optional<News> findFirstByUrlAndContentEnrichedAtIsNotNullOrderByContentEnrichedAtDesc(String url);
@@ -33,6 +35,19 @@ public interface NewsRepository extends JpaRepository<News, Long>, JpaSpecificat
     List<News> findRecentCandidatesForRelatedNews(
             @Param("newsId") Long newsId,
             @Param("category") String category,
+            @Param("publishedAfter") LocalDateTime publishedAfter
+    );
+
+    @Query("""
+            select n
+            from News n
+            where lower(n.source) in :sources
+              and lower(n.title) in :titles
+              and n.publishedAt >= :publishedAfter
+            """)
+    List<News> findRecentPotentialDuplicates(
+            @Param("sources") Collection<String> sources,
+            @Param("titles") Collection<String> titles,
             @Param("publishedAfter") LocalDateTime publishedAfter
     );
 

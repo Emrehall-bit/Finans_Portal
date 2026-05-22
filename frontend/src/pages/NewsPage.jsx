@@ -11,15 +11,20 @@ import PaginationControls from "../components/common/PaginationControls";
 import NewsCard from "../components/news/NewsCard";
 import NewsFilterDrawer from "../components/news/NewsFilterDrawer";
 import NewsFeedSkeleton from "../components/news/NewsFeedSkeleton";
+import {
+  ALL_CATEGORY_OPTION_VALUE,
+  getNewsCategoryFilterLabel,
+  getNewsCategoryFilterOptions,
+  getNewsProviderFilterLabel,
+  getNewsProviderFilterOptions,
+} from "../components/news/newsFilterOptions";
 import NewsSidebarFilters from "../components/news/NewsSidebarFilters";
-import { formatNewsCategoryLabel, getNewsProviderLabel } from "../components/news/newsCardUtils";
 import { useNewsList } from "../hooks/useNewsQueries";
 import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
-const REGULAR_PROVIDERS = ["AA_RSS", "CNBC_RSS"];
+const REGULAR_PROVIDERS = ["AA_RSS", "CNBC_RSS", "GUARDIAN"];
 const KAP_PROVIDERS = ["KAP"];
-const KNOWN_CATEGORIES = ["business", "ECONOMY", "top news", "general", "company"];
 const INITIAL_NEWS_PAGE = {
   content: [],
   page: 0,
@@ -84,34 +89,15 @@ export default function NewsPage() {
   const isKapFeed = feedType === "kap";
   const providerSeed = isKapFeed ? KAP_PROVIDERS : REGULAR_PROVIDERS;
 
-  const providerOptions = useMemo(() => {
-    const values = new Set(providerSeed);
+  const providerOptions = useMemo(
+    () => getNewsProviderFilterOptions(providerSeed, t),
+    [providerSeed, t],
+  );
 
-    selectedProviders.forEach((provider) => {
-      if (provider) {
-        values.add(provider);
-      }
-    });
-
-    return [...values].filter(Boolean).sort((a, b) => a.localeCompare(b));
-  }, [providerSeed, selectedProviders]);
-
-  const categoryOptions = useMemo(() => {
-    const values = new Map();
-
-    [...(isKapFeed ? [] : KNOWN_CATEGORIES), ...selectedCategories, ...items.map((item) => item?.category)]
-      .filter(Boolean)
-      .forEach((category) => {
-        const key = category.trim().toLowerCase();
-        if (!values.has(key)) {
-          values.set(key, category);
-        }
-      });
-
-    return [...values.values()].sort((a, b) =>
-      (formatNewsCategoryLabel(a) || a).localeCompare(formatNewsCategoryLabel(b) || b),
-    );
-  }, [isKapFeed, items, selectedCategories]);
+  const categoryOptions = useMemo(
+    () => (isKapFeed ? [] : getNewsCategoryFilterOptions(t)),
+    [isKapFeed, t],
+  );
 
   const languageOptions = useMemo(
     () => [
@@ -139,14 +125,14 @@ export default function NewsPage() {
       nextFilters.push({
         type: "category",
         value: draftFilters.category,
-        label: formatNewsCategoryLabel(draftFilters.category),
+        label: getNewsCategoryFilterLabel(draftFilters.category, t),
       });
     }
     if (draftFilters.provider) {
       nextFilters.push({
         type: "provider",
         value: draftFilters.provider,
-        label: getNewsProviderLabel(draftFilters.provider),
+        label: getNewsProviderFilterLabel(draftFilters.provider, t),
       });
     }
     selectedLanguages.forEach((lang) => {
@@ -181,26 +167,20 @@ export default function NewsPage() {
     return () => window.clearTimeout(timer);
   }, [draftFilters]);
 
-  function toggleSelection(value, selectedValues, setter) {
-    setter(
-      selectedValues.includes(value)
-        ? selectedValues.filter((item) => item !== value)
-        : [...selectedValues, value]
-    );
-  }
-
   function handleToggleCategory(value) {
-    toggleSelection(value, selectedCategories, setSelectedCategories);
+    if (value === ALL_CATEGORY_OPTION_VALUE) {
+      setSelectedCategories([]);
+      return;
+    }
+    setSelectedCategories((current) => (current.includes(value) ? [] : [value]));
   }
 
   function handleToggleProvider(value) {
-    toggleSelection(value, selectedProviders, setSelectedProviders);
+    setSelectedProviders((current) => (current.includes(value) ? [] : [value]));
   }
 
   function handleToggleLanguage(value) {
-    setSelectedLanguages((prev) =>
-      prev.includes(value) ? prev.filter((l) => l !== value) : [...prev, value]
-    );
+    setSelectedLanguages((current) => (current.includes(value) ? [] : [value]));
   }
 
   function handleResetFilters() {
@@ -348,9 +328,6 @@ export default function NewsPage() {
               {t("news.tabs.kap")}
             </button>
           </div>
-          <span className="news-result-count">
-            {t("news.listedCount", { count: newsPage.totalElements })}
-          </span>
         </div>
 
         {activeFilters.length > 0 ? (
@@ -373,8 +350,8 @@ export default function NewsPage() {
       <div className="news-layout-grid">
         <aside className="news-sidebar-column">
           <NewsSidebarFilters
-            categoryOptions={categoryOptions.map((option) => ({ value: option, label: formatNewsCategoryLabel(option) }))}
-            providerOptions={providerOptions.map((option) => ({ value: option, label: getNewsProviderLabel(option) }))}
+            categoryOptions={categoryOptions}
+            providerOptions={providerOptions}
             languageOptions={languageOptions.filter((option) => option.value).map((option) => ({ value: option.value, label: option.label }))}
             selectedCategories={selectedCategories}
             selectedProviders={selectedProviders}
@@ -429,8 +406,8 @@ export default function NewsPage() {
       <NewsFilterDrawer
         open={mobileFiltersOpen}
         onClose={() => setMobileFiltersOpen(false)}
-        categoryOptions={categoryOptions.map((option) => ({ value: option, label: formatNewsCategoryLabel(option) }))}
-        providerOptions={providerOptions.map((option) => ({ value: option, label: getNewsProviderLabel(option) }))}
+        categoryOptions={categoryOptions}
+        providerOptions={providerOptions}
         languageOptions={languageOptions.filter((option) => option.value).map((option) => ({ value: option.value, label: option.label }))}
         selectedCategories={selectedCategories}
         selectedProviders={selectedProviders}

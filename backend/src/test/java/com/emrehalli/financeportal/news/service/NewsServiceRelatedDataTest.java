@@ -7,6 +7,7 @@ import com.emrehalli.financeportal.news.config.NewsNotificationProperties;
 import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.entity.News;
+import com.emrehalli.financeportal.news.repository.NewsProviderSyncStateRepository;
 import com.emrehalli.financeportal.news.repository.NewsRepository;
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +27,7 @@ class NewsServiceRelatedDataTest {
     @Test
     void resolvesRelatedInstrumentsAndPrioritizedRelatedNews() {
         NewsRepository newsRepository = mock(NewsRepository.class);
+        NewsProviderSyncStateRepository syncStateRepository = mock(NewsProviderSyncStateRepository.class);
         NewsImportanceScoringService scoringService = mock(NewsImportanceScoringService.class);
         NotificationService notificationService = mock(NotificationService.class);
         NewsNotificationProperties notificationProperties = mock(NewsNotificationProperties.class);
@@ -34,11 +36,13 @@ class NewsServiceRelatedDataTest {
 
         NewsService service = new NewsService(
                 newsRepository,
+                syncStateRepository,
                 List.of(),
                 scoringService,
                 notificationService,
                 notificationProperties,
                 presentationMapper,
+                new NewsCategoryClassifier(),
                 marketQueryService
         );
 
@@ -112,6 +116,7 @@ class NewsServiceRelatedDataTest {
     @Test
     void resolvesThemeBasedInstrumentsWhenNoDirectMatchExists() {
         NewsRepository newsRepository = mock(NewsRepository.class);
+        NewsProviderSyncStateRepository syncStateRepository = mock(NewsProviderSyncStateRepository.class);
         NewsImportanceScoringService scoringService = mock(NewsImportanceScoringService.class);
         NotificationService notificationService = mock(NotificationService.class);
         NewsNotificationProperties notificationProperties = mock(NewsNotificationProperties.class);
@@ -120,11 +125,13 @@ class NewsServiceRelatedDataTest {
 
         NewsService service = new NewsService(
                 newsRepository,
+                syncStateRepository,
                 List.of(),
                 scoringService,
                 notificationService,
                 notificationProperties,
                 presentationMapper,
+                new NewsCategoryClassifier(),
                 marketQueryService
         );
 
@@ -161,6 +168,7 @@ class NewsServiceRelatedDataTest {
     @Test
     void resolvesCarbonThemeWithLimitedAndDeduplicatedResults() {
         NewsRepository newsRepository = mock(NewsRepository.class);
+        NewsProviderSyncStateRepository syncStateRepository = mock(NewsProviderSyncStateRepository.class);
         NewsImportanceScoringService scoringService = mock(NewsImportanceScoringService.class);
         NotificationService notificationService = mock(NotificationService.class);
         NewsNotificationProperties notificationProperties = mock(NewsNotificationProperties.class);
@@ -169,11 +177,13 @@ class NewsServiceRelatedDataTest {
 
         NewsService service = new NewsService(
                 newsRepository,
+                syncStateRepository,
                 List.of(),
                 scoringService,
                 notificationService,
                 notificationProperties,
                 presentationMapper,
+                new NewsCategoryClassifier(),
                 marketQueryService
         );
 

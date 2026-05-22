@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.common.logging.SchedulerLogSupport;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.provider.cnbc.CnbcNewsProperties;
+import com.emrehalli.financeportal.news.provider.guardian.GuardianNewsProperties;
 import com.emrehalli.financeportal.news.provider.kap.KapNewsProperties;
 import com.emrehalli.financeportal.news.service.NewsService;
 import org.apache.logging.log4j.LogManager;
@@ -19,21 +20,25 @@ public class NewsScheduler {
 
     private final NewsService newsService;
     private final CnbcNewsProperties cnbcNewsProperties;
+    private final GuardianNewsProperties guardianNewsProperties;
     private final KapNewsProperties kapNewsProperties;
 
     public NewsScheduler(
             NewsService newsService,
             CnbcNewsProperties cnbcNewsProperties,
+            GuardianNewsProperties guardianNewsProperties,
             KapNewsProperties kapNewsProperties
     ) {
         this.newsService = newsService;
         this.cnbcNewsProperties = cnbcNewsProperties;
+        this.guardianNewsProperties = guardianNewsProperties;
         this.kapNewsProperties = kapNewsProperties;
     }
 
     @Scheduled(cron = "0 */30 * * * *")
     public void syncPrimaryProviders() {
         runProviderSync(NewsProviderType.CNBC_RSS, "scheduled");
+        runProviderSync(NewsProviderType.GUARDIAN, "scheduled");
     }
 
     @Scheduled(cron = "0 10,40 * * * *")
@@ -54,6 +59,10 @@ public class NewsScheduler {
             logger.info("Skipping CNBC RSS news sync because provider is disabled. trigger: {}", trigger);
             return;
         }
+        if (providerType == NewsProviderType.GUARDIAN && !guardianNewsProperties.isOperationallyEnabled()) {
+            logger.info("Skipping GUARDIAN news sync because provider is disabled or api key missing. trigger: {}", trigger);
+            return;
+        }
         if (providerType == NewsProviderType.KAP && !kapNewsProperties.isEnabled()) {
             logger.info("Skipping KAP news sync because provider is disabled. trigger: {}", trigger);
             return;
@@ -66,6 +75,12 @@ public class NewsScheduler {
                         cnbcNewsProperties.isEnabled(),
                         cnbcNewsProperties.getFeedUrls().size(),
                         cnbcNewsProperties.getFeedUrls());
+            }
+            if (providerType == NewsProviderType.GUARDIAN) {
+                logger.info("Scheduler invoking GUARDIAN. trigger: {}, enabled: {}, baseUrl: {}",
+                        trigger,
+                        guardianNewsProperties.isOperationallyEnabled(),
+                        guardianNewsProperties.getBaseUrl());
             }
             logger.info("{} {} news sync started", capitalize(trigger), providerType.name());
             NewsSyncResponseDto result = "startup".equalsIgnoreCase(trigger)

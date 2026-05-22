@@ -67,6 +67,8 @@ public class CnbcRssNewsClient {
                     .feedUrlCount(feedUrls.size())
                     .fetched(0)
                     .skippedByRelevance(0)
+                    .timeoutCount(0)
+                    .parseErrorCount(0)
                     .errorMessage("Provider disabled by configuration")
                     .build();
             lastDiagnostics.set(diagnostics);
@@ -75,11 +77,19 @@ public class CnbcRssNewsClient {
 
         List<NewsItemDto> allItems = new ArrayList<>();
         int totalSkippedByRelevance = 0;
+        int totalTimeoutCount = 0;
+        int totalParseErrorCount = 0;
         String lastErrorMessage = null;
         for (String feedUrl : feedUrls) {
             RssProviderFetchResult result = fetchSingleFeed(feedUrl);
             allItems.addAll(result.getItems());
             totalSkippedByRelevance += result.getSkippedByRelevance();
+            if (result.getErrorMessage() != null && result.getErrorMessage().contains("Timeout")) {
+                totalTimeoutCount++;
+            }
+            if (result.getErrorMessage() != null && result.getErrorMessage().toLowerCase().contains("parse")) {
+                totalParseErrorCount++;
+            }
             if (result.getErrorMessage() != null) {
                 lastErrorMessage = result.getErrorMessage();
             }
@@ -90,6 +100,8 @@ public class CnbcRssNewsClient {
                 .feedUrlCount(feedUrls.size())
                 .fetched(allItems.size())
                 .skippedByRelevance(totalSkippedByRelevance)
+                .timeoutCount(totalTimeoutCount)
+                .parseErrorCount(totalParseErrorCount)
                 .errorMessage(lastErrorMessage)
                 .build());
         return RssProviderFetchResult.builder()
@@ -125,7 +137,10 @@ public class CnbcRssNewsClient {
                     .build();
         } catch (RestClientException exception) {
             logger.error("CNBC RSS fetch failed. url: {}", feedUrl, exception);
-            return RssProviderFetchResult.builder().items(List.of()).feedUrlCount(1).skippedByRelevance(0).errorMessage("CNBC RSS fetch failed: " + exception.getClass().getSimpleName()).build();
+            String message = exception.getCause() instanceof java.net.SocketTimeoutException
+                    ? "CNBC RSS fetch failed: Timeout"
+                    : "CNBC RSS fetch failed: " + exception.getClass().getSimpleName();
+            return RssProviderFetchResult.builder().items(List.of()).feedUrlCount(1).skippedByRelevance(0).errorMessage(message).build();
         } catch (Exception exception) {
             logger.error("Unexpected CNBC RSS fetch failure. url: {}", feedUrl, exception);
             return RssProviderFetchResult.builder().items(List.of()).feedUrlCount(1).skippedByRelevance(0).errorMessage("Unexpected CNBC RSS fetch failure: " + exception.getClass().getSimpleName()).build();

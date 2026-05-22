@@ -13,7 +13,7 @@ function FilterSection({ title, options, selectedValues, onToggle }) {
 
       <div className="news-sidebar-checklist">
         {options.map((option) => {
-          const checked = selectedValues.includes(option.value);
+          const checked = option.isAll ? selectedValues.length === 0 : selectedValues.includes(option.value);
           return (
             <label key={option.value} className={`news-sidebar-option${checked ? " is-selected" : ""}`}>
               <input type="checkbox" checked={checked} onChange={() => onToggle(option.value)} />

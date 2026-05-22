@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.common.exception.BadRequestException;
 public enum NewsProviderType {
     AA_RSS,
     CNBC_RSS,
+    GUARDIAN,
     KAP;
 
     public static NewsProviderType from(String value) {
@@ -15,7 +16,7 @@ public enum NewsProviderType {
         try {
             return NewsProviderType.valueOf(value.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid provider. Allowed values: AA_RSS, CNBC_RSS, KAP");
+            throw new BadRequestException("Invalid provider. Allowed values: AA_RSS, CNBC_RSS, GUARDIAN, KAP");
         }
     }
 }

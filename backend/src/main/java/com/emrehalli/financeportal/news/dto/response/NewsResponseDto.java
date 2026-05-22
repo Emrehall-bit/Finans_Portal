@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -29,7 +30,7 @@ public class NewsResponseDto {
     private String qualityStatus;
     private Boolean isKapDisclosure;
     private String disclosureType;
+    private List<String> tags;
 }
-
 
 

@@ -1,7 +1,6 @@
-package com.emrehalli.financeportal.news.provider.aa;
+package com.emrehalli.financeportal.news.provider.guardian;
 
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
-import com.emrehalli.financeportal.news.provider.aa.client.AaRssNewsClient;
 import com.emrehalli.financeportal.news.provider.common.NewsProvider;
 import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnostics;
 import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnosticsAware;
@@ -11,27 +10,22 @@ import java.util.List;
 import java.util.Locale;
 
 @Component
-public class AaRssNewsProvider implements NewsProvider, ProviderSyncDiagnosticsAware {
+public class GuardianNewsProvider implements NewsProvider, ProviderSyncDiagnosticsAware {
 
-    private final AaRssNewsClient aaRssNewsClient;
-    private final AaNewsProperties properties;
+    private final GuardianNewsClient client;
 
-    public AaRssNewsProvider(AaRssNewsClient aaRssNewsClient, AaNewsProperties properties) {
-        this.aaRssNewsClient = aaRssNewsClient;
-        this.properties = properties;
+    public GuardianNewsProvider(GuardianNewsClient client) {
+        this.client = client;
     }
 
     @Override
     public String getProviderName() {
-        return "AA_RSS";
+        return "GUARDIAN";
     }
 
     @Override
     public List<NewsItemDto> fetchLatestNews() {
-        if (!properties.isEnabled()) {
-            return List.of();
-        }
-        return aaRssNewsClient.fetchEconomyNews();
+        return client.fetchNews();
     }
 
     @Override
@@ -54,6 +48,6 @@ public class AaRssNewsProvider implements NewsProvider, ProviderSyncDiagnosticsA
 
     @Override
     public ProviderSyncDiagnostics getLastDiagnostics() {
-        return aaRssNewsClient.getLastDiagnostics();
+        return client.getLastDiagnostics();
     }
 }

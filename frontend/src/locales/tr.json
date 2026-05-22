@@ -149,6 +149,7 @@
       "alertsTitle": "Aktif alarm",
       "alertsSubtitle": "Tetik bekleyen kurallar",
       "alertsTrend": "Uyarı",
+      "addPortfolio": "Portföy Ekle →",
       "heatmapTitle": "Piyasa Heatmap",
       "marketTabs": {
         "gainers": "En çok artan",
@@ -157,6 +158,10 @@
     },
     "marketSummaryTitle": "Günün Hareketli Enstrümanları",
     "allMarkets": "Tüm piyasa",
+    "watchlistWidgetTitle": "İzleme Listesi",
+    "watchlistWidgetSeeAll": "Tümünü Gör",
+    "watchlistWidgetEmptyTitle": "İzleme listeniz boş",
+    "watchlistWidgetEmptyDesc": "Piyasalara gidip takip etmek istediğiniz enstrümanları favorilere ekleyin.",
     "marketEmptyTitle": "Piyasa verisi bulunamadı",
     "marketEmptyDescription": "Market servisinden veri dönmedi.",
     "table": {
@@ -242,6 +247,36 @@
     "providers": "Kaynaklar",
     "language": "Dil",
     "all": "Hepsi",
+    "filterCategories": {
+      "all": "Tümü",
+      "generalEconomy": "Genel Ekonomi",
+      "stocks": "Hisse Senetleri",
+      "fx": "Döviz",
+      "goldCommodities": "Altın & Emtia",
+      "interestBonds": "Faiz & Tahvil",
+      "banking": "Bankacılık",
+      "crypto": "Kripto",
+      "globalMarkets": "Küresel Piyasalar"
+    },
+    "tagsLabel": "Haber etiketleri",
+    "tagLabels": {
+      "GENERAL_ECONOMY": "Genel Ekonomi",
+      "STOCKS": "Hisse",
+      "FX": "Döviz",
+      "GOLD_COMMODITY": "Altın & Emtia",
+      "INTEREST_BONDS": "Faiz & Tahvil",
+      "BANKING": "Bankacılık",
+      "CRYPTO": "Kripto",
+      "GLOBAL_MARKETS": "Küresel Piyasalar",
+      "ENERGY": "Enerji"
+    },
+    "filterProviders": {
+      "aa": "Anadolu Ajansı",
+      "cnbc": "CNBC",
+      "guardian": "The Guardian",
+      "kap": "KAP",
+      "unknown": "Bilinmeyen kaynak"
+    },
     "openNews": "Haberi aç",
     "openDisclosure": "Bildirimi aç",
     "readAtSource": "Kaynakta oku",
@@ -302,7 +337,8 @@
       "sell": "Satış",
       "change": "Değişim",
       "source": "Kaynak",
-      "detail": "Detay"
+      "detail": "Detay",
+      "type": "Tür"
     },
     "fundColumns": {
       "umbrellaType": "Şemsiye Fon Türü",
@@ -338,7 +374,8 @@
       "BOND": "Tahvil/Bono",
       "MACRO": "Makro",
       "INDEX": "Endeks",
-      "COMMODITY": "Emtia"
+      "COMMODITY": "Emtia",
+      "FAVORITES": "Favoriler"
     },
     "macro": {
       "eyebrow": "Makro Göstergeler",

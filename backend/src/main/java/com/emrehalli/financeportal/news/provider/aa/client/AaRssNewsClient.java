@@ -6,6 +6,7 @@ import com.emrehalli.financeportal.news.enums.NewsQualityStatus;
 import com.emrehalli.financeportal.news.provider.aa.AaArticleEnricher;
 import com.emrehalli.financeportal.news.provider.aa.AaArticleEnrichment;
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
+import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnostics;
 import com.emrehalli.financeportal.news.provider.rss.RssFeedSupport;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,6 +26,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 public class AaRssNewsClient {
@@ -35,6 +37,8 @@ public class AaRssNewsClient {
     private final AaNewsProperties properties;
     private final RssFeedSupport rssFeedSupport;
     private final AaArticleEnricher aaArticleEnricher;
+    private final AtomicReference<ProviderSyncDiagnostics> lastDiagnostics =
+            new AtomicReference<>(ProviderSyncDiagnostics.empty(NewsProviderType.AA_RSS.name()));
 
     public AaRssNewsClient(
             RestTemplate restTemplate,
@@ -59,6 +63,17 @@ public class AaRssNewsClient {
             String payload = decodeResponseBody(response);
             if (payload == null || payload.isBlank()) {
                 logger.warn("AA RSS response was empty");
+                lastDiagnostics.set(ProviderSyncDiagnostics.builder()
+                        .provider(NewsProviderType.AA_RSS.name())
+                        .enabled(true)
+                        .feedUrlCount(1)
+                        .fetched(0)
+                        .fetchedFromFeed(0)
+                        .timeoutCount(0)
+                        .parseErrorCount(0)
+                        .errorMessage("AA RSS response was empty")
+                        .lastErrors(List.of("EMPTY_RESPONSE"))
+                        .build());
                 return List.of();
             }
 
@@ -66,14 +81,51 @@ public class AaRssNewsClient {
             List<NewsItemDto> items = parse(payload, cycleCounter);
             logger.info("AA feed parsed. url: {}, fetched: {}, articleFetches: {}",
                     properties.getRssUrl(), items.size(), cycleCounter.get());
+            lastDiagnostics.set(ProviderSyncDiagnostics.builder()
+                    .provider(NewsProviderType.AA_RSS.name())
+                    .enabled(true)
+                    .feedUrlCount(1)
+                    .fetched(items.size())
+                    .fetchedFromFeed(items.size())
+                    .timeoutCount(0)
+                    .parseErrorCount(0)
+                    .errorMessage(null)
+                    .lastErrors(List.of())
+                    .build());
             return items;
         } catch (RestClientException e) {
             logger.error("AA RSS fetch failed. url: {}", properties.getRssUrl(), e);
+            lastDiagnostics.set(ProviderSyncDiagnostics.builder()
+                    .provider(NewsProviderType.AA_RSS.name())
+                    .enabled(true)
+                    .feedUrlCount(1)
+                    .fetched(0)
+                    .fetchedFromFeed(0)
+                    .timeoutCount(0)
+                    .parseErrorCount(0)
+                    .errorMessage("AA RSS fetch failed: " + e.getClass().getSimpleName())
+                    .lastErrors(List.of(e.getClass().getSimpleName()))
+                    .build());
             return List.of();
         } catch (Exception e) {
             logger.error("Unexpected AA RSS fetch failure. url: {}", properties.getRssUrl(), e);
+            lastDiagnostics.set(ProviderSyncDiagnostics.builder()
+                    .provider(NewsProviderType.AA_RSS.name())
+                    .enabled(true)
+                    .feedUrlCount(1)
+                    .fetched(0)
+                    .fetchedFromFeed(0)
+                    .timeoutCount(0)
+                    .parseErrorCount(1)
+                    .errorMessage("Unexpected AA RSS fetch failure: " + e.getClass().getSimpleName())
+                    .lastErrors(List.of(e.getClass().getSimpleName()))
+                    .build());
             return List.of();
         }
+    }
+
+    public ProviderSyncDiagnostics getLastDiagnostics() {
+        return lastDiagnostics.get();
     }
 
     String decodeResponseBody(ResponseEntity<byte[]> response) {
@@ -101,6 +153,17 @@ public class AaRssNewsClient {
             return List.of();
         } catch (Exception e) {
             logger.error("Failed to parse AA feed. url: {}", properties.getRssUrl(), e);
+            lastDiagnostics.set(ProviderSyncDiagnostics.builder()
+                    .provider(NewsProviderType.AA_RSS.name())
+                    .enabled(true)
+                    .feedUrlCount(1)
+                    .fetched(0)
+                    .fetchedFromFeed(0)
+                    .timeoutCount(0)
+                    .parseErrorCount(1)
+                    .errorMessage("Failed to parse AA feed: " + e.getClass().getSimpleName())
+                    .lastErrors(List.of(e.getClass().getSimpleName()))
+                    .build());
             return List.of();
         }
     }

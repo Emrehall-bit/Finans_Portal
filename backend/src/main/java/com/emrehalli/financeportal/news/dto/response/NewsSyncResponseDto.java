@@ -37,6 +37,9 @@ public class NewsSyncResponseDto {
     private Boolean startupSync;
     private String errorMessage;
     private List<String> lastErrors;
+    private Integer timeoutCount;
+    private Integer parseErrorCount;
+    private List<NewsSyncProviderResultDto> providerResults;
     private int fetchedCount;
     private int validCount;
     private int invalidCount;

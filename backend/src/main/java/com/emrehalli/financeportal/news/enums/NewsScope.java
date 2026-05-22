@@ -6,8 +6,8 @@ import java.util.Set;
 
 public enum NewsScope {
     LOCAL(Set.of(NewsProviderType.AA_RSS, NewsProviderType.KAP)),
-    GLOBAL(Set.of(NewsProviderType.CNBC_RSS)),
-    ALL(Set.of(NewsProviderType.CNBC_RSS, NewsProviderType.AA_RSS, NewsProviderType.KAP));
+    GLOBAL(Set.of(NewsProviderType.CNBC_RSS, NewsProviderType.GUARDIAN)),
+    ALL(Set.of(NewsProviderType.CNBC_RSS, NewsProviderType.GUARDIAN, NewsProviderType.AA_RSS, NewsProviderType.KAP));
 
     private final Set<NewsProviderType> providers;
 

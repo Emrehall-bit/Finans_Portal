@@ -29,6 +29,8 @@ public class ProviderSyncDiagnostics {
     private Integer fullContentEligibleCount;
     private Integer skippedTooOld;
     private Integer skippedBlockedSource;
+    private Integer timeoutCount;
+    private Integer parseErrorCount;
     private String firstReturnedTitle;
     private LocalDateTime firstReturnedPublishedAt;
     private String errorMessage;
@@ -55,6 +57,8 @@ public class ProviderSyncDiagnostics {
                 .fullContentEligibleCount(0)
                 .skippedTooOld(0)
                 .skippedBlockedSource(0)
+                .timeoutCount(0)
+                .parseErrorCount(0)
                 .firstReturnedTitle(null)
                 .firstReturnedPublishedAt(null)
                 .errorMessage(null)

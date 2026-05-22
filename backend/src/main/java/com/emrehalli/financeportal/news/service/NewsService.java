@@ -10,7 +10,9 @@ import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
+import com.emrehalli.financeportal.news.dto.response.NewsFilterTagsBackfillResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsPurgeResponseDto;
+import com.emrehalli.financeportal.news.dto.response.NewsSyncProviderResultDto;
 import com.emrehalli.financeportal.news.dto.response.RelatedInstrumentDto;
 import com.emrehalli.financeportal.news.dto.response.RelatedNewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
@@ -38,18 +40,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.LinkedHashSet;
 import java.util.Optional;
-import java.util.regex.Pattern;
 import java.util.Set;
-import java.time.LocalDateTime;
+import java.util.TreeMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -65,9 +71,24 @@ public class NewsService {
     private static final int RELATED_SYMBOL_MAX_LENGTH = 30;
     private static final int QUALITY_STATUS_MAX_LENGTH = 40;
     private static final int DISCLOSURE_TYPE_MAX_LENGTH = 50;
+    private static final int MIN_SUMMARY_LENGTH = 80;
+    private static final int DUPLICATE_LOOKBACK_DAYS = 3;
+    private static final int MIN_FINANCIAL_RELEVANCE_SCORE = 2;
     private static final int MAX_RELATED_NEWS = 4;
     private static final int MAX_RELATED_INSTRUMENTS = 6;
+    private static final int MAX_BACKFILL_LIMIT = 5_000;
+    private static final int BACKFILL_SAMPLE_LIMIT = 10;
     private static final Pattern TOKEN_SPLIT_PATTERN = Pattern.compile("[^\\p{L}\\p{Nd}]+");
+    private static final Set<String> TRACKING_QUERY_PARAMS = Set.of(
+            "fbclid", "gclid", "mc_cid", "mc_eid", "ref", "ref_src", "spm", "igshid"
+    );
+    private static final List<String> FINANCIAL_RELEVANCE_KEYWORDS = List.of(
+            "borsa", "bist", "stock", "stocks", "share", "shares", "equity", "finance", "financial",
+            "economy", "economic", "market", "markets", "faiz", "interest", "rate", "rates", "tcmb",
+            "fed", "bond", "tahvil", "forex", "fx", "doviz", "currency", "kur", "gold", "altin",
+            "oil", "petrol", "commodity", "emtia", "crypto", "kripto", "bitcoin", "ethereum",
+            "earnings", "bilanco", "revenue", "profit", "kar", "zarar", "disclosure", "kap"
+    );
     private static final Map<String, InstrumentAlias> BIST_INSTRUMENT_ALIASES = createInstrumentAliases();
     private static final List<ThemeRule> THEME_RULES = createThemeRules();
 
@@ -78,6 +99,7 @@ public class NewsService {
     private final NotificationService notificationService;
     private final NewsNotificationProperties notificationProperties;
     private final NewsPresentationMapper newsPresentationMapper;
+    private final NewsCategoryClassifier newsCategoryClassifier;
     private final MarketQueryService marketQueryService;
 
     @Autowired
@@ -89,6 +111,7 @@ public class NewsService {
             NotificationService notificationService,
             NewsNotificationProperties notificationProperties,
             NewsPresentationMapper newsPresentationMapper,
+            NewsCategoryClassifier newsCategoryClassifier,
             MarketQueryService marketQueryService
     ) {
         this.newsRepository = newsRepository;
@@ -97,6 +120,7 @@ public class NewsService {
         this.notificationService = notificationService;
         this.notificationProperties = notificationProperties;
         this.newsPresentationMapper = newsPresentationMapper;
+        this.newsCategoryClassifier = newsCategoryClassifier;
         this.marketQueryService = marketQueryService;
         this.providerMap = new HashMap<>();
         for (NewsProvider provider : providers) {
@@ -244,6 +268,108 @@ public class NewsService {
     }
 
     @Transactional
+    public NewsFilterTagsBackfillResponseDto backfillFilterTags(int limit, boolean dryRun) {
+        int validatedLimit = validateBackfillLimit(limit);
+        List<News> candidates = newsRepository.findAll(
+                PageRequest.of(0, validatedLimit, Sort.by(Sort.Direction.ASC, "id"))
+        ).getContent();
+
+        int processedCount = 0;
+        int updatedCount = 0;
+        int skippedKapCount = 0;
+        int unchangedCount = 0;
+        List<News> toUpdate = new ArrayList<>();
+        List<NewsFilterTagsBackfillResponseDto.SampleChangeDto> sampleChanges = new ArrayList<>();
+
+        for (News news : candidates) {
+            processedCount++;
+            if (Boolean.TRUE.equals(news.getIsKapDisclosure())) {
+                skippedKapCount++;
+                continue;
+            }
+
+            String oldCategory = normalizeNullable(news.getCategory());
+            String oldTags = normalizeTagString(news.getFilterTags());
+            String classificationPreview = deriveClassificationPreview(news);
+            NewsCategoryClassifier.ClassificationResult classificationResult = newsCategoryClassifier.classify(
+                    news.getTitle(),
+                    news.getSummary(),
+                    classificationPreview,
+                    news.getCategory()
+            );
+
+            String newCategory = oldCategory;
+            String newTags = null;
+            String classificationReason = classificationResult.rejected()
+                    ? classificationResult.rejectReason()
+                    : classificationResult.tagReasons().toString();
+
+            if (!classificationResult.rejected()) {
+                newCategory = normalizeNullable(classificationResult.category());
+                newTags = normalizeTagString(joinFilterTags(List.copyOf(classificationResult.tags())));
+            }
+
+            boolean changed = !java.util.Objects.equals(oldCategory, newCategory)
+                    || !java.util.Objects.equals(oldTags, newTags);
+            if (!changed) {
+                unchangedCount++;
+                continue;
+            }
+
+            updatedCount++;
+            if (sampleChanges.size() < BACKFILL_SAMPLE_LIMIT) {
+                sampleChanges.add(NewsFilterTagsBackfillResponseDto.SampleChangeDto.builder()
+                        .id(news.getId())
+                        .title(truncateForLog(news.getTitle()))
+                        .oldCategory(oldCategory)
+                        .newCategory(newCategory)
+                        .oldTags(oldTags)
+                        .newTags(newTags)
+                        .build());
+            }
+
+            logger.info(
+                    "News filter tag backfill change. newsId={}, dryRun={}, oldCategory={}, newCategory={}, oldTags={}, newTags={}, reason={}",
+                    news.getId(),
+                    dryRun,
+                    oldCategory,
+                    newCategory,
+                    oldTags,
+                    newTags,
+                    classificationReason
+            );
+
+            if (!dryRun) {
+                news.setCategory(newCategory);
+                news.setFilterTags(newTags);
+                toUpdate.add(news);
+            }
+        }
+
+        if (!dryRun && !toUpdate.isEmpty()) {
+            newsRepository.saveAll(toUpdate);
+        }
+
+        logger.info(
+                "News filter tag backfill completed. dryRun={}, limit={}, processedCount={}, updatedCount={}, skippedKapCount={}, unchangedCount={}",
+                dryRun,
+                validatedLimit,
+                processedCount,
+                updatedCount,
+                skippedKapCount,
+                unchangedCount
+        );
+
+        return NewsFilterTagsBackfillResponseDto.builder()
+                .processedCount(processedCount)
+                .updatedCount(updatedCount)
+                .skippedKapCount(skippedKapCount)
+                .unchangedCount(unchangedCount)
+                .sampleChanges(sampleChanges)
+                .build();
+    }
+
+    @Transactional
     public NewsSyncResponseDto syncProvider(NewsProviderType providerType) {
         return syncSingleProvider(providerType, null, false, true, null);
     }
@@ -262,6 +388,9 @@ public class NewsService {
         int duplicate = 0;
         int existing = 0;
         int saved = 0;
+        int timeoutCount = 0;
+        int parseErrorCount = 0;
+        List<NewsSyncProviderResultDto> providerResults = new ArrayList<>();
 
         for (NewsProviderType providerType : providers) {
             NewsSyncResponseDto result = syncSingleProvider(providerType, symbol, false, false, null);
@@ -271,6 +400,11 @@ public class NewsService {
             duplicate += result.getDuplicateCount();
             existing += result.getExistingCount();
             saved += result.getSavedCount();
+            timeoutCount += result.getTimeoutCount() != null ? result.getTimeoutCount() : 0;
+            parseErrorCount += result.getParseErrorCount() != null ? result.getParseErrorCount() : 0;
+            if (result.getProviderResults() != null) {
+                providerResults.addAll(result.getProviderResults());
+            }
         }
 
         double parseSuccessRatio = fetched == 0 ? 0.0 : (double) valid / fetched;
@@ -295,6 +429,9 @@ public class NewsService {
                   .startupSync(false)
                   .errorMessage(null)
                   .lastErrors(List.of())
+                  .timeoutCount(timeoutCount)
+                  .parseErrorCount(parseErrorCount)
+                  .providerResults(providerResults)
                 .fetchedCount(fetched)
                 .validCount(valid)
                 .invalidCount(invalid)
@@ -351,6 +488,15 @@ public class NewsService {
                     durationMs,
                     diagnostics.getErrorMessage()
             );
+            logger.info(
+                    "News ingest structured. provider={}, fetchedCount={}, savedCount={}, duplicateCount={}, rejectReason={}, durationMs={}",
+                    providerType.name(),
+                    items.size(),
+                    stats.savedCount(),
+                    stats.duplicateCount(),
+                    stats.rejectReasonSummary(),
+                    durationMs
+            );
 
             NewsSyncResponseDto response = NewsSyncResponseDto.builder()
                     .provider(providerType.name())
@@ -380,6 +526,19 @@ public class NewsService {
                     .startupSync(startupSync)
                     .errorMessage(diagnostics.getErrorMessage())
                     .lastErrors(diagnostics.getLastErrors())
+                    .timeoutCount(diagnostics.getTimeoutCount())
+                    .parseErrorCount(diagnostics.getParseErrorCount())
+                    .providerResults(List.of(buildProviderResult(
+                            providerType.name(),
+                            diagnostics.getErrorMessage() == null,
+                            items.size(),
+                            stats.savedCount(),
+                            stats.invalidCount(),
+                            stats.duplicateCount(),
+                            diagnostics.getTimeoutCount(),
+                            diagnostics.getParseErrorCount(),
+                            diagnostics.getErrorMessage()
+                    )))
                     .fetchedCount(items.size())
                     .validCount(stats.validCount())
                     .invalidCount(stats.invalidCount())
@@ -435,6 +594,19 @@ public class NewsService {
                     .startupSync(startupSync)
                     .errorMessage(hasText(diagnostics.getErrorMessage()) ? diagnostics.getErrorMessage() : ex.getMessage())
                     .lastErrors(diagnostics.getLastErrors())
+                    .timeoutCount(diagnostics.getTimeoutCount() != null ? diagnostics.getTimeoutCount() : classifyTimeoutCount(ex))
+                    .parseErrorCount(diagnostics.getParseErrorCount() != null ? diagnostics.getParseErrorCount() : classifyParseErrorCount(ex))
+                    .providerResults(List.of(buildProviderResult(
+                            providerType.name(),
+                            false,
+                            0,
+                            0,
+                            0,
+                            0,
+                            diagnostics.getTimeoutCount() != null ? diagnostics.getTimeoutCount() : classifyTimeoutCount(ex),
+                            diagnostics.getParseErrorCount() != null ? diagnostics.getParseErrorCount() : classifyParseErrorCount(ex),
+                            hasText(diagnostics.getErrorMessage()) ? diagnostics.getErrorMessage() : ex.getMessage()
+                    )))
                     .fetchedCount(0)
                     .validCount(0)
                     .invalidCount(0)
@@ -522,6 +694,8 @@ public class NewsService {
                 .apiQuotaLeft(null)
                 .apiQuotaUsed(null)
                 .apiQuotaRequest(null)
+                .timeoutCount(0)
+                .parseErrorCount(0)
                 .errorMessage(null)
                 .lastErrors(List.of())
                 .build();
@@ -544,17 +718,27 @@ public class NewsService {
         int missingDateCount = 0;
         int invalidLengthCount = 0;
         int skippedFullContentNotAvailableCount = 0;
+        int lowRelevanceCount = 0;
+        int duplicateByUrlCount = 0;
+        int duplicateByTitleSourceCount = 0;
         List<News> toSave = new ArrayList<>();
-        Map<String, News> existingNewsByExternalId = findExistingNewsByExternalId(items);
-        Set<String> existingExternalIds = existingNewsByExternalId.keySet();
+        List<NewsItemDto> sanitizedItems = items.stream()
+                .map(this::sanitizeIncomingItem)
+                .toList();
+        ExistingNewsLookup existingLookup = findExistingNews(sanitizedItems);
+        Set<String> existingExternalIds = existingLookup.byExternalId().keySet();
         Set<String> seenExternalIds = new HashSet<>();
+        Set<String> seenNormalizedUrls = new HashSet<>();
+        Set<String> seenTitleSourceKeys = new HashSet<>();
         List<News> existingToUpdate = new ArrayList<>();
         FieldLengthStats fieldLengthStats = new FieldLengthStats();
+        Map<String, Integer> rejectReasonCounts = new TreeMap<>();
 
-        for (NewsItemDto item : items) {
+        for (NewsItemDto item : sanitizedItems) {
             fieldLengthStats.observe(item);
             ValidationResult validationResult = validateForPersistence(item);
             if (!validationResult.valid()) {
+                rejectReasonCounts.merge(validationResult.rejectReason(), 1, Integer::sum);
                 if (validationResult.invalidBecauseLength()) {
                     logOversizedItem(providerName, item);
                     invalidLengthCount++;
@@ -565,30 +749,51 @@ public class NewsService {
                             item != null ? item.getQualityStatus() : null,
                             truncateForLog(item != null ? item.getTitle() : null));
                 } else {
-                    logger.debug("Skipping invalid news item. externalId: {}", item != null ? item.getExternalId() : null);
+                    logger.debug(
+                            "Skipping invalid news item. provider: {}, externalId: {}, rejectReason: {}, title: {}",
+                            providerName,
+                            item != null ? item.getExternalId() : null,
+                            validationResult.rejectReason(),
+                            truncateForLog(item != null ? item.getTitle() : null)
+                    );
                 }
                 invalidCount++;
                 missingExternalIdCount += validationResult.missingExternalId() ? 1 : 0;
                 missingTitleCount += validationResult.missingTitle() ? 1 : 0;
                 missingUrlCount += validationResult.missingUrl() ? 1 : 0;
                 missingSourceCount += validationResult.missingSource() ? 1 : 0;
+                missingDateCount += validationResult.missingDate() ? 1 : 0;
+                lowRelevanceCount += validationResult.lowRelevance() ? 1 : 0;
                 continue;
-            }
-
-            if (item.getPublishedAt() == null) {
-                missingDateCount++;
             }
 
             String externalId = item.getExternalId().trim();
             if (!seenExternalIds.add(externalId)) {
                 logger.debug("Skipping duplicate news item within the same batch. externalId: {}", externalId);
                 duplicateCount++;
+                rejectReasonCounts.merge("DUPLICATE_EXTERNAL_ID_BATCH", 1, Integer::sum);
+                continue;
+            }
+
+            String normalizedUrl = normalizeCanonicalUrl(item.getUrl());
+            if (hasText(normalizedUrl) && !seenNormalizedUrls.add(normalizedUrl)) {
+                duplicateCount++;
+                duplicateByUrlCount++;
+                rejectReasonCounts.merge("DUPLICATE_URL_BATCH", 1, Integer::sum);
+                continue;
+            }
+
+            String titleSourceKey = buildTitleSourceKey(item.getTitle(), item.getSource());
+            if (hasText(titleSourceKey) && !seenTitleSourceKeys.add(titleSourceKey)) {
+                duplicateCount++;
+                duplicateByTitleSourceCount++;
+                rejectReasonCounts.merge("DUPLICATE_TITLE_SOURCE_BATCH", 1, Integer::sum);
                 continue;
             }
 
             if (existingExternalIds.contains(externalId)) {
                 existingCount++;
-                News existingNews = existingNewsByExternalId.get(externalId);
+                News existingNews = existingLookup.byExternalId().get(externalId);
                 if (existingNews != null) {
                     boolean needsUpdate = false;
                     if (hasLowValueLogoImage(existingNews.getImageUrl())) {
@@ -625,6 +830,15 @@ public class NewsService {
                         existingNews.setQualityStatus(item.getQualityStatus().trim());
                         needsUpdate = true;
                     }
+                    if (shouldUpdateCategory(existingNews, item)) {
+                        existingNews.setCategory(item.getCategory().trim());
+                        needsUpdate = true;
+                    }
+                    String resolvedFilterTags = joinFilterTags(item.getClassificationTags());
+                    if (!hasText(existingNews.getFilterTags()) && hasText(resolvedFilterTags)) {
+                        existingNews.setFilterTags(resolvedFilterTags);
+                        needsUpdate = true;
+                    }
                     if (!Boolean.TRUE.equals(existingNews.getIsKapDisclosure()) && Boolean.TRUE.equals(item.getIsKapDisclosure())) {
                         existingNews.setIsKapDisclosure(true);
                         needsUpdate = true;
@@ -655,6 +869,31 @@ public class NewsService {
                 continue;
             }
 
+            if (hasText(normalizedUrl) && existingLookup.byNormalizedUrl().containsKey(normalizedUrl)) {
+                existingCount++;
+                duplicateCount++;
+                duplicateByUrlCount++;
+                rejectReasonCounts.merge("DUPLICATE_URL_EXISTING", 1, Integer::sum);
+                continue;
+            }
+
+            if (hasText(titleSourceKey) && existingLookup.byTitleSource().containsKey(titleSourceKey)) {
+                existingCount++;
+                duplicateCount++;
+                duplicateByTitleSourceCount++;
+                rejectReasonCounts.merge("DUPLICATE_TITLE_SOURCE_EXISTING", 1, Integer::sum);
+                continue;
+            }
+
+            logger.debug(
+                    "Classified news item ready for persistence. provider: {}, primaryCategory: {}, filterTags: {}, tagReasons: {}, title: {}",
+                    providerName,
+                    item.getCategory(),
+                    item.getClassificationTags(),
+                    item.getClassificationTagReasons(),
+                    truncateForLog(item.getTitle())
+            );
+
             toSave.add(News.builder()
                     .externalId(externalId)
                     .title(item.getTitle().trim())
@@ -673,6 +912,7 @@ public class NewsService {
                     .isKapDisclosure(Boolean.TRUE.equals(item.getIsKapDisclosure()))
                     .disclosureType(item.getDisclosureType())
                     .contentSections(item.getContentSections())
+                    .filterTags(joinFilterTags(item.getClassificationTags()))
                     .importanceScore(0)
                     .build());
         }
@@ -698,11 +938,11 @@ public class NewsService {
             persistExistingUpdates(providerName, existingToUpdate);
         }
 
-        int validCount = items.size() - invalidCount;
+        int validCount = sanitizedItems.size() - invalidCount;
         logger.info(
-                "News persistence completed. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, invalidBecauseMissingTitle: {}, invalidBecauseMissingUrl: {}, invalidBecauseMissingSource: {}, invalidBecauseMissingExternalId: {}, invalidBecauseMissingDate: {}, invalidBecauseLength: {}, skippedFullContentNotAvailable: {}",
+                "News persistence completed. provider: {}, fetched: {}, valid: {}, invalid: {}, duplicate: {}, existing: {}, saved: {}, invalidBecauseMissingTitle: {}, invalidBecauseMissingUrl: {}, invalidBecauseMissingSource: {}, invalidBecauseMissingExternalId: {}, invalidBecauseMissingDate: {}, invalidBecauseLength: {}, skippedFullContentNotAvailable: {}, lowRelevance: {}, duplicateByUrl: {}, duplicateByTitleSource: {}",
                 providerName,
-                items.size(),
+                sanitizedItems.size(),
                 validCount,
                 invalidCount,
                 duplicateCount,
@@ -714,7 +954,18 @@ public class NewsService {
                 missingExternalIdCount,
                 missingDateCount,
                 invalidLengthCount,
-                skippedFullContentNotAvailableCount
+                skippedFullContentNotAvailableCount,
+                lowRelevanceCount,
+                duplicateByUrlCount,
+                duplicateByTitleSourceCount
+        );
+        logger.info(
+                "News ingest outcome. provider={}, fetchedCount={}, savedCount={}, duplicateCount={}, rejectReason={}",
+                providerName,
+                sanitizedItems.size(),
+                savedCount,
+                duplicateCount,
+                rejectReasonCounts
         );
         return new PersistenceStats(
                 validCount,
@@ -727,31 +978,386 @@ public class NewsService {
                 missingUrlCount,
                 missingSourceCount,
                 missingDateCount,
-                skippedFullContentNotAvailableCount
+                skippedFullContentNotAvailableCount,
+                rejectReasonCounts.toString()
         );
     }
 
-    private Map<String, News> findExistingNewsByExternalId(List<NewsItemDto> items) {
-        Set<String> externalIds = items.stream()
-                .map(this::validateForPersistence)
-                .filter(ValidationResult::valid)
-                .map(ValidationResult::item)
-                .map(NewsItemDto::getExternalId)
-                .filter(this::hasText)
-                .map(String::trim)
-                .collect(java.util.stream.Collectors.toSet());
+    private ExistingNewsLookup findExistingNews(List<NewsItemDto> items) {
+        Set<String> externalIds = new HashSet<>();
+        Set<String> normalizedUrls = new HashSet<>();
+        Set<String> normalizedSources = new HashSet<>();
+        Set<String> normalizedTitles = new HashSet<>();
+        LocalDateTime publishedAfter = LocalDateTime.now().minusDays(DUPLICATE_LOOKBACK_DAYS);
 
-        if (externalIds.isEmpty()) {
-            return Map.of();
+        for (NewsItemDto item : items) {
+            if (item == null) {
+                continue;
+            }
+            if (hasText(item.getExternalId())) {
+                externalIds.add(item.getExternalId().trim());
+            }
+            String normalizedUrl = normalizeCanonicalUrl(item.getUrl());
+            if (hasText(normalizedUrl)) {
+                normalizedUrls.add(normalizedUrl);
+            }
+            String titleKey = normalizeLookupValue(item.getTitle());
+            String sourceKey = normalizeLookupValue(item.getSource());
+            if (hasText(titleKey) && hasText(sourceKey)) {
+                normalizedTitles.add(titleKey);
+                normalizedSources.add(sourceKey);
+            }
+            if (item.getPublishedAt() != null) {
+                LocalDateTime candidate = item.getPublishedAt().minusDays(DUPLICATE_LOOKBACK_DAYS);
+                if (candidate.isBefore(publishedAfter)) {
+                    publishedAfter = candidate;
+                }
+            }
         }
 
-        return newsRepository.findByExternalIdIn(externalIds).stream()
-                .collect(java.util.stream.Collectors.toMap(News::getExternalId, news -> news));
+        Map<String, News> byExternalId = externalIds.isEmpty()
+                ? Map.of()
+                : newsRepository.findByExternalIdIn(externalIds).stream()
+                .collect(Collectors.toMap(News::getExternalId, news -> news, (left, right) -> left));
+        Map<String, News> byNormalizedUrl = normalizedUrls.isEmpty()
+                ? Map.of()
+                : newsRepository.findByUrlIn(normalizedUrls).stream()
+                .collect(Collectors.toMap(news -> normalizeCanonicalUrl(news.getUrl()), news -> news, (left, right) -> left));
+        Map<String, News> byTitleSource = (normalizedSources.isEmpty() || normalizedTitles.isEmpty())
+                ? Map.of()
+                : newsRepository.findRecentPotentialDuplicates(normalizedSources, normalizedTitles, publishedAfter).stream()
+                .collect(Collectors.toMap(
+                        news -> buildTitleSourceKey(news.getTitle(), news.getSource()),
+                        news -> news,
+                        (left, right) -> left
+                ));
+        return new ExistingNewsLookup(byExternalId, byNormalizedUrl, byTitleSource);
+    }
+
+    private NewsItemDto sanitizeIncomingItem(NewsItemDto item) {
+        if (item == null) {
+            return null;
+        }
+        boolean isKapDisclosure = Boolean.TRUE.equals(item.getIsKapDisclosure())
+                || NewsProviderType.KAP.name().equalsIgnoreCase(item.getProvider());
+        LocalDateTime resolvedPublishedAt = item.getPublishedAt() != null
+                ? item.getPublishedAt()
+                : item.getContentEnrichedAt() != null ? item.getContentEnrichedAt() : LocalDateTime.now();
+        String normalizedCategory = hasText(item.getCategory()) ? item.getCategory().trim() : item.getCategory();
+        String classificationRejectReason = null;
+        List<String> classificationTags = List.of();
+        Map<String, String> classificationTagReasons = Map.of();
+        if (!isKapDisclosure) {
+            NewsCategoryClassifier.ClassificationResult classificationResult = newsCategoryClassifier.classify(
+                    item.getTitle(),
+                    item.getSummary(),
+                    deriveClassificationPreview(item),
+                    item.getCategory()
+            );
+            if (classificationResult.rejected()) {
+                classificationRejectReason = classificationResult.rejectReason();
+            } else {
+                normalizedCategory = classificationResult.category();
+                classificationTags = List.copyOf(classificationResult.tags());
+                classificationTagReasons = Map.copyOf(classificationResult.tagReasons());
+            }
+        }
+        return NewsItemDto.builder()
+                .externalId(hasText(item.getExternalId()) ? item.getExternalId().trim() : item.getExternalId())
+                .title(hasText(item.getTitle()) ? item.getTitle().trim() : item.getTitle())
+                .summary(hasText(item.getSummary()) ? item.getSummary().trim() : item.getSummary())
+                .source(hasText(item.getSource()) ? item.getSource().trim() : item.getSource())
+                .provider(hasText(item.getProvider()) ? item.getProvider().trim() : item.getProvider())
+                .language(hasText(item.getLanguage()) ? item.getLanguage().trim() : item.getLanguage())
+                .regionScope(hasText(item.getRegionScope()) ? item.getRegionScope().trim() : item.getRegionScope())
+                .category(normalizedCategory)
+                .relatedSymbol(hasText(item.getRelatedSymbol()) ? item.getRelatedSymbol().trim() : item.getRelatedSymbol())
+                .url(normalizeCanonicalUrl(item.getUrl()))
+                .imageUrl(hasText(item.getImageUrl()) ? item.getImageUrl().trim() : item.getImageUrl())
+                .publishedAt(resolvedPublishedAt)
+                .contentEnrichedAt(item.getContentEnrichedAt())
+                .qualityStatus(hasText(item.getQualityStatus()) ? item.getQualityStatus().trim() : item.getQualityStatus())
+                .isKapDisclosure(item.getIsKapDisclosure())
+                .disclosureType(hasText(item.getDisclosureType()) ? item.getDisclosureType().trim() : item.getDisclosureType())
+                .contentSections(item.getContentSections())
+                .classificationRejectReason(classificationRejectReason)
+                .classificationTags(classificationTags)
+                .classificationTagReasons(classificationTagReasons)
+                .build();
+    }
+
+    private String deriveClassificationPreview(NewsItemDto item) {
+        if (item == null) {
+            return null;
+        }
+        if (hasText(item.getSummary())) {
+            return item.getSummary();
+        }
+        if (!hasText(item.getContentSections())) {
+            return null;
+        }
+        String preview = item.getContentSections()
+                .replace('[', ' ')
+                .replace(']', ' ')
+                .replace('{', ' ')
+                .replace('}', ' ')
+                .replace('"', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
+        return preview.length() <= 400 ? preview : preview.substring(0, 400);
+    }
+
+    private String deriveClassificationPreview(News news) {
+        if (news == null) {
+            return null;
+        }
+        if (hasText(news.getSummary())) {
+            return news.getSummary();
+        }
+        if (hasText(news.getContentSections())) {
+            return sanitizeStructuredPreview(news.getContentSections());
+        }
+        if (hasText(news.getContentHtml())) {
+            return sanitizeStructuredPreview(news.getContentHtml().replaceAll("<[^>]+>", " "));
+        }
+        return null;
+    }
+
+    private String sanitizeStructuredPreview(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        String preview = value
+                .replace('[', ' ')
+                .replace(']', ' ')
+                .replace('{', ' ')
+                .replace('}', ' ')
+                .replace('"', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
+        return preview.length() <= 400 ? preview : preview.substring(0, 400);
+    }
+
+    private boolean shouldUpdateCategory(News existingNews, NewsItemDto item) {
+        if (existingNews == null || item == null || Boolean.TRUE.equals(existingNews.getIsKapDisclosure())) {
+            return false;
+        }
+        if (!hasText(item.getCategory()) || !newsCategoryClassifier.isPrimaryCategory(item.getCategory())) {
+            return false;
+        }
+        return !newsCategoryClassifier.isPrimaryCategory(existingNews.getCategory());
+    }
+
+    private String joinFilterTags(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return null;
+        }
+        return tags.stream()
+                .filter(this::hasText)
+                .map(String::trim)
+                .distinct()
+                .collect(Collectors.joining(","));
+    }
+
+    private int validateBackfillLimit(int limit) {
+        if (limit <= 0) {
+            throw new BadRequestException("limit must be greater than 0");
+        }
+        if (limit > MAX_BACKFILL_LIMIT) {
+            throw new BadRequestException("limit must be less than or equal to " + MAX_BACKFILL_LIMIT);
+        }
+        return limit;
+    }
+
+    private String normalizeTagString(String tags) {
+        if (!hasText(tags)) {
+            return null;
+        }
+        LinkedHashSet<String> normalizedTags = new LinkedHashSet<>();
+        for (String token : tags.split(",")) {
+            if (hasText(token)) {
+                normalizedTags.add(token.trim());
+            }
+        }
+        if (normalizedTags.isEmpty()) {
+            return null;
+        }
+        return String.join(",", normalizedTags);
+    }
+
+    private String normalizeNullable(String value) {
+        return hasText(value) ? value.trim() : null;
+    }
+
+    private String normalizeKeywordForLike(String keyword) {
+        if (!hasText(keyword)) {
+            return "";
+        }
+        return keyword.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private int calculateFinancialRelevanceScore(NewsItemDto item) {
+        if (item == null) {
+            return 0;
+        }
+        if (Boolean.TRUE.equals(item.getIsKapDisclosure())) {
+            return 5;
+        }
+        String combined = normalizeLookupValue(String.join(" ",
+                safeText(item.getTitle()),
+                safeText(item.getSummary()),
+                safeText(item.getCategory()),
+                safeText(item.getUrl())));
+        if (!hasText(combined)) {
+            return 0;
+        }
+        int score = 0;
+        for (String keyword : FINANCIAL_RELEVANCE_KEYWORDS) {
+            if (combined.contains(normalizeLookupValue(keyword))) {
+                score++;
+            }
+        }
+        return score;
+    }
+
+    private String resolveRejectReason(
+            boolean missingExternalId,
+            boolean missingTitle,
+            boolean missingSource,
+            boolean missingUrl,
+            boolean missingProvider,
+            boolean missingRegionScope,
+            boolean missingDate,
+            boolean invalidBecauseLength,
+            boolean skippedFullContentNotAvailable,
+            boolean lowRelevance
+    ) {
+        if (missingUrl) return "MISSING_URL";
+        if (missingTitle) return "MISSING_TITLE";
+        if (missingDate) return "MISSING_PUBLISHED_AT";
+        if (missingSource) return "MISSING_SOURCE";
+        if (missingProvider) return "MISSING_PROVIDER";
+        if (missingRegionScope) return "MISSING_REGION_SCOPE";
+        if (missingExternalId) return "MISSING_EXTERNAL_ID";
+        if (invalidBecauseLength) return "INVALID_LENGTH";
+        if (skippedFullContentNotAvailable) return "INSUFFICIENT_CONTENT";
+        if (lowRelevance) return "LOW_RELEVANCE";
+        return "UNKNOWN";
+    }
+
+    static String normalizeCanonicalUrl(String rawUrl) {
+        if (rawUrl == null || rawUrl.isBlank()) {
+            return null;
+        }
+        try {
+            URI uri = new URI(rawUrl.trim());
+            String scheme = uri.getScheme() == null ? "https" : uri.getScheme().toLowerCase(Locale.ROOT);
+            String host = uri.getHost() == null ? null : uri.getHost().toLowerCase(Locale.ROOT);
+            if (host != null && host.startsWith("www.")) {
+                host = host.substring(4);
+            }
+            String path = uri.getPath();
+            if (path == null || path.isBlank()) {
+                path = "/";
+            }
+            path = path.replaceAll("/{2,}", "/");
+            if (path.length() > 1 && path.endsWith("/")) {
+                path = path.substring(0, path.length() - 1);
+            }
+            String query = normalizeQuery(uri.getRawQuery());
+            int port = uri.getPort();
+            boolean keepPort = port != -1
+                    && !("http".equals(scheme) && port == 80)
+                    && !("https".equals(scheme) && port == 443);
+            URI normalized = new URI(scheme, null, host, keepPort ? port : -1, path, query != null && !query.isBlank() ? query : null, null);
+            return normalized.toASCIIString();
+        } catch (URISyntaxException exception) {
+            return rawUrl.trim();
+        }
+    }
+
+    private static String normalizeQuery(String rawQuery) {
+        if (rawQuery == null || rawQuery.isBlank()) {
+            return null;
+        }
+        Map<String, String> kept = new TreeMap<>();
+        for (String part : rawQuery.split("&")) {
+            if (part == null || part.isBlank()) {
+                continue;
+            }
+            String[] pair = part.split("=", 2);
+            String key = pair[0].trim();
+            if (key.isBlank()) {
+                continue;
+            }
+            String lowerKey = key.toLowerCase(Locale.ROOT);
+            if (lowerKey.startsWith("utm_") || TRACKING_QUERY_PARAMS.contains(lowerKey)) {
+                continue;
+            }
+            kept.putIfAbsent(key, pair.length > 1 ? pair[1].trim() : "");
+        }
+        if (kept.isEmpty()) {
+            return null;
+        }
+        return kept.entrySet().stream()
+                .map(entry -> entry.getValue().isEmpty() ? entry.getKey() : entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining("&"));
+    }
+
+    private String buildTitleSourceKey(String title, String source) {
+        String normalizedTitle = normalizeLookupValue(title);
+        String normalizedSource = normalizeLookupValue(source);
+        if (!hasText(normalizedTitle) || !hasText(normalizedSource)) {
+            return null;
+        }
+        return normalizedSource + "|" + normalizedTitle;
+    }
+
+    private String normalizeLookupValue(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        return normalizeText(value)
+                .replaceAll("\\s+", " ")
+                .trim()
+                .toLowerCase(Locale.ROOT);
+    }
+
+    private int classifyTimeoutCount(Exception exception) {
+        return exception instanceof java.net.SocketTimeoutException ? 1 : 0;
+    }
+
+    private int classifyParseErrorCount(Exception exception) {
+        return exception instanceof IllegalArgumentException ? 1 : 0;
+    }
+
+    private NewsSyncProviderResultDto buildProviderResult(
+            String provider,
+            boolean success,
+            int fetchedCount,
+            int savedCount,
+            int skippedCount,
+            int duplicateCount,
+            Integer timeoutCount,
+            Integer parseErrorCount,
+            String errorMessage
+    ) {
+        return NewsSyncProviderResultDto.builder()
+                .provider(provider)
+                .success(success)
+                .fetchedCount(fetchedCount)
+                .savedCount(savedCount)
+                .skippedCount(skippedCount)
+                .duplicateCount(duplicateCount)
+                .timeoutCount(timeoutCount != null ? timeoutCount : 0)
+                .parseErrorCount(parseErrorCount != null ? parseErrorCount : 0)
+                .errorMessage(errorMessage)
+                .build();
     }
 
     private ValidationResult validateForPersistence(NewsItemDto item) {
         if (item == null) {
-            return ValidationResult.invalid(null, true, true, true, true, false, false);
+            return ValidationResult.invalid(null, true, true, true, true, true, false, false, false, "ITEM_NULL");
         }
         boolean missingExternalId = !hasText(item.getExternalId());
         boolean missingTitle = !hasText(item.getTitle());
@@ -759,8 +1365,10 @@ public class NewsService {
         boolean missingUrl = !hasText(item.getUrl());
         boolean missingProvider = !hasText(item.getProvider());
         boolean missingRegionScope = !hasText(item.getRegionScope());
-        boolean skippedFullContentNotAvailable = !Boolean.TRUE.equals(item.getIsKapDisclosure())
-                && !isFullContentPersistable(item);
+        boolean missingDate = item.getPublishedAt() == null;
+        boolean categoryRejected = hasText(item.getClassificationRejectReason());
+        boolean skippedFullContentNotAvailable = !isPersistableQuality(item);
+        boolean lowRelevance = !categoryRejected && calculateFinancialRelevanceScore(item) < MIN_FINANCIAL_RELEVANCE_SCORE;
         boolean invalidBecauseLength = exceedsLength(item.getTitle(), TITLE_MAX_LENGTH)
                 || exceedsLength(item.getSource(), SOURCE_MAX_LENGTH)
                 || exceedsLength(item.getProvider(), PROVIDER_MAX_LENGTH)
@@ -770,27 +1378,47 @@ public class NewsService {
                 || exceedsLength(item.getRelatedSymbol(), RELATED_SYMBOL_MAX_LENGTH)
                 || exceedsLength(item.getQualityStatus(), QUALITY_STATUS_MAX_LENGTH)
                 || exceedsLength(item.getDisclosureType(), DISCLOSURE_TYPE_MAX_LENGTH);
+        String rejectReason = categoryRejected
+                ? item.getClassificationRejectReason()
+                : resolveRejectReason(
+                        missingExternalId,
+                        missingTitle,
+                        missingSource,
+                        missingUrl,
+                        missingProvider,
+                        missingRegionScope,
+                        missingDate,
+                        invalidBecauseLength,
+                        skippedFullContentNotAvailable,
+                        lowRelevance
+                );
 
         return new ValidationResult(
                 item,
-                !(missingExternalId || missingTitle || missingSource || missingUrl || missingProvider || missingRegionScope || invalidBecauseLength || skippedFullContentNotAvailable),
+                !(missingExternalId || missingTitle || missingSource || missingUrl || missingProvider || missingRegionScope || missingDate || invalidBecauseLength || categoryRejected || skippedFullContentNotAvailable || lowRelevance),
                 missingExternalId,
                 missingTitle,
                 missingUrl,
                 missingSource,
+                missingDate,
                 invalidBecauseLength,
-                skippedFullContentNotAvailable
+                skippedFullContentNotAvailable,
+                lowRelevance,
+                rejectReason
         );
     }
 
-    private boolean isFullContentPersistable(NewsItemDto item) {
+    private boolean isPersistableQuality(NewsItemDto item) {
         if (item == null) {
             return false;
         }
-        if (!"FULL_CONTENT".equalsIgnoreCase(item.getQualityStatus())) {
+        if (Boolean.TRUE.equals(item.getIsKapDisclosure())) {
+            return hasText(item.getSummary()) || hasText(item.getContentSections());
+        }
+        if ("SOURCE_LINK_ONLY".equalsIgnoreCase(item.getQualityStatus())) {
             return false;
         }
-        return hasText(item.getSummary()) && item.getSummary().trim().length() >= 500;
+        return hasText(item.getSummary()) && item.getSummary().trim().length() >= MIN_SUMMARY_LENGTH;
     }
 
     private List<News> persistNewItems(String providerName, List<News> toSave) {
@@ -1013,8 +1641,40 @@ public class NewsService {
         if (!hasText(request.getCategory())) {
             return null;
         }
-        String category = request.getCategory().trim().toLowerCase(Locale.ROOT);
-        return (root, query, cb) -> cb.equal(cb.lower(root.get("category")), category);
+        Set<String> categories = newsCategoryClassifier.resolveCategoryAndTagMatches(request.getCategory());
+        Set<String> runtimeKeywords = newsCategoryClassifier.resolveFilterRuntimeKeywords(request.getCategory());
+        if (categories.isEmpty() && runtimeKeywords.isEmpty()) {
+            return null;
+        }
+        return (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            if (!categories.isEmpty()) {
+                predicates.add(cb.upper(root.get("category")).in(categories));
+                jakarta.persistence.criteria.Expression<String> normalizedTags =
+                        cb.upper(cb.coalesce(root.get("filterTags"), ""));
+                List<jakarta.persistence.criteria.Predicate> tagPredicates = categories.stream()
+                        .map(category -> cb.like(normalizedTags, "%" + category.toUpperCase(Locale.ROOT) + "%"))
+                        .toList();
+                predicates.add(cb.or(tagPredicates.toArray(jakarta.persistence.criteria.Predicate[]::new)));
+            }
+            if (!runtimeKeywords.isEmpty()) {
+                jakarta.persistence.criteria.Predicate noTagsStored = cb.or(
+                        cb.isNull(root.get("filterTags")),
+                        cb.equal(cb.coalesce(root.get("filterTags"), ""), "")
+                );
+                List<jakarta.persistence.criteria.Predicate> keywordPredicates = runtimeKeywords.stream()
+                        .map(keyword -> {
+                            String likeKeyword = "%" + normalizeKeywordForLike(keyword) + "%";
+                            return cb.or(
+                                    cb.like(cb.lower(root.get("title")), likeKeyword),
+                                    cb.like(cb.lower(cb.coalesce(root.get("summary"), "")), likeKeyword)
+                            );
+                        })
+                        .toList();
+                predicates.add(cb.and(noTagsStored, cb.or(keywordPredicates.toArray(jakarta.persistence.criteria.Predicate[]::new))));
+            }
+            return cb.or(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
     }
 
     private Specification<News> byLanguage(NewsSearchRequest request) {
@@ -1544,8 +2204,11 @@ public class NewsService {
             boolean missingTitle,
             boolean missingUrl,
             boolean missingSource,
+            boolean missingDate,
             boolean invalidBecauseLength,
-            boolean skippedFullContentNotAvailable
+            boolean skippedFullContentNotAvailable,
+            boolean lowRelevance,
+            String rejectReason
     ) {
         private static ValidationResult invalid(
                 NewsItemDto item,
@@ -1553,11 +2216,33 @@ public class NewsService {
                 boolean missingTitle,
                 boolean missingUrl,
                 boolean missingSource,
+                boolean missingDate,
                 boolean invalidBecauseLength,
-                boolean skippedFullContentNotAvailable
+                boolean skippedFullContentNotAvailable,
+                boolean lowRelevance,
+                String rejectReason
         ) {
-            return new ValidationResult(item, false, missingExternalId, missingTitle, missingUrl, missingSource, invalidBecauseLength, skippedFullContentNotAvailable);
+            return new ValidationResult(
+                    item,
+                    false,
+                    missingExternalId,
+                    missingTitle,
+                    missingUrl,
+                    missingSource,
+                    missingDate,
+                    invalidBecauseLength,
+                    skippedFullContentNotAvailable,
+                    lowRelevance,
+                    rejectReason
+            );
         }
+    }
+
+    private record ExistingNewsLookup(
+            Map<String, News> byExternalId,
+            Map<String, News> byNormalizedUrl,
+            Map<String, News> byTitleSource
+    ) {
     }
 
     private record PersistenceStats(
@@ -1571,10 +2256,11 @@ public class NewsService {
             int missingUrlCount,
             int missingSourceCount,
             int missingDateCount,
-            int skippedFullContentNotAvailableCount
+            int skippedFullContentNotAvailableCount,
+            String rejectReasonSummary
     ) {
         private static PersistenceStats empty() {
-            return new PersistenceStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            return new PersistenceStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "{}");
         }
     }
 

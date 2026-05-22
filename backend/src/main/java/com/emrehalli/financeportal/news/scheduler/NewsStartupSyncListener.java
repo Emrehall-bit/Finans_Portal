@@ -31,6 +31,7 @@ public class NewsStartupSyncListener {
         }
         logger.info("Scheduling non-blocking startup news sync");
         newsScheduler.runProviderSync(NewsProviderType.CNBC_RSS, "startup");
+        newsScheduler.runProviderSync(NewsProviderType.GUARDIAN, "startup");
         newsScheduler.runProviderSync(NewsProviderType.AA_RSS, "startup");
     }
 }

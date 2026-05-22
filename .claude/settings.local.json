@@ -76,7 +76,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Name)",
       "Bash(xargs ls -lh)",
       "Bash(npm install)",
-      "Bash(Get-ChildItem \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\pages\\\\\" -Name *)"
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\pages\\\\\" -Name *)",
+      "Bash(powershell -command \"Get-Content 'C:/Users/ehall/Desktop/Finans-Portal/frontend/src/locales/tr.json' | Select-String -Pattern 'allMarkets|allNews|watchlistWidget|seeAll'\")",
+      "Bash(powershell *)"
     ]
   }
 }

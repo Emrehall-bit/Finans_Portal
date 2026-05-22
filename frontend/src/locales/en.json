@@ -149,6 +149,7 @@
       "alertsTitle": "Active alerts",
       "alertsSubtitle": "Rules waiting to trigger",
       "alertsTrend": "Warning",
+      "addPortfolio": "Add Portfolio →",
       "heatmapTitle": "Market Heatmap",
       "marketTabs": {
         "gainers": "Top gainers",
@@ -158,6 +159,10 @@
     "marketSummaryEyebrow": "Market Summary",
     "marketSummaryTitle": "Today's active instruments",
     "allMarkets": "All markets",
+    "watchlistWidgetTitle": "Watchlist",
+    "watchlistWidgetSeeAll": "See All",
+    "watchlistWidgetEmptyTitle": "Your watchlist is empty",
+    "watchlistWidgetEmptyDesc": "Go to markets and add instruments you want to follow.",
     "marketEmptyTitle": "No market data found",
     "marketEmptyDescription": "The market service returned no data.",
     "table": {
@@ -249,6 +254,36 @@
     "providers": "Sources",
     "language": "Language",
     "all": "All",
+    "filterCategories": {
+      "all": "All",
+      "generalEconomy": "General Economy",
+      "stocks": "Stocks",
+      "fx": "FX",
+      "goldCommodities": "Gold & Commodities",
+      "interestBonds": "Interest & Bonds",
+      "banking": "Banking",
+      "crypto": "Crypto",
+      "globalMarkets": "Global Markets"
+    },
+    "tagsLabel": "News tags",
+    "tagLabels": {
+      "GENERAL_ECONOMY": "General Economy",
+      "STOCKS": "Stocks",
+      "FX": "FX",
+      "GOLD_COMMODITY": "Gold & Commodities",
+      "INTEREST_BONDS": "Interest & Bonds",
+      "BANKING": "Banking",
+      "CRYPTO": "Crypto",
+      "GLOBAL_MARKETS": "Global Markets",
+      "ENERGY": "Energy"
+    },
+    "filterProviders": {
+      "aa": "Anadolu Ajansı",
+      "cnbc": "CNBC",
+      "guardian": "The Guardian",
+      "kap": "KAP",
+      "unknown": "Unknown source"
+    },
     "openNews": "Open news",
     "openDisclosure": "Open disclosure",
     "readAtSource": "Read at source",
@@ -309,7 +344,8 @@
       "sell": "Ask",
       "change": "Change",
       "source": "Source",
-      "detail": "Detail"
+      "detail": "Detail",
+      "type": "Type"
     },
     "fundColumns": {
       "umbrellaType": "Umbrella Fund Type",
@@ -345,7 +381,8 @@
       "BOND": "Bond / T-bill",
       "MACRO": "Macro",
       "INDEX": "Index",
-      "COMMODITY": "Commodity"
+      "COMMODITY": "Commodity",
+      "FAVORITES": "Favorites"
     },
     "macro": {
       "eyebrow": "Macro Indicators",

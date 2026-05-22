@@ -1,6 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
 import { LayoutGrid, Star, TrendingDown, TrendingUp } from "lucide-react";
 import { buildMarketDetailPath } from "../api/marketApi";
@@ -11,12 +11,12 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import useToast from "../hooks/useToast";
-import { useMarketsByType } from "../hooks/useMarketQueries";
+import { useMarketQuotes, useMarketsByType } from "../hooks/useMarketQueries";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatNumber } from "../utils/formatters";
 import { getCountryCodeForInstrument } from "../utils/currencyToCountryMap";
 
-const CATEGORY_OPTIONS = ["FX", "CRYPTO", "STOCK", "FUND", "FUTURES", "BOND", "INDEX", "COMMODITY"];
+const CATEGORY_OPTIONS = ["FX", "CRYPTO", "STOCK", "FUND", "FUTURES", "BOND", "INDEX", "COMMODITY", "FAVORITES"];
 const CURRENCY_CONVERTIBLE_CATEGORIES = new Set(["STOCK", "FUND", "COMMODITY", "INDEX", "FUTURES"]);
 
 
@@ -33,25 +33,28 @@ const FUND_RETURN_COLUMNS = [
 export default function MarketsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { userId, login } = useAuth();
   const { toast, showToast } = useToast();
   const { formatAmount } = useCurrency();
 
   const [search, setSearch] = useState("");
   const [movementFilter, setMovementFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("FX");
+  const [categoryFilter, setCategoryFilter] = useState(() => location.state?.category ?? "FX");
   const [viewMode, setViewMode] = useState("table");
   const [sortBy, setSortBy] = useState("name");
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [watchlistItems, setWatchlistItems] = useState([]);
   const [favoriteBusyKey, setFavoriteBusyKey] = useState("");
   const deferredSearch = useDeferredValue(search);
 
   // ── Market list data ────────────────────────────────────────────────────────
-  const { data: rawQuotes = [], isLoading: loading, error: queryError } = useMarketsByType(
-    categoryFilter !== "MACRO" ? categoryFilter : null,
+  const isFavoritesTab = categoryFilter === "FAVORITES";
+  const { data: rawQuotes = [], isLoading: loadingByType, error: queryError } = useMarketsByType(
+    !isFavoritesTab && categoryFilter !== "MACRO" ? categoryFilter : null,
   );
-  const error = queryError ? extractErrorMessage(queryError, t("markets.loadError")) : "";
+  const { data: allQuotes = [], isLoading: loadingAll } = useMarketQuotes({ enabled: isFavoritesTab });
+  const loading = isFavoritesTab ? loadingAll : loadingByType;
+  const error = !isFavoritesTab && queryError ? extractErrorMessage(queryError, t("markets.loadError")) : "";
   const quotes = useMemo(
     () =>
       rawQuotes
@@ -63,7 +66,6 @@ export default function MarketsPage() {
   useEffect(() => {
     if (!userId) {
       setWatchlistItems([]);
-      setFavoritesOnly(false);
       return;
     }
 
@@ -123,6 +125,26 @@ export default function MarketsPage() {
 
   const filteredQuotes = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
+
+    if (isFavoritesTab) {
+      const codes = new Set(watchlistItems.map((row) => normalizeCode(row.instrumentCode)));
+      return [...allQuotes]
+        .filter((item) => item && typeof item === "object")
+        .map((item) => ({ ...item, marketCategory: classifyCategory(item, item.instrumentType || "OTHER") }))
+        .filter((item) => {
+          const onWatchlist =
+            codes.has(normalizeCode(item.symbol)) ||
+            (item.code && codes.has(normalizeCode(item.code)));
+          const matchesQuery =
+            query.length === 0 ||
+            item.symbol?.toLowerCase().includes(query) ||
+            item.code?.toLowerCase().includes(query) ||
+            item.displayName?.toLowerCase().includes(query);
+          return onWatchlist && matchesQuery;
+        })
+        .sort((left, right) => sortQuotes(left, right, effectiveSortBy));
+    }
+
     return [...quotes]
       .filter((item) => {
         const matchesQuery =
@@ -133,13 +155,9 @@ export default function MarketsPage() {
         return matchesQuery;
       })
       .sort((left, right) => sortQuotes(left, right, effectiveSortBy));
-  }, [quotes, deferredSearch, effectiveSortBy]);
+  }, [isFavoritesTab, allQuotes, watchlistItems, quotes, deferredSearch, effectiveSortBy]);
 
-  const visibleQuotes = useMemo(() => {
-    if (!favoritesOnly || !userId) return filteredQuotes;
-    const codes = new Set(watchlistItems.map((row) => normalizeCode(row.instrumentCode)));
-    return filteredQuotes.filter((item) => codes.has(normalizeCode(item.symbol)));
-  }, [filteredQuotes, favoritesOnly, userId, watchlistItems]);
+  const visibleQuotes = filteredQuotes;
 
   const marketPulse = useMemo(() => ({
     visible: visibleQuotes.length,
@@ -147,15 +165,11 @@ export default function MarketsPage() {
     negative: visibleQuotes.filter((item) => Number(item.changeRate) < 0).length,
   }), [visibleQuotes]);
 
-  const isFxTable   = categoryFilter === "FX";
-  const isFundTable = categoryFilter === "FUND";
+  const isFxTable       = categoryFilter === "FX";
+  const isFundTable     = categoryFilter === "FUND";
+  const isFavoritesTable = isFavoritesTab;
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  async function handleFavoritesOnlyChange(enabled) {
-    if (enabled && !userId) { await login(); return; }
-    setFavoritesOnly(enabled);
-  }
-
   async function handleFavoriteToggle(item) {
     const symbolKey = item.symbol || item.code || "";
     if (!symbolKey) return;
@@ -246,20 +260,6 @@ export default function MarketsPage() {
                 </select>
               </label>
 
-              <div className="market-favorites-toggle-wrap">
-                <span className="market-favorites-label">{t("markets.favoritesOnly")}</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={favoritesOnly}
-                  className={`market-favorites-switch ${favoritesOnly ? "on" : ""}`}
-                  onClick={() => handleFavoritesOnlyChange(!favoritesOnly)}
-                  title={!userId ? t("markets.favoritesLoginHint") : undefined}
-                >
-                  <span className="market-favorites-knob" />
-                </button>
-              </div>
-
               {CURRENCY_CONVERTIBLE_CATEGORIES.has(categoryFilter) ? (
                 <div className="market-filter-field market-currency-toggle-wrap">
                   <span>Para Birimi</span>
@@ -331,8 +331,8 @@ export default function MarketsPage() {
             <div className="markets-list-body">
               {!loading && !error && visibleQuotes.length === 0 ? (
                 <EmptyState
-                  title={favoritesOnly && userId ? t("markets.favoritesEmptyTitle") : t("markets.emptyTitle")}
-                  description={favoritesOnly && userId ? t("markets.favoritesEmptyDescription") : t("markets.emptyDescription")}
+                  title={isFavoritesTable && userId ? t("markets.favoritesEmptyTitle") : t("markets.emptyTitle")}
+                  description={isFavoritesTable && userId ? t("markets.favoritesEmptyDescription") : t("markets.emptyDescription")}
                 />
               ) : null}
 
@@ -406,7 +406,7 @@ export default function MarketsPage() {
                 </div>
               ) : null}
 
-              {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !isFundTable ? (
+              {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !isFundTable && !isFavoritesTable ? (
                 <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap">
                   <table className="finance-market-table">
                     <thead>
@@ -512,7 +512,58 @@ export default function MarketsPage() {
                 </div>
               ) : null}
 
-              {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && !isFundTable ? (
+              {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && isFavoritesTable ? (
+                <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap">
+                  <table className="finance-market-table">
+                    <thead>
+                      <tr>
+                        <th className="col-favorite" scope="col">
+                          <span className="sr-only">{t("markets.columns.favorite")}</span>
+                        </th>
+                        <th>{t("markets.columns.instrument")}</th>
+                        <th>{t("markets.columns.type", { defaultValue: "Tür" })}</th>
+                        <th>{t("markets.columns.lastPrice")}</th>
+                        <th>{t("markets.columns.change")}</th>
+                        <th>{t("markets.columns.source")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleQuotes.map((item) => {
+                        const sym = item.symbol || item.code || "";
+                        const busyKey = `${sym}-${item.source ?? ""}`;
+                        return (
+                          <tr key={`${item.symbol}-${item.source}-${item.marketCategory}`}>
+                            <td className="col-favorite">
+                              <FavoriteStarButton
+                                active={isOnWatchlist(watchlistItems, sym)}
+                                disabled={!sym || favoriteBusyKey === busyKey}
+                                onToggle={() => handleFavoriteToggle(item)}
+                              />
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="finance-table-row-button"
+                                onClick={() => navigate(buildMarketDetailPath(item.symbol, item.instrumentType))}
+                              >
+                                <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="table" />
+                              </button>
+                            </td>
+                            <td>
+                              <span className="terminal-badge muted">{formatCategoryLabel(item.marketCategory, t)}</span>
+                            </td>
+                            <td>{formatRate(item.sellRate ?? item.price)}</td>
+                            <td className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</td>
+                            <td>{item.source || "-"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+
+              {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && !isFundTable && !isFavoritesTable ? (
                 <div className="market-card-grid markets-card-scroll-wrap">
                   {visibleQuotes.map((item) => {
                     const sym = item.symbol || item.code || "";
@@ -544,6 +595,45 @@ export default function MarketsPage() {
                             ) : null}
                           </div>
 
+                          <div className="market-quote-card-foot">
+                            <span>{formatCategoryLabel(item.marketCategory, t)}</span>
+                            <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
+                          </div>
+                        </button>
+                        <div className="market-quote-card-floating-star">
+                          <FavoriteStarButton
+                            active={isOnWatchlist(watchlistItems, sym)}
+                            disabled={!sym || favoriteBusyKey === busyKey}
+                            onToggle={() => handleFavoriteToggle(item)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && isFavoritesTable ? (
+                <div className="market-card-grid markets-card-scroll-wrap">
+                  {visibleQuotes.map((item) => {
+                    const sym = item.symbol || item.code || "";
+                    const busyKey = `${sym}-${item.source ?? ""}`;
+                    return (
+                      <div key={`${item.symbol}-${item.source}-${item.marketCategory}-card`} className="market-quote-card-wrap">
+                        <button
+                          type="button"
+                          className="market-quote-card"
+                          onClick={() => navigate(buildMarketDetailPath(item.symbol, item.instrumentType))}
+                        >
+                          <div className="market-quote-card-top">
+                            <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="card" />
+                            <span className="terminal-badge muted">{item.source || "-"}</span>
+                          </div>
+                          <div className="market-quote-card-body">
+                            <div>
+                              <span className="eyebrow">{t("markets.columns.lastPrice")}</span>
+                              <strong>{formatRate(item.sellRate ?? item.price)}</strong>
+                            </div>
+                          </div>
                           <div className="market-quote-card-foot">
                             <span>{formatCategoryLabel(item.marketCategory, t)}</span>
                             <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
@@ -705,9 +795,7 @@ function getRiskToneClass(value) {
 
 function normalizeCode(value) {
   if (value == null) return "";
-  const rawValue = String(value).trim();
-  if (rawValue.toUpperCase().startsWith("TCMB:")) return rawValue.toUpperCase();
-  return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  return String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
 function isOnWatchlist(rows, symbol) {

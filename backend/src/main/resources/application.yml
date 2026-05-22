@@ -84,6 +84,13 @@ news:
       default-category: ECONOMY
       default-language: en
       default-region-scope: GLOBAL
+    guardian:
+      enabled: true
+      base-url: https://content.guardianapis.com/search
+      api-key: ${GUARDIAN_API_KEY:}
+      default-category: ECONOMY
+      default-language: en
+      default-region-scope: GLOBAL
     kap:
       enabled: true
       scheduler-enabled: false

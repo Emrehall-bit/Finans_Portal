@@ -16,6 +16,7 @@ import {
   getNewsDisclosureTypeLabel,
   getNewsFallbackLogoUrl,
   getNewsPreviewText,
+  getNewsDisplayTags,
   getNewsProviderLabel,
   getNewsQualityStatusLabel,
   getNewsSourceName,
@@ -49,6 +50,7 @@ export default function NewsDetailPage() {
   const qualityLabel = getNewsQualityStatusLabel(item?.qualityStatus);
   const disclosureTypeLabel = getNewsDisclosureTypeLabel(item?.disclosureType);
   const providerLabel = getNewsProviderLabel(item?.provider || item?.source || "-");
+  const displayTags = useMemo(() => getNewsDisplayTags(item, t), [item, t]);
 
   const detailParagraphs = useMemo(() => {
     const baseContent = item?.summary?.trim() || item?.contentPreview?.trim() || "";
@@ -129,6 +131,16 @@ export default function NewsDetailPage() {
                   <span className="muted">{formatDateTime(item?.publishedAt)}</span>
                 </div>
               </div>
+
+              {displayTags.length > 0 ? (
+                <div className="news-detail-tag-row" aria-label={t("news.tagsLabel")}>
+                  {displayTags.map((tag) => (
+                    <span key={tag.key} className="news-tag-chip detail">
+                      #{tag.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
 
               {kapDisclosure ? (
                 <div className="news-detail-kap-grid">

@@ -23,6 +23,7 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import useToast from "../hooks/useToast";
 import { usePortfolioDetails, usePortfolioPerformance, usePortfolioRisk, useUserPortfolios } from "../hooks/usePortfolioQueries";
+import { useMarketQuotes } from "../hooks/useMarketQueries";
 import { useTheme } from "../theme/ThemeContext";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
@@ -191,6 +192,7 @@ export default function PortfolioPage() {
 
   // ── React Query data fetching ───────────────────────────────────────────────
   const { data: portfolios = [], isLoading: loadingList } = useUserPortfolios(userId);
+  const { data: marketQuotes = [] } = useMarketQuotes();
   const performanceParams = useMemo(() => buildPerformanceHistoryParams(performanceRangeKey), [performanceRangeKey]);
   const { data: selectedPortfolio = null, isLoading: loadingDetail } = usePortfolioDetails(selectedPortfolioId);
   const { data: performanceHistory = null, isLoading: loadingPerformanceHistory, error: performanceQueryError } = usePortfolioPerformance(selectedPortfolioId, performanceParams);
@@ -749,13 +751,26 @@ export default function PortfolioPage() {
 
   const watchlistItems = useMemo(() => {
     if (Array.isArray(watchlist) && watchlist.length > 0) {
+      const norm = (s) => (s ?? "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+      const quoteMap = new Map();
+      for (const q of marketQuotes) {
+        quoteMap.set(norm(q.symbol), q);
+        if (q.code) quoteMap.set(norm(q.code), q);
+      }
       return watchlist.map((item, index) => {
-        const quote = resolveWatchlistRailQuote(item.instrumentCode);
+        const liveQuote = quoteMap.get(norm(item.instrumentCode));
+        const fallbackQuote = resolveWatchlistRailQuote(item.instrumentCode);
+        const price = liveQuote != null
+          ? (liveQuote.sellRate ?? liveQuote.price ?? null)
+          : fallbackQuote.price;
+        const changePercent = liveQuote != null
+          ? toMaybeNumber(liveQuote.changeRate)
+          : resolveWatchlistChangePercent(item, fallbackQuote);
         return {
           key: item.id || `${item.instrumentCode}-${index}`,
           symbol: formatInstrumentLabel(item.instrumentCode),
-          price: toMaybeNumber(item.currentPrice) ?? quote.price,
-          changePercent: resolveWatchlistChangePercent(item, quote),
+          price,
+          changePercent,
           dotColor: CHART_COLORS[index % CHART_COLORS.length],
         };
       });
@@ -768,7 +783,7 @@ export default function PortfolioPage() {
       changePercent: item.changePercent,
       dotColor: CHART_COLORS[index % CHART_COLORS.length],
     }));
-  }, [watchlist]);
+  }, [watchlist, marketQuotes]);
 
   const widgetTitles = useMemo(
     () => ({

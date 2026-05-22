@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ArrowDown, ArrowUp, Bell, Eye, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQueries } from "@tanstack/react-query";
 import { buildMarketDetailPath } from "../api/marketApi";
@@ -40,7 +41,7 @@ export default function DashboardPage() {
   const loading = quotesLoading || newsLoading || portfoliosLoading;
   const newsItems = (newsPage?.content ?? []).slice(0, 4);
   const portfolioSnapshots = portfolioDetailQueries
-    .filter((q) => q.status === "fulfilled" && q.data)
+    .filter((q) => q.status === "success" && q.data)
     .map((q) => q.data);
 
   const sectionErrors = {
@@ -51,37 +52,37 @@ export default function DashboardPage() {
     portfolios: portfoliosError && userId ? t("dashboard.portfoliosError") : null,
   };
 
-  const quoteBySymbol = useMemo(() => {
-    return new Map(
-      marketQuotes
-        .filter((quote) => quote?.symbol)
-        .map((quote) => [normalizeCode(quote.symbol), quote]),
-    );
-  }, [marketQuotes]);
-
   const overviewCards = useMemo(() => {
     const portfolioValue = portfolioSnapshots.reduce(
       (sum, item) => sum + toNumber(item?.summary?.currentValue ?? item?.summary?.totalCurrentValue),
       0,
     );
+    const hasPortfolio = portfolioSnapshots.length > 0 && portfolioValue > 0;
 
     const activeAlertCount = alerts.filter((item) => String(item?.status || "").toUpperCase() === "ACTIVE").length || alerts.length;
-    const dailyProfitLoss = computeDailyProfitLoss(portfolioSnapshots, quoteBySymbol);
+    const dailyProfitLoss = portfolioSnapshots.reduce(
+      (sum, snapshot) => sum + toNumber(snapshot?.summary?.dailyProfitLoss),
+      0,
+    );
+    const pnlTone = dailyProfitLoss > 0 ? "positive" : dailyProfitLoss < 0 ? "negative" : "neutral";
 
     return [
       {
         title: t("dashboard.cards.portfolioValueTitle"),
         value: formatCurrency(portfolioValue),
-        subtitle: t("dashboard.cards.portfolioValueSubtitle", { count: portfolioSnapshots.length }),
-        trend: portfolioSnapshots.length ? t("dashboard.cards.portfolioValueTrend") : null,
+        subtitle: hasPortfolio ? t("dashboard.cards.portfolioValueSubtitle", { count: portfolioSnapshots.length }) : null,
+        trend: hasPortfolio ? t("dashboard.cards.portfolioValueTrend") : null,
         tone: "cool",
+        icon: <Wallet size={18} />,
+        isEmpty: !hasPortfolio,
       },
       {
         title: t("dashboard.cards.dailyPnLTitle"),
         value: formatCurrency(dailyProfitLoss),
         subtitle: t("dashboard.cards.dailyPnLSubtitle"),
         trend: formatSignedCurrency(dailyProfitLoss),
-        tone: dailyProfitLoss >= 0 ? "cool" : "warm",
+        tone: pnlTone,
+        icon: dailyProfitLoss < 0 ? <TrendingDown size={18} /> : <TrendingUp size={18} />,
       },
       {
         title: t("dashboard.cards.watchlistTitle"),
@@ -89,6 +90,7 @@ export default function DashboardPage() {
         subtitle: t("dashboard.cards.watchlistSubtitle"),
         trend: watchlistItems.length ? t("dashboard.cards.watchlistTrend") : null,
         tone: "neutral",
+        icon: <Eye size={18} />,
       },
       {
         title: t("dashboard.cards.alertsTitle"),
@@ -96,9 +98,39 @@ export default function DashboardPage() {
         subtitle: t("dashboard.cards.alertsSubtitle"),
         trend: alerts.some(isTriggeredAlert) ? t("dashboard.cards.alertsTrend") : null,
         tone: alerts.some(isTriggeredAlert) ? "warm" : "neutral",
+        icon: <Bell size={18} />,
       },
     ];
-  }, [alerts, portfolioSnapshots, quoteBySymbol, t, watchlistItems.length]);
+  }, [alerts, portfolioSnapshots, t, watchlistItems.length]);
+
+  const watchlistRows = useMemo(() => {
+    if (!watchlistItems.length) return [];
+    // Backend normalizeSymbol strips all non-alphanumeric chars before storing.
+    // e.g. "TCMB:USD:SELL" is stored as "TCMBUSDSELL".
+    // We must apply the same transform to quote symbols when building the lookup map.
+    const norm = (s) => (s ?? "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    const quoteMap = new Map();
+    for (const q of marketQuotes) {
+      quoteMap.set(norm(q.symbol), q);
+      if (q.code) quoteMap.set(norm(q.code), q);
+    }
+    return watchlistItems.slice(0, 7).map((item) => {
+      const quote = quoteMap.get(item.instrumentCode);
+      const shortCode = quote?.code ?? item.instrumentCode;
+      const rawName = quote?.displayName ?? "";
+      const isDuplicateName = !rawName || rawName === shortCode || rawName === item.instrumentCode;
+      const typeLabel = INSTRUMENT_TYPE_LABELS[quote?.instrumentType] ?? null;
+      return {
+        id: item.id,
+        code: shortCode,
+        secondLine: isDuplicateName ? typeLabel : rawName,
+        price: quote?.sellRate ?? quote?.price ?? null,
+        changeRate: quote?.changeRate ?? null,
+        instrumentType: quote?.instrumentType ?? null,
+        symbol: quote?.symbol ?? item.instrumentCode,
+      };
+    });
+  }, [watchlistItems, marketQuotes]);
 
   const [marketTab, setMarketTab] = useState("gainers");
   const marketRows = useMemo(() => {
@@ -128,22 +160,19 @@ export default function DashboardPage() {
             {overviewCards.map((card) => (
               <div key={card.title} className={`summary-card summary-card-${card.tone}`}>
                 <div className="summary-card-top">
-                  <p className="summary-card-title">{card.title}</p>
+                  <div className="summary-card-title-row">
+                    {card.icon ? <span className={`summary-card-icon summary-card-icon--${card.tone}`}>{card.icon}</span> : null}
+                    <p className="summary-card-title">{card.title}</p>
+                  </div>
                   {card.trend ? <span className="summary-chip">{card.trend}</span> : null}
                 </div>
                 <h3>{card.value}</h3>
-                {card.subtitle ? <p className="summary-card-subtitle">{card.subtitle}</p> : null}
-                <div
-                  aria-hidden="true"
-                  style={{
-                    width: "100%",
-                    height: 8,
-                    marginTop: 28,
-                    borderRadius: 999,
-                    background:
-                      "linear-gradient(90deg, rgba(37, 99, 235, 0.10), rgba(37, 99, 235, 0.34), rgba(37, 99, 235, 0.10))",
-                  }}
-                />
+                {card.isEmpty ? (
+                  <Link to="/portfolio" className="summary-card-cta">{t("dashboard.cards.addPortfolio")}</Link>
+                ) : card.subtitle ? (
+                  <p className="summary-card-subtitle">{card.subtitle}</p>
+                ) : null}
+                <div aria-hidden="true" className={`summary-card-bar summary-card-bar--${card.tone}`} />
               </div>
             ))}
           </section>
@@ -151,6 +180,51 @@ export default function DashboardPage() {
           <section className="finance-dashboard-grid">
             <div className="finance-dashboard-main">
               <AiMarketSummaryCard marketQuotes={marketQuotes} newsItems={newsItems} />
+
+              {userId ? (
+                <section className="panel-surface finance-dashboard-panel dash-watchlist-panel">
+                  <div className="panel-head">
+                    <h3 className="dashboard-section-title">
+                      {t("dashboard.watchlistWidgetTitle")}
+                      {watchlistRows.length > 0 ? <span className="dash-watchlist-count">({watchlistRows.length})</span> : null}
+                    </h3>
+                    <Link to="/markets" state={{ category: "FAVORITES" }} className="panel-text-link">{t("dashboard.watchlistWidgetSeeAll")}</Link>
+                  </div>
+                  {watchlistRows.length === 0 ? (
+                    <EmptyState
+                      title={t("dashboard.watchlistWidgetEmptyTitle")}
+                      description={t("dashboard.watchlistWidgetEmptyDesc")}
+                    />
+                  ) : (
+                    <div className="dash-watchlist-list">
+                      {watchlistRows.map((row) => {
+                        const cr = toNumber(row.changeRate);
+                        const changeClass = row.changeRate == null ? "" : cr >= 0 ? "market-up" : "market-down";
+                        const ChangeIcon = row.changeRate != null && cr < 0 ? ArrowDown : ArrowUp;
+                        return (
+                          <Link
+                            key={row.id}
+                            to={buildMarketDetailPath(row.symbol, row.instrumentType)}
+                            className="dash-watchlist-row"
+                          >
+                            <div className="dash-watchlist-symbol-col">
+                              <strong className="dash-watchlist-code">{row.code}</strong>
+                              {row.secondLine ? <span className="dash-watchlist-name">{row.secondLine}</span> : null}
+                            </div>
+                            <div className="dash-watchlist-price-col">
+                              <span className="dash-watchlist-price">{formatCurrency(row.price)}</span>
+                              <span className={`dash-watchlist-change ${changeClass}`}>
+                                {row.changeRate != null ? <ChangeIcon size={11} className="dash-watchlist-arrow" /> : null}
+                                {formatMarketChange(row.changeRate)}
+                              </span>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              ) : null}
 
               <section className="panel-surface finance-dashboard-panel">
                 <div className="panel-head">
@@ -261,46 +335,12 @@ export default function DashboardPage() {
   );
 }
 
-function computeDailyProfitLoss(portfolioSnapshots, quoteBySymbol) {
-  return portfolioSnapshots.reduce((portfolioSum, snapshot) => {
-    return portfolioSum + (snapshot?.holdings ?? []).reduce((holdingSum, holding) => {
-      const symbol = normalizeCode(holding?.instrumentCode);
-      const quote = quoteBySymbol.get(symbol);
-      const changeRate = toNumber(quote?.changeRate);
-      const currentValue = toNumber(holding?.currentValue);
-
-      if (!Number.isFinite(changeRate) || !Number.isFinite(currentValue) || changeRate <= -100) {
-        return holdingSum;
-      }
-
-      const ratio = changeRate / 100;
-      const previousValue = currentValue / (1 + ratio);
-      if (!Number.isFinite(previousValue)) {
-        return holdingSum;
-      }
-
-      return holdingSum + (currentValue - previousValue);
-    }, 0);
-  }, 0);
-}
 
 
 function isTriggeredAlert(item) {
   return String(item?.status || "").toUpperCase() === "TRIGGERED" || Boolean(item?.triggeredAt);
 }
 
-function normalizeCode(value) {
-  if (value == null) {
-    return "";
-  }
-
-  const rawValue = String(value).trim();
-  if (rawValue.toUpperCase().startsWith("TCMB:")) {
-    return rawValue.toUpperCase();
-  }
-
-  return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-}
 
 function toNumber(value) {
   const numeric = Number(value);
@@ -327,3 +367,14 @@ function formatSignedCurrency(value) {
 
   return `${value >= 0 ? "+" : ""}${formatCurrency(value)}`;
 }
+
+const INSTRUMENT_TYPE_LABELS = {
+  STOCK: "Hisse",
+  FX: "Döviz",
+  FUND: "Fon",
+  CRYPTO: "Kripto",
+  FUTURES: "Vadeli",
+  BOND: "Tahvil",
+  INDEX: "Endeks",
+  COMMODITY: "Emtia",
+};

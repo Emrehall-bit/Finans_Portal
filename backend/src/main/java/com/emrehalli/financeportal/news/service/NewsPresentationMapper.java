@@ -6,6 +6,8 @@ import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.enums.NewsQualityStatus;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 @Component
@@ -43,6 +45,7 @@ public class NewsPresentationMapper {
                 .qualityStatus(qualityStatus)
                 .isKapDisclosure(isKapDisclosure)
                 .disclosureType(resolveDisclosureType(news, isKapDisclosure))
+                .tags(resolveTags(news))
                 .build();
     }
 
@@ -106,6 +109,18 @@ public class NewsPresentationMapper {
         }
         String stored = normalizeText(news.getDisclosureType());
         return stored != null ? stored : "GENERAL";
+    }
+
+    private List<String> resolveTags(News news) {
+        String filterTags = normalizeText(news.getFilterTags());
+        if (filterTags == null) {
+            return List.of();
+        }
+        return Arrays.stream(filterTags.split(","))
+                .map(this::normalizeText)
+                .filter(value -> value != null && !value.isBlank())
+                .distinct()
+                .toList();
     }
 
     private String normalizeImageUrl(String imageUrl, boolean isKapDisclosure) {

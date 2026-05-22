@@ -1854,7 +1854,7 @@ th {
 
 .news-page-stack {
   display: grid;
-  gap: 12px;
+  gap: 18px;
 }
 
 .news-toolbar,
@@ -1884,7 +1884,7 @@ th {
 .news-layout-grid {
   display: grid;
   grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
-  gap: 18px;
+  gap: 26px;
   align-items: start;
 }
 
@@ -2207,7 +2207,7 @@ th {
   gap: 10px;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(214, 222, 241, 0.55);
-  margin-bottom: 2px;
+  margin-bottom: 10px;
 }
 
 .news-feed-section-label h3 {
@@ -2268,8 +2268,8 @@ th {
 
 .news-sidebar-section {
   display: grid;
-  gap: 8px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 14px 16px;
 }
 
 .news-sidebar-section + .news-sidebar-section {
@@ -2288,17 +2288,17 @@ th {
 
 .news-sidebar-checklist {
   display: grid;
-  gap: 2px;
+  gap: 6px;
 }
 
 .news-sidebar-option {
   position: relative;
   display: grid;
   grid-template-columns: 14px 1fr;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  padding: 5px 6px;
-  border-radius: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
@@ -2336,11 +2336,9 @@ th {
 }
 
 .news-sidebar-option-copy {
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   color: var(--text-main);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
 }
 
 .news-sidebar-actions {
@@ -2704,7 +2702,7 @@ th {
 
 .news-grid-portal {
   grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 8px;
+  gap: 16px;
 }
 
 .news-card-shell {
@@ -2729,7 +2727,7 @@ th {
 .news-card-media {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 2 / 1;
+  aspect-ratio: 2.2 / 1;
   background:
     radial-gradient(circle at top right, rgba(104, 147, 255, 0.18), transparent 34%),
     linear-gradient(135deg, #eaf1ff 0%, #dce8ff 100%);
@@ -2844,9 +2842,9 @@ th {
 }
 
 .news-card-body {
-  padding: 10px 14px 12px;
+  padding: 14px 16px 10px;
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .news-card-meta,
@@ -2860,8 +2858,8 @@ th {
 }
 
 .news-card-provider {
-  font-weight: 600;
-  color: var(--text-soft);
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 .news-meta-badge {
@@ -2888,10 +2886,10 @@ th {
 .news-card-title {
   margin: 0;
   color: var(--text-main);
-  font-size: 0.97rem;
-  line-height: 1.42;
+  font-size: 0.98rem;
+  line-height: 1.45;
   font-weight: 800;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -2919,9 +2917,9 @@ th {
 }
 
 .news-card-summary {
-  font-size: 0.79rem;
+  font-size: 0.84rem;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -13914,8 +13912,35 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 .news-card-body {
   display: grid;
   grid-template-rows: auto auto 1fr auto;
-  gap: 6px;
+  gap: 8px;
   min-height: 100%;
+}
+
+.news-tag-chip-row,
+.news-detail-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.news-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(76, 127, 255, 0.16);
+  background: rgba(76, 127, 255, 0.08);
+  color: color-mix(in srgb, var(--accent) 82%, var(--text-main));
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.news-tag-chip.detail {
+  min-height: 28px;
+  padding: 0 11px;
+  font-size: 0.78rem;
 }
 
 .news-kap-card-inner {
@@ -13932,14 +13957,15 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 
 .news-card-secondary-action {
   padding: 0 16px 16px;
+  margin-top: -2px;
 }
 
 .news-card-secondary-action a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  padding: 0 14px;
+  min-height: 36px;
+  padding: 0 12px;
   border-radius: 12px;
   background: rgba(76, 127, 255, 0.1);
   border: 1px solid rgba(76, 127, 255, 0.18);
@@ -14046,7 +14072,7 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 /* KAP feed single-column layout */
 .news-grid-portal.news-grid-kap {
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: 14px;
 }
 
 .news-kap-meta-grid {
@@ -14101,6 +14127,7 @@ html[data-theme] button.sidebar-register-button:focus-visible,
 }
 
 .news-detail-card .news-detail-topbar,
+.news-detail-card .news-detail-tag-row,
 .news-detail-card .news-detail-kap-grid,
 .news-detail-card .news-detail-body,
 .news-detail-card .news-detail-actions {

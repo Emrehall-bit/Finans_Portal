@@ -2,18 +2,16 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   buildNewsPlaceholderLabel,
-  formatNewsCategoryLabel,
   formatNewsPublishedAt,
   getNewsDisclosureTypeLabel,
   getNewsFallbackLogoUrl,
-  getNewsLanguageLabel,
   getNewsPreviewText,
-  getNewsPrimaryActionLabel,
+  getNewsCategoryLabel,
+  getNewsDisplayTags,
   getNewsProviderLabel,
   getNewsSourceName,
   getNewsSourceUrl,
-  isKapDisclosure,
-  shouldShowSourceCta,
+  isKapDisclosure
 } from "./newsCardUtils";
 
 function resolveThumbnail(item) {
@@ -21,7 +19,7 @@ function resolveThumbnail(item) {
 }
 
 function resolveAccentLabel(item) {
-  return formatNewsCategoryLabel(item?.category) || getNewsProviderLabel(item?.provider) || "Haber";
+  return getNewsCategoryLabel(item?.category) || getNewsProviderLabel(item?.provider) || "Haber";
 }
 
 function Placeholder({ item, providerLabel, logoUrl, logoFailed, onLogoError }) {
@@ -40,7 +38,7 @@ function Placeholder({ item, providerLabel, logoUrl, logoFailed, onLogoError }) 
           <span className="news-card-placeholder-mark">{buildNewsPlaceholderLabel(item)}</span>
         )}
         <strong className="news-card-placeholder-provider">{providerLabel}</strong>
-        <small className="news-card-placeholder-note">Finans veri akisi</small>
+        <small className="news-card-placeholder-note">Finans haber akışı</small>
       </div>
     </div>
   );
@@ -57,12 +55,11 @@ export default function NewsCard({ item, onClick }) {
   const providerLabel = getNewsProviderLabel(item?.provider);
   const sourceName = getNewsSourceName(item);
   const logoUrl = getNewsFallbackLogoUrl(item);
-  const languageLabel = getNewsLanguageLabel(item?.language);
   const publishedAtLabel = formatNewsPublishedAt(item?.publishedAt);
   const previewText = getNewsPreviewText(item, t("news.previewMissing"));
   const sourceUrl = getNewsSourceUrl(item);
-  const primaryActionLabel = getNewsPrimaryActionLabel(item, t("news.openNews"));
   const disclosureTypeLabel = getNewsDisclosureTypeLabel(item?.disclosureType);
+  const displayTags = getNewsDisplayTags(item, t, 3);
 
   useEffect(() => {
     setImageFailed(false);
@@ -115,7 +112,7 @@ export default function NewsCard({ item, onClick }) {
             <img
               className="news-card-image"
               src={thumbnail}
-              alt={item?.title || "Haber gorseli"}
+              alt={item?.title || "Haber görseli"}
               loading="lazy"
               onError={() => setImageFailed(true)}
             />
@@ -128,32 +125,35 @@ export default function NewsCard({ item, onClick }) {
               onLogoError={() => setLogoFailed(true)}
             />
           )}
-          <div className="news-card-overlay" />
-          <div className="news-card-badges">
-            <span className="news-card-badge category">{accentLabel}</span>
-            <span className="news-card-badge provider">{providerLabel}</span>
-          </div>
         </div>
 
         <div className="news-card-body">
+          <div className="news-card-badges">
+            <span className="news-card-badge category">{accentLabel}</span>
+          </div>
+
           <div className="news-card-meta">
             <span className="news-card-provider">{sourceName}</span>
-            {languageLabel ? <span className="news-card-dot" /> : null}
-            {languageLabel ? <span className="news-meta-badge">{languageLabel}</span> : null}
             <span className="news-card-dot" />
             <time dateTime={item?.publishedAt || ""}>{publishedAtLabel}</time>
           </div>
 
+          {displayTags.length > 0 ? (
+            <div className="news-tag-chip-row" aria-label={t("news.tagsLabel")}>
+              {displayTags.map((tag) => (
+                <span key={tag.key} className="news-tag-chip">
+                  #{tag.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
           <h3 className="news-card-title">{item?.title || t("news.titleMissing")}</h3>
           <p className={`news-card-summary${item?.summary || item?.contentPreview ? "" : " is-fallback"}`}>{previewText}</p>
-
-          <div className="news-card-footer">
-            <span className="news-card-link">{primaryActionLabel}</span>
-          </div>
         </div>
       </button>
 
-      {shouldShowSourceCta(item) && sourceUrl ? (
+      {sourceUrl ? (
         <div className="news-card-secondary-action">
           <a href={sourceUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
             {t("news.readAtSource")}
