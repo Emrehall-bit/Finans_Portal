@@ -14,6 +14,7 @@ import useToast from "../hooks/useToast";
 import { useMarketQuotes, useMarketsByType } from "../hooks/useMarketQueries";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatNumber } from "../utils/formatters";
+import { formatInstrumentCode } from "../utils/instrumentUtils";
 import { getCountryCodeForInstrument } from "../utils/currencyToCountryMap";
 
 const CATEGORY_OPTIONS = ["FX", "CRYPTO", "STOCK", "FUND", "FUTURES", "BOND", "INDEX", "COMMODITY", "FAVORITES"];
@@ -662,7 +663,7 @@ export default function MarketsPage() {
 
 function MarketInstrumentLabel({ item, categoryFilter, variant = "table", stackClass = "" }) {
   const countryCode = getCountryCodeForInstrument(item, categoryFilter);
-  const codeLabel   = item.code || item.symbol || "-";
+  const codeLabel   = item.code || formatInstrumentCode(item.symbol) || "-";
   const nameLabel   = item.displayName || item.instrumentType || "-";
 
   const flagStyle = {

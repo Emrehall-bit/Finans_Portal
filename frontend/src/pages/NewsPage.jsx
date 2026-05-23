@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
-import { syncNews } from "../api/newsApi";
+import { SlidersHorizontal } from "lucide-react";
 import { extractErrorMessage } from "../api/responseUtils";
-import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import PaginationControls from "../components/common/PaginationControls";
@@ -40,7 +38,6 @@ const INITIAL_NEWS_PAGE = {
 export default function NewsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
   const [filters, setFilters] = useState({ keyword: "", category: "", provider: "" });
   const [appliedFilters, setAppliedFilters] = useState({ keyword: "", category: "", provider: "", language: "" });
   const [sortBy, setSortBy] = useState("publishedAt");
@@ -61,27 +58,12 @@ export default function NewsPage() {
     data: newsPage = INITIAL_NEWS_PAGE,
     isLoading: loading,
     error: newsError,
-    refetch,
   } = useNewsList(newsQueryParams);
 
   const error = newsError ? extractErrorMessage(newsError, t("news.loadError")) : "";
 
-  async function handleSync() {
-    try {
-      const provider = appliedFilters.provider || (feedType === "kap" ? "KAP" : undefined);
-      await syncNews({ provider });
-      setCurrentPage(0);
-      refetch();
-    } catch (err) {
-      // sync errors don't need state — user sees the old data
-    }
-  }
-
   function handleOpen(item) {
-    if (!item?.id) {
-      return;
-    }
-
+    if (!item?.id) return;
     navigate(`/news/${item.id}`);
   }
 
@@ -108,6 +90,11 @@ export default function NewsPage() {
     [t],
   );
 
+  const visibleLanguageOptions = useMemo(
+    () => languageOptions.filter((option) => option.value).map((option) => ({ value: option.value, label: option.label })),
+    [languageOptions],
+  );
+
   const draftFilters = useMemo(
     () => ({
       keyword: filters.keyword,
@@ -128,6 +115,7 @@ export default function NewsPage() {
         label: getNewsCategoryFilterLabel(draftFilters.category, t),
       });
     }
+
     if (draftFilters.provider) {
       nextFilters.push({
         type: "provider",
@@ -135,6 +123,7 @@ export default function NewsPage() {
         label: getNewsProviderFilterLabel(draftFilters.provider, t),
       });
     }
+
     selectedLanguages.forEach((lang) => {
       if (lang === "tr") {
         nextFilters.push({ type: "language", value: "tr", label: t("common.turkish") });
@@ -155,9 +144,7 @@ export default function NewsPage() {
           current.provider === draftFilters.provider &&
           current.language === draftFilters.language;
 
-        if (unchanged) {
-          return current;
-        }
+        if (unchanged) return current;
 
         setCurrentPage(0);
         return draftFilters;
@@ -190,10 +177,6 @@ export default function NewsPage() {
     setFilters((prev) => ({ ...prev, category: "", provider: "" }));
   }
 
-  function handleReload() {
-    refetch();
-  }
-
   function handleSortChange(value) {
     setSortBy(value);
     setAppliedSortBy(value);
@@ -201,10 +184,7 @@ export default function NewsPage() {
   }
 
   function handleFeedTypeChange(nextFeedType) {
-    if (nextFeedType === feedType) {
-      return;
-    }
-
+    if (nextFeedType === feedType) return;
     setFeedType(nextFeedType);
     setCurrentPage(0);
     setSelectedCategories([]);
@@ -212,9 +192,7 @@ export default function NewsPage() {
   }
 
   function handleRemoveActiveFilter(filter) {
-    if (!filter?.type) {
-      return;
-    }
+    if (!filter?.type) return;
 
     if (filter.type === "category") {
       setSelectedCategories((current) => current.filter((item) => item !== filter.value));
@@ -227,14 +205,12 @@ export default function NewsPage() {
     }
 
     if (filter.type === "language") {
-      setSelectedLanguages((current) => current.filter((l) => l !== filter.value));
+      setSelectedLanguages((current) => current.filter((item) => item !== filter.value));
     }
   }
 
   function handlePageChange(page) {
-    if (loading || page === currentPage || page < 0 || page >= newsPage.totalPages) {
-      return;
-    }
+    if (loading || page === currentPage || page < 0 || page >= newsPage.totalPages) return;
     setCurrentPage(page);
   }
 
@@ -249,83 +225,60 @@ export default function NewsPage() {
   return (
     <div className="news-page-stack">
       <div className="news-page-header panel-surface">
-        <div className="news-page-header-title-row">
-          <div className="news-page-header-copy">
-            <p className="eyebrow">{t("news.eyebrow")}</p>
-            <h1 className="news-page-h1">{t("news.title")}</h1>
-          </div>
-          {isAdmin ? (
-            <div className="news-header-actions">
+        <div className="news-page-header-main">
+          <div className="news-page-header-left">
+            <div className="news-page-header-copy">
+              <h1 className="news-page-h1">{t("news.title")}</h1>
+            </div>
+
+            <div className="news-page-header-tabs" role="tablist" aria-label={t("news.feedTabs")}>
               <button
                 type="button"
-                className="news-header-icon-btn"
-                onClick={handleReload}
-                disabled={loading}
-                title={t("news.refresh")}
+                role="tab"
+                className={`news-feed-seg-btn${feedType === "news" ? " active" : ""}`}
+                onClick={() => handleFeedTypeChange("news")}
               >
-                <RotateCcw size={15} />
+                {t("news.tabs.news")}
               </button>
               <button
                 type="button"
-                className="news-header-icon-btn"
-                onClick={handleSync}
-                disabled={loading}
-                title={t("news.sync")}
+                role="tab"
+                className={`news-feed-seg-btn${feedType === "kap" ? " active" : ""}`}
+                onClick={() => handleFeedTypeChange("kap")}
               >
-                <RefreshCw size={15} />
+                {t("news.tabs.kap")}
               </button>
             </div>
-          ) : null}
-        </div>
+          </div>
 
-        <div className="news-page-header-search-row">
-          <label className="news-search-field" htmlFor="news-search-input">
-            <Search size={16} className="news-search-icon" aria-hidden="true" />
-            <input
-              id="news-search-input"
-              value={filters.keyword}
-              onChange={(e) => setFilters((current) => ({ ...current, keyword: e.target.value }))}
-              placeholder={t("news.searchPlaceholder")}
-            />
-          </label>
-          <select
-            className="news-compact-sort"
-            value={sortBy}
-            onChange={(e) => handleSortChange(e.target.value)}
-            aria-label={t("news.sort")}
-          >
-            <option value="publishedAt">{t("news.sortNewest")}</option>
-            <option value="importanceScore">{t("news.sortImportance")}</option>
-          </select>
-          <button
-            type="button"
-            className="news-header-icon-btn news-header-filter-btn"
-            onClick={() => setMobileFiltersOpen(true)}
-          >
-            <SlidersHorizontal size={16} />
-            {activeFilters.length > 0 ? (
-              <span className="news-filter-badge">{activeFilters.length}</span>
-            ) : null}
-          </button>
-        </div>
+          <div className="news-page-header-right">
+            <label className="news-search-field news-search-field-plain" htmlFor="news-search-input">
+              <input
+                id="news-search-input"
+                value={filters.keyword}
+                onChange={(event) => setFilters((current) => ({ ...current, keyword: event.target.value }))}
+                placeholder={t("news.searchPlaceholder")}
+              />
+            </label>
 
-        <div className="news-page-header-bottom-row">
-          <div className="news-feed-segmented" role="tablist" aria-label={t("news.feedTabs")}>
+            <select
+              className="news-compact-sort"
+              value={sortBy}
+              onChange={(event) => handleSortChange(event.target.value)}
+              aria-label={t("news.sort")}
+            >
+              <option value="publishedAt">{t("news.sortNewest")}</option>
+              <option value="importanceScore">{t("news.sortImportance")}</option>
+            </select>
+
             <button
               type="button"
-              role="tab"
-              className={`news-feed-seg-btn${feedType === "news" ? " active" : ""}`}
-              onClick={() => handleFeedTypeChange("news")}
+              className="news-header-icon-btn news-header-filter-btn"
+              onClick={() => setMobileFiltersOpen(true)}
             >
-              {t("news.tabs.news")}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className={`news-feed-seg-btn${feedType === "kap" ? " active" : ""}`}
-              onClick={() => handleFeedTypeChange("kap")}
-            >
-              {t("news.tabs.kap")}
+              <SlidersHorizontal size={16} />
+              <span>{t("common.filters")}</span>
+              {activeFilters.length > 0 ? <span className="news-filter-badge">{activeFilters.length}</span> : null}
             </button>
           </div>
         </div>
@@ -352,7 +305,7 @@ export default function NewsPage() {
           <NewsSidebarFilters
             categoryOptions={categoryOptions}
             providerOptions={providerOptions}
-            languageOptions={languageOptions.filter((option) => option.value).map((option) => ({ value: option.value, label: option.label }))}
+            languageOptions={visibleLanguageOptions}
             selectedCategories={selectedCategories}
             selectedProviders={selectedProviders}
             selectedLanguages={selectedLanguages}
@@ -365,9 +318,24 @@ export default function NewsPage() {
         </aside>
 
         <div className="news-content-column">
+          {!error && newsPage.totalPages > 0 ? (
+            <PaginationControls
+              className="news-pagination-card-top"
+              variant="news-top"
+              currentPage={currentPage}
+              totalPages={newsPage.totalPages}
+              totalElements={newsPage.totalElements}
+              loading={loading}
+              isFirstPage={newsPage.first || currentPage === 0}
+              isLastPage={newsPage.last || currentPage >= newsPage.totalPages - 1}
+              onPrevious={handlePreviousPage}
+              onNext={handleNextPage}
+              onPageChange={handlePageChange}
+            />
+          ) : null}
+
           {!loading && !error && items.length > 0 ? (
             <div className="news-feed-section-label">
-              <span className="eyebrow">{t("news.publishFlowEyebrow")}</span>
               <h3>{isKapFeed ? t("news.kapFlowTitle") : t("news.publishFlowTitle")}</h3>
             </div>
           ) : null}
@@ -389,6 +357,7 @@ export default function NewsPage() {
           {!error && newsPage.totalPages > 1 ? (
             <PaginationControls
               className="news-pagination-card-bottom"
+              variant="news-bottom"
               currentPage={currentPage}
               totalPages={newsPage.totalPages}
               totalElements={newsPage.totalElements}
@@ -408,7 +377,7 @@ export default function NewsPage() {
         onClose={() => setMobileFiltersOpen(false)}
         categoryOptions={categoryOptions}
         providerOptions={providerOptions}
-        languageOptions={languageOptions.filter((option) => option.value).map((option) => ({ value: option.value, label: option.label }))}
+        languageOptions={visibleLanguageOptions}
         selectedCategories={selectedCategories}
         selectedProviders={selectedProviders}
         selectedLanguages={selectedLanguages}

@@ -1,4 +1,9 @@
 {
+  "guestLock": {
+    "hint": "Sign in to view",
+    "modalTitle": "Sign in required",
+    "modalDescription": "You need to sign in to view this content."
+  },
   "premium": {
     "status": {
       "PREMIUM_REQUESTED": "Request Created",
@@ -149,11 +154,19 @@
       "alertsTitle": "Active alerts",
       "alertsSubtitle": "Rules waiting to trigger",
       "alertsTrend": "Warning",
+      "addAlert": "Add Alert →",
       "addPortfolio": "Add Portfolio →",
       "heatmapTitle": "Market Heatmap",
       "marketTabs": {
         "gainers": "Top gainers",
         "losers": "Top losers"
+      },
+      "newsAffectedAudit": {
+        "eyebrow": "News Debug",
+        "title": "Affected Instruments Audit",
+        "description": "Audit affected-instrument output across recent normal news and list suspicious matches.",
+        "action": "Run Audit",
+        "limitPlaceholder": "Limit (e.g. 100)"
       }
     },
     "marketSummaryEyebrow": "Market Summary",
@@ -210,6 +223,12 @@
     "marketTabs": {
       "gainers": "Top gainers",
       "losers": "Top losers"
+    },
+    "portfolioWidget": {
+      "title": "Portfolio Summary",
+      "empty": "No holdings in this portfolio yet.",
+      "units": "units",
+      "goPortfolio": "Go to Portfolio Management →"
     }
   },
   "news": {
@@ -847,6 +866,19 @@
       "description": "The backend response of the latest triggered admin operation.",
       "emptyTitle": "No operation yet",
       "emptyDescription": "The result will appear here after you trigger an admin operation."
+    },
+    "audit": {
+      "checkedCount": "Checked news",
+      "suspiciousCount": "Suspicious items",
+      "emptyCount": "Empty results",
+      "highConfidenceCount": "High confidence",
+      "mediumConfidenceCount": "Medium confidence",
+      "lowConfidenceCount": "Low confidence",
+      "emptyTitle": "No suspicious items",
+      "emptyDescription": "No obvious quality risk was found in the selected sample.",
+      "category": "Category",
+      "tags": "Tags",
+      "symbols": "Symbols"
     },
     "users": {
       "eyebrow": "User Management",

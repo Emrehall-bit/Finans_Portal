@@ -9,6 +9,7 @@ import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
 import { formatDateTime } from "../utils/formatters";
+import { buildNewsPlaceholderLabel, getNewsProviderLabel, getProviderBadgeColor } from "../components/news/newsCardUtils";
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
@@ -118,10 +119,15 @@ export default function HomePage() {
                 <div className="news-rail-list">
                   {news.map((item) => (
                     <article key={item.id} className="news-rail-item">
-                      <div className="news-rail-badge">{(item.provider || item.source || "N").slice(0, 1)}</div>
+                      <div
+                        className="news-rail-badge"
+                        style={{ background: getProviderBadgeColor(item.provider || item.source) }}
+                      >
+                        {buildNewsPlaceholderLabel(item)}
+                      </div>
                       <div>
                         <strong>{item.title || t("home.untitledNews")}</strong>
-                        <p>{item.provider || item.source || "-"}</p>
+                        <p>{getNewsProviderLabel(item.provider || item.source)}</p>
                         <span>{formatDateTime(item.publishedAt)}</span>
                       </div>
                     </article>

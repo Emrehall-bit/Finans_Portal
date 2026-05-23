@@ -57,6 +57,8 @@ export default function EconomyPage() {
   const [tableRows, setTableRows] = useState([]);
   const [tableLoading, setTableLoading] = useState(true);
   const [tableError, setTableError] = useState("");
+  const [heroMetrics, setHeroMetrics] = useState({});
+  // table displays limited rows by default (no 'show more' control)
 
   useEffect(() => {
     const group = INDICATOR_GROUPS.find((g) => g.key === selectedGroupKey);
@@ -86,6 +88,39 @@ export default function EconomyPage() {
     };
   }, [selectedGroupKey, t]);
 
+  // Load hero metrics (compact KPI strip) independently so UI feels richer
+  useEffect(() => {
+    let active = true;
+    async function loadHero() {
+      try {
+        const codes = [
+          { key: 'CPI', code: 'CPI_TR', type: 'YEARLY_CHANGE' },
+          { key: 'POLICY', code: 'POLICY_RATE_TR', type: 'POLICY_RATE' },
+          { key: 'UNEMP', code: 'UNEMPLOYMENT_TR', type: 'UNEMPLOYMENT_RATE' },
+          { key: 'CA', code: 'CURRENT_ACCOUNT_TR', type: 'CURRENT_ACCOUNT_BALANCE' },
+        ];
+        const results = await Promise.allSettled(codes.map(c => getMacroObservations(c.code, c.type)));
+        if (!active) return;
+        const map = {};
+        results.forEach((r, idx) => {
+          const key = codes[idx].key;
+          if (r.status === 'fulfilled' && Array.isArray(r.value) && r.value.length > 0) {
+            map[key] = r.value[0].value;
+            map[`${key}_period`] = r.value[0].period || r.value[0].periodLabel || '';
+          } else {
+            map[key] = null;
+            map[`${key}_period`] = '';
+          }
+        });
+        setHeroMetrics(map);
+      } catch {
+        if (active) setHeroMetrics({});
+      }
+    }
+    loadHero();
+    return () => { active = false; };
+  }, []);
+
   const selectedGroup = useMemo(
     () => INDICATOR_GROUPS.find((g) => g.key === selectedGroupKey) ?? INDICATOR_GROUPS[0],
     [selectedGroupKey],
@@ -97,6 +132,12 @@ export default function EconomyPage() {
     return tableRows;
   }, [tableRows, dateFilter]);
 
+  const tableDisplayRows = useMemo(() => {
+    if (dateFilter === "12M") return filteredRows.slice(0, 12);
+    if (dateFilter === "24M") return filteredRows.slice(0, 24);
+    return filteredRows; // ALL
+  }, [filteredRows, dateFilter]);
+
   const chartData = useMemo(
     () => [...tableRows.slice(0, 24)].reverse().map((row) => ({
       period: row.period,
@@ -104,6 +145,23 @@ export default function EconomyPage() {
     })),
     [tableRows],
   );
+
+  function CustomChartTooltip({ active, payload, label }) {
+    if (!active || !payload || !payload.length) return null;
+    return (
+      <div className="ec-tooltip-card">
+        <div className="ec-tooltip-label">{label}</div>
+        <div className="ec-tooltip-values">
+          {payload.map((p, idx) => (
+            <div key={idx} className="ec-tooltip-item">
+              <span className="ec-tooltip-name">{t(`economy.groups.${selectedGroupKey}.col${parseInt(p.name.replace('v',''),10)}`)}</span>
+              <strong className="ec-tooltip-value">{Number(p.value).toFixed(2)}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const downloadCsv = useCallback(() => {
     const colLabels = selectedGroup.series.map((_, i) => t(`economy.groups.${selectedGroupKey}.col${i}`));
@@ -140,10 +198,16 @@ export default function EconomyPage() {
       />
 
       <section className="panel-surface economy-section">
+        <div className="economy-hero">
+          <div className="economy-hero-left">
+            <h2 className="economy-hero-title">{t('economy.heroTitle', 'Türkiye makro görünümü')}</h2>
+          </div>
+          {/* KPI strip removed per request */}
+        </div>
+
         <div className="panel-head">
           <div>
-            <p className="eyebrow">{t("economy.source")}</p>
-            <h3>{t(`economy.groups.${selectedGroupKey}.title`)}</h3>
+            <h3 className="economy-section-title">{t(`economy.groups.${selectedGroupKey}.title`)}</h3>
           </div>
         </div>
 
@@ -240,15 +304,7 @@ export default function EconomyPage() {
                           : Number(v).toFixed(1)
                       }
                     />
-                    <Tooltip
-                      contentStyle={chartTheme.tooltipContentStyle}
-                      itemStyle={chartTheme.tooltipItemStyle}
-                      labelStyle={chartTheme.tooltipLabelStyle}
-                      formatter={(value, name) => {
-                        const idx = parseInt(name.replace("v", ""), 10);
-                        return [`${Number(value).toFixed(2)}`, t(`economy.groups.${selectedGroupKey}.col${idx}`)];
-                      }}
-                    />
+                    <Tooltip content={<CustomChartTooltip />} wrapperStyle={{ outline: 'none' }} />
                     {selectedGroup.series.map((_, i) => (
                       <Area
                         key={i}
@@ -285,8 +341,10 @@ export default function EconomyPage() {
               </button>
             </div>
 
+            {/* Macro Insight removed per request */}
+
             <div className="economy-data-table-wrap">
-              <table className="economy-data-table">
+              <table className="economy-data-table economy-data-table-header" aria-hidden="false">
                 <thead>
                   <tr>
                     <th>{t("economy.dateCol")}</th>
@@ -295,17 +353,23 @@ export default function EconomyPage() {
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredRows.map((row) => (
-                    <tr key={row.period} className="economy-table-row">
-                      <td className="economy-period-cell">{row.period}</td>
-                      {row.values.map((val, i) => (
-                        <td key={i} className="economy-value-cell">{formatVal(val, selectedGroup.unit)}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
               </table>
+
+              <div className={`economy-data-table-body-wrap ${dateFilter === 'ALL' ? 'with-inner-scroll' : ''}`}>
+                <table className="economy-data-table economy-data-table-body">
+                  <tbody>
+                    {tableDisplayRows.map((row) => (
+                      <tr key={row.period} className="economy-table-row">
+                        <td className="economy-period-cell">{row.period}</td>
+                        {row.values.map((val, i) => (
+                          <td key={i} className="economy-value-cell">{formatVal(val, selectedGroup.unit)}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* show-more control removed per request */}
             </div>
           </div>
         )}

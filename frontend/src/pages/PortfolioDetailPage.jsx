@@ -21,26 +21,10 @@ import { usePortfolioDetails } from "../hooks/usePortfolioQueries";
 import { useTheme } from "../theme/ThemeContext";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
+import { formatInstrumentLabel } from "../utils/instrumentUtils";
 
 const CHART_COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4f46e5"];
 const INTERNAL_CASH_CODE = "TRY";
-const INTERNAL_CASH_LABEL = "Nakit";
-const FX_CODE_LABELS = {
-  USD: "Dolar",
-  EUR: "Euro",
-  GBP: "Sterlin",
-  AUD: "Avustralya Doları",
-  CAD: "Kanada Doları",
-  CHF: "Frank",
-  JPY: "Yen",
-  SAR: "Riyal",
-  RUB: "Ruble",
-  AZN: "Manat",
-  CNY: "Yuan",
-  QAR: "Riyal",
-  KWD: "Dinar",
-  KRW: "Won",
-};
 
 export default function PortfolioDetailPage() {
   const { t } = useTranslation();
@@ -628,25 +612,15 @@ function formatInstrumentType(value, t) {
 }
 
 function getAssetCategoryKey(instrumentCode) {
-  const code = normalizeInstrumentCode(instrumentCode);
-  if (!code) {
-    return "OTHER";
-  }
-  if (code === INTERNAL_CASH_CODE) {
-    return "CASH";
-  }
-  if (code.startsWith("TCMB:")) {
-    return "FX";
-  }
-  if (code.includes(":")) {
-    return "CRYPTO";
-  }
-  if (/^[A-Z]{3}$/.test(code)) {
-    return "FUND";
-  }
-  if (/^[A-Z0-9.]{1,10}$/.test(code)) {
-    return "STOCK";
-  }
+  if (!instrumentCode) return "OTHER";
+  const code = String(instrumentCode).trim().toUpperCase();
+  if (!code) return "OTHER";
+  if (code === INTERNAL_CASH_CODE) return "CASH";
+  // Both "TCMB:USD:SELL" and "TCMBUSDSELL" formats
+  if (code.startsWith("TCMB:") || /^TCMB[A-Z]{2,4}(BUY|SELL)$/.test(code)) return "FX";
+  if (code.includes(":")) return "CRYPTO";
+  if (/^[A-Z]{3}$/.test(code)) return "FUND";
+  if (/^[A-Z0-9.]{1,10}$/.test(code)) return "STOCK";
   return "OTHER";
 }
 
@@ -661,34 +635,4 @@ function getAssetCategoryLabel(key) {
   }[key] ?? "Diğer";
 }
 
-function normalizeInstrumentCode(value) {
-  if (value == null) {
-    return "";
-  }
 
-  const rawValue = String(value).trim();
-  if (rawValue.toUpperCase().startsWith("TCMB:")) {
-    return rawValue.toUpperCase();
-  }
-
-  return rawValue.replace(/[^A-Za-z0-9:]/g, "").toUpperCase();
-}
-
-function formatInstrumentLabel(value) {
-  const normalized = normalizeInstrumentCode(value);
-  if (!normalized) {
-    return "-";
-  }
-  if (normalized === INTERNAL_CASH_CODE) {
-    return INTERNAL_CASH_LABEL;
-  }
-
-  const fxMatch = normalized.match(/^([A-Z_]+):([A-Z0-9]+):(BUY|SELL)$/);
-  if (!fxMatch) {
-    return value || normalized;
-  }
-
-  const [, , currencyCode] = fxMatch;
-  const currencyLabel = FX_CODE_LABELS[currencyCode] || currencyCode;
-  return `${currencyCode} / ${currencyLabel}`;
-}

@@ -15,11 +15,16 @@ function FilterSection({ title, options, selectedValues, onToggle }) {
         {options.map((option) => {
           const checked = option.isAll ? selectedValues.length === 0 : selectedValues.includes(option.value);
           return (
-            <label key={option.value} className={`news-sidebar-option${checked ? " is-selected" : ""}`}>
-              <input type="checkbox" checked={checked} onChange={() => onToggle(option.value)} />
-              <span className="news-sidebar-checkbox" aria-hidden="true" />
+            <button
+              key={option.value}
+              type="button"
+              className={`news-sidebar-option${checked ? " is-selected" : ""}`}
+              onClick={() => onToggle(option.value)}
+              aria-pressed={checked}
+            >
+              <span className="news-sidebar-selection-indicator" aria-hidden="true" />
               <span className="news-sidebar-option-copy">{option.label ?? option.value}</span>
-            </label>
+            </button>
           );
         })}
       </div>

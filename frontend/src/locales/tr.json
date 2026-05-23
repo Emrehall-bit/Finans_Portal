@@ -1,4 +1,9 @@
 {
+  "guestLock": {
+    "hint": "Giriş yaparak görüntüleyin",
+    "modalTitle": "Bu içerik için giriş gerekiyor",
+    "modalDescription": "Bu içeriği görüntüleyebilmek için giriş yapmanız gerekmektedir."
+  },
   "premium": {
     "status": {
       "PREMIUM_REQUESTED": "Talep Oluşturuldu",
@@ -149,11 +154,19 @@
       "alertsTitle": "Aktif alarm",
       "alertsSubtitle": "Tetik bekleyen kurallar",
       "alertsTrend": "Uyarı",
+      "addAlert": "Alarm Ekle →",
       "addPortfolio": "Portföy Ekle →",
       "heatmapTitle": "Piyasa Heatmap",
       "marketTabs": {
         "gainers": "En çok artan",
         "losers": "En çok azalan"
+      },
+      "newsAffectedAudit": {
+        "eyebrow": "News Debug",
+        "title": "Affected Instruments Audit",
+        "description": "Son normal haberlerde affected instruments sonucunu toplu denetler ve şüpheli eşleşmeleri listeler.",
+        "action": "Audit Çalıştır",
+        "limitPlaceholder": "Limit (örn: 100)"
       }
     },
     "marketSummaryTitle": "Günün Hareketli Enstrümanları",
@@ -210,7 +223,13 @@
     "allocationTitle": "Portföy Dağılımı",
     "riskTitle": "Risk Uyarıları",
     "notificationsEyebrow": "Alarm Tetiklenmeleri",
-    "marketSummaryEyebrow": "Piyasa Özeti"
+    "marketSummaryEyebrow": "Piyasa Özeti",
+    "portfolioWidget": {
+      "title": "Portföy Özeti",
+      "empty": "Bu portföyde henüz varlık bulunmuyor.",
+      "units": "adet",
+      "goPortfolio": "Portföy Yönetimi'ne Git →"
+    }
   },
   "news": {
     "eyebrow": "Gündem",
@@ -840,6 +859,19 @@
       "description": "Son tetiklenen admin işleminin backend cevabı.",
       "emptyTitle": "Henüz bir işlem yok",
       "emptyDescription": "Bir admin işlemi tetikledikten sonra sonuç burada görünür."
+    },
+    "audit": {
+      "checkedCount": "Kontrol edilen haber",
+      "suspiciousCount": "Şüpheli kayıt",
+      "emptyCount": "Boş sonuç",
+      "highConfidenceCount": "Yüksek güven",
+      "mediumConfidenceCount": "Orta güven",
+      "lowConfidenceCount": "Düşük güven",
+      "emptyTitle": "Şüpheli kayıt yok",
+      "emptyDescription": "Seçilen örneklemde belirgin kalite riski bulunmadı.",
+      "category": "Kategori",
+      "tags": "Etiketler",
+      "symbols": "Semboller"
     },
     "users": {
       "eyebrow": "Kullanıcı Yönetimi",

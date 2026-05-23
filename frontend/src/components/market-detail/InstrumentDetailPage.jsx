@@ -11,6 +11,7 @@ import AiCompanyComparisonCard from "../ai/AiCompanyComparisonCard";
 import AiFundamentalInsightCard from "../ai/AiFundamentalInsightCard";
 import AiTechnicalInsightCard from "../ai/AiTechnicalInsightCard";
 import AiUnifiedAnalysisCard from "../ai/AiUnifiedAnalysisCard";
+import AuthRequiredModal from "../common/AuthRequiredModal";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -64,6 +65,7 @@ export default function InstrumentDetailPage() {
   const [selectedIndicators, setSelectedIndicators] = useState(() => new Set(DEFAULT_INDICATORS));
   const [isPortfolioModalOpen, setPortfolioModalOpen] = useState(false);
   const [isAlertModalOpen, setAlertModalOpen] = useState(false);
+  const [isAuthRequiredModalOpen, setAuthRequiredModalOpen] = useState(false);
 
   const [fundamentals, setFundamentals] = useState(null);
   const [fundamentalsLoading, setFundamentalsLoading] = useState(false);
@@ -437,7 +439,7 @@ export default function InstrumentDetailPage() {
       return true;
     }
 
-    await login();
+    setAuthRequiredModalOpen(true);
     return false;
   }
 
@@ -678,6 +680,11 @@ export default function InstrumentDetailPage() {
         currentPrice={latestPrice}
         userId={userId}
         onSuccess={() => handleActionSuccess(t("instrumentDetail.alertCreated"))}
+      />
+      <AuthRequiredModal
+        isOpen={isAuthRequiredModalOpen}
+        onClose={() => setAuthRequiredModalOpen(false)}
+        onConfirm={login}
       />
     </div>
   );

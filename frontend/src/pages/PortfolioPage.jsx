@@ -27,29 +27,13 @@ import { useMarketQuotes } from "../hooks/useMarketQueries";
 import { useTheme } from "../theme/ThemeContext";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
+import { formatInstrumentLabel } from "../utils/instrumentUtils";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
 const CHART_COLORS = ["#2563eb", "#0f9d58", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4f46e5"];
 const EMPTY_HOLDINGS = [];
 const INTERNAL_CASH_CODE = "TRY";
-const INTERNAL_CASH_LABEL = "Nakit";
-const FX_CODE_LABELS = {
-  USD: "Dolar",
-  EUR: "Euro",
-  GBP: "Sterlin",
-  AUD: "Avustralya Doları",
-  CAD: "Kanada Doları",
-  CHF: "Frank",
-  JPY: "Yen",
-  SAR: "Riyal",
-  RUB: "Ruble",
-  AZN: "Manat",
-  CNY: "Yuan",
-  QAR: "Riyal",
-  KWD: "Dinar",
-  KRW: "Won",
-};
 const PERFORMANCE_RANGE_PRESETS = [
   { key: "1M", label: "1 Ay", months: 1 },
   { key: "3M", label: "3 Ay", months: 3 },
@@ -1919,25 +1903,6 @@ function normalizeCode(value) {
   return rawValue.replace(/[^A-Za-z0-9:]/g, "").toUpperCase();
 }
 
-function formatInstrumentLabel(value) {
-  const normalized = normalizeCode(value);
-  if (!normalized) {
-    return "-";
-  }
-  if (normalized === INTERNAL_CASH_CODE) {
-    return INTERNAL_CASH_LABEL;
-  }
-
-  const fxMatch = normalized.match(/^([A-Z_]+):([A-Z0-9]+):(BUY|SELL)$/);
-  if (!fxMatch) {
-    return value || normalized;
-  }
-
-  const [, , currencyCode] = fxMatch;
-  const currencyLabel = FX_CODE_LABELS[currencyCode] || currencyCode;
-  return `${currencyCode} / ${currencyLabel}`;
-}
-
 function formatInstrumentSearchValue(instrument) {
   if (!instrument) {
     return "";
@@ -2110,7 +2075,7 @@ function getAssetCategoryKey(instrumentCode) {
   if (code === INTERNAL_CASH_CODE) {
     return "CASH";
   }
-  if (code.startsWith("TCMB:") || (code.endsWith("TRY") && code.length >= 6)) {
+  if (code.startsWith("TCMB:") || /^TCMB[A-Z]{2,4}(BUY|SELL)$/.test(code) || (code.endsWith("TRY") && code.length >= 6)) {
     return "FX";
   }
   if (code.includes("XAU") || code.includes("GOLD") || code.includes("ALTIN") || code.includes("ONS") || code.includes("GUMUS")) {

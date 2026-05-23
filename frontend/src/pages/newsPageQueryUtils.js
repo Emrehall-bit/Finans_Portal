@@ -1,4 +1,5 @@
-export const NEWS_PAGE_SIZE = 12;
+export const NEWS_PAGE_SIZE = 9;
+export const KAP_PAGE_SIZE = 5;
 
 export const NEWS_SORT_OPTIONS = [
   { value: "publishedAt", label: "En yeni" },
@@ -6,6 +7,8 @@ export const NEWS_SORT_OPTIONS = [
 ];
 
 export function buildNewsQueryParams(filters, page, sortBy = "publishedAt", feedType = "news") {
+  const pageSize = feedType === "kap" ? KAP_PAGE_SIZE : NEWS_PAGE_SIZE;
+
   return Object.fromEntries(
     Object.entries({
       keyword: filters.keyword?.trim() || undefined,
@@ -14,7 +17,7 @@ export function buildNewsQueryParams(filters, page, sortBy = "publishedAt", feed
       language: filters.language || undefined,
       isKapDisclosure: feedType === "kap" ? true : false,
       page,
-      size: NEWS_PAGE_SIZE,
+      size: pageSize,
       sortBy,
       sortDirection: "desc",
     }).filter(([, value]) => value !== undefined)

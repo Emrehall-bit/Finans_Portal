@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
+import com.emrehalli.financeportal.news.dto.response.NewsAffectedInstrumentsAuditResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsFilterTagsBackfillResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsPurgeResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
@@ -133,6 +134,18 @@ public class NewsController {
         NewsFilterTagsBackfillResponseDto response = newsService.backfillFilterTags(limit, dryRun);
 
         return ApiResponse.<NewsFilterTagsBackfillResponseDto>builder()
+                .success(true)
+                .data(response)
+                .message(appMessageSource.get("news.sync.completed"))
+                .build();
+    }
+
+    @GetMapping("/admin/affected-instruments-audit")
+    public ApiResponse<NewsAffectedInstrumentsAuditResponseDto> auditAffectedInstruments(
+            @RequestParam(defaultValue = "100") int limit) {
+        NewsAffectedInstrumentsAuditResponseDto response = newsService.auditAffectedInstruments(limit);
+
+        return ApiResponse.<NewsAffectedInstrumentsAuditResponseDto>builder()
                 .success(true)
                 .data(response)
                 .message(appMessageSource.get("news.sync.completed"))

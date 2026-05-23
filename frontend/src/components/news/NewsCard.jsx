@@ -1,25 +1,20 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   buildNewsPlaceholderLabel,
   formatNewsPublishedAt,
   getNewsDisclosureTypeLabel,
+  getNewsDisplayTags,
   getNewsFallbackLogoUrl,
   getNewsPreviewText,
-  getNewsCategoryLabel,
-  getNewsDisplayTags,
   getNewsProviderLabel,
   getNewsSourceName,
   getNewsSourceUrl,
-  isKapDisclosure
+  isKapDisclosure,
 } from "./newsCardUtils";
 
 function resolveThumbnail(item) {
   return item?.thumbnailUrl || item?.imageUrl || item?.image || null;
-}
-
-function resolveAccentLabel(item) {
-  return getNewsCategoryLabel(item?.category) || getNewsProviderLabel(item?.provider) || "Haber";
 }
 
 function Placeholder({ item, providerLabel, logoUrl, logoFailed, onLogoError }) {
@@ -38,20 +33,20 @@ function Placeholder({ item, providerLabel, logoUrl, logoFailed, onLogoError }) 
           <span className="news-card-placeholder-mark">{buildNewsPlaceholderLabel(item)}</span>
         )}
         <strong className="news-card-placeholder-provider">{providerLabel}</strong>
-        <small className="news-card-placeholder-note">Finans haber akışı</small>
+        <small className="news-card-placeholder-note">Finans haber akisi</small>
       </div>
     </div>
   );
 }
 
-export default function NewsCard({ item, onClick }) {
+function NewsCardContent({ item, onClick, assetKey }) {
   const { t } = useTranslation();
   const [imageFailed, setImageFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
+
   const thumbnail = resolveThumbnail(item);
   const kapDisclosure = isKapDisclosure(item);
   const hasImage = Boolean(thumbnail) && !imageFailed && !kapDisclosure;
-  const accentLabel = resolveAccentLabel(item);
   const providerLabel = getNewsProviderLabel(item?.provider);
   const sourceName = getNewsSourceName(item);
   const logoUrl = getNewsFallbackLogoUrl(item);
@@ -59,18 +54,13 @@ export default function NewsCard({ item, onClick }) {
   const previewText = getNewsPreviewText(item, t("news.previewMissing"));
   const sourceUrl = getNewsSourceUrl(item);
   const disclosureTypeLabel = getNewsDisclosureTypeLabel(item?.disclosureType);
-  const displayTags = getNewsDisplayTags(item, t, 3);
-
-  useEffect(() => {
-    setImageFailed(false);
-    setLogoFailed(false);
-  }, [thumbnail, item?.provider, item?.sourceUrl, item?.url]);
+  const displayTags = getNewsDisplayTags(item, t, 2);
 
   const shellClassName = `news-card news-card-shell${kapDisclosure ? " kap" : ""}`;
 
   if (kapDisclosure) {
     return (
-      <article className={shellClassName}>
+      <article className={shellClassName} key={assetKey}>
         <div className="news-kap-card-inner">
           <div className="news-card-meta">
             <span className="news-card-badge provider">{providerLabel}</span>
@@ -81,14 +71,8 @@ export default function NewsCard({ item, onClick }) {
           <p className="news-card-summary">{previewText}</p>
 
           <div className="news-kap-chip-row">
-            {item?.relatedSymbol ? (
-              <>
-                <span className="news-kap-chip-symbol">{item.relatedSymbol}</span>
-                <span className="news-kap-bullet">•</span>
-              </>
-            ) : null}
+            {item?.relatedSymbol ? <span className="news-kap-chip-symbol">{item.relatedSymbol}</span> : null}
             <time dateTime={item?.publishedAt || ""}>{publishedAtLabel}</time>
-            <span className="news-kap-bullet">•</span>
             <span>{sourceName}</span>
           </div>
 
@@ -105,14 +89,14 @@ export default function NewsCard({ item, onClick }) {
   }
 
   return (
-    <article className={shellClassName}>
+    <article className={shellClassName} key={assetKey}>
       <button className="news-card-main" onClick={() => onClick(item)} type="button">
         <div className="news-card-media">
           {hasImage ? (
             <img
               className="news-card-image"
               src={thumbnail}
-              alt={item?.title || "Haber görseli"}
+              alt={item?.title || "Haber gorseli"}
               loading="lazy"
               onError={() => setImageFailed(true)}
             />
@@ -128,10 +112,6 @@ export default function NewsCard({ item, onClick }) {
         </div>
 
         <div className="news-card-body">
-          <div className="news-card-badges">
-            <span className="news-card-badge category">{accentLabel}</span>
-          </div>
-
           <div className="news-card-meta">
             <span className="news-card-provider">{sourceName}</span>
             <span className="news-card-dot" />
@@ -142,7 +122,7 @@ export default function NewsCard({ item, onClick }) {
             <div className="news-tag-chip-row" aria-label={t("news.tagsLabel")}>
               {displayTags.map((tag) => (
                 <span key={tag.key} className="news-tag-chip">
-                  #{tag.label}
+                  {tag.label}
                 </span>
               ))}
             </div>
@@ -156,10 +136,24 @@ export default function NewsCard({ item, onClick }) {
       {sourceUrl ? (
         <div className="news-card-secondary-action">
           <a href={sourceUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-            {t("news.readAtSource")}
+            {t("news.readAtSource")} →
           </a>
         </div>
       ) : null}
     </article>
   );
+}
+
+export default function NewsCard({ item, onClick }) {
+  const assetKey = [
+    item?.id,
+    item?.thumbnailUrl,
+    item?.imageUrl,
+    item?.image,
+    item?.provider,
+    item?.sourceUrl,
+    item?.url,
+  ].join("|");
+
+  return <NewsCardContent key={assetKey} item={item} onClick={onClick} assetKey={assetKey} />;
 }

@@ -8,7 +8,7 @@ test("builds default newest request without empty filters", () => {
     {
       isKapDisclosure: false,
       page: 0,
-      size: 12,
+      size: 9,
       sortBy: "publishedAt",
       sortDirection: "desc",
     }
@@ -28,7 +28,7 @@ test("builds importance score request with active filters", () => {
       language: "tr",
       isKapDisclosure: false,
       page: 0,
-      size: 12,
+      size: 9,
       sortBy: "importanceScore",
       sortDirection: "desc",
     }
@@ -41,7 +41,7 @@ test("omits language when all languages are selected", () => {
     {
       isKapDisclosure: false,
       page: 1,
-      size: 12,
+      size: 9,
       sortBy: "publishedAt",
       sortDirection: "desc",
     }
@@ -55,7 +55,7 @@ test("builds KAP feed request when feed type is kap", () => {
       provider: "KAP",
       isKapDisclosure: true,
       page: 0,
-      size: 12,
+      size: 9,
       sortBy: "publishedAt",
       sortDirection: "desc",
     },

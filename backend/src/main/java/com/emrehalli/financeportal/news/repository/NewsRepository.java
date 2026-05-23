@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import java.util.Set;
 
 public interface NewsRepository extends JpaRepository<News, Long>, JpaSpecificationExecutor<News> {
@@ -29,10 +30,23 @@ public interface NewsRepository extends JpaRepository<News, Long>, JpaSpecificat
             where n.id <> :newsId
               and coalesce(n.isKapDisclosure, false) = false
               and n.publishedAt >= :publishedAfter
-              and (:category is null or lower(n.category) = lower(:category))
             order by n.publishedAt desc, n.createdAt desc
             """)
     List<News> findRecentCandidatesForRelatedNews(
+            @Param("newsId") Long newsId,
+            @Param("publishedAfter") LocalDateTime publishedAfter
+    );
+
+    @Query("""
+            select n
+            from News n
+            where n.id <> :newsId
+              and coalesce(n.isKapDisclosure, false) = false
+              and n.publishedAt >= :publishedAfter
+              and lower(n.category) = lower(:category)
+            order by n.publishedAt desc, n.createdAt desc
+            """)
+    List<News> findRecentCandidatesForRelatedNewsByCategory(
             @Param("newsId") Long newsId,
             @Param("category") String category,
             @Param("publishedAfter") LocalDateTime publishedAfter
@@ -50,6 +64,14 @@ public interface NewsRepository extends JpaRepository<News, Long>, JpaSpecificat
             @Param("titles") Collection<String> titles,
             @Param("publishedAfter") LocalDateTime publishedAfter
     );
+
+    @Query("""
+            select n
+            from News n
+            where coalesce(n.isKapDisclosure, false) = false
+            order by n.publishedAt desc, n.createdAt desc
+            """)
+    List<News> findRecentNormalNews(Pageable pageable);
 
     @Modifying
     long deleteByProvider(String provider);

@@ -3,6 +3,7 @@ import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { formatDateTime } from "../../utils/formatters";
+import { getNewsProviderLabel } from "../news/newsCardUtils";
 
 export default function InstrumentNewsList({ loading, error, items }) {
   const { t } = useTranslation();
@@ -28,7 +29,7 @@ export default function InstrumentNewsList({ loading, error, items }) {
           {items.map((item) => (
             <article key={item.id ?? item.externalId ?? item.url} className="instrument-news-card">
               <div className="instrument-news-meta">
-                <span>{item.provider || item.source || t("instrumentDetail.noSource")}</span>
+                <span>{getNewsProviderLabel(item.provider || item.source) || t("instrumentDetail.noSource")}</span>
                 <span>{formatDateTime(item.publishedAt)}</span>
               </div>
               <h4>{item.title || t("instrumentDetail.noTitle")}</h4>

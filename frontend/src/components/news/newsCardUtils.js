@@ -10,9 +10,32 @@ const PROVIDER_LABELS = {
 const PROVIDER_INITIALS = {
   AA_RSS: "AA",
   CNBC_RSS: "CNBC",
-  GUARDIAN: "G",
-  KAP: "KAP",
+  GUARDIAN: "TG",
+  KAP: "KP",
 };
+
+const PROVIDER_BADGE_COLORS = {
+  AA_RSS: "#1565c0",
+  CNBC_RSS: "#c62828",
+  GUARDIAN: "#005689",
+  KAP: "#1a237e",
+  REUTERS: "#ff6200",
+  BBC: "#bb1919",
+  BBC_RSS: "#bb1919",
+  AFP: "#00529b",
+  AFP_RSS: "#00529b",
+  DW: "#00618f",
+  DW_RSS: "#00618f",
+  BLOOMBERG: "#2563a9",
+  BLOOMBERG_RSS: "#2563a9",
+  WORLDNEWSAPI: "#0d7377",
+  WNA: "#0d7377",
+};
+
+const BADGE_COLOR_PALETTE = [
+  "#2e63d8", "#0d7377", "#7b5ea7", "#c77b00",
+  "#1565c0", "#c0392b", "#16a567", "#6d28d9",
+];
 
 const PROVIDER_DOMAINS = {
   AA_RSS: "aa.com.tr",
@@ -83,7 +106,30 @@ const TAG_FALLBACK_MAP = {
 
 export function getNewsProviderLabel(provider) {
   const normalized = provider?.toUpperCase?.() || "";
-  return PROVIDER_LABELS[normalized] || provider || "Bilinmeyen kaynak";
+  return PROVIDER_LABELS[normalized] || formatRawProviderCode(provider) || provider || "Bilinmeyen kaynak";
+}
+
+export function getProviderBadgeColor(provider) {
+  const normalized = provider?.toUpperCase?.() || "";
+  if (PROVIDER_BADGE_COLORS[normalized]) return PROVIDER_BADGE_COLORS[normalized];
+  if (!normalized) return BADGE_COLOR_PALETTE[0];
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) hash = (hash * 31 + normalized.charCodeAt(i)) & 0xffff;
+  return BADGE_COLOR_PALETTE[hash % BADGE_COLOR_PALETTE.length];
+}
+
+function formatRawProviderCode(raw) {
+  if (!raw) return null;
+  const cleaned = raw
+    .replace(/[_-](rss\d*|api|feed|v\d+)$/i, "")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  if (!cleaned) return null;
+  return cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => (w.length <= 5 ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .join(" ");
 }
 
 export function isKapDisclosure(item) {

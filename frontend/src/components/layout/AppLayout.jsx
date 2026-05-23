@@ -633,10 +633,6 @@ export default function AppLayout() {
             })}
           </nav>
 
-          <div className="sidebar-footnote">
-            <span className="live-dot" />
-            <p>{t("layout.footnote")}</p>
-          </div>
         </aside>
 
         <div className="app-main">

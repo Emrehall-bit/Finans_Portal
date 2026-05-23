@@ -21,7 +21,7 @@ public class NewsCategoryDetector {
             Map.entry(NewsCategory.INFLATION,          List.of("enflasyon", "tüfe", "üfe", " cpi", " ppi", "inflation", "fiyat artış")),
             Map.entry(NewsCategory.INTEREST_RATE,      List.of("faiz kararı", "faiz oranı", "interest rate", "baz puan", "basis point")),
             Map.entry(NewsCategory.OIL_ENERGY,         List.of("petrol", "brent", "doğalgaz", "doğal gaz", "enerji fiyat", " opec", "lng")),
-            Map.entry(NewsCategory.DEFENSE,            List.of("savunma sanayii", "savunma sanayi", "askeri", "silah sistem", "defense")),
+            Map.entry(NewsCategory.DEFENSE,            List.of("savunma sanayii", "savunma sanayi", "silah sistem", "askeri teknoloji", "savunma harcamasi", "defense")),
             Map.entry(NewsCategory.AVIATION,           List.of("havacılık", "havayolu", "thyao", "thy hava", "pegasus", "aviation", "airline")),
             Map.entry(NewsCategory.BANKING,            List.of("bankacılık sektörü", "banka kâr", "banka zarar", "kredi büyüme", "mevduat faiz")),
             Map.entry(NewsCategory.CRYPTO,             List.of("kripto", "bitcoin", "ethereum", " btc", " eth", "blockchain", "crypto", "coin fiyat")),
@@ -33,6 +33,10 @@ public class NewsCategoryDetector {
     );
 
     public NewsCategory detect(String title, String summary, String existingCategory) {
+        NewsCategory mappedExistingCategory = mapExistingCategory(existingCategory);
+        if (mappedExistingCategory != null) {
+            return mappedExistingCategory;
+        }
         String combined = buildSearchText(title, summary);
         for (NewsCategory category : NewsCategory.values()) {
             if (category == NewsCategory.GENERAL) continue;
@@ -44,6 +48,22 @@ public class NewsCategoryDetector {
             }
         }
         return NewsCategory.GENERAL;
+    }
+
+    private NewsCategory mapExistingCategory(String existingCategory) {
+        if (existingCategory == null || existingCategory.isBlank()) {
+            return null;
+        }
+        String normalized = existingCategory.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "INTEREST_BONDS", "FX" -> NewsCategory.INTEREST_RATE;
+            case "ENERGY", "GOLD_COMMODITY", "GLOBAL_MARKETS" -> NewsCategory.OIL_ENERGY;
+            case "BANKING" -> NewsCategory.BANKING;
+            case "CRYPTO" -> NewsCategory.CRYPTO;
+            case "COMPANY", "STOCKS" -> NewsCategory.EARNINGS;
+            case "GEOPOLITICS", "GENERAL_ECONOMY" -> NewsCategory.GENERAL;
+            default -> null;
+        };
     }
 
     private String buildSearchText(String title, String summary) {

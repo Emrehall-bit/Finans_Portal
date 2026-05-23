@@ -100,7 +100,7 @@ public class JpaMarketQueryService implements MarketQueryService {
                         instrument.getInstrumentCode(),
                         instrument.getInstrumentName(),
                         price.getPriceValue(),
-                        null,
+                        price.getChangeRate(),
                         price.getSourceName().name(),
                         instrument.getInstrumentType().name(),
                         null,
