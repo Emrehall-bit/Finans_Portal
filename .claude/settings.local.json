@@ -78,7 +78,9 @@
       "Bash(npm install)",
       "Bash(Get-ChildItem \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\pages\\\\\" -Name *)",
       "Bash(powershell -command \"Get-Content 'C:/Users/ehall/Desktop/Finans-Portal/frontend/src/locales/tr.json' | Select-String -Pattern 'allMarkets|allNews|watchlistWidget|seeAll'\")",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "Bash(Get-ChildItem -Path . -Directory)",
+      "Bash(./mvnw.cmd test *)"
     ]
   }
 }

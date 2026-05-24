@@ -56,7 +56,7 @@ class NewsServiceRelatedDataTest {
     }
 
     @Test
-    void tcmbRateNewsResolvesFxBankingAndXu100() {
+    void tcmbRateNewsResolvesFxAndXu100ButNotBankStocks() {
         NewsRepository newsRepository = mock(NewsRepository.class);
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
@@ -74,14 +74,10 @@ class NewsServiceRelatedDataTest {
         NewsRelatedResponseDto response = service.getRelatedData(200L);
 
         assertThat(response.relatedInstruments()).extracting("symbol")
-                .contains("USDTRY", "EURTRY");
+                .contains("USDTRY", "EURTRY", "XU100");
+        // Metinde şirket adı olmadığı için banka hisseleri çıkmamalı
         assertThat(response.relatedInstruments()).extracting("symbol")
-                .anyMatch(symbol ->
-                        "XU100".equals(symbol)
-                                || "AKBNK".equals(symbol)
-                                || "GARAN".equals(symbol)
-                                || "ISCTR".equals(symbol)
-                                || "YKBNK".equals(symbol));
+                .doesNotContain("AKBNK", "GARAN", "ISCTR", "YKBNK");
     }
 
     @Test
@@ -109,7 +105,7 @@ class NewsServiceRelatedDataTest {
     }
 
     @Test
-    void bankingRegulationNewsResolvesBankShares() {
+    void bankingRegulationNewsDoesNotProduceBankStocksButShowsXu100() {
         NewsRepository newsRepository = mock(NewsRepository.class);
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
@@ -126,8 +122,12 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(400L);
 
+        // Sektörel bağlam → bireysel banka hissesi çıkmamalı (doğrudan metin eşleşmesi olmadan)
         assertThat(response.relatedInstruments()).extracting("symbol")
-                .containsAnyOf("AKBNK", "GARAN", "ISCTR", "YKBNK");
+                .doesNotContain("AKBNK", "GARAN", "ISCTR", "YKBNK");
+        // Bankacılık bağlamı → geniş endeks gösterilmeli
+        assertThat(response.relatedInstruments()).extracting("symbol")
+                .contains("XU100");
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .doesNotContain("ASELS", "GOLD");
         assertThat(response.relatedInstruments()).hasSizeLessThanOrEqualTo(3);
@@ -232,10 +232,12 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(550L);
 
+        // Sektörel bağlamda bireysel hisse yok (metin eşleşmesi olmadan)
         assertThat(response.relatedInstruments()).extracting("symbol")
-                .doesNotContain("ASELS", "GOLD", "BRENT");
+                .doesNotContain("ASELS", "GOLD", "BRENT", "FROTO", "TOASO");
+        // Sanayi/ihracat bağlamı → geniş endeks gösterilmeli
         assertThat(response.relatedInstruments()).extracting("symbol")
-                .containsAnyOf("FROTO", "TOASO");
+                .contains("XU100");
         assertThat(response.relatedInstruments()).hasSizeLessThanOrEqualTo(3);
     }
 
@@ -263,11 +265,12 @@ class NewsServiceRelatedDataTest {
     }
 
     @Test
-    void defenseTenderNewsCanStillProduceAsels() {
+    void defenseNewsWithoutCompanyNameDoesNotProduceStock() {
         NewsRepository newsRepository = mock(NewsRepository.class);
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
 
+        // "Aselsan" adı metinde YOK – sektörel savunma bağlamı var
         News defenseNews = baseNews(570L,
                 "Savunma ihalesinde askeri teknoloji ve fuze sistemi one cikti",
                 "NATO uyumlu savunma harcamasi ve silah sistemi baglami piyasada izlendi.",
@@ -280,16 +283,18 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(570L);
 
+        // Şirket adı geçmediği için ASELS çıkmamalı
         assertThat(response.relatedInstruments()).extracting("symbol")
-                .contains("ASELS");
+                .doesNotContain("ASELS");
     }
 
     @Test
-    void warNewsCanProduceDefenseAndGold() {
+    void warNewsProducesGoldButNotDefenseStock() {
         NewsRepository newsRepository = mock(NewsRepository.class);
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
 
+        // "Aselsan" adı metinde YOK; "altin" doğrudan var
         News warNews = baseNews(580L,
                 "Orta Dogu'da savas ve askeri gerilim enerji arzini tehdit etti",
                 "Jeopolitik risk ve guvenli liman talebi artarken savunma harcamalari ile altin fiyatlari izlendi.",
@@ -302,8 +307,12 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(580L);
 
+        // Altın: metinde doğrudan "altin" geçiyor → gösterilmeli
         assertThat(response.relatedInstruments()).extracting("symbol")
-                .contains("ASELS", "GOLD");
+                .contains("GOLD");
+        // ASELS: metinde şirket adı yok → gösterilmemeli
+        assertThat(response.relatedInstruments()).extracting("symbol")
+                .doesNotContain("ASELS");
     }
 
     @Test
@@ -359,19 +368,20 @@ class NewsServiceRelatedDataTest {
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
 
-        News suspiciousNews = baseNews(900L,
+        News genericNews = baseNews(900L,
                 "Genel ekonomi ve sirket yatirimlari konusuldu",
                 "Ekonomi, ihracat ve sanayi gundemi degerlendirildi.",
                 "GENERAL_ECONOMY",
                 "GENERAL_ECONOMY");
-        News defenseNews = baseNews(901L,
-                "Savunma ihalesinde askeri teknoloji ve fuze sistemi one cikti",
-                "NATO uyumlu savunma harcamasi ve silah sistemi baglami piyasada izlendi.",
-                "COMPANY",
-                "STOCKS");
+        // Metinde "altin" ve "dolar" geçiyor → doğrudan enstrüman eşleşmesi → HIGH güven
+        News fxGoldNews = baseNews(901L,
+                "TCMB kararinin ardından altin ve dolar fiyatlandi",
+                "Merkez bankasi aciklamasi sonrasinda altin ve dolar kuru yeni seviyelere ulasti.",
+                "INTEREST_BONDS",
+                "INTEREST_BONDS,FX");
 
         when(newsRepository.findRecentNormalNews(any(Pageable.class)))
-                .thenReturn(List.of(suspiciousNews, defenseNews));
+                .thenReturn(List.of(genericNews, fxGoldNews));
 
         NewsAffectedInstrumentsAuditResponseDto response = service.auditAffectedInstruments(100);
 
@@ -402,11 +412,251 @@ class NewsServiceRelatedDataTest {
         assertThat(response.emptyCount()).isEqualTo(1);
     }
 
+    @Test
+    void tcmbPureRateNewsWithNoBankingLanguageDoesNotProduceBankStocks() {
+        NewsRepository newsRepository = mock(NewsRepository.class);
+        MarketQueryService marketQueryService = mock(MarketQueryService.class);
+        NewsService service = buildService(newsRepository, marketQueryService);
+
+        // Haberde bankacılık bağlamı YOK – sadece saf faiz/TCMB makro bağlamı
+        News tcmbPureNews = baseNews(210L,
+                "TCMB politika faizini sabit tuttu",
+                "Merkez bankasi politika faizini degistirmedi. Dolar kuru ve piyasalar tepkisini bekliyor.",
+                "INTEREST_BONDS",
+                "INTEREST_BONDS,FX");
+
+        when(newsRepository.findById(210L)).thenReturn(Optional.of(tcmbPureNews));
+        when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        NewsRelatedResponseDto response = service.getRelatedData(210L);
+
+        // Makro enstrümanlar gösterilmeli
+        assertThat(response.relatedInstruments()).extracting("symbol")
+                .contains("USDTRY", "EURTRY");
+        // Bankacılık dili olmadığı için banka hisseleri çıkmamalı
+        assertThat(response.relatedInstruments()).extracting("symbol")
+                .doesNotContain("AKBNK", "GARAN", "ISCTR", "YKBNK");
+        // Makro-only limit: max 3
+        assertThat(response.relatedInstruments()).hasSizeLessThanOrEqualTo(3);
+    }
+
+    @Test
+    void goldNewsOnlyShowsGoldNoStocks() {
+        NewsRepository newsRepository = mock(NewsRepository.class);
+        MarketQueryService marketQueryService = mock(MarketQueryService.class);
+        NewsService service = buildService(newsRepository, marketQueryService);
+
+        News goldNews = baseNews(220L,
+                "Altin fiyatlari rekor kırdi, ons altin yukseliyor",
+                "Guvenli liman talebi arttikca altin piyasasinda yukselis surdü.",
+                "GOLD_COMMODITY",
+                "GOLD_COMMODITY");
+
+        when(newsRepository.findById(220L)).thenReturn(Optional.of(goldNews));
+        when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        NewsRelatedResponseDto response = service.getRelatedData(220L);
+
+        assertThat(response.relatedInstruments()).extracting("symbol").contains("GOLD");
+        assertThat(response.relatedInstruments()).extracting("symbol")
+                .doesNotContain("AKBNK", "GARAN", "ISCTR", "YKBNK", "THYAO", "PGSUS");
+    }
+
+    @Test
+    void pureEnergyNewsWithoutCompanyNamesOnlyShowsBrent() {
+        NewsRepository newsRepository = mock(NewsRepository.class);
+        MarketQueryService marketQueryService = mock(MarketQueryService.class);
+        NewsService service = buildService(newsRepository, marketQueryService);
+
+        // Haberde THYAO/PGSUS/TUPRS geçmiyor
+        News energyNews = baseNews(230L,
+                "Brent petrol 90 dolara yaklasti, enerji arzi endiseleri gundemde",
+                "OPEC uretim kisintisi sonrasinda petrol fiyatlari yukseldi. Enerji piyasasi riski artıyor.",
+                "GOLD_COMMODITY",
+                "GOLD_COMMODITY,GLOBAL_MARKETS");
+
+        when(newsRepository.findById(230L)).thenReturn(Optional.of(energyNews));
+        when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        NewsRelatedResponseDto response = service.getRelatedData(230L);
+
+        assertThat(response.relatedInstruments()).extracting("symbol").contains("BRENT");
+        // Şirket adı geçmediği için bu hisseler çıkmamalı
+        assertThat(response.relatedInstruments()).extracting("symbol")
+                .doesNotContain("TUPRS", "THYAO", "PGSUS");
+    }
+
+    @Test
+    void kapThyaoNewsShowsThyaoDirectlyWithMaxTwoInstruments() {
+        NewsRepository newsRepository = mock(NewsRepository.class);
+        MarketQueryService marketQueryService = mock(MarketQueryService.class);
+        NewsService service = buildService(newsRepository, marketQueryService);
+
+        News kapNews = News.builder()
+                .id(240L)
+                .externalId("KAP-240")
+                .title("Turk Hava Yollari kargo kapasitesini artirma karari aldi")
+                .summary("THY yonetim kurulu kargo filosunu genisletme kararini KAP'a bildirdi.")
+                .source("KAP")
+                .provider("KAP")
+                .language("tr")
+                .regionScope("DOMESTIC")
+                .category("STOCKS")
+                .filterTags("STOCKS")
+                .url("https://kap.org.tr/240")
+                .relatedSymbol("THYAO")
+                .isKapDisclosure(true)
+                .publishedAt(LocalDateTime.of(2026, 5, 23, 9, 0))
+                .importanceScore(90)
+                .build();
+
+        when(newsRepository.findById(240L)).thenReturn(Optional.of(kapNews));
+        when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        NewsRelatedResponseDto response = service.getRelatedData(240L);
+
+        assertThat(response.relatedInstruments()).extracting("symbol").containsExactly("THYAO");
+        assertThat(response.relatedInstruments().get(0).confidence()).isEqualTo("HIGH");
+        assertThat(response.relatedInstruments()).hasSizeLessThanOrEqualTo(2);
+    }
+
+    @Test
+    void relatedNewsOnlyCategoryOverlapIsRejected() {
+        NewsRepository newsRepository = mock(NewsRepository.class);
+        MarketQueryService marketQueryService = mock(MarketQueryService.class);
+        NewsService service = buildService(newsRepository, marketQueryService);
+
+        News mainNews = baseNews(610L,
+                "TCMB faiz karari piyasalari hareklendirdi, dolar yukseldi",
+                "Merkez bankasi faiz kararinin ardindan dolar kuru ve altin fiyatlari reaksiyon verdi.",
+                "INTEREST_BONDS",
+                "INTEREST_BONDS,FX,GOLD_COMMODITY");
+        mainNews.setPublishedAt(LocalDateTime.of(2026, 5, 23, 10, 0));
+
+        // Sadece aynı kategoride, institution/commodity/company overlap yok
+        News weakCandidate = baseNews(611L,
+                "Enflasyon beklentileri karısık seyretti, analistler tartisiyor",
+                "Ekonomistler genel enflasyon gorunumunu degerlendirdi.",
+                "INTEREST_BONDS",
+                "INTEREST_BONDS");
+        weakCandidate.setPublishedAt(LocalDateTime.of(2026, 5, 23, 8, 0));
+
+        when(newsRepository.findById(610L)).thenReturn(Optional.of(mainNews));
+        when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
+                .thenReturn(List.of(weakCandidate));
+
+        NewsRelatedResponseDto response = service.getRelatedData(610L);
+
+        // Sadece kategori örtüşmesi yetmemeli
+        assertThat(response.relatedNews()).isEmpty();
+    }
+
+    @Test
+    void relatedNewsWithMacroTopicOverlapPasses() {
+        NewsRepository newsRepository = mock(NewsRepository.class);
+        MarketQueryService marketQueryService = mock(MarketQueryService.class);
+        NewsService service = buildService(newsRepository, marketQueryService);
+
+        News mainNews = baseNews(620L,
+                "Fed faiz indirimi sinyali verdi, dolar ve altin fiyatlandi",
+                "Fed aciklamasi sonrasinda altin ve dolar piyasalarinda yeni fiyatlama goruldu.",
+                "INTEREST_BONDS",
+                "INTEREST_BONDS,FX,GOLD_COMMODITY");
+        mainNews.setPublishedAt(LocalDateTime.of(2026, 5, 23, 10, 0));
+
+        // Aynı makro konu (Fed/faiz/altin) → geçmeli
+        News strongCandidate = baseNews(621L,
+                "Fed uyeleri faiz ve altin patikasini tartisiyor",
+                "Altin fiyatlari ve tahvil piyasasi Fed mesajlari sonrasinda hareketlendi.",
+                "INTEREST_BONDS",
+                "INTEREST_BONDS,FX,GOLD_COMMODITY");
+        strongCandidate.setPublishedAt(LocalDateTime.of(2026, 5, 22, 14, 0));
+
+        when(newsRepository.findById(620L)).thenReturn(Optional.of(mainNews));
+        when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
+                .thenReturn(List.of(strongCandidate));
+
+        NewsRelatedResponseDto response = service.getRelatedData(620L);
+
+        assertThat(response.relatedNews()).hasSize(1);
+        assertThat(response.relatedNews().get(0).id()).isEqualTo(621L);
+    }
+
+    @Test
+    void machineExportNewsDoesNotProduceBankOrDefenseStocks() {
+        NewsRepository newsRepository = mock(NewsRepository.class);
+        MarketQueryService marketQueryService = mock(MarketQueryService.class);
+        NewsService service = buildService(newsRepository, marketQueryService);
+
+        // Makine ihracatı/imalat/finansman/kur bağlamı – hiçbir şirket adı geçmiyor
+        News machineExportNews = baseNews(630L,
+                "Makine Ihracatcilari Birligi rekor ihracat rakamini acikladi",
+                "Imalat sanayinde finansman kanallari ve kur baskisi nedeniyle ihracat gelirleri tartisiliyor.",
+                "GENERAL_ECONOMY",
+                "GENERAL_ECONOMY,STOCKS");
+
+        when(newsRepository.findById(630L)).thenReturn(Optional.of(machineExportNews));
+        when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        NewsRelatedResponseDto response = service.getRelatedData(630L);
+
+        // Şirket adı geçmediği için hiçbir bireysel hisse çıkmamalı
+        assertThat(response.relatedInstruments()).extracting("symbol")
+                .doesNotContain("GARAN", "AKBNK", "ISCTR", "YKBNK",
+                        "ASELS", "THYAO", "PGSUS", "TUPRS",
+                        "FROTO", "TOASO");
+        // Kur bağlamı → USDTRY/EURTRY/XU100 görünebilir (broad enstrümanlar)
+        if (!response.relatedInstruments().isEmpty()) {
+            assertThat(response.relatedInstruments()).extracting("symbol")
+                    .allMatch(sym -> "XU100".equals(sym) || "USDTRY".equals(sym) || "EURTRY".equals(sym)
+                            || "GOLD".equals(sym) || "BRENT".equals(sym));
+        }
+    }
+
+    @Test
+    void newsWithExplicitAselsamTextShowsAselsAsDirectMatch() {
+        NewsRepository newsRepository = mock(NewsRepository.class);
+        MarketQueryService marketQueryService = mock(MarketQueryService.class);
+        NewsService service = buildService(newsRepository, marketQueryService);
+
+        // Metinde "Aselsan" doğrudan geçiyor → DIRECT/HIGH eşleşmesi
+        News aselsamNews = baseNews(640L,
+                "Aselsan yeni ihracat sozlesmesini duyurdu",
+                "Aselsan savunma elektroniği sistemlerinin ihracatı için kapsamlı anlaşma imzaladı.",
+                "COMPANY",
+                "STOCKS");
+
+        when(newsRepository.findById(640L)).thenReturn(Optional.of(aselsamNews));
+        when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        NewsRelatedResponseDto response = service.getRelatedData(640L);
+
+        // Metinde doğrudan "Aselsan" geçiyor → ASELS görünmeli
+        assertThat(response.relatedInstruments()).extracting("symbol")
+                .contains("ASELS");
+        // Doğrudan eşleşme → confidence HIGH
+        assertThat(response.relatedInstruments())
+                .anyMatch(item -> "ASELS".equals(item.symbol()) && "HIGH".equals(item.confidence()));
+    }
+
     private NewsService buildService(NewsRepository newsRepository, MarketQueryService marketQueryService) {
         NewsProviderSyncStateRepository syncStateRepository = mock(NewsProviderSyncStateRepository.class);
         NewsImportanceScoringService scoringService = mock(NewsImportanceScoringService.class);
         NotificationService notificationService = mock(NotificationService.class);
         NewsNotificationProperties notificationProperties = mock(NewsNotificationProperties.class);
+
+        com.emrehalli.financeportal.news.config.NewsRelationsProperties legacyProps =
+                mock(com.emrehalli.financeportal.news.config.NewsRelationsProperties.class);
+        when(legacyProps.isConservativeMode()).thenReturn(false);
+
+        ConservativeNewsRelationService conservativeService =
+                new ConservativeNewsRelationService(newsRepository, marketQueryService);
 
         return new NewsService(
                 newsRepository,
@@ -417,7 +667,9 @@ class NewsServiceRelatedDataTest {
                 notificationProperties,
                 new NewsPresentationMapper(),
                 new NewsCategoryClassifier(),
-                marketQueryService
+                marketQueryService,
+                legacyProps,
+                conservativeService
         );
     }
 

@@ -53,6 +53,8 @@ function normalizeAggregateMarketsPayload(payload) {
   const fundList = Array.isArray(aggregate?.funds) ? aggregate.funds : [];
   const futuresList = Array.isArray(aggregate?.futures) ? aggregate.futures : [];
   const bondList = Array.isArray(aggregate?.bonds) ? aggregate.bonds : [];
+  const indexList = Array.isArray(aggregate?.indexes) ? aggregate.indexes : [];
+  const commodityList = Array.isArray(aggregate?.commodities) ? aggregate.commodities : [];
 
   return [
     ...fxList
@@ -63,6 +65,12 @@ function normalizeAggregateMarketsPayload(payload) {
     ...fundList,
     ...futuresList,
     ...bondList,
+    ...indexList
+      .filter((item) => item && typeof item === "object")
+      .map(mapIndexQuote),
+    ...commodityList
+      .filter((item) => item && typeof item === "object")
+      .map(mapCommodityQuote),
   ];
 }
 
@@ -99,7 +107,13 @@ export async function getMarkets(params = {}) {
 }
 
 export async function getMarketQuotes() {
-  return getMarkets();
+  const [aggregateQuotes, indexQuotes, commodityQuotes] = await Promise.all([
+    getMarkets(),
+    getMarketsByType("INDEX"),
+    getMarketsByType("COMMODITY"),
+  ]);
+
+  return mergeUniqueMarketQuotes(aggregateQuotes, indexQuotes, commodityQuotes);
 }
 
 export async function getMarketTapeConfig() {
@@ -352,6 +366,34 @@ function normalizeInstrumentType(value) {
   }
 
   return String(value).trim().toUpperCase();
+}
+
+function mergeUniqueMarketQuotes(...quoteGroups) {
+  const seen = new Set();
+  const merged = [];
+
+  for (const group of quoteGroups) {
+    for (const item of Array.isArray(group) ? group : []) {
+      if (!item || typeof item !== "object") {
+        continue;
+      }
+
+      const normalizedSymbol = String(item.symbol ?? item.code ?? "").trim().toUpperCase();
+      if (!normalizedSymbol) {
+        continue;
+      }
+
+      const key = `${normalizeInstrumentType(item.instrumentType)}::${normalizedSymbol}`;
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      merged.push(item);
+    }
+  }
+
+  return merged;
 }
 
 function mapFuturesQuote(item) {

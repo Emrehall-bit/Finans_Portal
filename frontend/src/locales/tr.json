@@ -171,12 +171,23 @@
     },
     "marketSummaryTitle": "Günün Hareketli Enstrümanları",
     "allMarkets": "Tüm piyasa",
+    "marketCategoryAria": "Piyasa kategori filtreleri",
+    "marketCategoryFilters": {
+      "all": "Tümü",
+      "bist": "Hisse (BIST)",
+      "crypto": "Kripto",
+      "fund": "Fon",
+      "index": "Endeks",
+      "fxCommodities": "Döviz/Emtia"
+    },
     "watchlistWidgetTitle": "İzleme Listesi",
-    "watchlistWidgetSeeAll": "Tümünü Gör",
+    "watchlistWidg,etSeeAll": "Tümünü Gör",
     "watchlistWidgetEmptyTitle": "İzleme listeniz boş",
     "watchlistWidgetEmptyDesc": "Piyasalara gidip takip etmek istediğiniz enstrümanları favorilere ekleyin.",
     "marketEmptyTitle": "Piyasa verisi bulunamadı",
     "marketEmptyDescription": "Market servisinden veri dönmedi.",
+    "marketFilteredEmptyTitle": "Bu kategoride hareketli enstrüman yok",
+    "marketFilteredEmptyDescription": "Başka bir kategori seçerek farklı enstrümanları görüntüleyin.",
     "table": {
       "instrument": "Enstrüman",
       "source": "Kaynak",
@@ -1248,8 +1259,9 @@
     },
     "indirectTheme": "Dolaylı tema",
     "confidence": {
-      "high": "Yüksek güven",
+      "high": "Doğrudan ilişki",
       "medium": "Orta güven",
+      "contextual": "Makro/tematik etki",
       "low": "Düşük güven"
     }
   },
@@ -1285,6 +1297,57 @@
     "description": "Geçmiş bir tarihteki yatırımın bugünkü etkisini ve varsayımsal fiyat senaryolarını test et.",
     "loading": "Simülasyon verileri yükleniyor...",
     "loadError": "Simülasyon verileri yüklenemedi.",
+    "ui": {
+      "badge": "Simülasyon Modu",
+      "heroTitle": "Simülasyon Laboratuvarı",
+      "heroDescription": "Geçmiş yatırımların bugünkü etkisini ve geleceğe yönelik fiyat senaryolarını analiz edin.",
+      "pastPanelTitle": "Geçmiş Yatırım Simülasyonu",
+      "pastPanelDescription": "Geçmiş yatırımın bugünkü sonucunu görüntüleyin.",
+      "futurePanelTitle": "Gelecek Senaryosu",
+      "futurePanelDescription": "Enstrüman veya portföy seçip varsayımsal fiyat etkisini test edin.",
+      "pastSourceLabel": "Geçmiş yatırım getirisi",
+      "futureInstrumentSourceLabel": "Fiyat senaryosu",
+      "futurePortfolioSourceLabel": "Portföy etkisi",
+      "dateLabel": "Tarih",
+      "amountLabel": "Yatırım tutarı",
+      "amountPlaceholder": "Örn. 50.000 TL",
+      "percentLabel": "Yüzde değişim",
+      "pastSubmit": "Geçmiş yatırımı hesapla",
+      "emptyTitle": "Henüz simülasyon yapılmadı.",
+      "pastEmptyCopy": "Bir enstrüman ve tarih seçip hesaplama yaptığınızda sonuç bu kartın altında görünecek.",
+      "futureEmptyCopy": "Bir senaryo tanımlayıp hesaplama yaptığınızda sonuç bu kartın altında görünecek.",
+      "recentTitle": "Son Hesaplamalar",
+      "recentDescription": "Bu oturumda hesaplanan son senaryolar burada listelenir.",
+      "recentEmptyTitle": "Henüz kayıt yok",
+      "recentEmptyDescription": "Son yapılan Simülasyon işlemleri bu alanda görüntülenir.",
+      "manualScenario": "Manuel yüzde senaryosu",
+      "liveMarketData": "Canlı piyasa verisi",
+      "instrumentBasedCalculation": "Enstrüman bazlı hesap",
+      "portfolioBasedCalculation": "Portföy bazlı hesap",
+      "portfolioCalculatedOnTotal": "Portföy toplam değeri üzerinden hesaplandı",
+      "quantityValue": "{{value}} adet",
+      "chartLabels": {
+        "buy": "Alış",
+        "today": "Bugün",
+        "scenario": "Senaryo"
+      },
+      "metrics": {
+        "currentValue": "Bugünkü değer",
+        "initialInvestment": "Başlangıç yatırımı",
+        "projectedResult": "Tahmini sonuç",
+        "currentPrice": "Mevcut fiyat",
+        "currentPortfolioValue": "Mevcut portföy değeri",
+        "totalReturn": "Toplam getiri",
+        "percentChange": "Yüzde değişim",
+        "profitLoss": "Kâr / Zarar",
+        "selectedAsset": "Seçilen varlık"
+      },
+      "meta": {
+        "scenarioSummary": "Senaryo özeti",
+        "detail": "Detay",
+        "dateOrSource": "Tarih / Kaynak"
+      }
+    },
     "past": {
       "eyebrow": "Geçmiş Simülasyonu",
       "title": "Bugün değeri ne olurdu?",
@@ -1318,6 +1381,8 @@
       "portfolioPlaceholder": "Portföy seç",
       "percentChange": "Yüzde değişim gir",
       "percentPlaceholder": "10 veya -7.5",
+      "submit": "Senaryoyu Hesapla",
+      "submitting": "Hesaplanıyor...",
       "emptyTitle": "Senaryo sonucu hazır değil",
       "emptyDescription": "Enstrüman veya portföy seçip yüzde değişim girdiğinde tahmini etki hesaplanır.",
       "cards": {

@@ -1,123 +1,112 @@
-import { useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  CalendarDays,
+  FlaskConical,
+  History,
+  Layers3,
+  Search,
+  TrendingUp,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { getMarketHistory, getMarketQuote } from "../api/marketApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
-import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import PageHeader from "../components/common/PageHeader";
-import SummaryCard from "../components/common/SummaryCard";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
-import { useMarketQuotes } from "../hooks/useMarketQueries";
-import { usePortfolioDetails, useUserPortfolios } from "../hooks/usePortfolioQueries";
+import { useInstrumentSearch, useMarketBySymbol } from "../hooks/useMarketQueries";
+import { usePortfolioSummary, useUserPortfolios } from "../hooks/usePortfolioQueries";
 import { formatCurrency, formatNumber, formatPercent } from "../utils/formatters";
 
 const FUTURE_PERCENT_PRESETS = [-20, -10, -5, 5, 10, 25];
 
 export default function SimulationPage() {
   const { t } = useTranslation();
-  const { userId } = useAuth();
   const { formatAmount } = useCurrency();
+  const [pastResult, setPastResult] = useState(null);
+  const [futureResult, setFutureResult] = useState(null);
+  const [recentSimulations, setRecentSimulations] = useState([]);
 
+  const handleSimulationResult = useCallback((result) => {
+    if (!result) {
+      return;
+    }
+
+    if (result.kind === "past") {
+      setPastResult(result);
+    } else if (result.kind === "future") {
+      setFutureResult(result);
+    }
+
+    setRecentSimulations((current) => [result, ...current.filter((item) => item.id !== result.id)].slice(0, 6));
+  }, []);
+
+  return (
+    <div className="dashboard-stack simulation-lab-shell">
+      <section className="panel-surface simulation-lab-hero">
+        <div className="simulation-lab-hero-main">
+          <div className="simulation-lab-hero-copy">
+            <div className="simulation-lab-badge">
+              <FlaskConical size={14} aria-hidden="true" />
+              <span>{t("simulation.ui.badge")}</span>
+            </div>
+            <div>
+              <h1>{t("simulation.ui.heroTitle")}</h1>
+              <p>{t("simulation.ui.heroDescription")}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="simulation-lab-main-grid">
+        <PastSimulationPanel onResult={handleSimulationResult} result={pastResult} />
+        <FutureSimulationPanel onResult={handleSimulationResult} result={futureResult} />
+      </section>
+
+      <SimulationHistoryPanel results={recentSimulations} formatAmount={formatAmount} />
+    </div>
+  );
+}
+
+const PastSimulationPanel = memo(function PastSimulationPanel({ onResult, result }) {
+  const { t } = useTranslation();
+  const pastDateRef = useRef(null);
+  const pastAmountRef = useRef(null);
+  const [pastAttempted, setPastAttempted] = useState(false);
   const [pastForm, setPastForm] = useState({
     instrumentCode: "",
-    date: "",
-    amount: "",
+    instrumentLabel: "",
   });
-  const [pastResult, setPastResult] = useState(null);
   const [pastLoading, setPastLoading] = useState(false);
   const [pastError, setPastError] = useState("");
 
-  const [futureForm, setFutureForm] = useState({
-    mode: "instrument",
-    instrumentCode: "",
-    portfolioId: "",
-    percentChange: "",
-  });
-
-  const { data: quotes = [], isLoading: quotesLoading, error: quotesError } = useMarketQuotes();
-  const { data: portfolios = [], isLoading: portfoliosLoading, error: portfoliosError } = useUserPortfolios(userId);
-  const { data: selectedPortfolioDetails } = usePortfolioDetails(
-    futureForm.mode === "portfolio" ? futureForm.portfolioId : null,
-  );
-
-  const loading = quotesLoading || portfoliosLoading;
-  const error = quotesError || portfoliosError
-    ? extractErrorMessage(quotesError || portfoliosError, t("simulation.loadError"))
-    : "";
-
-  useMemo(() => {
-    if (quotes.length > 0 && !pastForm.instrumentCode) {
-      setPastForm((current) => ({ ...current, instrumentCode: current.instrumentCode || quotes[0]?.symbol || "" }));
-    }
-  }, [quotes]);
-
-  useMemo(() => {
-    if (quotes.length > 0 && !futureForm.instrumentCode) {
-      setFutureForm((current) => ({ ...current, instrumentCode: current.instrumentCode || quotes[0]?.symbol || "" }));
-    }
-  }, [quotes]);
-
-  useMemo(() => {
-    if (portfolios.length > 0 && !futureForm.portfolioId) {
-      setFutureForm((current) => ({ ...current, portfolioId: current.portfolioId || portfolios[0]?.portfolioId || "" }));
-    }
-  }, [portfolios]);
-
-  const selectedInstrumentQuote = useMemo(
-    () => quotes.find((item) => normalizeCode(item.symbol) === normalizeCode(futureForm.instrumentCode)) || null,
-    [quotes, futureForm.instrumentCode],
-  );
-
-  const futureScenario = useMemo(() => {
-    const percentChange = Number(futureForm.percentChange);
-    if (!Number.isFinite(percentChange)) {
-      return null;
-    }
-
-    const ratio = percentChange / 100;
-
-    if (futureForm.mode === "instrument") {
-      const basePrice = Number(selectedInstrumentQuote?.price);
-      if (!Number.isFinite(basePrice)) {
-        return null;
-      }
-
-      const projectedPrice = basePrice * (1 + ratio);
-      return {
-        type: "instrument",
-        baseValue: basePrice,
-        projectedValue: projectedPrice,
-        difference: projectedPrice - basePrice,
-      };
-    }
-
-    const portfolioValue = Number(
-      selectedPortfolioDetails?.summary?.currentValue ?? selectedPortfolioDetails?.summary?.totalCurrentValue,
-    );
-    if (!Number.isFinite(portfolioValue)) {
-      return null;
-    }
-
-    const projectedValue = portfolioValue * (1 + ratio);
-    return {
-      type: "portfolio",
-      baseValue: portfolioValue,
-      projectedValue,
-      difference: projectedValue - portfolioValue,
-    };
-  }, [futureForm.mode, futureForm.percentChange, selectedInstrumentQuote, selectedPortfolioDetails]);
+  const handlePastInstrumentChange = useCallback((option) => {
+    setPastForm({
+      instrumentCode: option?.value ?? "",
+      instrumentLabel: option?.label ?? "",
+    });
+  }, []);
 
   async function handlePastSimulation(event) {
     event.preventDefault();
     try {
+      setPastAttempted(true);
       setPastLoading(true);
       setPastError("");
-      setPastResult(null);
 
-      const simulationDate = pastForm.date;
-      const amount = Number(pastForm.amount);
+      const simulationDate = pastDateRef.current?.value ?? "";
+      const amount = Number(pastAmountRef.current?.value ?? "");
       const instrumentCode = normalizeCode(pastForm.instrumentCode);
 
       const [history, currentQuote] = await Promise.all([
@@ -133,7 +122,6 @@ export default function SimulationPage() {
       const currentPrice = Number(currentQuote?.price);
 
       if (!Number.isFinite(historicalPrice) || !Number.isFinite(currentPrice) || !Number.isFinite(amount) || amount <= 0) {
-        setPastResult(null);
         setPastError(t("simulation.past.insufficientData"));
         return;
       }
@@ -141,17 +129,30 @@ export default function SimulationPage() {
       const quantity = amount / historicalPrice;
       const todayValue = quantity * currentPrice;
       const profitLoss = todayValue - amount;
+      const percentReturn = amount > 0 ? (profitLoss / amount) * 100 : null;
 
-      setPastResult({
-        symbol: instrumentCode,
-        historicalPrice,
-        currentPrice,
-        quantity,
-        amount,
-        todayValue,
+      onResult({
+        id: `past-${instrumentCode}-${simulationDate}-${amount}`,
+        kind: "past",
+        heading: t("simulation.ui.pastPanelTitle"),
+        sourceLabel: t("simulation.ui.pastSourceLabel"),
+        selectedLabel: pastForm.instrumentLabel || instrumentCode,
+        scenarioLabel: simulationDate,
+        primaryLabel: t("simulation.ui.metrics.currentValue"),
+        primaryValue: todayValue,
+        totalReturn: profitLoss,
+        percentReturn,
         profitLoss,
-        priceDate: historicalPoint?.priceDate || simulationDate,
-        source: currentQuote?.source || historicalPoint?.source || "-",
+        secondaryValue: amount,
+        secondaryLabel: t("simulation.ui.metrics.initialInvestment"),
+        metaLine: t("simulation.ui.quantityValue", { value: formatNumber(quantity, 4) }),
+        supportLine: historicalPoint?.priceDate || simulationDate,
+        sourceDetail: currentQuote?.source || historicalPoint?.source || "-",
+        chartData: [
+          { label: t("simulation.ui.chartLabels.buy"), value: amount },
+          { label: t("simulation.ui.chartLabels.today"), value: todayValue },
+        ],
+        createdAt: new Date().toISOString(),
       });
     } catch (err) {
       setPastError(extractErrorMessage(err, t("simulation.past.calculateError")));
@@ -161,243 +162,585 @@ export default function SimulationPage() {
   }
 
   return (
-    <div className="dashboard-stack simulation-shell">
-      <div className="analysis-page-header-row">
-        <PageHeader
-          eyebrow={t("simulation.eyebrow")}
-          title={t("simulation.title")}
-          description={t("simulation.description")}
-        />
-        <CurrencyToggle className="analysis-currency-toggle" />
+    <section className="panel-surface simulation-lab-card simulation-lab-card--panel">
+      <div className="simulation-lab-card-top">
+        <div className="simulation-lab-card-head">
+          <div className="simulation-lab-card-head-icon">
+            <History size={16} aria-hidden="true" />
+          </div>
+          <div>
+            <h2>{t("simulation.ui.pastPanelTitle")}</h2>
+            <p>{t("simulation.ui.pastPanelDescription")}</p>
+          </div>
+        </div>
+
+        <form className="simulation-lab-form" onSubmit={handlePastSimulation}>
+          <div className="simulation-lab-field">
+            <SearchableInstrumentField
+              required
+              value={pastForm.instrumentCode}
+              selectedLabel={pastForm.instrumentLabel}
+              placeholder={t("simulation.past.instrumentPlaceholder")}
+              searchPlaceholder={t("simulation.past.instrumentPlaceholder")}
+              onChange={handlePastInstrumentChange}
+            />
+          </div>
+
+          <div className="simulation-lab-inline-fields">
+            <label className="simulation-lab-field">
+              <span>{t("simulation.ui.dateLabel")}</span>
+              <div className="simulation-lab-input-wrap">
+                <CalendarDays size={16} aria-hidden="true" />
+                <input ref={pastDateRef} required type="date" defaultValue="" />
+              </div>
+            </label>
+
+            <label className="simulation-lab-field">
+              <span>{t("simulation.ui.amountLabel")}</span>
+              <div className="simulation-lab-input-wrap simulation-lab-input-wrap--with-toggle">
+                <input
+                  ref={pastAmountRef}
+                  required
+                  type="number"
+                  step="any"
+                  min="0.01"
+                  defaultValue=""
+                  placeholder={t("simulation.ui.amountPlaceholder")}
+                />
+                <CurrencyToggle className="simulation-lab-inline-currency-toggle" />
+              </div>
+            </label>
+          </div>
+
+          <button type="submit" className="simulation-lab-primary-button" disabled={pastLoading}>
+            {pastLoading ? t("simulation.past.submitting") : t("simulation.ui.pastSubmit")}
+          </button>
+        </form>
+
+        <div className={`simulation-lab-inline-feedback${pastAttempted ? " is-visible" : ""}`}>
+          {pastLoading ? <LoadingSpinner label={t("simulation.past.submitting")} /> : null}
+          {!pastLoading && pastError ? <ErrorMessage message={pastError} /> : null}
+        </div>
       </div>
 
-      {loading ? <LoadingSpinner label={t("simulation.loading")} /> : null}
-      {error ? <ErrorMessage message={error} /> : null}
+      <InlineSimulationResult
+        result={result}
+        emptyTitle={t("simulation.ui.emptyTitle")}
+        emptyCopy={t("simulation.ui.pastEmptyCopy")}
+      />
+    </section>
+  );
+});
 
-      {!loading && !error ? (
-        <section className="simulation-grid">
-          <section className="panel-surface simulation-panel simulation-panel-past">
-            <div className="panel-head">
-              <div>
-                <p className="eyebrow">{t("simulation.past.eyebrow")}</p>
-                <h3>{t("simulation.past.title")}</h3>
-              </div>
-            </div>
+const FutureSimulationPanel = memo(function FutureSimulationPanel({ onResult, result }) {
+  const { t } = useTranslation();
+  const { userId } = useAuth();
+  const futurePercentInputRef = useRef(null);
+  const [selectedPercentPreset, setSelectedPercentPreset] = useState(null);
+  const [futureAttempted, setFutureAttempted] = useState(false);
+  const [futureLoading, setFutureLoading] = useState(false);
+  const [futureForm, setFutureForm] = useState({
+    mode: "instrument",
+    instrumentCode: "",
+    instrumentLabel: "",
+    portfolioId: "",
+  });
 
-            <form className="simulation-form" onSubmit={handlePastSimulation}>
-              <label className="portfolio-field">
-                <span>{t("simulation.past.instrument")}</span>
-                <select
-                  required
-                  value={pastForm.instrumentCode}
-                  onChange={(event) => setPastForm((current) => ({ ...current, instrumentCode: event.target.value }))}
-                >
-                  <option value="">{t("simulation.past.instrumentPlaceholder")}</option>
-                  {quotes.map((item) => (
-                    <option key={`${item.symbol}-${item.source}`} value={item.symbol}>
-                      {item.code || item.symbol} {item.displayName ? `- ${item.displayName}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
+  const { data: portfolios = [], isLoading: portfoliosLoading, error: portfoliosError } = useUserPortfolios(userId);
+  const { data: selectedPortfolioSummary } = usePortfolioSummary(
+    futureForm.mode === "portfolio" ? futureForm.portfolioId : null,
+  );
+  const {
+    data: selectedInstrumentQuote,
+    isLoading: instrumentQuoteLoading,
+    error: instrumentQuoteError,
+  } = useMarketBySymbol(
+    futureForm.mode === "instrument" ? futureForm.instrumentCode : null,
+    { enabled: futureForm.mode === "instrument" && !!futureForm.instrumentCode },
+  );
 
-              <div className="simulation-form-grid">
-                <label className="portfolio-field">
-                  <span>{t("simulation.past.date")}</span>
-                  <input
-                    required
-                    type="date"
-                    value={pastForm.date}
-                    onChange={(event) => setPastForm((current) => ({ ...current, date: event.target.value }))}
-                  />
-                </label>
-                <label className="portfolio-field">
-                  <span>{t("simulation.past.amount")}</span>
-                  <input
-                    required
-                    type="number"
-                    step="any"
-                    min="0.01"
-                    value={pastForm.amount}
-                    onChange={(event) => setPastForm((current) => ({ ...current, amount: event.target.value }))}
-                    placeholder="10000"
-                  />
-                </label>
-              </div>
+  useEffect(() => {
+    if (portfolios.length > 0 && !futureForm.portfolioId) {
+      setFutureForm((current) => ({ ...current, portfolioId: current.portfolioId || portfolios[0]?.portfolioId || "" }));
+    }
+  }, [portfolios, futureForm.portfolioId]);
 
-              <div className="instrument-action-footer simulation-submit-row">
-                <button type="submit" disabled={pastLoading}>
-                  {pastLoading ? t("simulation.past.submitting") : t("simulation.past.submit")}
-                </button>
-              </div>
-            </form>
+  const portfolioOptions = useMemo(
+    () => portfolios.map((item) => ({
+      key: item.portfolioId,
+      value: item.portfolioId,
+      label: item.portfolioName,
+    })),
+    [portfolios],
+  );
 
-            {pastError ? <ErrorMessage message={pastError} /> : null}
-            {!pastLoading && !pastError && !pastResult ? (
-              <EmptyState
-                title={t("simulation.past.emptyTitle")}
-                description={t("simulation.past.emptyDescription")}
-              />
-            ) : null}
+  const selectedPortfolioLabel = useMemo(
+    () => portfolioOptions.find((item) => String(item.value) === String(futureForm.portfolioId))?.label || futureForm.portfolioId,
+    [futureForm.portfolioId, portfolioOptions],
+  );
 
-            {pastResult ? (
-              <div className="cards-grid compact simulation-results-grid">
-                <SummaryCard title={t("simulation.past.cards.buyPrice")} value={formatAmount(pastResult.historicalPrice)} subtitle={pastResult.priceDate} tone="neutral" />
-                <SummaryCard title={t("simulation.past.cards.currentPrice")} value={formatAmount(pastResult.currentPrice)} subtitle={pastResult.source} tone="cool" />
-                <div className={`summary-card summary-card-${pastResult.profitLoss >= 0 ? "cool" : "warm"} simulation-today-value-card`}>
-                  <div className="summary-card-top">
-                    <p className="summary-card-title">{t("simulation.past.cards.todayValue")}</p>
-                  </div>
-                  <h3>{formatAmount(pastResult.todayValue)}</h3>
-                  <p className="summary-card-subtitle">{formatSigned(pastResult.profitLoss, formatAmount)}</p>
-                  <p className="simulation-quantity-note">
-                    {t("simulation.past.cards.calculatedQuantity", { value: formatNumber(pastResult.quantity, 0) })}
-                  </p>
-                  <div className="summary-sparkline" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                </div>
-                <SummaryCard title={t("simulation.past.cards.netProfitLoss")} value={formatAmount(pastResult.profitLoss)} subtitle={formatSigned(pastResult.profitLoss, formatAmount)} tone={pastResult.profitLoss >= 0 ? "cool" : "warm"} />
-              </div>
-            ) : null}
-          </section>
+  const handleFutureModeChange = useCallback((mode) => {
+    setFutureForm((current) => ({ ...current, mode }));
+  }, []);
 
-          <section className="panel-surface simulation-panel simulation-panel-future">
-            <div className="panel-head">
-              <div>
-                <p className="eyebrow">{t("simulation.future.eyebrow")}</p>
-                <h3>{t("simulation.future.title")}</h3>
-              </div>
-            </div>
+  const handleFutureInstrumentChange = useCallback((option) => {
+    setFutureForm((current) => ({
+      ...current,
+      instrumentCode: option?.value ?? "",
+      instrumentLabel: option?.label ?? "",
+    }));
+  }, []);
 
-            {/* TODO: backend tarafinda senaryo/simulasyon endpointi yok. Bu alan mevcut quote ve portfoy currentValue uzerinden frontend hesaplama yapar. */}
-            <div className="simulation-mode-switch">
+  const handleFuturePortfolioChange = useCallback((value) => {
+    setFutureForm((current) => ({ ...current, portfolioId: value }));
+  }, []);
+
+  const handleFuturePercentPreset = useCallback((value) => {
+    if (futurePercentInputRef.current) {
+      futurePercentInputRef.current.value = value;
+    }
+    setSelectedPercentPreset(Number(value));
+  }, []);
+
+  const error = portfoliosError || instrumentQuoteError
+    ? extractErrorMessage(portfoliosError || instrumentQuoteError, t("simulation.loadError"))
+    : "";
+
+  const handleFutureSimulation = useCallback(async (event) => {
+    event.preventDefault();
+    setFutureAttempted(true);
+    setFutureLoading(true);
+
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+
+    const percentChange = Number(futurePercentInputRef.current?.value ?? "");
+    if (!Number.isFinite(percentChange)) {
+      setFutureLoading(false);
+      return;
+    }
+
+    const ratio = percentChange / 100;
+
+    if (futureForm.mode === "instrument") {
+      const basePrice = Number(selectedInstrumentQuote?.price ?? selectedInstrumentQuote?.sellRate ?? selectedInstrumentQuote?.buyRate);
+      if (!Number.isFinite(basePrice)) {
+        setFutureLoading(false);
+        return;
+      }
+
+      const projectedValue = basePrice * (1 + ratio);
+      onResult({
+        id: `future-instrument-${futureForm.instrumentCode}-${percentChange}`,
+        kind: "future",
+        heading: t("simulation.ui.futurePanelTitle"),
+        sourceLabel: t("simulation.ui.futureInstrumentSourceLabel"),
+        selectedLabel: futureForm.instrumentLabel || futureForm.instrumentCode,
+        scenarioLabel: `${percentChange > 0 ? "+" : ""}${percentChange}%`,
+        primaryLabel: t("simulation.ui.metrics.projectedResult"),
+        primaryValue: projectedValue,
+        totalReturn: projectedValue - basePrice,
+        percentReturn: percentChange,
+        profitLoss: projectedValue - basePrice,
+        secondaryValue: basePrice,
+        secondaryLabel: t("simulation.ui.metrics.currentPrice"),
+        metaLine: selectedInstrumentQuote?.source || t("simulation.ui.liveMarketData"),
+        supportLine: t("simulation.ui.manualScenario"),
+        sourceDetail: futureForm.mode === "instrument" ? t("simulation.ui.instrumentBasedCalculation") : t("simulation.ui.portfolioBasedCalculation"),
+        chartData: [
+          { label: t("simulation.ui.chartLabels.today"), value: basePrice },
+          { label: t("simulation.ui.chartLabels.scenario"), value: projectedValue },
+        ],
+        createdAt: new Date().toISOString(),
+      });
+      setFutureLoading(false);
+      return;
+    }
+
+    const portfolioValue = Number(
+      selectedPortfolioSummary?.currentValue ?? selectedPortfolioSummary?.totalCurrentValue,
+    );
+    if (!Number.isFinite(portfolioValue)) {
+      setFutureLoading(false);
+      return;
+    }
+
+    const projectedValue = portfolioValue * (1 + ratio);
+    onResult({
+      id: `future-portfolio-${futureForm.portfolioId}-${percentChange}`,
+      kind: "future",
+      heading: t("simulation.ui.futurePanelTitle"),
+      sourceLabel: t("simulation.ui.futurePortfolioSourceLabel"),
+      selectedLabel: selectedPortfolioLabel,
+      scenarioLabel: `${percentChange > 0 ? "+" : ""}${percentChange}%`,
+      primaryLabel: t("simulation.ui.metrics.projectedResult"),
+      primaryValue: projectedValue,
+      totalReturn: projectedValue - portfolioValue,
+      percentReturn: percentChange,
+      profitLoss: projectedValue - portfolioValue,
+      secondaryValue: portfolioValue,
+      secondaryLabel: t("simulation.ui.metrics.currentPortfolioValue"),
+      metaLine: t("simulation.ui.portfolioCalculatedOnTotal"),
+      supportLine: t("simulation.ui.manualScenario"),
+      sourceDetail: t("simulation.ui.portfolioBasedCalculation"),
+      chartData: [
+        { label: t("simulation.ui.chartLabels.today"), value: portfolioValue },
+        { label: t("simulation.ui.chartLabels.scenario"), value: projectedValue },
+      ],
+      createdAt: new Date().toISOString(),
+    });
+    setFutureLoading(false);
+  }, [futureForm, onResult, selectedInstrumentQuote, selectedPortfolioLabel, selectedPortfolioSummary]);
+
+  return (
+    <section className="panel-surface simulation-lab-card simulation-lab-card--panel">
+      <div className="simulation-lab-card-top">
+        <div className="simulation-lab-card-head">
+          <div className="simulation-lab-card-head-icon">
+            <TrendingUp size={16} aria-hidden="true" />
+          </div>
+          <div>
+            <h2>{t("simulation.ui.futurePanelTitle")}</h2>
+            <p>{t("simulation.ui.futurePanelDescription")}</p>
+          </div>
+        </div>
+
+        {portfoliosLoading ? <LoadingSpinner label={t("simulation.loading")} /> : null}
+        {!portfoliosLoading && error ? <ErrorMessage message={error} /> : null}
+
+        {!portfoliosLoading && !error ? (
+          <form className="simulation-lab-form" onSubmit={handleFutureSimulation}>
+            <div className="simulation-lab-mode-switch">
               <button
                 type="button"
-                className={`table-chip-button ${futureForm.mode === "instrument" ? "active" : ""}`}
-                onClick={() => setFutureForm((current) => ({ ...current, mode: "instrument" }))}
+                className={futureForm.mode === "instrument" ? "simulation-lab-mode-chip active" : "simulation-lab-mode-chip"}
+                onClick={() => handleFutureModeChange("instrument")}
               >
                 {t("simulation.future.instrumentMode")}
               </button>
               <button
                 type="button"
-                className={`table-chip-button ${futureForm.mode === "portfolio" ? "active" : ""}`}
-                onClick={() => setFutureForm((current) => ({ ...current, mode: "portfolio" }))}
+                className={futureForm.mode === "portfolio" ? "simulation-lab-mode-chip active" : "simulation-lab-mode-chip"}
+                onClick={() => handleFutureModeChange("portfolio")}
               >
                 {t("simulation.future.portfolioMode")}
               </button>
             </div>
 
-            <div className="simulation-form">
-              {futureForm.mode === "instrument" ? (
-                <label className="portfolio-field">
-                  <span>{t("simulation.future.instrument")}</span>
-                  <select
-                    value={futureForm.instrumentCode}
-                    onChange={(event) => setFutureForm((current) => ({ ...current, instrumentCode: event.target.value }))}
-                  >
-                    <option value="">{t("simulation.past.instrumentPlaceholder")}</option>
-                    {quotes.map((item) => (
-                      <option key={`${item.symbol}-${item.source}`} value={item.symbol}>
-                        {item.code || item.symbol} {item.displayName ? `- ${item.displayName}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : (
-                <label className="portfolio-field">
-                  <span>{t("simulation.future.portfolio")}</span>
-                  <select
-                    value={futureForm.portfolioId}
-                    onChange={(event) => setFutureForm((current) => ({ ...current, portfolioId: event.target.value }))}
-                  >
-                    <option value="">{t("simulation.future.portfolioPlaceholder")}</option>
-                    {portfolios.map((item) => (
-                      <option key={item.portfolioId} value={item.portfolioId}>
-                        {item.portfolioName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              <label className="portfolio-field">
-                <span>{t("simulation.future.percentChange")}</span>
-                <input
-                  type="number"
-                  step="any"
-                  value={futureForm.percentChange}
-                  onChange={(event) => setFutureForm((current) => ({ ...current, percentChange: event.target.value }))}
-                  placeholder={t("simulation.future.percentPlaceholder")}
-                />
-                <div className="simulation-preset-row" aria-label={t("simulation.future.percentChange")}>
-                  {FUTURE_PERCENT_PRESETS.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      className={`simulation-preset-button${Number(futureForm.percentChange) === preset ? " active" : ""}`}
-                      onClick={() => setFutureForm((current) => ({ ...current, percentChange: String(preset) }))}
-                    >
-                      {preset > 0 ? `+${preset}%` : `${preset}%`}
-                    </button>
-                  ))}
-                </div>
-              </label>
-            </div>
-
-            {!futureScenario ? (
-              <EmptyState
-                title={t("simulation.future.emptyTitle")}
-                description={t("simulation.future.emptyDescription")}
-              />
-            ) : (
-              <div className="cards-grid compact simulation-results-grid simulation-future-results">
-                <SummaryCard
-                  title={futureScenario.type === "instrument" ? t("simulation.future.cards.currentPrice") : t("simulation.future.cards.currentPortfolioValue")}
-                  value={formatAmount(futureScenario.baseValue)}
-                  subtitle={t("simulation.future.cards.baseValue")}
-                  tone="neutral"
-                />
-                <SummaryCard
-                  title={t("simulation.future.cards.scenarioImpact")}
-                  value={formatPercent(futureForm.percentChange)}
-                  subtitle={t("simulation.future.cards.manualAssumption")}
-                  tone={Number(futureForm.percentChange) >= 0 ? "cool" : "warm"}
-                />
-                <SummaryCard
-                  title={t("simulation.future.cards.projectedResult")}
-                  value={formatAmount(futureScenario.projectedValue)}
-                  subtitle={t("simulation.future.cards.projectedValue")}
-                  tone={futureScenario.difference >= 0 ? "cool" : "warm"}
-                />
-                <SummaryCard
-                  title={t("simulation.future.cards.netDifference")}
-                  value={formatAmount(futureScenario.difference)}
-                  subtitle={formatSigned(futureScenario.difference, formatAmount)}
-                  tone={futureScenario.difference >= 0 ? "cool" : "warm"}
+            {futureForm.mode === "instrument" ? (
+              <div className="simulation-lab-field">
+                <SearchableInstrumentField
+                  value={futureForm.instrumentCode}
+                  selectedLabel={futureForm.instrumentLabel}
+                  placeholder={t("simulation.past.instrumentPlaceholder")}
+                  searchPlaceholder={t("simulation.past.instrumentPlaceholder")}
+                  onChange={handleFutureInstrumentChange}
                 />
               </div>
+            ) : (
+              <label className="simulation-lab-field">
+                <span>{t("simulation.future.portfolio")}</span>
+                <PortfolioOptionsSelect
+                  value={futureForm.portfolioId}
+                  placeholder={t("simulation.future.portfolioPlaceholder")}
+                  options={portfolioOptions}
+                  onChange={handleFuturePortfolioChange}
+                />
+              </label>
             )}
 
-            <section className="simulation-note-card">
-              <strong>{t("simulation.note.title")}</strong>
-              <p>
-                {t("simulation.note.description")}
-              </p>
-              {selectedPortfolioDetails?.summary?.currentValue ? (
-                <span>{t("simulation.note.portfolioValue", { value: formatAmount(selectedPortfolioDetails.summary.currentValue) })}</span>
-              ) : null}
-            </section>
-          </section>
-        </section>
+            <div className="simulation-lab-field">
+              <span>{t("simulation.ui.percentLabel")}</span>
+              <div className="simulation-lab-input-wrap simulation-lab-input-wrap--with-toggle">
+                <input
+                  ref={futurePercentInputRef}
+                  type="number"
+                  step="any"
+                  defaultValue=""
+                  onChange={() => setSelectedPercentPreset(null)}
+                  placeholder={t("simulation.future.percentPlaceholder")}
+                />
+                <CurrencyToggle className="simulation-lab-inline-currency-toggle" />
+              </div>
+              <div className="simulation-lab-preset-row" aria-label={t("simulation.future.percentChange")}>
+                {FUTURE_PERCENT_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className={selectedPercentPreset === preset ? "simulation-lab-preset-chip active" : "simulation-lab-preset-chip"}
+                    onClick={() => handleFuturePercentPreset(String(preset))}
+                  >
+                    {preset > 0 ? `+${preset}%` : `${preset}%`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button type="submit" className="simulation-lab-primary-button" disabled={futureLoading || instrumentQuoteLoading}>
+              {futureLoading ? t("simulation.future.submitting") : t("simulation.future.submit")}
+            </button>
+          </form>
+        ) : null}
+
+        <div className={`simulation-lab-inline-feedback${futureAttempted ? " is-visible" : ""}`}>
+          {futureAttempted && futureLoading ? <LoadingSpinner label={t("simulation.future.submitting")} /> : null}
+        </div>
+      </div>
+
+      <InlineSimulationResult
+        result={result}
+        emptyTitle={t("simulation.ui.emptyTitle")}
+        emptyCopy={t("simulation.ui.futureEmptyCopy")}
+      />
+    </section>
+  );
+});
+
+const InlineSimulationResult = memo(function InlineSimulationResult({ result, emptyTitle, emptyCopy }) {
+  const { t } = useTranslation();
+  const { formatAmount } = useCurrency();
+  const positive = Number(result?.profitLoss) >= 0;
+
+  return (
+    <div className={result ? "simulation-lab-result-section is-ready" : "simulation-lab-result-section"}>
+      <div className="simulation-lab-result-section-inner">
+        {!result ? (
+          <div className="simulation-lab-empty-result">
+            <strong>{emptyTitle}</strong>
+            <p>{emptyCopy}</p>
+          </div>
+        ) : (
+          <div className="simulation-lab-result-stack">
+            <div className="simulation-lab-result-hero">
+              <div className="simulation-lab-result-copy">
+                <span className="simulation-lab-result-eyebrow">{result.sourceLabel}</span>
+                <strong>{result.selectedLabel}</strong>
+                <p>{result.scenarioLabel}</p>
+              </div>
+              <div className={positive ? "simulation-lab-result-badge is-positive" : "simulation-lab-result-badge is-negative"}>
+                {positive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                <span>{formatSignedPercent(result.percentReturn)}</span>
+              </div>
+            </div>
+
+            <div className="simulation-lab-result-summary">
+              <div className="simulation-lab-result-value">
+                <span>{result.primaryLabel}</span>
+                <h3>{formatAmount(result.primaryValue)}</h3>
+                <p>{result.secondaryLabel}: {formatAmount(result.secondaryValue)}</p>
+              </div>
+
+              <div className="simulation-lab-chart-card">
+                <MiniScenarioChart data={result.chartData} positive={positive} />
+              </div>
+            </div>
+
+            <div className="simulation-lab-metric-grid">
+              <ResultMetric label={t("simulation.ui.metrics.totalReturn")} value={formatAmount(result.totalReturn)} tone={result.totalReturn >= 0 ? "positive" : "negative"} />
+              <ResultMetric label={t("simulation.ui.metrics.percentChange")} value={formatSignedPercent(result.percentReturn)} tone={result.percentReturn >= 0 ? "positive" : "negative"} />
+              <ResultMetric label={t("simulation.ui.metrics.profitLoss")} value={formatAmount(result.profitLoss)} tone={result.profitLoss >= 0 ? "positive" : "negative"} />
+              <ResultMetric label={t("simulation.ui.metrics.selectedAsset")} value={result.selectedLabel} />
+            </div>
+
+            <div className="simulation-lab-result-meta">
+              <div>
+                <span>{t("simulation.ui.meta.scenarioSummary")}</span>
+                <strong>{result.supportLine}</strong>
+              </div>
+              <div>
+                <span>{t("simulation.ui.meta.detail")}</span>
+                <strong>{result.metaLine}</strong>
+              </div>
+              <div>
+                <span>{t("simulation.ui.meta.dateOrSource")}</span>
+                <strong>{result.sourceDetail}</strong>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
+const MiniScenarioChart = memo(function MiniScenarioChart({ data, positive }) {
+  if (!Array.isArray(data) || data.length === 0) {
+    return null;
+  }
+
+  const stroke = positive ? "#16835e" : "#c24a4a";
+  const fill = positive ? "rgba(22, 131, 94, 0.14)" : "rgba(194, 74, 74, 0.14)";
+
+  return (
+    <ResponsiveContainer width="100%" height={124}>
+      <AreaChart data={data} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={`simulation-chart-fill-${positive ? "up" : "down"}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity={0.28} />
+            <stop offset="100%" stopColor={stroke} stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid vertical={false} stroke="rgba(148, 163, 184, 0.18)" />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 11 }} />
+        <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
+        <Tooltip
+          formatter={(value) => formatCurrency(Number(value))}
+          labelStyle={{ color: "#203252" }}
+          contentStyle={{
+            borderRadius: 14,
+            border: "1px solid rgba(203, 213, 225, 0.9)",
+            boxShadow: "0 12px 28px rgba(15, 23, 42, 0.08)",
+          }}
+        />
+        <Area
+          type="monotone"
+          dataKey="value"
+          stroke={stroke}
+          strokeWidth={2.5}
+          fill={fill}
+          fillOpacity={1}
+          activeDot={{ r: 4 }}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+});
+
+const SimulationHistoryPanel = memo(function SimulationHistoryPanel({ results, formatAmount }) {
+  const { t } = useTranslation();
+  return (
+    <section className="panel-surface simulation-lab-history-card">
+      <div className="simulation-lab-history-head">
+        <div>
+          <h2>{t("simulation.ui.recentTitle")}</h2>
+          <p>{t("simulation.ui.recentDescription")}</p>
+        </div>
+      </div>
+
+      {!results.length ? (
+        <div className="simulation-lab-empty-history">
+          <strong>{t("simulation.ui.recentEmptyTitle")}</strong>
+          <p>{t("simulation.ui.recentEmptyDescription")}</p>
+        </div>
+      ) : (
+        <div className="simulation-lab-history-scroller">
+          {results.map((item) => (
+            <article key={item.id} className="simulation-lab-history-tile">
+              <div className="simulation-lab-history-tile-top">
+                <span className="simulation-lab-history-tile-tag">{item.sourceLabel}</span>
+                <strong className={item.profitLoss >= 0 ? "is-positive" : "is-negative"}>
+                  {formatSignedPercent(item.percentReturn)}
+                </strong>
+              </div>
+              <strong className="simulation-lab-history-tile-title">{item.selectedLabel}</strong>
+              <p>{item.scenarioLabel}</p>
+              <div className="simulation-lab-history-tile-foot">
+                <span>{formatAmount(item.primaryValue)}</span>
+                <small>{item.heading}</small>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+});
+
+const SearchableInstrumentField = memo(function SearchableInstrumentField({
+  required = false,
+  value,
+  selectedLabel,
+  placeholder,
+  searchPlaceholder,
+  onChange,
+}) {
+  const [search, setSearch] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+  const debouncedSearch = useDebouncedValue(search, 180);
+  const { data: results = [] } = useInstrumentSearch(debouncedSearch, { staleTime: 60_000 });
+  const showResults = isFocused && debouncedSearch.trim().length >= 2;
+
+  const filteredOptions = useMemo(
+    () => results.slice(0, 24).map((item) => ({
+      key: `${item.code}-${item.type}`,
+      value: item.code,
+      label: `${item.code}${item.name ? ` - ${item.name}` : ""}`,
+    })),
+    [results],
+  );
+
+  return (
+    <div className="simulation-lab-search">
+      <div className="simulation-lab-input-wrap simulation-lab-input-wrap--search">
+        <Search size={16} aria-hidden="true" />
+        <input
+          type="text"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => window.setTimeout(() => setIsFocused(false), 120)}
+          placeholder={searchPlaceholder}
+        />
+      </div>
+
+      <div className="simulation-lab-search-selection">
+        <span>{selectedLabel || value || placeholder}</span>
+        {required && !value ? <input type="hidden" required value="" readOnly /> : null}
+      </div>
+
+      {showResults ? (
+        <div className="simulation-lab-search-results" role="listbox" aria-label={placeholder}>
+          {filteredOptions.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={item.value === value ? "simulation-lab-search-option active" : "simulation-lab-search-option"}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onChange(item);
+                setSearch("");
+                setIsFocused(false);
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+          {!filteredOptions.length ? (
+            <div className="simulation-lab-search-empty">{placeholder}</div>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
-}
+});
+
+const PortfolioOptionsSelect = memo(function PortfolioOptionsSelect({
+  value,
+  placeholder,
+  options,
+  onChange,
+}) {
+  return (
+    <div className="simulation-lab-input-wrap">
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{placeholder}</option>
+        {options.map((item) => (
+          <option key={item.key} value={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+});
+
+const ResultMetric = memo(function ResultMetric({ label, value, tone = "neutral" }) {
+  return (
+    <div className={`simulation-lab-metric-card simulation-lab-metric-card--${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+});
 
 function normalizeCode(value) {
   if (value == null) {
@@ -412,12 +755,21 @@ function normalizeCode(value) {
   return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
-function formatSigned(value, formatter = formatCurrency) {
+function formatSignedPercent(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
     return "-";
   }
-
-  return `${numeric >= 0 ? "+" : ""}${formatter(numeric)}`;
+  return `${numeric >= 0 ? "+" : ""}${formatPercent(numeric)}`;
 }
 
+function useDebouncedValue(value, delayMs = 180) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timeoutId);
+  }, [value, delayMs]);
+
+  return debounced;
+}

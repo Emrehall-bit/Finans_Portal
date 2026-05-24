@@ -172,12 +172,23 @@
     "marketSummaryEyebrow": "Market Summary",
     "marketSummaryTitle": "Today's active instruments",
     "allMarkets": "All markets",
+    "marketCategoryAria": "Market category filters",
+    "marketCategoryFilters": {
+      "all": "All",
+      "bist": "Stocks (BIST)",
+      "crypto": "Crypto",
+      "fund": "Funds",
+      "index": "Indexes",
+      "fxCommodities": "FX/Commodities"
+    },
     "watchlistWidgetTitle": "Watchlist",
     "watchlistWidgetSeeAll": "See All",
     "watchlistWidgetEmptyTitle": "Your watchlist is empty",
     "watchlistWidgetEmptyDesc": "Go to markets and add instruments you want to follow.",
     "marketEmptyTitle": "No market data found",
     "marketEmptyDescription": "The market service returned no data.",
+    "marketFilteredEmptyTitle": "No active instruments in this category",
+    "marketFilteredEmptyDescription": "Choose another category to view a different market slice.",
     "table": {
       "instrument": "Instrument",
       "source": "Source",
@@ -1255,8 +1266,9 @@
     },
     "indirectTheme": "Indirect theme",
     "confidence": {
-      "high": "High confidence",
+      "high": "Direct match",
       "medium": "Medium confidence",
+      "contextual": "Macro/thematic impact",
       "low": "Low confidence"
     }
   },
@@ -1292,6 +1304,57 @@
     "description": "Test the present impact of a past investment and hypothetical price scenarios.",
     "loading": "Loading simulation data...",
     "loadError": "Simulation data could not be loaded.",
+    "ui": {
+      "badge": "Simulation Mode",
+      "heroTitle": "Simulation Lab",
+      "heroDescription": "Analyze the present impact of past investments and forward-looking price scenarios.",
+      "pastPanelTitle": "Past Investment Simulation",
+      "pastPanelDescription": "See the present impact of a historical investment in a single step.",
+      "futurePanelTitle": "Future Scenario",
+      "futurePanelDescription": "Choose an instrument or portfolio and test a hypothetical price impact quickly.",
+      "pastSourceLabel": "Past investment return",
+      "futureInstrumentSourceLabel": "Price scenario",
+      "futurePortfolioSourceLabel": "Portfolio impact",
+      "dateLabel": "Date",
+      "amountLabel": "Investment amount",
+      "amountPlaceholder": "e.g. TRY 50,000",
+      "percentLabel": "Percentage change",
+      "pastSubmit": "Calculate past investment",
+      "emptyTitle": "No simulation has been run yet.",
+      "pastEmptyCopy": "When you select an instrument and date and run the calculation, the result will appear below in this card.",
+      "futureEmptyCopy": "When you define a scenario and run the calculation, the result will appear below in this card.",
+      "recentTitle": "Recent Simulations",
+      "recentDescription": "The latest scenarios calculated in this session are listed here.",
+      "recentEmptyTitle": "No records yet",
+      "recentEmptyDescription": "Recent simulations will appear here after the first calculation.",
+      "manualScenario": "Manual percentage scenario",
+      "liveMarketData": "Live market data",
+      "instrumentBasedCalculation": "Instrument-based calculation",
+      "portfolioBasedCalculation": "Portfolio-based calculation",
+      "portfolioCalculatedOnTotal": "Calculated based on the total portfolio value",
+      "quantityValue": "{{value}} units",
+      "chartLabels": {
+        "buy": "Buy",
+        "today": "Today",
+        "scenario": "Scenario"
+      },
+      "metrics": {
+        "currentValue": "Current value",
+        "initialInvestment": "Initial investment",
+        "projectedResult": "Projected result",
+        "currentPrice": "Current price",
+        "currentPortfolioValue": "Current portfolio value",
+        "totalReturn": "Total return",
+        "percentChange": "Percentage change",
+        "profitLoss": "Profit / Loss",
+        "selectedAsset": "Selected asset"
+      },
+      "meta": {
+        "scenarioSummary": "Scenario summary",
+        "detail": "Detail",
+        "dateOrSource": "Date / Source"
+      }
+    },
     "past": {
       "eyebrow": "Past Simulation",
       "title": "What would it be worth today?",
@@ -1325,6 +1388,8 @@
       "portfolioPlaceholder": "Select portfolio",
       "percentChange": "Enter percentage change",
       "percentPlaceholder": "10 or -7.5",
+      "submit": "Calculate scenario",
+      "submitting": "Calculating...",
       "emptyTitle": "Scenario result is not ready",
       "emptyDescription": "The estimated impact is calculated when you choose an instrument or portfolio and enter a percentage change.",
       "cards": {

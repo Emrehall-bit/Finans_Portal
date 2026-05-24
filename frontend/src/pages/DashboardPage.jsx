@@ -53,6 +53,7 @@ export default function DashboardPage() {
   const [isAiSummaryOpen, setAiSummaryOpen] = useState(false);
   const [isWatchlistPopoverOpen, setWatchlistPopoverOpen] = useState(false);
   const [isAuthRequiredModalOpen, setAuthRequiredModalOpen] = useState(false);
+  const [marketCategoryFilter, setMarketCategoryFilter] = useState("all");
   const watchlistPopoverRef = useRef(null);
 
   const effectiveWidgetPortfolioId = selectedWidgetPortfolioId ?? portfolios[0]?.portfolioId ?? null;
@@ -193,6 +194,7 @@ export default function DashboardPage() {
   const [marketTab, setMarketTab] = useState("gainers");
   const marketRows = useMemo(() => {
     return [...marketQuotes]
+      .filter((item) => matchesDashboardMarketCategory(item, marketCategoryFilter))
       .filter((item) => Number.isFinite(Number(item.changeRate)))
       .sort((left, right) => {
         if (marketTab === "losers") {
@@ -202,7 +204,7 @@ export default function DashboardPage() {
         return toNumber(right.changeRate) - toNumber(left.changeRate);
       })
       .slice(0, 5);
-  }, [marketQuotes, marketTab]);
+  }, [marketQuotes, marketCategoryFilter, marketTab]);
 
   const aiSummary = useMemo(() => {
     const changedRows = marketQuotes.filter((item) => Number.isFinite(Number(item?.changeRate)));
@@ -459,7 +461,7 @@ export default function DashboardPage() {
             <div className="finance-dashboard-main">
               <section className="panel-surface finance-dashboard-panel">
                 <div className="panel-head">
-                  <div>
+                  <div className="dashboard-market-heading">
                     <h3 className="dashboard-section-title">{t("dashboard.marketSummaryTitle")}</h3>
                     <div className="market-tabs">
                       <button
@@ -477,6 +479,20 @@ export default function DashboardPage() {
                         {t("dashboard.marketTabs.losers")}
                       </button>
                     </div>
+                    <div className="dashboard-market-filter-row" role="tablist" aria-label={t("dashboard.marketCategoryAria")}>
+                      {DASHBOARD_MARKET_CATEGORY_FILTERS.map((filter) => (
+                        <button
+                          key={filter.key}
+                          type="button"
+                          role="tab"
+                          aria-selected={marketCategoryFilter === filter.key}
+                          className={marketCategoryFilter === filter.key ? "dashboard-market-filter active" : "dashboard-market-filter"}
+                          onClick={() => setMarketCategoryFilter(filter.key)}
+                        >
+                          {t(filter.labelKey)}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <Link to="/markets" className="panel-text-link">
                     {t("dashboard.allMarkets")}
@@ -484,8 +500,11 @@ export default function DashboardPage() {
                 </div>
 
                 {sectionErrors.market && marketRows.length === 0 ? <ErrorMessage message={sectionErrors.market} /> : null}
-                {!sectionErrors.market && marketRows.length === 0 ? (
+                {!sectionErrors.market && marketRows.length === 0 && marketQuotes.length === 0 ? (
                   <EmptyState title={t("dashboard.marketEmptyTitle")} description={t("dashboard.marketEmptyDescription")} />
+                ) : null}
+                {!sectionErrors.market && marketRows.length === 0 && marketQuotes.length > 0 ? (
+                  <EmptyState title={t("dashboard.marketFilteredEmptyTitle")} description={t("dashboard.marketFilteredEmptyDescription")} />
                 ) : null}
                 {marketRows.length > 0 ? (
                   <div className="finance-market-table-wrap">
@@ -776,3 +795,49 @@ const INSTRUMENT_TYPE_LABELS = {
   INDEX: "Endeks",
   COMMODITY: "Emtia",
 };
+
+const DASHBOARD_MARKET_CATEGORY_FILTERS = [
+  { key: "all", labelKey: "dashboard.marketCategoryFilters.all" },
+  { key: "bist", labelKey: "dashboard.marketCategoryFilters.bist" },
+  { key: "crypto", labelKey: "dashboard.marketCategoryFilters.crypto" },
+  { key: "fund", labelKey: "dashboard.marketCategoryFilters.fund" },
+  { key: "index", labelKey: "dashboard.marketCategoryFilters.index" },
+  { key: "fx-commodities", labelKey: "dashboard.marketCategoryFilters.fxCommodities" },
+];
+
+function matchesDashboardMarketCategory(item, filterKey) {
+  if (filterKey === "all") {
+    return true;
+  }
+
+  const type = normalizeDashboardInstrumentType(item?.instrumentType);
+  if (filterKey === "bist") {
+    return type === "STOCK";
+  }
+
+  if (filterKey === "crypto") {
+    return type === "CRYPTO";
+  }
+
+  if (filterKey === "fund") {
+    return type === "FUND";
+  }
+
+  if (filterKey === "index") {
+    return type === "INDEX";
+  }
+
+  if (filterKey === "fx-commodities") {
+    return type === "FX" || type === "COMMODITY";
+  }
+
+  return true;
+}
+
+function normalizeDashboardInstrumentType(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "FOREX" || normalized === "CURRENCY") {
+    return "FX";
+  }
+  return normalized;
+}

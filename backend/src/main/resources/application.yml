@@ -72,8 +72,15 @@ news:
   providers:
     aa:
       enabled: true
-      rss-url: https://www.aa.com.tr/tr/rss/default?cat=ekonomi
-      default-category: ECONOMY
+      feeds:
+        - name: economy
+          rss-url: https://www.aa.com.tr/tr/rss/default?cat=ekonomi
+          default-category: ECONOMY
+          relevance-threshold: 40
+        - name: politics
+          rss-url: https://www.aa.com.tr/tr/rss/default?cat=politika
+          default-category: POLITICS
+          relevance-threshold: 60
       default-language: tr
       default-region-scope: TR
     cnbc:
@@ -113,6 +120,9 @@ news:
   notification:
     enabled: false
     min-importance-score: 70
+  relations:
+    mode: conservative
+    legacy-enabled: false
 
 market:
   providers:

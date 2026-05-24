@@ -52,17 +52,18 @@ public class AaRssNewsClient {
         this.aaArticleEnricher = aaArticleEnricher;
     }
 
-    public List<NewsItemDto> fetchEconomyNews() {
+    /**
+     * Fetches a single RSS feed by URL, parsing items with the given category override.
+     * Updates {@code lastDiagnostics} with the result of this fetch.
+     */
+    public List<NewsItemDto> fetchFeed(String feedName, String feedUrl, String category) {
+        AtomicInteger cycleCounter = aaArticleEnricher.newCycleCounter();
         try {
             ResponseEntity<byte[]> response = restTemplate.exchange(
-                    properties.getRssUrl(),
-                    HttpMethod.GET,
-                    null,
-                    byte[].class
-            );
+                    feedUrl, HttpMethod.GET, null, byte[].class);
             String payload = decodeResponseBody(response);
             if (payload == null || payload.isBlank()) {
-                logger.warn("AA RSS response was empty");
+                logger.warn("AA RSS response was empty. provider=AA_RSS, feed={}, url={}", feedName, feedUrl);
                 lastDiagnostics.set(ProviderSyncDiagnostics.builder()
                         .provider(NewsProviderType.AA_RSS.name())
                         .enabled(true)
@@ -77,10 +78,9 @@ public class AaRssNewsClient {
                 return List.of();
             }
 
-            AtomicInteger cycleCounter = aaArticleEnricher.newCycleCounter();
-            List<NewsItemDto> items = parse(payload, cycleCounter);
-            logger.info("AA feed parsed. url: {}, fetched: {}, articleFetches: {}",
-                    properties.getRssUrl(), items.size(), cycleCounter.get());
+            List<NewsItemDto> items = parseFeed(payload, feedUrl, category, cycleCounter);
+            logger.info("AA feed parsed. provider=AA_RSS, feed={}, url={}, fetched={}, articleFetches={}",
+                    feedName, feedUrl, items.size(), cycleCounter.get());
             lastDiagnostics.set(ProviderSyncDiagnostics.builder()
                     .provider(NewsProviderType.AA_RSS.name())
                     .enabled(true)
@@ -94,34 +94,36 @@ public class AaRssNewsClient {
                     .build());
             return items;
         } catch (RestClientException e) {
-            logger.error("AA RSS fetch failed. url: {}", properties.getRssUrl(), e);
+            logger.error("AA RSS fetch failed. provider=AA_RSS, feed={}, url={}", feedName, feedUrl, e);
             lastDiagnostics.set(ProviderSyncDiagnostics.builder()
                     .provider(NewsProviderType.AA_RSS.name())
                     .enabled(true)
                     .feedUrlCount(1)
-                    .fetched(0)
-                    .fetchedFromFeed(0)
-                    .timeoutCount(0)
-                    .parseErrorCount(0)
+                    .fetched(0).fetchedFromFeed(0).timeoutCount(0).parseErrorCount(0)
                     .errorMessage("AA RSS fetch failed: " + e.getClass().getSimpleName())
                     .lastErrors(List.of(e.getClass().getSimpleName()))
                     .build());
             return List.of();
         } catch (Exception e) {
-            logger.error("Unexpected AA RSS fetch failure. url: {}", properties.getRssUrl(), e);
+            logger.error("Unexpected AA RSS fetch failure. provider=AA_RSS, feed={}, url={}", feedName, feedUrl, e);
             lastDiagnostics.set(ProviderSyncDiagnostics.builder()
                     .provider(NewsProviderType.AA_RSS.name())
                     .enabled(true)
                     .feedUrlCount(1)
-                    .fetched(0)
-                    .fetchedFromFeed(0)
-                    .timeoutCount(0)
-                    .parseErrorCount(1)
+                    .fetched(0).fetchedFromFeed(0).timeoutCount(0).parseErrorCount(0)
                     .errorMessage("Unexpected AA RSS fetch failure: " + e.getClass().getSimpleName())
                     .lastErrors(List.of(e.getClass().getSimpleName()))
                     .build());
             return List.of();
         }
+    }
+
+    /** @deprecated Use {@link #fetchFeed(String, String, String)} via multi-feed config. */
+    public List<NewsItemDto> fetchEconomyNews() {
+        String legacyUrl = properties.getRssUrl() != null && !properties.getRssUrl().isBlank()
+                ? properties.getRssUrl()
+                : "https://www.aa.com.tr/tr/rss/default?cat=ekonomi";
+        return fetchFeed("economy", legacyUrl, properties.getDefaultCategory());
     }
 
     public ProviderSyncDiagnostics getLastDiagnostics() {
@@ -132,35 +134,38 @@ public class AaRssNewsClient {
         return rssFeedSupport.decodeResponseBody(response, logger, "AA RSS");
     }
 
-    List<NewsItemDto> parse(String payload, AtomicInteger cycleCounter) {
+    /**
+     * Parses a feed payload using the given base URL (for relative link resolution) and category.
+     * Package-private to allow unit testing.
+     */
+    List<NewsItemDto> parseFeed(String payload, String baseUrl, String category, AtomicInteger cycleCounter) {
         if (payload == null || payload.isBlank()) {
             return List.of();
         }
-
+        String effectiveCategory = category != null && !category.isBlank()
+                ? category
+                : properties.getDefaultCategory();
         try {
-            List<NewsItemDto> xmlItems = parseXmlFeed(payload, cycleCounter);
+            List<NewsItemDto> xmlItems = parseXmlFeed(payload, baseUrl, effectiveCategory, cycleCounter);
             if (!xmlItems.isEmpty()) {
                 return xmlItems;
             }
 
-            List<NewsItemDto> htmlItems = parseHtmlFeed(payload);
+            List<NewsItemDto> htmlItems = parseHtmlFeed(payload, baseUrl, effectiveCategory);
             if (!htmlItems.isEmpty()) {
-                logger.info("AA feed fallback parser used. url: {}, fetched: {}", properties.getRssUrl(), htmlItems.size());
+                logger.info("AA feed fallback parser used. url={}, fetched={}", baseUrl, htmlItems.size());
                 return htmlItems;
             }
 
-            logger.warn("AA feed did not contain parsable items. url: {}", properties.getRssUrl());
+            logger.warn("AA feed did not contain parsable items. url={}", baseUrl);
             return List.of();
         } catch (Exception e) {
-            logger.error("Failed to parse AA feed. url: {}", properties.getRssUrl(), e);
+            logger.error("Failed to parse AA feed. url={}", baseUrl, e);
             lastDiagnostics.set(ProviderSyncDiagnostics.builder()
                     .provider(NewsProviderType.AA_RSS.name())
                     .enabled(true)
                     .feedUrlCount(1)
-                    .fetched(0)
-                    .fetchedFromFeed(0)
-                    .timeoutCount(0)
-                    .parseErrorCount(1)
+                    .fetched(0).fetchedFromFeed(0).timeoutCount(0).parseErrorCount(1)
                     .errorMessage("Failed to parse AA feed: " + e.getClass().getSimpleName())
                     .lastErrors(List.of(e.getClass().getSimpleName()))
                     .build());
@@ -168,12 +173,19 @@ public class AaRssNewsClient {
         }
     }
 
+    /** Backward-compat wrapper for tests. */
+    List<NewsItemDto> parse(String payload, AtomicInteger cycleCounter) {
+        String baseUrl = properties.getRssUrl() != null ? properties.getRssUrl() : "https://www.aa.com.tr/";
+        return parseFeed(payload, baseUrl, properties.getDefaultCategory(), cycleCounter);
+    }
+
+    /** Backward-compat wrapper for tests. */
     List<NewsItemDto> parse(String payload) {
         return parse(payload, new AtomicInteger(0));
     }
 
-    private List<NewsItemDto> parseXmlFeed(String xml, AtomicInteger cycleCounter) {
-        Document document = Jsoup.parse(xml, properties.getRssUrl(), Parser.xmlParser());
+    private List<NewsItemDto> parseXmlFeed(String xml, String baseUrl, String category, AtomicInteger cycleCounter) {
+        Document document = Jsoup.parse(xml, baseUrl, Parser.xmlParser());
         Elements entries = document.select("channel > item, feed > entry");
         List<NewsItemDto> items = new ArrayList<>();
 
@@ -201,25 +213,22 @@ public class AaRssNewsClient {
                     rssFeedSupport.text(entry, "published")
             );
 
-            // Single page fetch: extracts both og:image and full article content
             AaArticleEnrichment enrichment = aaArticleEnricher.enrich(link, cycleCounter);
 
-            // Image: prefer in-feed media/enclosure, fall back to article og:image
             String rssImageUrl = rssFeedSupport.resolveImageUrl(entry, descriptionHtml);
             String imageUrl = rssImageUrl != null ? rssImageUrl : enrichment.imageUrl();
 
-            // Summary: use full article content when meaningfully longer than RSS snippet
             String summary = selectBestSummary(rssSummary, enrichment.content());
             boolean fullContent = isFullContentSelected(rssSummary, enrichment.content(), summary);
 
             if (enrichment.content() != null) {
-                logger.debug("AA article content enriched. url: {}, rssSummaryLen: {}, contentLen: {}",
+                logger.debug("AA article content enriched. url={}, rssSummaryLen={}, contentLen={}",
                         link,
                         rssSummary != null ? rssSummary.length() : 0,
                         enrichment.content().length());
             }
 
-            NewsItemDto item = buildItem(title, link, guid, summary, imageUrl, pubDate, fullContent);
+            NewsItemDto item = buildItem(title, link, guid, summary, imageUrl, pubDate, fullContent, category);
             if (item != null) {
                 items.add(item);
             }
@@ -228,8 +237,8 @@ public class AaRssNewsClient {
         return items;
     }
 
-    private List<NewsItemDto> parseHtmlFeed(String html) {
-        Document document = Jsoup.parse(html, properties.getRssUrl());
+    private List<NewsItemDto> parseHtmlFeed(String html, String baseUrl, String category) {
+        Document document = Jsoup.parse(html, baseUrl);
         Elements anchors = document.select("a[href]");
         Set<String> seenLinks = new LinkedHashSet<>();
         List<NewsItemDto> items = new ArrayList<>();
@@ -249,7 +258,7 @@ public class AaRssNewsClient {
                 );
             }
 
-            NewsItemDto item = buildItem(title, link, null, null, null, null, false);
+            NewsItemDto item = buildItem(title, link, null, null, null, null, false, category);
             if (item != null) {
                 items.add(item);
             }
@@ -258,7 +267,8 @@ public class AaRssNewsClient {
         return items;
     }
 
-    private NewsItemDto buildItem(String title, String link, String guid, String summary, String imageUrl, String pubDate, boolean fullContent) {
+    private NewsItemDto buildItem(String title, String link, String guid, String summary,
+                                  String imageUrl, String pubDate, boolean fullContent, String category) {
         if (title == null || link == null) {
             return null;
         }
@@ -273,7 +283,7 @@ public class AaRssNewsClient {
                 .provider(NewsProviderType.AA_RSS.name())
                 .language(properties.getDefaultLanguage())
                 .regionScope(properties.getDefaultRegionScope())
-                .category(properties.getDefaultCategory())
+                .category(category)
                 .relatedSymbol(null)
                 .url(link)
                 .imageUrl(imageUrl)
@@ -299,7 +309,6 @@ public class AaRssNewsClient {
         if (cleanedRss == null) {
             return cleanedContent;
         }
-        // Use full article content only when it is substantial (>=500 chars) AND meaningfully longer
         if (cleanedContent.length() >= 500 && cleanedContent.length() > cleanedRss.length() + 150) {
             return cleanedContent;
         }

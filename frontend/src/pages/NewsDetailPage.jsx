@@ -228,9 +228,10 @@ export default function NewsDetailPage() {
                   <div className="news-related-list">
                     {relatedData.relatedInstruments.map((instrument) => {
                       const changeTone = Number(instrument?.changePercent) >= 0 ? "market-up" : "market-down";
-                      const isIndirectTheme =
+                      const confidenceKey = String(instrument?.confidence || "low").toLowerCase();
+                      const isMacroTheme =
                         String(instrument?.relationType || "").toUpperCase() === "THEME" &&
-                        String(instrument?.confidence || "").toUpperCase() === "LOW";
+                        String(instrument?.confidence || "").toUpperCase() === "CONTEXTUAL";
                       return (
                         <Link
                           key={instrument.symbol}
@@ -240,14 +241,14 @@ export default function NewsDetailPage() {
                           <div className="news-related-card-top">
                             <strong className="news-related-symbol">{instrument.symbol}</strong>
                             <div className="news-related-badge-stack">
-                            <span className="news-card-badge provider">{instrument.instrumentType || "STOCK"}</span>
-                            <span className={`news-card-badge neutral ${String(instrument.relationType || "").toLowerCase()}`}>
-                              {isIndirectTheme
-                                ? t("newsDetail.indirectTheme")
-                                : t(`newsDetail.relationTypes.${String(instrument.relationType || "THEME").toLowerCase()}`)}
-                            </span>
-                              <span className={`news-card-badge importance ${String(instrument.confidence || "LOW").toLowerCase()}`}>
-                                {t(`newsDetail.confidence.${String(instrument.confidence || "LOW").toLowerCase()}`)}
+                              <span className="news-card-badge provider">{instrument.instrumentType || "STOCK"}</span>
+                              <span className={`news-card-badge neutral ${String(instrument.relationType || "").toLowerCase()}`}>
+                                {isMacroTheme
+                                  ? t("newsDetail.confidence.contextual")
+                                  : t(`newsDetail.relationTypes.${String(instrument.relationType || "THEME").toLowerCase()}`)}
+                              </span>
+                              <span className={`news-card-badge importance ${confidenceKey}`}>
+                                {t(`newsDetail.confidence.${confidenceKey}`, t("newsDetail.relatedAssetsReasonFallback"))}
                               </span>
                             </div>
                           </div>
@@ -266,10 +267,10 @@ export default function NewsDetailPage() {
                             </div>
                           ) : (
                             <span className="muted">{t("newsDetail.relatedStocksNoPrice")}</span>
-                        )}
-                      </Link>
-                    );
-                  })}
+                          )}
+                        </Link>
+                      );
+                    })}
                   </div>
                 ) : null}
               </section>

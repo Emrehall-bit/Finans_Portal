@@ -77,8 +77,10 @@ public class NewsService {
     private static final int DUPLICATE_LOOKBACK_DAYS = 3;
     private static final int MIN_FINANCIAL_RELEVANCE_SCORE = 2;
     private static final int MAX_RELATED_NEWS = 4;
-    private static final int MAX_RELATED_INSTRUMENTS = 6;
-    private static final int MIN_RELATED_NEWS_SCORE = 35;
+    private static final int MAX_RELATED_INSTRUMENTS = 4;
+    private static final int MAX_RELATED_INSTRUMENTS_MACRO_ONLY = 3;
+    private static final int MIN_RELATED_NEWS_SCORE = 55;
+    private static final int MIN_RELATED_NEWS_SCORE_NO_DIRECT_MATCH = 70;
     private static final int MIN_RELATED_INSTRUMENT_SCORE = 35;
     private static final int MAX_NO_HIGH_CONFIDENCE_INSTRUMENTS = 3;
     private static final int RELATED_NEWS_RECENCY_HOURS = 72;
@@ -96,8 +98,8 @@ public class NewsService {
             "oil", "petrol", "commodity", "emtia", "crypto", "kripto", "bitcoin", "ethereum",
             "earnings", "bilanco", "revenue", "profit", "kar", "zarar", "disclosure", "kap"
     );
-    private static final Map<String, InstrumentAlias> BIST_INSTRUMENT_ALIASES = createInstrumentAliases();
-    private static final Map<String, InstrumentAlias> MARKET_INSTRUMENT_ALIASES = createMarketInstrumentAliases();
+    static final Map<String, InstrumentAlias> BIST_INSTRUMENT_ALIASES = createInstrumentAliases();
+    static final Map<String, InstrumentAlias> MARKET_INSTRUMENT_ALIASES = createMarketInstrumentAliases();
     private static final Map<String, Set<String>> REGION_KEYWORDS = createRegionKeywords();
     private static final Map<String, Set<String>> INSTITUTION_KEYWORDS = createInstitutionKeywords();
     private static final Map<String, Set<String>> COMMODITY_KEYWORDS = createCommodityKeywords();
@@ -138,6 +140,10 @@ public class NewsService {
     private final NewsCategoryClassifier newsCategoryClassifier;
     private final MarketQueryService marketQueryService;
 
+    private final com.emrehalli.financeportal.news.config.NewsRelationsProperties relationsProperties;
+    private final ConservativeNewsRelationService conservativeRelationService;
+    private final FinancialImpactClassifier financialImpactClassifier;
+
     @Autowired
     public NewsService(
             NewsRepository newsRepository,
@@ -148,7 +154,10 @@ public class NewsService {
             NewsNotificationProperties notificationProperties,
             NewsPresentationMapper newsPresentationMapper,
             NewsCategoryClassifier newsCategoryClassifier,
-            MarketQueryService marketQueryService
+            MarketQueryService marketQueryService,
+            com.emrehalli.financeportal.news.config.NewsRelationsProperties relationsProperties,
+            ConservativeNewsRelationService conservativeRelationService,
+            FinancialImpactClassifier financialImpactClassifier
     ) {
         this.newsRepository = newsRepository;
         this.newsProviderSyncStateRepository = newsProviderSyncStateRepository;
@@ -158,6 +167,9 @@ public class NewsService {
         this.newsPresentationMapper = newsPresentationMapper;
         this.newsCategoryClassifier = newsCategoryClassifier;
         this.marketQueryService = marketQueryService;
+        this.relationsProperties = relationsProperties;
+        this.conservativeRelationService = conservativeRelationService;
+        this.financialImpactClassifier = financialImpactClassifier;
         this.providerMap = new HashMap<>();
         for (NewsProvider provider : providers) {
             providerMap.put(provider.getProviderName(), provider);
@@ -199,6 +211,27 @@ public class NewsService {
     public NewsRelatedResponseDto getRelatedData(Long id) {
         News news = newsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("News not found with id: " + id));
+
+        if (relationsProperties.isConservativeMode()) {
+            List<RelatedInstrumentDto> instruments;
+            try {
+                instruments = conservativeRelationService.resolveInstruments(news);
+            } catch (Exception e) {
+                logger.warn("conservative.instruments.failed: newsId={}, reason={}", id, e.getMessage());
+                instruments = List.of();
+            }
+            List<RelatedNewsItemDto> relatedNews;
+            try {
+                relatedNews = conservativeRelationService.resolveRelatedNews(news);
+            } catch (Exception e) {
+                logger.warn("conservative.relatedNews.failed: newsId={}, reason={}", id, e.getMessage());
+                relatedNews = List.of();
+            }
+            return NewsRelatedResponseDto.builder()
+                    .relatedInstruments(instruments)
+                    .relatedNews(relatedNews)
+                    .build();
+        }
 
         List<RelatedInstrumentDto> relatedInstruments;
         try {
@@ -447,7 +480,7 @@ public class NewsService {
             for (RelatedInstrumentCandidate candidate : matched.values()) {
                 switch (String.valueOf(candidate.confidence()).toUpperCase(Locale.ROOT)) {
                     case "HIGH" -> highConfidenceCount++;
-                    case "MEDIUM" -> mediumConfidenceCount++;
+                    case "MEDIUM", "CONTEXTUAL" -> mediumConfidenceCount++;
                     default -> lowConfidenceCount++;
                 }
             }
@@ -1485,7 +1518,19 @@ public class NewsService {
         boolean missingDate = item.getPublishedAt() == null;
         boolean categoryRejected = hasText(item.getClassificationRejectReason());
         boolean skippedFullContentNotAvailable = !isPersistableQuality(item);
-        boolean lowRelevance = !categoryRejected && calculateFinancialRelevanceScore(item) < MIN_FINANCIAL_RELEVANCE_SCORE;
+        FinancialImpactResult impactResult = financialImpactClassifier.classify(
+                item.getTitle(), item.getSummary(), item.getContentSections(),
+                item.getProvider(), null, item.getCategory(), item.getUrl());
+        boolean lowRelevance = !categoryRejected && !impactResult.marketRelevant();
+        String decision = lowRelevance ? "REJECT" : "ACCEPT";
+        logger.info("news.ingest.classify: provider={}, title=\"{}\", score={}, marketRelevant={}, " +
+                        "confidence={}, impactType={}, affectedAssetClasses={}, decision={}, " +
+                        "matchedSignals={}, reason=\"{}\"",
+                item.getProvider(),
+                item.getTitle() != null ? item.getTitle().substring(0, Math.min(item.getTitle().length(), 80)) : "",
+                impactResult.score(), impactResult.marketRelevant(), impactResult.confidence(),
+                impactResult.impactType(), impactResult.affectedAssetClasses(),
+                decision, impactResult.matchedSignals(), impactResult.reason());
         boolean invalidBecauseLength = exceedsLength(item.getTitle(), TITLE_MAX_LENGTH)
                 || exceedsLength(item.getSource(), SOURCE_MAX_LENGTH)
                 || exceedsLength(item.getProvider(), PROVIDER_MAX_LENGTH)
@@ -1981,6 +2026,15 @@ public class NewsService {
         List<RelatedInstrumentCandidate> filtered = matched.values().stream()
                 .filter(candidate -> candidate.score() >= MIN_RELATED_INSTRUMENT_SCORE)
                 .filter(candidate -> !"LOW".equalsIgnoreCase(candidate.confidence()))
+                .filter(candidate -> {
+                    // Hisse senedi (STOCK) yalnızca metinde doğrudan şirket adı/ticker geçiyorsa gösterilir
+                    if ("STOCK".equalsIgnoreCase(candidate.instrumentType()) && !"DIRECT".equalsIgnoreCase(candidate.relationType())) {
+                        logger.debug("REJECTED_STOCK_NO_DIRECT_MATCH: symbol={}, matchType={}, confidence={}, reason={}",
+                                candidate.symbol(), candidate.matchType(), candidate.confidence(), candidate.reason());
+                        return false;
+                    }
+                    return true;
+                })
                 .sorted(Comparator
                         .comparingInt(RelatedInstrumentCandidate::score).reversed()
                         .thenComparingInt((RelatedInstrumentCandidate candidate) -> -relationTypePriority(candidate.relationType()))
@@ -1990,9 +2044,15 @@ public class NewsService {
         if (filtered.isEmpty()) {
             return List.of();
         }
-        boolean hasHighConfidence = filtered.stream()
-                .anyMatch(candidate -> "HIGH".equalsIgnoreCase(candidate.confidence()));
-        int limit = hasHighConfidence ? MAX_RELATED_INSTRUMENTS : MAX_NO_HIGH_CONFIDENCE_INSTRUMENTS;
+        // Doğrudan eşleşme (şirket adı/ticker metinde geçiyor) varsa limit 4, yoksa makro/tematik sınırı 3
+        boolean hasDirectMatch = filtered.stream()
+                .anyMatch(candidate -> "DIRECT".equalsIgnoreCase(candidate.relationType()));
+        int limit = hasDirectMatch ? MAX_RELATED_INSTRUMENTS : MAX_RELATED_INSTRUMENTS_MACRO_ONLY;
+        if (logger.isDebugEnabled()) {
+            filtered.forEach(c -> logger.debug(
+                    "RelatedInstrument accepted: symbol={}, score={}, confidence={}, matchType={}, relationType={}, reason={}",
+                    c.symbol(), c.score(), c.confidence(), c.matchType(), c.relationType(), c.reason()));
+        }
         return filtered.stream().limit(limit).toList();
     }
 
@@ -2003,7 +2063,18 @@ public class NewsService {
 
         return fetchRelatedNewsCandidates(news, publishedAfter).stream()
                 .map(candidate -> scoreRelatedNews(news, currentContext, candidate))
-                .filter(scored -> scored.score() >= MIN_RELATED_NEWS_SCORE)
+                .filter(scored -> {
+                    int minScore = scored.hasDirectMatch() ? MIN_RELATED_NEWS_SCORE : MIN_RELATED_NEWS_SCORE_NO_DIRECT_MATCH;
+                    if (scored.score() < minScore) {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("RelatedNews rejected (low score): sourceId={}, candidateId={}, score={}, required={}, hasDirectMatch={}",
+                                    news.getId(), scored.news().getId(), scored.score(), minScore, scored.hasDirectMatch());
+                        }
+                        return false;
+                    }
+                    return true;
+                })
+                .filter(scored -> !isDuplicateTitle(news.getTitle(), scored.news().getTitle()))
                 .sorted(Comparator
                         .comparingInt(ScoredRelatedNews::score).reversed()
                         .thenComparing(scored -> scored.news().getPublishedAt(), Comparator.nullsLast(Comparator.reverseOrder()))
@@ -2020,6 +2091,20 @@ public class NewsService {
                 .toList();
     }
 
+    private boolean isDuplicateTitle(String title1, String title2) {
+        if (!hasText(title1) || !hasText(title2)) {
+            return false;
+        }
+        Set<String> tokens1 = tokenizeText(normalizeText(title1));
+        Set<String> tokens2 = tokenizeText(normalizeText(title2));
+        if (tokens1.isEmpty() || tokens2.isEmpty()) {
+            return false;
+        }
+        long overlap = tokens1.stream().filter(tokens2::contains).count();
+        int denominator = Math.min(tokens1.size(), tokens2.size());
+        return denominator > 0 && (double) overlap / denominator >= 0.8;
+    }
+
     private List<News> fetchRelatedNewsCandidates(News news, LocalDateTime publishedAfter) {
         if (hasText(news.getCategory())) {
             return newsRepository.findRecentCandidatesForRelatedNewsByCategory(
@@ -2034,25 +2119,91 @@ public class NewsService {
     private ScoredRelatedNews scoreRelatedNews(News sourceNews, ExtractedNewsContext sourceContext, News candidate) {
         ExtractedNewsContext candidateContext = extractNewsContext(candidate);
         int score = 0;
+        boolean hasDirectMatch = false;
 
+        // Kategori eşleşmesi tek başına yeterli değil; diğer sinyallerle desteklenmeli
         if (samePrimaryCategory(sourceNews.getCategory(), candidate.getCategory())) {
-            score += 20;
+            score += 10;
         }
 
-        score += overlapScore(sourceContext.tags(), candidateContext.tags(), 15);
-        score += overlapScore(sourceContext.institutions(), candidateContext.institutions(), 25);
+        // Tag overlap: azaltılmış ağırlık, üst sınırlı
+        score += Math.min(24, overlapScore(sourceContext.tags(), candidateContext.tags(), 8));
 
+        // Kurum overlap (TCMB, FED vb.) → güçlü makro sinyal
+        int instScore = overlapScore(sourceContext.institutions(), candidateContext.institutions(), 35);
+        if (instScore > 0) {
+            hasDirectMatch = true;
+            score += instScore;
+        }
+
+        // Emtia/enstrüman overlap (GOLD, BRENT, USDTRY vb.) → güçlü tematik sinyal
         Set<String> sourceCommodityInstrument = union(sourceContext.commodities(), sourceContext.instruments());
         Set<String> candidateCommodityInstrument = union(candidateContext.commodities(), candidateContext.instruments());
-        score += overlapScore(sourceCommodityInstrument, candidateCommodityInstrument, 35);
-        score += overlapScore(sourceContext.companies(), candidateContext.companies(), 50);
+        int commodScore = overlapScore(sourceCommodityInstrument, candidateCommodityInstrument, 50);
+        if (commodScore > 0) {
+            hasDirectMatch = true;
+            score += commodScore;
+        }
+
+        // Şirket overlap → en güçlü sinyal
+        int compScore = overlapScore(sourceContext.companies(), candidateContext.companies(), 70);
+        if (compScore > 0) {
+            hasDirectMatch = true;
+            score += compScore;
+        }
+
+        // Aynı KAP şirketi → en yüksek sinyal
+        if (Boolean.TRUE.equals(sourceNews.getIsKapDisclosure())
+                && hasText(sourceNews.getRelatedSymbol())
+                && hasText(candidate.getRelatedSymbol())
+                && sourceNews.getRelatedSymbol().equalsIgnoreCase(candidate.getRelatedSymbol())) {
+            score += 100;
+            hasDirectMatch = true;
+        }
+
+        // Makro konu overlap (faiz, altın, petrol, döviz vb.)
+        Set<String> sourceMacroTopics = extractMacroTopics(sourceContext);
+        Set<String> candidateMacroTopics = extractMacroTopics(candidateContext);
+        int macroOverlap = overlapScore(sourceMacroTopics, candidateMacroTopics, 35);
+        if (macroOverlap > 0) {
+            hasDirectMatch = true;
+            score += macroOverlap;
+        }
+
+        // Başlık benzerliği: üst sınırlı
         score += titleSimilarityScore(sourceContext.titleTokens(), candidateContext.titleTokens());
 
+        // Yakınlık bonusu
         if (withinHours(sourceNews.getPublishedAt(), candidate.getPublishedAt(), RELATED_NEWS_RECENCY_HOURS)) {
             score += 10;
         }
 
-        return new ScoredRelatedNews(candidate, score);
+        if (logger.isDebugEnabled()) {
+            logger.debug("RelatedNews scored: sourceId={}, candidateId={}, score={}, hasDirectMatch={}",
+                    sourceNews.getId(), candidate.getId(), score, hasDirectMatch);
+        }
+        return new ScoredRelatedNews(candidate, score, hasDirectMatch);
+    }
+
+    private Set<String> extractMacroTopics(ExtractedNewsContext context) {
+        Set<String> topics = new LinkedHashSet<>();
+        // INTEREST_RATE: kurum gerektirir veya doğrudan faiz dili gerektirir (enflasyon tek başına yetmez)
+        if (context.institutions().contains("TCMB") || context.institutions().contains("FED") || context.institutions().contains("ECB")
+                || hasAny(context.tokens(), "FAIZ", "POLITIKA FAIZI")) {
+            topics.add("INTEREST_RATE");
+        }
+        if (context.instruments().contains("USDTRY") || context.instruments().contains("EURTRY")
+                || hasAny(context.tokens(), "KUR", "DOVIZ", "PARITE", "DOLAR")) {
+            topics.add("FX");
+        }
+        if (context.commodities().contains("GOLD") || hasAny(context.tokens(), "ALTIN", "ONS")) {
+            topics.add("GOLD");
+        }
+        if (context.commodities().contains("BRENT") || context.commodities().contains("PETROL")
+                || context.institutions().contains("OPEC")) {
+            topics.add("OIL");
+        }
+        return topics;
     }
 
     private Map<String, RelatedInstrumentCandidate> detectRelatedInstruments(News news) {
@@ -2063,11 +2214,11 @@ public class NewsService {
             if (hasText(normalizedSymbol)) {
                 InstrumentAlias alias = BIST_INSTRUMENT_ALIASES.get(normalizedSymbol);
                 if (alias != null) {
-                    matched.put(normalizedSymbol, RelatedInstrumentCandidate.direct(
-                            alias.symbol(), alias.name(), alias.instrumentType(), "Haberde dogrudan sirket/sembol gectigi icin", 140));
+                    matched.put(normalizedSymbol, RelatedInstrumentCandidate.kap(
+                            alias.symbol(), alias.name(), alias.instrumentType(), "KAP bildirimi doğrudan bu şirketle ilişkili", 140));
                 } else {
-                    matched.put(normalizedSymbol, RelatedInstrumentCandidate.direct(
-                            normalizedSymbol, normalizedSymbol, InstrumentType.STOCK.name(), "Haberde dogrudan sirket/sembol gectigi icin", 140));
+                    matched.put(normalizedSymbol, RelatedInstrumentCandidate.kap(
+                            normalizedSymbol, normalizedSymbol, InstrumentType.STOCK.name(), "KAP bildirimi doğrudan bu şirketle ilişkili", 140));
                 }
             }
             return matched;
@@ -2079,7 +2230,7 @@ public class NewsService {
             InstrumentAlias alias = BIST_INSTRUMENT_ALIASES.get(companySymbol);
             if (alias != null) {
                 matched.put(alias.symbol(), RelatedInstrumentCandidate.direct(
-                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde dogrudan sirket/sembol gectigi icin", 130));
+                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde şirket adı geçtiği için ilişkilendirildi", 130));
             }
         }
 
@@ -2087,7 +2238,7 @@ public class NewsService {
             InstrumentAlias alias = resolveKnownInstrumentAlias(instrumentSymbol);
             if (alias != null) {
                 matched.putIfAbsent(alias.symbol(), RelatedInstrumentCandidate.direct(
-                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde dogrudan enstruman/emtia gectigi icin", 120));
+                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde enstrüman/emtia adı geçtiği için ilişkilendirildi", 120));
             }
         }
 
@@ -2103,83 +2254,51 @@ public class NewsService {
         int automotiveContextScore = automotiveContextScore(context);
         int defenseContextScore = defenseContextScore(context, hasGeopoliticalRiskContext);
         int geopoliticalContextScore = geopoliticalContextScore(context, hasGeopoliticalRiskContext);
-        boolean hasDefenseContext = hasDefenseContext(context, hasGeopoliticalRiskContext, automotiveContextScore, defenseContextScore);
         boolean hasSafeHavenGoldContext = hasSafeHavenGoldContext(context, hasRateContext, hasCurrencyContext, hasMarketContext, hasGeopoliticalRiskContext);
         boolean hasEnergyContext = hasEnergyContext(context, hasGeopoliticalRiskContext);
         boolean hasBankingContext = context.sectors().contains("BANKING")
                 || context.institutions().contains("BDDK")
                 || hasAny(context.tokens(), "BANKA", "BANKACILIK", "KREDI", "MEVDUAT", "REGULASYON", "DUZENLEME");
-        boolean hasTourismAviationContext = context.sectors().contains("AVIATION")
-                || context.sectors().contains("TOURISM")
-                || hasAny(context.tokens(), "HAVACILIK", "TURIZM", "YOLCU", "UCUS", "HAVAYOLU");
-        boolean hasRetailFoodContext = context.sectors().contains("FOOD")
-                || hasAny(context.tokens(), "GIDA", "PERAKENDE", "MARKET", "TUKETIM", "RAF");
         boolean hasAutomotiveIndustrialContext = hasAutomotiveIndustrialContext(context, automotiveContextScore, defenseContextScore);
 
         if (context.institutions().contains("FED") && hasRateContext) {
-            addThemeCandidate(matched, "USDTRY", "Haberde Fed/faiz karari gectigi icin", 85);
+            addThemeCandidate(matched, "USDTRY", "Fed/faiz kararı bağlamı nedeniyle döviz kuru etkisi", 85);
             if (hasSafeHavenGoldContext) {
-                addThemeCandidate(matched, "GOLD", "Haberde Fed/faiz ve piyasa baglami gectigi icin", 72);
+                addThemeCandidate(matched, "GOLD", "Fed/faiz ve güvenli liman bağlamı nedeniyle altın etkisi", 72);
             }
             if (hasMarketContext || hasCurrencyContext) {
-                addThemeCandidate(matched, "XU100", "Haberde Fed/faiz ve kuresel piyasa baglami gectigi icin", 65);
+                addThemeCandidate(matched, "XU100", "Fed/faiz ve küresel piyasa bağlamı nedeniyle endeks etkisi", 65);
             }
         }
 
         if (context.institutions().contains("TCMB") && (hasRateContext || hasCurrencyContext)) {
-            addThemeCandidate(matched, "USDTRY", "Haberde TCMB/faiz karari gectigi icin", 95);
-            addThemeCandidate(matched, "EURTRY", "Haberde TCMB/faiz karari gectigi icin", 90);
-            addThemeCandidate(matched, "XU100", "Haberde TCMB/faiz/kur ve piyasa baglami gectigi icin", 74);
-            addThemeCandidate(matched, "AKBNK", "Haberde TCMB/faiz karari bankacilik hisselerini etkileyebilecegi icin", 72);
-            addThemeCandidate(matched, "GARAN", "Haberde TCMB/faiz karari bankacilik hisselerini etkileyebilecegi icin", 72);
-            addThemeCandidate(matched, "ISCTR", "Haberde TCMB/faiz karari bankacilik hisselerini etkileyebilecegi icin", 72);
-            addThemeCandidate(matched, "YKBNK", "Haberde TCMB/faiz karari bankacilik hisselerini etkileyebilecegi icin", 72);
+            addThemeCandidate(matched, "USDTRY", "TCMB/faiz bağlamı nedeniyle makro etki", 95);
+            addThemeCandidate(matched, "EURTRY", "TCMB/faiz bağlamı nedeniyle makro etki", 90);
+            addThemeCandidate(matched, "XU100", "TCMB/faiz/kur bağlamı nedeniyle piyasa endeksi etkisi", 74);
+            // Banka hisseleri yalnızca açık bankacılık bağlamı varsa (hasBankingContext kuralı) eklenir
         }
 
         if (hasEnergyContext) {
-            addThemeCandidate(matched, "BRENT", "Haberde petrol/Brent ve enerji arzi baglami gectigi icin", 95);
-            addThemeCandidate(matched, "TUPRS", "Haberde petrol/Brent ve enerji arzi baglami gectigi icin", 82);
-            addThemeCandidate(matched, "THYAO", "Haberde petrol/yakit maliyeti baglami gectigi icin", 66);
-            addThemeCandidate(matched, "PGSUS", "Haberde petrol/yakit maliyeti baglami gectigi icin", 64);
-            addThemeCandidate(matched, "XU100", "Haberde petrol ve piyasa riski baglami gectigi icin", 48);
-        }
-
-        if (hasDefenseContext) {
-            addThemeCandidate(matched, "ASELS", "Haberde savunma/jeopolitik baglami gectigi icin", 74);
+            addThemeCandidate(matched, "BRENT", "Petrol/enerji fiyatı bağlamı nedeniyle emtia etkisi", 95);
+            addThemeCandidate(matched, "XU100", "Petrol/enerji ve piyasa riski bağlamı nedeniyle makro etki", 48);
+            // TUPRS/THYAO/PGSUS yalnızca haber metninde doğrudan adları geçerse (direct match) gösterilir
         }
 
         if (hasSafeHavenGoldContext) {
-            addThemeCandidate(matched, "GOLD", "Haberde jeopolitik risk veya guvenli liman baglami gectigi icin", 68);
+            addThemeCandidate(matched, "GOLD", "Güvenli liman/jeopolitik risk bağlamı nedeniyle altın etkisi", 68);
         }
 
         if (geopoliticalContextScore >= 5 && hasMarketContext) {
-            addThemeCandidate(matched, "XU100", "Haberde jeopolitik riskin piyasalara etkisi baglami gectigi icin", 45);
+            addThemeCandidate(matched, "XU100", "Jeopolitik riskin piyasalara etkisi bağlamı nedeniyle endeks etkisi", 45);
         }
 
         if (hasBankingContext) {
-            addThemeCandidate(matched, "AKBNK", "Haberde bankacilik sektoru baglami gectigi icin", 78);
-            addThemeCandidate(matched, "GARAN", "Haberde bankacilik sektoru baglami gectigi icin", 78);
-            addThemeCandidate(matched, "ISCTR", "Haberde bankacilik sektoru baglami gectigi icin", 78);
-            addThemeCandidate(matched, "YKBNK", "Haberde bankacilik sektoru baglami gectigi icin", 78);
-            addThemeCandidate(matched, "XU100", "Haberde bankacilik ve piyasa baglami gectigi icin", 52);
-        }
-
-        if (hasTourismAviationContext) {
-            addThemeCandidate(matched, "THYAO", "Haberde havacilik/turizm baglami gectigi icin", 68);
-            addThemeCandidate(matched, "PGSUS", "Haberde havacilik/turizm baglami gectigi icin", 66);
-            addThemeCandidate(matched, "TAVHL", "Haberde havacilik/turizm baglami gectigi icin", 60);
-        }
-
-        if (hasRetailFoodContext && (context.sectors().contains("FOOD") || hasAny(context.tokens(), "ENFLASYON", "FIYAT", "TUKETICI"))) {
-            addThemeCandidate(matched, "BIMAS", "Haberde gida/perakende baglami gectigi icin", 58);
-            addThemeCandidate(matched, "MGROS", "Haberde gida/perakende baglami gectigi icin", 58);
+            addThemeCandidate(matched, "XU100", "Bankacılık ve piyasa bağlamı nedeniyle endeks etkisi", 52);
         }
 
         if (hasAutomotiveIndustrialContext) {
-            addThemeCandidate(matched, "FROTO", "Haberde otomotiv/uretim/ihracat baglami gectigi icin", 62);
-            addThemeCandidate(matched, "TOASO", "Haberde otomotiv/uretim/ihracat baglami gectigi icin", 60);
             if (hasMarketContext || context.tags().contains("STOCKS")) {
-                addThemeCandidate(matched, "XU100", "Haberde otomotiv ve sanayi hisseleri baglami gectigi icin", 46);
+                addThemeCandidate(matched, "XU100", "Otomotiv ve sanayi bağlamı nedeniyle endeks etkisi", 46);
             }
         }
     }
@@ -2275,7 +2394,7 @@ public class NewsService {
         }
         matched.merge(
                 alias.symbol(),
-                RelatedInstrumentCandidate.theme(alias.symbol(), alias.name(), alias.instrumentType(), confidenceForScore(score), reason, score),
+                RelatedInstrumentCandidate.contextual(alias.symbol(), alias.name(), alias.instrumentType(), reason, score),
                 this::mergeInstrumentCandidates
         );
     }
@@ -2742,7 +2861,9 @@ public class NewsService {
         aliases.put("USDTRY", new InstrumentAlias("USDTRY", "USD/TRY", InstrumentType.FX.name(), Set.of("USDTRY", "USD/TRY", "DOLAR/TL", "DOLAR TL", "USD TL", "DOLAR KURU", "KUR")));
         aliases.put("EURTRY", new InstrumentAlias("EURTRY", "EUR/TRY", InstrumentType.FX.name(), Set.of("EURTRY", "EUR/TRY", "EURO/TL", "EURO TL", "EUR TL", "EURO KURU", "PARITE")));
         aliases.put("GOLD", new InstrumentAlias("GOLD", "Altin", InstrumentType.COMMODITY.name(), Set.of("GOLD", "ALTIN", "ONS ALTIN", "ONS", "XAUUSD")));
+        aliases.put("GRAM_ALTIN", new InstrumentAlias("GRAM_ALTIN", "Gram Altin", InstrumentType.COMMODITY.name(), Set.of("GRAM_ALTIN", "GRAM ALTIN", "ALTIN GRAM")));
         aliases.put("BRENT", new InstrumentAlias("BRENT", "Brent Petrol", InstrumentType.COMMODITY.name(), Set.of("BRENT", "PETROL", "HAM PETROL", "AKARYAKIT")));
+        aliases.put("XBANK", new InstrumentAlias("XBANK", "Bankacılık Endeksi", InstrumentType.INDEX.name(), Set.of("XBANK", "BANKACILIK ENDEKSI")));
         return aliases;
     }
 
@@ -2842,7 +2963,7 @@ public class NewsService {
     private record QueryContext(NewsScope scope, NewsProviderType provider) {
     }
 
-    private record InstrumentAlias(String symbol, String name, String instrumentType, Set<String> keywords) {
+    record InstrumentAlias(String symbol, String name, String instrumentType, Set<String> keywords) {
     }
 
     private record ThemeRule(Set<String> keywords, String reason, List<ThemeInstrument> instruments) {
@@ -2871,19 +2992,38 @@ public class NewsService {
             String instrumentType,
             String relationType,
             String confidence,
+            String matchType,
             String reason,
             int score
     ) {
         private static RelatedInstrumentCandidate direct(String symbol, String name, String instrumentType, String reason, int score) {
-            return new RelatedInstrumentCandidate(symbol, name, instrumentType, "DIRECT", "HIGH", reason, score);
+            return new RelatedInstrumentCandidate(symbol, name, instrumentType, "DIRECT", "HIGH", "DIRECT_COMPANY_MATCH", reason, score);
+        }
+
+        private static RelatedInstrumentCandidate kap(String symbol, String name, String instrumentType, String reason, int score) {
+            return new RelatedInstrumentCandidate(symbol, name, instrumentType, "DIRECT", "HIGH", "OFFICIAL_KAP_MATCH", reason, score);
+        }
+
+        private static RelatedInstrumentCandidate contextual(String symbol, String name, String instrumentType, String reason, int score) {
+            return new RelatedInstrumentCandidate(symbol, name, instrumentType, "THEME", "CONTEXTUAL", deriveContextMatchType(instrumentType), reason, score);
         }
 
         private static RelatedInstrumentCandidate theme(String symbol, String name, String instrumentType, String confidence, String reason, int score) {
-            return new RelatedInstrumentCandidate(symbol, name, instrumentType, "THEME", confidence, reason, score);
+            return new RelatedInstrumentCandidate(symbol, name, instrumentType, "THEME", confidence, deriveContextMatchType(instrumentType), reason, score);
+        }
+
+        private static String deriveContextMatchType(String instrumentType) {
+            if (instrumentType == null) return "SECTOR_CONTEXT_MATCH";
+            return switch (instrumentType.toUpperCase(Locale.ROOT)) {
+                case "FX" -> "FX_CONTEXT_MATCH";
+                case "COMMODITY" -> "COMMODITY_CONTEXT_MATCH";
+                case "INDEX" -> "MACRO_CONTEXT_MATCH";
+                default -> "SECTOR_CONTEXT_MATCH";
+            };
         }
     }
 
-    private record ScoredRelatedNews(News news, int score) {
+    private record ScoredRelatedNews(News news, int score, boolean hasDirectMatch) {
     }
 
     private record ValidationResult(

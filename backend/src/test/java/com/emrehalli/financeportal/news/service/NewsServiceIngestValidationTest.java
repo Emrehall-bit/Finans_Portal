@@ -475,6 +475,10 @@ class NewsServiceIngestValidationTest {
             NewsProviderSyncStateRepository syncStateRepository,
             List<NewsProvider> providers
     ) {
+        MarketQueryService mqs = mock(MarketQueryService.class);
+        com.emrehalli.financeportal.news.config.NewsRelationsProperties legacyProps =
+                mock(com.emrehalli.financeportal.news.config.NewsRelationsProperties.class);
+        when(legacyProps.isConservativeMode()).thenReturn(false);
         return new NewsService(
                 newsRepository,
                 syncStateRepository,
@@ -484,7 +488,9 @@ class NewsServiceIngestValidationTest {
                 mock(NewsNotificationProperties.class),
                 new NewsPresentationMapper(),
                 new NewsCategoryClassifier(),
-                mock(MarketQueryService.class)
+                mqs,
+                legacyProps,
+                new ConservativeNewsRelationService(newsRepository, mqs)
         );
     }
 

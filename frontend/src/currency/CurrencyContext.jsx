@@ -19,34 +19,37 @@ export function CurrencyProvider({ children }) {
     let active = true;
 
     async function loadUsdRate() {
-      // 1. Canlı quote dene (Redis'ten gelir)
-      for (const sym of ["TCMB:USD:SELL", "USDTRY"]) {
+      for (const symbol of ["TCMB:USD:SELL", "USDTRY"]) {
         try {
-          const data = await getMarketBySymbol(sym);
+          const data = await getMarketBySymbol(symbol);
           const rate = Number(data?.price ?? data?.sellRate);
           if (Number.isFinite(rate) && rate > 1) {
-            if (active) setUsdRate(rate);
+            if (active) {
+              setUsdRate(rate);
+            }
             return;
           }
         } catch {
-          // sonraki adıma geç
+          // continue
         }
       }
 
-      // 2. DB'deki son kapanış fiyatına bak
       const today = new Date().toISOString().slice(0, 10);
       const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-      for (const sym of ["TCMB:USD:SELL", "USDTRY"]) {
+
+      for (const symbol of ["TCMB:USD:SELL", "USDTRY"]) {
         try {
-          const history = await getMarketHistory(sym, { from: monthAgo, to: today });
+          const history = await getMarketHistory(symbol, { from: monthAgo, to: today });
           const lastPoint = Array.isArray(history) && history.length > 0 ? history[history.length - 1] : null;
           const rate = Number(lastPoint?.closePrice ?? lastPoint?.close ?? lastPoint?.price);
           if (Number.isFinite(rate) && rate > 1) {
-            if (active) setUsdRate(rate);
+            if (active) {
+              setUsdRate(rate);
+            }
             return;
           }
         } catch {
-          // sonraki adıma geç
+          // continue
         }
       }
     }
@@ -69,9 +72,11 @@ export function CurrencyProvider({ children }) {
 
   const convertAmount = useCallback(
     (tryValue) => {
-      const n = Number(tryValue);
-      if (!Number.isFinite(n)) return null;
-      return currency === "USD" && usdRate ? n / usdRate : n;
+      const numeric = Number(tryValue);
+      if (!Number.isFinite(numeric)) {
+        return null;
+      }
+      return currency === "USD" && usdRate ? numeric / usdRate : numeric;
     },
     [currency, usdRate],
   );
@@ -102,6 +107,8 @@ export function useCurrency() {
 
 export function CurrencyToggle({ className }) {
   const { currency, setCurrency, usdRate } = useCurrency();
+  const usdAvailable = Boolean(usdRate);
+
   return (
     <div className={`currency-toggle${className ? ` ${className}` : ""}`}>
       <button
@@ -113,9 +120,13 @@ export function CurrencyToggle({ className }) {
       </button>
       <button
         type="button"
-        className={`currency-toggle-btn${currency === "USD" ? " is-active" : ""}`}
-        onClick={() => setCurrency("USD")}
-        disabled={!usdRate}
+        className={`currency-toggle-btn${currency === "USD" ? " is-active" : ""}${usdAvailable ? "" : " is-unavailable"}`}
+        onClick={() => {
+          if (usdAvailable) {
+            setCurrency("USD");
+          }
+        }}
+        aria-disabled={!usdAvailable}
         title={usdRate ? `1 USD ≈ ${usdRate.toFixed(2)} TRY` : "Kur verisi yükleniyor..."}
       >
         $ USD
