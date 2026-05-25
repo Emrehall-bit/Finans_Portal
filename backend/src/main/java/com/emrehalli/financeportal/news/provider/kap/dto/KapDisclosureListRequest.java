@@ -27,3 +27,6 @@ public class KapDisclosureListRequest {
     public List<String> getMemberTypes() { return memberTypes; }
     public Object getMkkMemberOid() { return mkkMemberOid; }
 }
+
+
+

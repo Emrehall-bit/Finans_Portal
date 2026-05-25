@@ -31,3 +31,6 @@ public class TefasFundListRequest {
     private String fonTurKod;
     private String getiriOrani = "1";
 }
+
+
+

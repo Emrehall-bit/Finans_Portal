@@ -60,3 +60,6 @@ public class MarketInsightGenerator {
         return String.format("%.2f", value.doubleValue());
     }
 }
+
+
+

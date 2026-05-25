@@ -14,9 +14,9 @@ import com.emrehalli.financeportal.ai.service.AiResponseCacheService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
 import com.emrehalli.financeportal.ai.service.AiResponseLogHelper;
-import com.emrehalli.financeportal.company.dto.CompanyFinancialReportResponse;
-import com.emrehalli.financeportal.company.dto.CompanyFundamentalsResponse;
-import com.emrehalli.financeportal.company.dto.FinancialValueItemResponse;
+import com.emrehalli.financeportal.company.dto.response.CompanyFinancialReportResponse;
+import com.emrehalli.financeportal.company.dto.response.CompanyFundamentalsResponse;
+import com.emrehalli.financeportal.company.dto.response.FinancialValueItemResponse;
 import com.emrehalli.financeportal.company.service.CompanyQueryService;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
@@ -736,3 +736,6 @@ public class ComparisonAnalysisService {
 
     private record LatestFinancials(BigDecimal revenue, BigDecimal netProfit) {}
 }
+
+
+

@@ -103,3 +103,6 @@ public class TechnicalAnalysisExceptionHandler {
         return appMessageSource.get("technical.analysis.error.title");
     }
 }
+
+
+

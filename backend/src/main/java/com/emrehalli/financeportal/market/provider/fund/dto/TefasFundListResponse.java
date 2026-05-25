@@ -17,3 +17,6 @@ public class TefasFundListResponse {
     private String errorMessage;
     private List<TefasFundListResponseItem> resultList;
 }
+
+
+

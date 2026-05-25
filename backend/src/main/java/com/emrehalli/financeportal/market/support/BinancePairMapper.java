@@ -160,3 +160,6 @@ public class BinancePairMapper {
                 && !symbol.endsWith("USTRY");
     }
 }
+
+
+

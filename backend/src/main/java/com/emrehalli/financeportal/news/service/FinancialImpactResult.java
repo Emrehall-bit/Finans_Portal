@@ -22,3 +22,6 @@ public record FinancialImpactResult(
                 "KAP resmi bildirimi – her zaman piyasa etkili", List.of("KAP"));
     }
 }
+
+
+

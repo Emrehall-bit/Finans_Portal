@@ -48,3 +48,6 @@ class GenericArticleExtractorTest {
         assertTrue(extractor.supports(NewsProviderType.KAP));
     }
 }
+
+
+

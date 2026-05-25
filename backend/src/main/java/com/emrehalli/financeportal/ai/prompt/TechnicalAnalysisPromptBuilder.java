@@ -82,3 +82,6 @@ public class TechnicalAnalysisPromptBuilder implements AiPromptBuilder {
         return v == null ? "-" : v.stripTrailingZeros().toPlainString();
     }
 }
+
+
+

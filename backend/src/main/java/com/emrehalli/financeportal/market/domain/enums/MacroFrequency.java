@@ -5,3 +5,6 @@ public enum MacroFrequency {
     MONTHLY,
     QUARTERLY
 }
+
+
+

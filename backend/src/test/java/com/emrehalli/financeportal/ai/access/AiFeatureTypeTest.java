@@ -22,3 +22,6 @@ class AiFeatureTypeTest {
         assertThat(AiFeatureType.PORTFOLIO_AI.isPremiumRequired()).isTrue();
     }
 }
+
+
+

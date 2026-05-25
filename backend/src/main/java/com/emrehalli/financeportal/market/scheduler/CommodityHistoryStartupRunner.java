@@ -68,3 +68,6 @@ public class CommodityHistoryStartupRunner {
         log.info("CommodityHistoryStartupRunner: startup catch-up finished. sourceSaved={}", sourceSaved);
     }
 }
+
+
+

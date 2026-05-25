@@ -62,3 +62,6 @@ public class CommoditySymbolRegistry {
         return CODE_TO_NAME.getOrDefault(code, code);
     }
 }
+
+
+

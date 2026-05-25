@@ -7,3 +7,6 @@ public interface HistoricalPriceReader {
 
     List<HistoricalPricePoint> read(String symbol, LocalDate from, LocalDate to);
 }
+
+
+

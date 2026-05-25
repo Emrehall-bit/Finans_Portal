@@ -23,3 +23,6 @@ public record AiTechnicalAnalysisResponse(
         RISKY
     }
 }
+
+
+

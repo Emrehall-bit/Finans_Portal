@@ -10,3 +10,6 @@ public record TcmbHistoricalFxValue(
         BigDecimal priceValue
 ) {
 }
+
+
+

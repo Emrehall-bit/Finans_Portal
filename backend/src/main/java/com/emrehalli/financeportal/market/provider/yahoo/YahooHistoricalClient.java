@@ -159,3 +159,6 @@ public class YahooHistoricalClient {
         return value != null && !value.isBlank();
     }
 }
+
+
+

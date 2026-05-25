@@ -1,4 +1,4 @@
-package com.emrehalli.financeportal.admin.moderation.service;
+package com.emrehalli.financeportal.moderation.service;
 
 import com.emrehalli.financeportal.admin.moderation.entity.UserModeration;
 import com.emrehalli.financeportal.admin.moderation.enums.ModerationStatus;
@@ -100,3 +100,6 @@ class UserModerationServiceTest {
                 .doesNotThrowAnyException();
     }
 }
+
+
+

@@ -1,6 +1,6 @@
 package com.emrehalli.financeportal.ai.insight;
 
-import com.emrehalli.financeportal.company.dto.CompanyFundamentalsResponse;
+import com.emrehalli.financeportal.company.dto.response.CompanyFundamentalsResponse;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -216,3 +216,6 @@ public class FundamentalInsightGenerator {
         return s.endsWith(".0") ? s.substring(0, s.length() - 2) : s;
     }
 }
+
+
+

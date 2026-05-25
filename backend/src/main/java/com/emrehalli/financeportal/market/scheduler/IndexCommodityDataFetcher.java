@@ -115,3 +115,6 @@ public class IndexCommodityDataFetcher {
         return fetchedCount;
     }
 }
+
+
+

@@ -239,3 +239,6 @@ public class FuturesService {
     private record FuturesMetadata(String contractName, BigDecimal dailyChangePercent, LocalDate expiryDate) {
     }
 }
+
+
+

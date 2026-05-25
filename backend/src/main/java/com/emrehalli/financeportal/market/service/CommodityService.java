@@ -423,3 +423,6 @@ public class CommodityService {
         return value == null || value.isBlank();
     }
 }
+
+
+

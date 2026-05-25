@@ -1,11 +1,11 @@
 package com.emrehalli.financeportal.company.service;
 
-import com.emrehalli.financeportal.company.entity.CompanyFinancialReport;
-import com.emrehalli.financeportal.company.entity.CompanyFinancialValue;
-import com.emrehalli.financeportal.company.enums.ParseStatus;
-import com.emrehalli.financeportal.company.parser.FinancialItemKey;
-import com.emrehalli.financeportal.company.repository.CompanyFinancialReportRepository;
-import com.emrehalli.financeportal.company.repository.CompanyFinancialValueRepository;
+import com.emrehalli.financeportal.company.domain.entity.CompanyFinancialReport;
+import com.emrehalli.financeportal.company.domain.entity.CompanyFinancialValue;
+import com.emrehalli.financeportal.company.domain.enums.ParseStatus;
+import com.emrehalli.financeportal.company.domain.enums.FinancialItemKey;
+import com.emrehalli.financeportal.company.persistence.CompanyFinancialReportRepository;
+import com.emrehalli.financeportal.company.persistence.CompanyFinancialValueRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -107,3 +107,6 @@ public class FinancialQuarterNormalizer {
         return value;
     }
 }
+
+
+

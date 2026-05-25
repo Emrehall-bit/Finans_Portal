@@ -50,7 +50,7 @@ function NewsCardContent({ item, onClick, assetKey }) {
   const providerLabel = getNewsProviderLabel(item?.provider);
   const sourceName = getNewsSourceName(item);
   const logoUrl = getNewsFallbackLogoUrl(item);
-  const publishedAtLabel = formatNewsPublishedAt(item?.publishedAt);
+  const publishedAtLabel = formatNewsPublishedAt(item);
   const previewText = getNewsPreviewText(item, t("news.previewMissing"));
   const sourceUrl = getNewsSourceUrl(item);
   const disclosureTypeLabel = getNewsDisclosureTypeLabel(item?.disclosureType);
@@ -72,7 +72,7 @@ function NewsCardContent({ item, onClick, assetKey }) {
 
           <div className="news-kap-chip-row">
             {item?.relatedSymbol ? <span className="news-kap-chip-symbol">{item.relatedSymbol}</span> : null}
-            <time dateTime={item?.publishedAt || ""}>{publishedAtLabel}</time>
+            <time dateTime={item?.publishedAt || item?.createdAt || item?.updatedAt || ""}>{publishedAtLabel}</time>
             <span>{sourceName}</span>
           </div>
 
@@ -115,7 +115,7 @@ function NewsCardContent({ item, onClick, assetKey }) {
           <div className="news-card-meta">
             <span className="news-card-provider">{sourceName}</span>
             <span className="news-card-dot" />
-            <time dateTime={item?.publishedAt || ""}>{publishedAtLabel}</time>
+            <time dateTime={item?.publishedAt || item?.createdAt || item?.updatedAt || ""}>{publishedAtLabel}</time>
           </div>
 
           {displayTags.length > 0 ? (

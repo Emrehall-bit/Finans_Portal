@@ -7,3 +7,6 @@ public record ComparisonSeriesDto(
         List<ComparisonPointDto> points
 ) {
 }
+
+
+

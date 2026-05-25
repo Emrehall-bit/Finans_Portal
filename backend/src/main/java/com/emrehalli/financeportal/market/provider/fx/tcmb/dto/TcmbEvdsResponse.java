@@ -13,3 +13,6 @@ public class TcmbEvdsResponse {
 
     private List<Map<String, Object>> items = new ArrayList<>();
 }
+
+
+

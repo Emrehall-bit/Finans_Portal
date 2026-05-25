@@ -19,3 +19,6 @@ public enum IntervalType {
         return value;
     }
 }
+
+
+

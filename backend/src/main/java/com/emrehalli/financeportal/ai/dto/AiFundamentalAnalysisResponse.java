@@ -20,3 +20,6 @@ public record AiFundamentalAnalysisResponse(
         RISKY
     }
 }
+
+
+

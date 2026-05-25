@@ -29,3 +29,6 @@ public class AiPortfolioAnalysisController {
         return ResponseEntity.ok(portfolioAnalysisService.getPortfolioAnalysis(portfolioId));
     }
 }
+
+
+

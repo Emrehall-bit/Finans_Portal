@@ -1,17 +1,17 @@
 package com.emrehalli.financeportal.company.service;
 
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
-import com.emrehalli.financeportal.company.dto.CompanyRatioCalculationResponse;
-import com.emrehalli.financeportal.company.entity.CompanyFinancialReport;
-import com.emrehalli.financeportal.company.entity.CompanyFinancialValue;
-import com.emrehalli.financeportal.company.entity.CompanyProfile;
-import com.emrehalli.financeportal.company.entity.CompanyRatio;
-import com.emrehalli.financeportal.company.enums.ParseStatus;
-import com.emrehalli.financeportal.company.parser.FinancialItemKey;
-import com.emrehalli.financeportal.company.repository.CompanyFinancialReportRepository;
-import com.emrehalli.financeportal.company.repository.CompanyFinancialValueRepository;
-import com.emrehalli.financeportal.company.repository.CompanyProfileRepository;
-import com.emrehalli.financeportal.company.repository.CompanyRatioRepository;
+import com.emrehalli.financeportal.company.dto.response.CompanyRatioCalculationResponse;
+import com.emrehalli.financeportal.company.domain.entity.CompanyFinancialReport;
+import com.emrehalli.financeportal.company.domain.entity.CompanyFinancialValue;
+import com.emrehalli.financeportal.company.domain.entity.CompanyProfile;
+import com.emrehalli.financeportal.company.domain.entity.CompanyRatio;
+import com.emrehalli.financeportal.company.domain.enums.ParseStatus;
+import com.emrehalli.financeportal.company.domain.enums.FinancialItemKey;
+import com.emrehalli.financeportal.company.persistence.CompanyFinancialReportRepository;
+import com.emrehalli.financeportal.company.persistence.CompanyFinancialValueRepository;
+import com.emrehalli.financeportal.company.persistence.CompanyProfileRepository;
+import com.emrehalli.financeportal.company.persistence.CompanyRatioRepository;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -358,3 +358,6 @@ public class CompanyRatioService {
     record GrowthResult(BigDecimal value, String label) {
     }
 }
+
+
+

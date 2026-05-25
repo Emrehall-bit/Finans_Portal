@@ -87,3 +87,6 @@ class NewsPresentationMapperTest {
         assertThat(dto.getSourceUrl()).isEqualTo(news.getUrl());
     }
 }
+
+
+

@@ -10,3 +10,6 @@ public class KapDisclosureDetail {
     public Boolean getOldKap() { return oldKap; }
     public void setOldKap(Boolean oldKap) { this.oldKap = oldKap; }
 }
+
+
+

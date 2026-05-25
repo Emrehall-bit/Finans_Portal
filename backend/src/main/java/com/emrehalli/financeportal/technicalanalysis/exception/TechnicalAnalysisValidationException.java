@@ -8,3 +8,6 @@ public class TechnicalAnalysisValidationException extends TechnicalAnalysisExcep
         super(message, HttpStatus.BAD_REQUEST);
     }
 }
+
+
+

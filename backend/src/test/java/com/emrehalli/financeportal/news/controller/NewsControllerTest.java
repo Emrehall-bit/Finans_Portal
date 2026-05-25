@@ -88,3 +88,6 @@ class NewsControllerTest {
                 .andExpect(jsonPath("$.data.relatedNews[0].id").value(9L));
     }
 }
+
+
+

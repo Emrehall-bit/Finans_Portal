@@ -11,3 +11,6 @@ public enum MacroValueType {
     CONSUMER_CONFIDENCE_INDEX,
     CURRENT_ACCOUNT_BALANCE
 }
+
+
+

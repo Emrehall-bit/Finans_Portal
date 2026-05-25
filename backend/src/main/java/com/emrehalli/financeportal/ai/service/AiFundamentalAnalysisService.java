@@ -7,9 +7,9 @@ import com.emrehalli.financeportal.ai.prompt.FundamentalAnalysisPromptBuilder;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
 import com.emrehalli.financeportal.ai.provider.AiTaskType;
-import com.emrehalli.financeportal.company.dto.CompanyFinancialReportResponse;
-import com.emrehalli.financeportal.company.dto.CompanyFundamentalsResponse;
-import com.emrehalli.financeportal.company.dto.FinancialValueItemResponse;
+import com.emrehalli.financeportal.company.dto.response.CompanyFinancialReportResponse;
+import com.emrehalli.financeportal.company.dto.response.CompanyFundamentalsResponse;
+import com.emrehalli.financeportal.company.dto.response.FinancialValueItemResponse;
 import com.emrehalli.financeportal.company.service.CompanyQueryService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -385,3 +385,6 @@ public class AiFundamentalAnalysisService {
     private record LatestFinancials(BigDecimal revenue, BigDecimal netProfit) {
     }
 }
+
+
+

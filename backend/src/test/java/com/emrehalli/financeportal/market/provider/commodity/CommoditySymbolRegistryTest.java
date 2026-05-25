@@ -56,3 +56,6 @@ class CommoditySymbolRegistryTest {
         assertThat(registry.toDisplayName("UNKNOWN")).isEqualTo("UNKNOWN");
     }
 }
+
+
+

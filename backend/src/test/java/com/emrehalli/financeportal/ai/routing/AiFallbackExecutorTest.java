@@ -145,3 +145,6 @@ class AiFallbackExecutorTest {
         verify(fallbackProvider, never()).generate(any());
     }
 }
+
+
+

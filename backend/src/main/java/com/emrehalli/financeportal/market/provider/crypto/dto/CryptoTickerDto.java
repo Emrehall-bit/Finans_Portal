@@ -22,3 +22,6 @@ public class CryptoTickerDto {
     private BigDecimal dailyChangePercent;
     private LocalDateTime dataTimestamp;
 }
+
+
+

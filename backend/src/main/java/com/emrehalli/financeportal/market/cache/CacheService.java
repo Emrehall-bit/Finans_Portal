@@ -20,3 +20,6 @@ public interface CacheService {
 
     void evictByPattern(String pattern);
 }
+
+
+

@@ -22,3 +22,6 @@ public record ArticleExtractionResult(
         return value != null && !value.isBlank();
     }
 }
+
+
+

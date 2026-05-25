@@ -23,3 +23,6 @@ public class MarketAggregateResponse {
     private List<Object> futures;
     private List<Object> bonds;
 }
+
+
+

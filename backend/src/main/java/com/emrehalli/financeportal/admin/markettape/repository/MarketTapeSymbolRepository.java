@@ -9,3 +9,6 @@ public interface MarketTapeSymbolRepository extends JpaRepository<MarketTapeSymb
 
     List<MarketTapeSymbol> findAllByEnabledTrueOrderByDisplayOrderAscIdAsc();
 }
+
+
+

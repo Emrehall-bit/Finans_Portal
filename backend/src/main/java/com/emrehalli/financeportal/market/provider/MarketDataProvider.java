@@ -11,3 +11,6 @@ public interface MarketDataProvider {
 
     List<?> fetch();
 }
+
+
+

@@ -15,3 +15,6 @@ public class TefasFundPriceRequest {
     private String dil = "TR";
     private int periyod;
 }
+
+
+

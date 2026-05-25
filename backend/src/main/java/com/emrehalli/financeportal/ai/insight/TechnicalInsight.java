@@ -7,3 +7,6 @@ public record TechnicalInsight(
         String trendSummary,
         String momentumSummary
 ) {}
+
+
+

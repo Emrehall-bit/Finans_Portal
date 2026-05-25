@@ -14,3 +14,6 @@ public class KapDisclosureItem {
     public KapDisclosureDetail getDisclosureDetail() { return disclosureDetail; }
     public void setDisclosureDetail(KapDisclosureDetail disclosureDetail) { this.disclosureDetail = disclosureDetail; }
 }
+
+
+

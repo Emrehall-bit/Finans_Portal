@@ -9,3 +9,6 @@ public interface ArticleExtractor {
 
     ArticleExtractionResult extract(Document document, String baseUrl);
 }
+
+
+

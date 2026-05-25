@@ -13,3 +13,6 @@ public record NewsImpactContext(
         String initialSentiment,
         String initialRiskLevel
 ) {}
+
+
+

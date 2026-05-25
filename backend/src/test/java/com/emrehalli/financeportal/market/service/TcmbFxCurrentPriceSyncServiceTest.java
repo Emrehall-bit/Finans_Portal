@@ -94,3 +94,6 @@ class TcmbFxCurrentPriceSyncServiceTest {
         assertThat(eurRate.getDataTimestamp()).isEqualTo(LocalDateTime.of(2024, 1, 6, 0, 0));
     }
 }
+
+
+

@@ -39,3 +39,6 @@ public class UnifiedAiAnalysisController {
         return ResponseEntity.ok(unifiedAiAnalysisService.getUnifiedAnalysis(symbol, type));
     }
 }
+
+
+

@@ -112,3 +112,6 @@ public class AiResponseCacheService {
     public record CachedValue<T>(T value, Duration ttl) {}
     public record LookupResult<T>(T value, boolean cacheHit) {}
 }
+
+
+

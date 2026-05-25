@@ -234,3 +234,6 @@ public class GeminiAiClient implements LlmClient {
     private record GeminiAttempt(Optional<String> text, boolean retryable) {
     }
 }
+
+
+

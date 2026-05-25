@@ -11,3 +11,6 @@ public record FinancialInsight(String text, Category category) {
     public static FinancialInsight growth(String text)    { return new FinancialInsight(text, Category.GROWTH); }
     public static FinancialInsight valuation(String text) { return new FinancialInsight(text, Category.VALUATION); }
 }
+
+
+

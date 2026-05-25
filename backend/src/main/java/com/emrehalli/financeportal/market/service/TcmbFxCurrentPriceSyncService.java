@@ -97,3 +97,6 @@ public class TcmbFxCurrentPriceSyncService {
         private LocalDateTime sellTimestamp;
     }
 }
+
+
+

@@ -21,3 +21,6 @@ public class CreateUserNotificationRequest {
 
     private NotificationType type;
 }
+
+
+

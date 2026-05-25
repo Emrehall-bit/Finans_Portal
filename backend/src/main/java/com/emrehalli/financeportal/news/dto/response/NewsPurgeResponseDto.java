@@ -10,3 +10,6 @@ public class NewsPurgeResponseDto {
     private final String provider;
     private final long deletedCount;
 }
+
+
+

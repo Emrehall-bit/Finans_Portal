@@ -61,3 +61,6 @@ public class AiContextBuilder {
         return "=== EKRAN BAĞLAMI: DASHBOARD ===\n" + ctx.screenNote();
     }
 }
+
+
+

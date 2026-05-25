@@ -352,3 +352,6 @@ class ConservativeNewsRelationServiceTest {
                 .build();
     }
 }
+
+
+

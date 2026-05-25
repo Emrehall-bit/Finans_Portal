@@ -78,3 +78,6 @@ public class MacroIndicator {
         updatedAt = LocalDateTime.now();
     }
 }
+
+
+

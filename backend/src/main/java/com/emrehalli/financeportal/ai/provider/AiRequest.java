@@ -11,3 +11,6 @@ public record AiRequest(
         return new AiRequest(taskType, prompt, null, null, null);
     }
 }
+
+
+

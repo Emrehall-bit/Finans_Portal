@@ -177,3 +177,6 @@ public class NewsPresentationMapper {
         return trimmed.isEmpty() ? null : trimmed;
     }
 }
+
+
+

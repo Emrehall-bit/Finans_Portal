@@ -252,3 +252,6 @@ class TcmbMacroProviderTest {
         assertThat(results).allMatch(r -> r.valueType() == MacroValueType.CURRENT_ACCOUNT_BALANCE);
     }
 }
+
+
+

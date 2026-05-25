@@ -64,3 +64,6 @@ public class GuardianNewsProperties {
         return enabled && apiKey != null && !apiKey.isBlank();
     }
 }
+
+
+

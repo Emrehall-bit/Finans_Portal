@@ -30,3 +30,6 @@ public class MarketTapeSymbol {
     @Column(name = "enabled", nullable = false)
     private Boolean enabled = Boolean.TRUE;
 }
+
+
+

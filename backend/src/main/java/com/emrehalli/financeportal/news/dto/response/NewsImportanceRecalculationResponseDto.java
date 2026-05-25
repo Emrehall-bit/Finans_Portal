@@ -13,3 +13,6 @@ public class NewsImportanceRecalculationResponseDto {
     private int maxScore;
     private double averageScore;
 }
+
+
+

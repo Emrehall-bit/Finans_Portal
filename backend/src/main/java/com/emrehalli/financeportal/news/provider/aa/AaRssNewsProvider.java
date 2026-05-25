@@ -88,3 +88,6 @@ public class AaRssNewsProvider implements NewsProvider, ProviderSyncDiagnosticsA
         return aaRssNewsClient.getLastDiagnostics();
     }
 }
+
+
+

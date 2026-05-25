@@ -148,3 +148,6 @@ public class YahooFinanceQuoteClient {
             Long volume
     ) {}
 }
+
+
+

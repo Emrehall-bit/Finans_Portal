@@ -13,3 +13,6 @@ public record UnifiedAnalysisResponse(
         boolean fallbackUsed,
         AiResponseMetadata metadata
 ) {}
+
+
+

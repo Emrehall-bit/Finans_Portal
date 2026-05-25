@@ -11,3 +11,6 @@ public record AiResponse(
         return new AiResponse(content, provider, true, model, durationMs);
     }
 }
+
+
+

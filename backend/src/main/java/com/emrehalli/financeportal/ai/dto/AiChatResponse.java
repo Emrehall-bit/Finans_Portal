@@ -6,3 +6,6 @@ public record AiChatResponse(
         boolean fallbackUsed,
         AiResponseMetadata metadata
 ) {}
+
+
+

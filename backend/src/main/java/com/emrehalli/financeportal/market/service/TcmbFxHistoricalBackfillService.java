@@ -258,3 +258,6 @@ public class TcmbFxHistoricalBackfillService {
     private record ResolvedDefinition(TcmbFxSeriesDefinition definition, MarketInstrument instrument) {
     }
 }
+
+
+

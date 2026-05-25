@@ -63,3 +63,6 @@ public class CommodityHistoryScheduler {
         log.info("CommodityHistoryScheduler: nightly pipeline finished. sourceSaved={}", sourceSaved);
     }
 }
+
+
+

@@ -16,3 +16,6 @@ public record MarketQuoteResponse(
         String instrumentType
 ) {
 }
+
+
+

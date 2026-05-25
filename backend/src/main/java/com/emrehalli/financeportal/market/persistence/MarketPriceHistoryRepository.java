@@ -125,3 +125,6 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
             Instant priceTimestamp
     );
 }
+
+
+

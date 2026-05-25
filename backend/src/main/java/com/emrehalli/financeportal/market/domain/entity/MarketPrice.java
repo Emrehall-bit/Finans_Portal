@@ -58,3 +58,6 @@ public class MarketPrice {
     @Column(name = "source_name", nullable = false, length = 50)
     private SourceName sourceName;
 }
+
+
+

@@ -8,3 +8,6 @@ public class TechnicalAnalysisNotFoundException extends TechnicalAnalysisExcepti
         super(message, HttpStatus.NOT_FOUND);
     }
 }
+
+
+

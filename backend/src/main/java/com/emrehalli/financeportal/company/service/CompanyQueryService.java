@@ -1,10 +1,22 @@
 package com.emrehalli.financeportal.company.service;
 
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
-import com.emrehalli.financeportal.company.dto.*;
-import com.emrehalli.financeportal.company.entity.*;
-import com.emrehalli.financeportal.company.enums.ReportType;
-import com.emrehalli.financeportal.company.repository.*;
+import com.emrehalli.financeportal.company.domain.entity.CompanyDisclosure;
+import com.emrehalli.financeportal.company.domain.entity.CompanyFinancialReport;
+import com.emrehalli.financeportal.company.domain.entity.CompanyFinancialValue;
+import com.emrehalli.financeportal.company.domain.entity.CompanyProfile;
+import com.emrehalli.financeportal.company.domain.entity.CompanyRatio;
+import com.emrehalli.financeportal.company.domain.enums.ReportType;
+import com.emrehalli.financeportal.company.dto.response.CompanyDisclosureResponse;
+import com.emrehalli.financeportal.company.dto.response.CompanyFinancialReportResponse;
+import com.emrehalli.financeportal.company.dto.response.CompanyFundamentalsResponse;
+import com.emrehalli.financeportal.company.dto.response.CompanyProfileResponse;
+import com.emrehalli.financeportal.company.dto.response.FinancialValueItemResponse;
+import com.emrehalli.financeportal.company.persistence.CompanyDisclosureRepository;
+import com.emrehalli.financeportal.company.persistence.CompanyFinancialReportRepository;
+import com.emrehalli.financeportal.company.persistence.CompanyFinancialValueRepository;
+import com.emrehalli.financeportal.company.persistence.CompanyProfileRepository;
+import com.emrehalli.financeportal.company.persistence.CompanyRatioRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -254,3 +266,6 @@ public class CompanyQueryService {
         };
     }
 }
+
+
+

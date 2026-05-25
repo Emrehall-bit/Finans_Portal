@@ -25,3 +25,6 @@ public record RssArticleEnrichment(
         return value != null && !value.isBlank();
     }
 }
+
+
+

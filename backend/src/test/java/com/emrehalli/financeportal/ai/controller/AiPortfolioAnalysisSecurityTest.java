@@ -141,3 +141,6 @@ class AiPortfolioAnalysisSecurityTest {
                 .authorities(new SimpleGrantedAuthority(role));
     }
 }
+
+
+

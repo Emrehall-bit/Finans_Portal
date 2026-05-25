@@ -1,4 +1,4 @@
-import { formatDateTime } from "../../utils/formatters.js";
+import { formatNewsDate } from "../../utils/dateUtils.js";
 
 const PROVIDER_LABELS = {
   AA_RSS: "Anadolu Ajansı",
@@ -162,8 +162,13 @@ export function getNewsPreviewText(item, fallback = "Icerik onizlemesi bulunmuyo
   return fallback;
 }
 
-export function formatNewsPublishedAt(value, emptyLabel = "Tarih bilgisi alinamadi") {
-  return value ? formatDateTime(value) : emptyLabel;
+export function getNewsDateValue(item) {
+  return item?.publishedAt || item?.createdAt || item?.updatedAt || null;
+}
+
+export function formatNewsPublishedAt(item, emptyLabel = "Tarih bilgisi alinamadi") {
+  const formatted = formatNewsDate(getNewsDateValue(item));
+  return formatted || emptyLabel;
 }
 
 export function getNewsCategoryLabel(category) {

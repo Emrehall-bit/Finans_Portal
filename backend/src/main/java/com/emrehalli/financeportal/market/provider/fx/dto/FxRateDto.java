@@ -25,3 +25,6 @@ public class FxRateDto {
     private BigDecimal referencePrice;
     private LocalDateTime dataTimestamp;
 }
+
+
+

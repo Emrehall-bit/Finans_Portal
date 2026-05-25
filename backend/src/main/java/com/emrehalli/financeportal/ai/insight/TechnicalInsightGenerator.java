@@ -124,3 +124,6 @@ public class TechnicalInsightGenerator {
         return v == null ? "-" : v.stripTrailingZeros().toPlainString();
     }
 }
+
+
+

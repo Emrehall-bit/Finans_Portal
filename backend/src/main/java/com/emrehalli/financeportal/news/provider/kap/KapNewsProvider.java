@@ -90,3 +90,6 @@ public class KapNewsProvider implements NewsProvider {
         return kapNewsClient.fetchDisclosures(from, to);
     }
 }
+
+
+

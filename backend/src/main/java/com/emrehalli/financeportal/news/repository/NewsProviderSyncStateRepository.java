@@ -5,3 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface NewsProviderSyncStateRepository extends JpaRepository<NewsProviderSyncState, String> {
 }
+
+
+

@@ -9,3 +9,6 @@ public record ComparisonResult(
         List<ComparisonSeries> series
 ) {
 }
+
+
+

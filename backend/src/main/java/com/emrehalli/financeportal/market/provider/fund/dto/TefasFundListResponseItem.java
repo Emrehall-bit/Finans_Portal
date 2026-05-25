@@ -26,3 +26,6 @@ public class TefasFundListResponseItem {
     private BigDecimal getiriYb;
     private String riskDegeri;
 }
+
+
+

@@ -39,3 +39,6 @@ public class BistSymbolRegistry {
         return bistSymbol + ".IS";
     }
 }
+
+
+

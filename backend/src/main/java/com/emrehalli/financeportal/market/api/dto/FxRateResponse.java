@@ -28,3 +28,6 @@ public class FxRateResponse {
     private BigDecimal changePercent;
     private LocalDateTime priceTimestamp;
 }
+
+
+

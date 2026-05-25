@@ -59,3 +59,6 @@ public class AiPremiumAccessDeniedHandler implements AccessDeniedHandler {
             || uri.startsWith("/api/v1/ai/news-impact");
     }
 }
+
+
+

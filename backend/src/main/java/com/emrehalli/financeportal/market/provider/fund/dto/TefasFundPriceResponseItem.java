@@ -18,3 +18,6 @@ public class TefasFundPriceResponseItem {
     private String tarih;
     private BigDecimal fiyat;
 }
+
+
+

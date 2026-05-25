@@ -42,3 +42,6 @@ public class MovingAverageService {
         return value == null ? BigDecimal.ZERO : value;
     }
 }
+
+
+

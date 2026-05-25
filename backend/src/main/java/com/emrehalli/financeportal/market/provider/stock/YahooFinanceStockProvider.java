@@ -205,3 +205,6 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
         return value != null && !value.isBlank();
     }
 }
+
+
+

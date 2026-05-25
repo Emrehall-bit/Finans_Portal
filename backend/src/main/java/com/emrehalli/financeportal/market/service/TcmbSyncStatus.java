@@ -6,3 +6,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class TcmbSyncStatus extends AdminJobStatus {
 }
+
+
+

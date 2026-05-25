@@ -16,3 +16,6 @@ public record NewsImpactResponse(
         boolean fallbackUsed,
         AiResponseMetadata metadata
 ) {}
+
+
+

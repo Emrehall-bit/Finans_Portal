@@ -36,3 +36,6 @@ public class NewsImpactAnalysisController {
         return ResponseEntity.ok(newsImpactAnalysisService.getNewsImpactAnalysis(newsId));
     }
 }
+
+
+

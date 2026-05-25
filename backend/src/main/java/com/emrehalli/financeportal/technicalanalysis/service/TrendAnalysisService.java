@@ -79,3 +79,6 @@ public class TrendAnalysisService {
         return List.copyOf(signals);
     }
 }
+
+
+

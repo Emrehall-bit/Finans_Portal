@@ -94,3 +94,6 @@ public class KapDisclosureBasic {
     public Boolean getIsBlocked() { return isBlocked; }
     public void setIsBlocked(Boolean isBlocked) { this.isBlocked = isBlocked; }
 }
+
+
+

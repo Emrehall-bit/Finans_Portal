@@ -74,3 +74,6 @@ public class InstrumentComparisonService {
                 .divide(basePrice, 8, RoundingMode.HALF_UP);
     }
 }
+
+
+

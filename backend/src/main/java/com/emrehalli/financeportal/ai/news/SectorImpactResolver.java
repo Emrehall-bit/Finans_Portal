@@ -170,3 +170,6 @@ public class SectorImpactResolver {
         return s != null ? s.toLowerCase(Locale.ROOT) : "";
     }
 }
+
+
+

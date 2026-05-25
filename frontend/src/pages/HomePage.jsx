@@ -8,8 +8,8 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
-import { formatDateTime } from "../utils/formatters";
-import { buildNewsPlaceholderLabel, getNewsProviderLabel, getProviderBadgeColor } from "../components/news/newsCardUtils";
+import { formatNewsDate } from "../utils/dateUtils";
+import { buildNewsPlaceholderLabel, getNewsDateValue, getNewsProviderLabel, getProviderBadgeColor } from "../components/news/newsCardUtils";
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
@@ -128,7 +128,7 @@ export default function HomePage() {
                       <div>
                         <strong>{item.title || t("home.untitledNews")}</strong>
                         <p>{getNewsProviderLabel(item.provider || item.source)}</p>
-                        <span>{formatDateTime(item.publishedAt)}</span>
+                        <span>{formatNewsDate(getNewsDateValue(item))}</span>
                       </div>
                     </article>
                   ))}
@@ -158,7 +158,7 @@ export default function HomePage() {
                   title={(item.title || t("home.newsValue")).slice(0, 48)}
                   value={t("home.newsValue")}
                   subtitle={[item.provider, item.source].filter(Boolean).join(" | ") || "-"}
-                  trend={formatDateTime(item.publishedAt)}
+                  trend={formatNewsDate(getNewsDateValue(item))}
                   tone={idx % 2 === 0 ? "cool" : "warm"}
                 />
               ))

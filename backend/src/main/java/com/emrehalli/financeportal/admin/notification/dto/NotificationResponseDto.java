@@ -24,3 +24,6 @@ public class NotificationResponseDto {
     private boolean read;
     private LocalDateTime createdAt;
 }
+
+
+

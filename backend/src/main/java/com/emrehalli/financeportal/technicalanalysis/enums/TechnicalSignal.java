@@ -9,3 +9,6 @@ public enum TechnicalSignal {
     RSI_OVERSOLD,
     RSI_NEUTRAL
 }
+
+
+

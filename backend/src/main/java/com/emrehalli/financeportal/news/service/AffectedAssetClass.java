@@ -12,3 +12,6 @@ public enum AffectedAssetClass {
     CRYPTO,
     NONE
 }
+
+
+

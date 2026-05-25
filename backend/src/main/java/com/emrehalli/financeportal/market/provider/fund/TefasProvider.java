@@ -320,3 +320,6 @@ public class TefasProvider implements MarketDataProvider {
         }
     }
 }
+
+
+

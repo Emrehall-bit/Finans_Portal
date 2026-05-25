@@ -564,3 +564,6 @@ public class ConservativeNewsRelationService {
 
     private record ScoredCandidate(News candidate, int score) {}
 }
+
+
+

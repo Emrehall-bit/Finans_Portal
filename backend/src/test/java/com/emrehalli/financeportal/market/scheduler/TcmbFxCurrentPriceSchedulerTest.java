@@ -40,3 +40,6 @@ class TcmbFxCurrentPriceSchedulerTest {
         verify(tcmbFxCurrentPriceSyncService).syncCurrentPrices();
     }
 }
+
+
+

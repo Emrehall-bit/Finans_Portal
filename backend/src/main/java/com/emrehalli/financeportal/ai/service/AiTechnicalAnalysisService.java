@@ -279,3 +279,6 @@ public class AiTechnicalAnalysisService {
         return symbol.trim().toUpperCase(Locale.ROOT);
     }
 }
+
+
+

@@ -19,3 +19,6 @@ public class TechnicalAnalysisException extends RuntimeException {
         return status;
     }
 }
+
+
+

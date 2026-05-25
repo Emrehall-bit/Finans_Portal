@@ -80,3 +80,6 @@ public class ArticleImageFetcher {
         return new AtomicInteger(0);
     }
 }
+
+
+

@@ -35,6 +35,20 @@ test("returns date fallback when publishedAt is missing", () => {
   assert.equal(formatNewsPublishedAt(null), "Tarih bilgisi alinamadi");
 });
 
+test("uses publishedAt and parses timezone-less backend timestamps as UTC", () => {
+  assert.equal(
+    formatNewsPublishedAt({ publishedAt: "2026-05-24T16:04:57Z" }),
+    formatNewsPublishedAt({ publishedAt: "2026-05-24T16:04:57" }),
+  );
+});
+
+test("falls back to createdAt when publishedAt is missing", () => {
+  assert.equal(
+    formatNewsPublishedAt({ createdAt: "2026-05-24 16:04:57" }),
+    formatNewsPublishedAt({ publishedAt: "2026-05-24T16:04:57Z" }),
+  );
+});
+
 test("returns provider based fallback logo url", () => {
   assert.equal(
     getNewsFallbackLogoUrl({ provider: "CNBC_RSS" }),

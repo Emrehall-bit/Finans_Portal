@@ -50,3 +50,6 @@ public interface NotificationReadRepository extends JpaRepository<NotificationRe
             """)
     List<Notification> findUnreadBroadcastNotifications(@Param("userId") Long userId);
 }
+
+
+

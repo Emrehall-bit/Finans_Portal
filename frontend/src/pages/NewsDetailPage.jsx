@@ -9,9 +9,11 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import { useNewsDetail, useNewsRelated } from "../hooks/useNewsQueries";
-import { formatCurrency, formatDateTime, formatPercent } from "../utils/formatters";
+import { formatCurrency, formatPercent } from "../utils/formatters";
+import { formatNewsDate } from "../utils/dateUtils";
 import {
   buildNewsPlaceholderLabel,
+  getNewsDateValue,
   getNewsCategoryLabel,
   getNewsDisclosureTypeLabel,
   getNewsFallbackLogoUrl,
@@ -51,6 +53,7 @@ export default function NewsDetailPage() {
   const disclosureTypeLabel = getNewsDisclosureTypeLabel(item?.disclosureType);
   const providerLabel = getNewsProviderLabel(item?.provider || item?.source || "-");
   const displayTags = useMemo(() => getNewsDisplayTags(item, t), [item, t]);
+  const publishedAtLabel = formatNewsDate(getNewsDateValue(item));
 
   const detailParagraphs = useMemo(() => {
     const baseContent = item?.summary?.trim() || item?.contentPreview?.trim() || "";
@@ -128,7 +131,7 @@ export default function NewsDetailPage() {
                 <div className="news-detail-meta">
                   <span className="news-card-badge category">{getNewsCategoryLabel(item?.category) || t("newsDetail.defaultCategory")}</span>
                   <span className="news-card-badge provider">{providerLabel}</span>
-                  <span className="muted">{formatDateTime(item?.publishedAt)}</span>
+                  {publishedAtLabel ? <span className="muted">{publishedAtLabel}</span> : null}
                 </div>
               </div>
 
@@ -311,7 +314,7 @@ export default function NewsDetailPage() {
                         </strong>
                         <div className="news-related-meta">
                           <span title={relatedItem.sourceName || "-"}>{relatedItem.sourceName || "-"}</span>
-                          <span>{formatDateTime(relatedItem.publishedAt)}</span>
+                          <span>{formatNewsDate(getNewsDateValue(relatedItem))}</span>
                         </div>
                       </button>
                     ))}

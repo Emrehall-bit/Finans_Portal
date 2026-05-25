@@ -320,3 +320,6 @@ public class StockService {
         return value == null || value.isBlank();
     }
 }
+
+
+

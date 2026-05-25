@@ -10,3 +10,6 @@ public enum AiTaskType {
     NEWS_SUMMARY,
     NEWS_IMPACT_ANALYSIS
 }
+
+
+

@@ -25,3 +25,6 @@ public class FuturesContractDto {
     private LocalDate expiryDate;
     private LocalDateTime dataTimestamp;
 }
+
+
+

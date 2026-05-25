@@ -28,3 +28,6 @@ public class NewsSummaryPromptBuilder implements AiPromptBuilder {
                 """.formatted(symbol, trimmedNews);
     }
 }
+
+
+

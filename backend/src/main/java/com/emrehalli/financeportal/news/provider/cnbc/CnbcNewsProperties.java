@@ -65,3 +65,6 @@ public class CnbcNewsProperties {
         this.defaultRegionScope = defaultRegionScope;
     }
 }
+
+
+

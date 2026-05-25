@@ -251,3 +251,6 @@ public class CnbcRssNewsClient {
     private record ParseResult(List<NewsItemDto> items, int skippedByRelevance) {
     }
 }
+
+
+

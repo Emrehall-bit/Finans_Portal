@@ -20,3 +20,6 @@ public record TcmbFxSeriesDefinition(
         return seriesCode == null ? null : seriesCode.replace('.', '_');
     }
 }
+
+
+

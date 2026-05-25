@@ -51,3 +51,6 @@ public class CnbcRssNewsProvider implements NewsProvider, ProviderSyncDiagnostic
         return client.getLastDiagnostics();
     }
 }
+
+
+

@@ -27,3 +27,6 @@ public enum AiFeatureType {
         return premiumRequired;
     }
 }
+
+
+

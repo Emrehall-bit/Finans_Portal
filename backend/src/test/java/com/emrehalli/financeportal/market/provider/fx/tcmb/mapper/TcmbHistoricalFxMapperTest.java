@@ -71,3 +71,6 @@ class TcmbHistoricalFxMapperTest {
         assertThat(values.getFirst().priceValue()).isEqualByComparingTo(new BigDecimal("29.7500"));
     }
 }
+
+
+

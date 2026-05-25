@@ -8,3 +8,6 @@ public record UpdateMarketTapeConfigRequest(
         @NotNull List<String> symbols
 ) {
 }
+
+
+

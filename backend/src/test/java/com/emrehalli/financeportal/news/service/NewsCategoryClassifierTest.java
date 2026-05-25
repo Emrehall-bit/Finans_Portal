@@ -212,3 +212,6 @@ class NewsCategoryClassifierTest {
         assertThat(companyOnlyResult.tags()).doesNotContain(NewsCategoryClassifier.STOCKS);
     }
 }
+
+
+

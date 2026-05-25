@@ -13,3 +13,6 @@ public record PortfolioPerformanceResponse(
         points = points == null ? List.of() : List.copyOf(points);
     }
 }
+
+
+

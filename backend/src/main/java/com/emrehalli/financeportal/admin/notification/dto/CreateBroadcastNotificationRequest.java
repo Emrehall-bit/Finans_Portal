@@ -21,3 +21,6 @@ public class CreateBroadcastNotificationRequest {
 
     private NotificationType type;
 }
+
+
+

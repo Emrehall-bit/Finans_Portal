@@ -63,3 +63,6 @@ public class FundFetchStatus {
         return lastError;
     }
 }
+
+
+

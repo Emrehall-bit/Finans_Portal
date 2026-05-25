@@ -183,3 +183,6 @@ public class AiGenerationService {
         return normalized.length() <= RESPONSE_PREVIEW_LIMIT ? normalized : normalized.substring(0, RESPONSE_PREVIEW_LIMIT);
     }
 }
+
+
+

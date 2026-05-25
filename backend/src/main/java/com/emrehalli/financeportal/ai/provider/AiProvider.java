@@ -6,3 +6,6 @@ public interface AiProvider {
     boolean supports(AiTaskType taskType);
     boolean isConfigured();
 }
+
+
+

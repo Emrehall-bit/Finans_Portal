@@ -36,3 +36,6 @@ public class AiCacheEvictController {
         return ResponseEntity.ok(Map.of("evictedCount", count));
     }
 }
+
+
+

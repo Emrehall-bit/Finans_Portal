@@ -62,3 +62,6 @@ class IndexSymbolRegistryTest {
         assertThat(registry.toDisplayName("UNKNOWN")).isEqualTo("UNKNOWN");
     }
 }
+
+
+

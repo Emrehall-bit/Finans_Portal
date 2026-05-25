@@ -4,3 +4,6 @@ import java.util.List;
 
 public record MarketTapeConfigResponse(List<String> symbols) {
 }
+
+
+

@@ -12,3 +12,6 @@ public record MacroObservationParseResult(
         BigDecimal value,
         MacroValueType valueType
 ) {}
+
+
+

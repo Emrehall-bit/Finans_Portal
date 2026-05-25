@@ -1546,7 +1546,7 @@
   "economy": {
     "eyebrow": "Makroekonomi",
     "title": "Ekonomik Göstergeler",
-    "description": "TCMB EVDS kaynaklı Türkiye makroekonomik verileri: enflasyon, politika faizi, işgücü ve dış denge.",
+    "description": "TCMB kaynaklı Makro verileri bu sayfada görüntüleyebilirsiniz.",
     "loadError": "Veriler yüklenemedi.",
     "noData": "Bu seri için henüz veri yok.",
     "latestValue": "Son Değer",

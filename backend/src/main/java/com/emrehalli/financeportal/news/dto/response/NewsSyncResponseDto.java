@@ -48,3 +48,6 @@ public class NewsSyncResponseDto {
     private int savedCount;
     private double parseSuccessRatio;
 }
+
+
+

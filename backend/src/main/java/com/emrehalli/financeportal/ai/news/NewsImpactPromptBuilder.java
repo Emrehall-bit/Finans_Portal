@@ -55,3 +55,6 @@ public class NewsImpactPromptBuilder {
         return s != null && !s.isBlank();
     }
 }
+
+
+

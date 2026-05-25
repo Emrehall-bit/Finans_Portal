@@ -17,3 +17,6 @@ public class PriceHistoryDto {
     private BigDecimal closePrice;
     private BigDecimal volume;
 }
+
+
+

@@ -73,3 +73,6 @@ public class MarketProperties {
         private long commodity = 40;
     }
 }
+
+
+

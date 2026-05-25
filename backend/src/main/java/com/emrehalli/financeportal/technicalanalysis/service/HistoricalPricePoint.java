@@ -9,3 +9,6 @@ public record HistoricalPricePoint(
         BigDecimal close
 ) {
 }
+
+
+

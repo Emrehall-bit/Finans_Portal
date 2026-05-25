@@ -12,3 +12,6 @@ public record MacroSeriesRequest(
         String endDate,
         String dateFormat
 ) {}
+
+
+

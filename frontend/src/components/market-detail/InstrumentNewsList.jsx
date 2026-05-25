@@ -2,8 +2,8 @@ import { useTranslation } from "react-i18next";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
-import { formatDateTime } from "../../utils/formatters";
-import { getNewsProviderLabel } from "../news/newsCardUtils";
+import { formatNewsDate } from "../../utils/dateUtils";
+import { getNewsDateValue, getNewsProviderLabel } from "../news/newsCardUtils";
 
 export default function InstrumentNewsList({ loading, error, items }) {
   const { t } = useTranslation();
@@ -30,7 +30,7 @@ export default function InstrumentNewsList({ loading, error, items }) {
             <article key={item.id ?? item.externalId ?? item.url} className="instrument-news-card">
               <div className="instrument-news-meta">
                 <span>{getNewsProviderLabel(item.provider || item.source) || t("instrumentDetail.noSource")}</span>
-                <span>{formatDateTime(item.publishedAt)}</span>
+                <span>{formatNewsDate(getNewsDateValue(item))}</span>
               </div>
               <h4>{item.title || t("instrumentDetail.noTitle")}</h4>
               <p>{item.summary || t("instrumentDetail.noSummary")}</p>

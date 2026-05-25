@@ -19,3 +19,6 @@ public record StockPriceDto(
         Instant dataTimestamp
 ) {
 }
+
+
+

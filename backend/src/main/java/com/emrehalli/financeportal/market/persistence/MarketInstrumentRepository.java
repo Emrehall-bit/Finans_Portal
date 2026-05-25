@@ -49,3 +49,6 @@ public interface MarketInstrumentRepository extends JpaRepository<MarketInstrume
     List<MarketInstrument> findByInstrumentCodeContainingIgnoreCaseOrInstrumentNameContainingIgnoreCase(
             String code, String name, org.springframework.data.domain.Pageable pageable);
 }
+
+
+

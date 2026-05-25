@@ -31,3 +31,6 @@ public interface MarketPriceRepository extends JpaRepository<MarketPrice, Long> 
             """, nativeQuery = true)
     List<MarketPrice> findLatestPricesForInstruments(@Param("instrumentIds") List<Long> instrumentIds);
 }
+
+
+

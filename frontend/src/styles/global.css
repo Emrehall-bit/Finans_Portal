@@ -6789,6 +6789,69 @@ html[data-theme] button.sidebar-register-button:focus-visible {
   flex-wrap: wrap;
 }
 
+.admin-import-form {
+  align-items: start;
+}
+
+.admin-import-field {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-import-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.admin-import-button-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-import-result-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.admin-import-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.admin-import-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-import-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-import-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.admin-import-table th,
+.admin-import-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-import-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 .admin-console-button {
   position: relative;
   isolation: isolate;

@@ -9,3 +9,6 @@ public record ComparisonResponse(
         List<ComparisonSeriesDto> series
 ) {
 }
+
+
+

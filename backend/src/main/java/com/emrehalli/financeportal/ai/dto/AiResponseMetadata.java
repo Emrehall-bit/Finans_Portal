@@ -66,3 +66,6 @@ public record AiResponseMetadata(
         );
     }
 }
+
+
+

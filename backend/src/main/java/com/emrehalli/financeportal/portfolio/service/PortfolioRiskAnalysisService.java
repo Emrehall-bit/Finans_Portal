@@ -391,3 +391,6 @@ public class PortfolioRiskAnalysisService {
     private record RiskAlert(String title, String message, String tone) {
     }
 }
+
+
+

@@ -17,3 +17,6 @@ public class NewsSyncProviderResultDto {
     private int parseErrorCount;
     private String errorMessage;
 }
+
+
+

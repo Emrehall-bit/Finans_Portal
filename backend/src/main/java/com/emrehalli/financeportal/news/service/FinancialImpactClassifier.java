@@ -417,3 +417,6 @@ public class FinancialImpactClassifier {
         return value.length() <= max ? value : value.substring(0, max) + "…";
     }
 }
+
+
+

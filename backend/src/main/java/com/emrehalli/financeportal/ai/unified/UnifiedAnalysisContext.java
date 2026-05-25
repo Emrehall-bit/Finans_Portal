@@ -24,3 +24,6 @@ public record UnifiedAnalysisContext(
         // Derived reasoning — describes tech vs. fundamental alignment
         String conflictNote
 ) {}
+
+
+

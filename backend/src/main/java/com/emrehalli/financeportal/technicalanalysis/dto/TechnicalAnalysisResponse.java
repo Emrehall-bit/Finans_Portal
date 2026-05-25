@@ -17,3 +17,6 @@ public record TechnicalAnalysisResponse(
         List<TechnicalAnalysisPointDto> points
 ) {
 }
+
+
+

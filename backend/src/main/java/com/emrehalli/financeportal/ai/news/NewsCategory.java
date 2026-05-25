@@ -17,3 +17,6 @@ public enum NewsCategory {
     INVESTMENT,
     GENERAL
 }
+
+
+

@@ -9,3 +9,6 @@ public interface MacroIndicatorRepository extends JpaRepository<MacroIndicator, 
 
     Optional<MacroIndicator> findByCode(String code);
 }
+
+
+

@@ -82,3 +82,6 @@ public class RsiService {
         return value == null ? BigDecimal.ZERO : value;
     }
 }
+
+
+

@@ -22,3 +22,6 @@ public class RssProviderFetchResult {
     private String errorMessage;
     private List<String> lastErrors;
 }
+
+
+

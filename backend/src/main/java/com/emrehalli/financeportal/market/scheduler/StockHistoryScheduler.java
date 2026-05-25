@@ -72,3 +72,6 @@ public class StockHistoryScheduler {
         run.log(log, processedCount, successCount, failedCount);
     }
 }
+
+
+

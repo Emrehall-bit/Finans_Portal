@@ -30,3 +30,6 @@ public class NewsRelationsProperties {
         return !"legacy".equalsIgnoreCase(mode);
     }
 }
+
+
+

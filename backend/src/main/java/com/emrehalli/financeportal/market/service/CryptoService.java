@@ -234,3 +234,6 @@ public class CryptoService {
         return snapshot != null && snapshot.symbol() != null && !snapshot.symbol().isBlank();
     }
 }
+
+
+

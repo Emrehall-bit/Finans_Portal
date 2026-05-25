@@ -4,3 +4,6 @@ public record MarketInsight(
         String sentimentSummary,
         String breadthSummary
 ) {}
+
+
+

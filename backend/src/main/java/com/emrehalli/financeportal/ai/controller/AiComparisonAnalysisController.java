@@ -31,3 +31,6 @@ public class AiComparisonAnalysisController {
         return ResponseEntity.ok(comparisonAnalysisService.getComparisonAnalysis(left, right));
     }
 }
+
+
+

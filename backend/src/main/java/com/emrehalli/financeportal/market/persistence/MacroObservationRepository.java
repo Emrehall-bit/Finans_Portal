@@ -16,3 +16,6 @@ public interface MacroObservationRepository extends JpaRepository<MacroObservati
     boolean existsByIndicatorAndObservationDateAndValueType(
             MacroIndicator indicator, LocalDate observationDate, MacroValueType valueType);
 }
+
+
+

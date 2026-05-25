@@ -41,3 +41,6 @@ public class AiGatewayService {
         return fallbackExecutor.execute(AiRequest.of(taskType, prompt));
     }
 }
+
+
+

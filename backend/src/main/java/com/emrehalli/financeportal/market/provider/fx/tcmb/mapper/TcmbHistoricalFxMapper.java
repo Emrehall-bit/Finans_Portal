@@ -84,3 +84,6 @@ public class TcmbHistoricalFxMapper {
         return value == null ? null : String.valueOf(value);
     }
 }
+
+
+

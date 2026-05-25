@@ -64,3 +64,6 @@ public class MacroAdminController {
         return macroDataSyncService.syncAllFromTcmb();
     }
 }
+
+
+

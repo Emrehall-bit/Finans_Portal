@@ -395,3 +395,6 @@ public class PortfolioHoldingService {
         return currentPrice.subtract(previousClose).multiply(quantity);
     }
 }
+
+
+

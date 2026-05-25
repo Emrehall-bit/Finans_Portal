@@ -6,3 +6,6 @@ public enum NewsQualityStatus {
     SOURCE_LINK_ONLY,
     KAP_DISCLOSURE
 }
+
+
+

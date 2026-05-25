@@ -11,3 +11,6 @@ public record PortfolioPerformancePointDto(
         BigDecimal profitLossPercent
 ) {
 }
+
+
+

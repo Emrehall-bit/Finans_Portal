@@ -46,7 +46,7 @@ export default function FeaturedNewsHero({ item, onOpen }) {
           {languageLabel ? <span className="news-card-dot" /> : null}
           {languageLabel ? <span className="news-meta-badge">{languageLabel}</span> : null}
           <span className="news-card-dot" />
-          <span>{formatNewsPublishedAt(item.publishedAt)}</span>
+          <span>{formatNewsPublishedAt(item)}</span>
         </div>
         <p className="eyebrow">One Cikan Haber</p>
         <h2>{item.title || "Baslik bulunmuyor"}</h2>

@@ -5,3 +5,6 @@ package com.emrehalli.financeportal.ai.context;
  * Market sentiment enrichment can be added here in future iterations.
  */
 public record DashboardContext(String screenNote) {}
+
+
+

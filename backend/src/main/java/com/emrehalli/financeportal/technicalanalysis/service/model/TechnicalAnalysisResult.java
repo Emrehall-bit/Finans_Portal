@@ -22,3 +22,6 @@ public record TechnicalAnalysisResult(
         List<TechnicalAnalysisPoint> points
 ) {
 }
+
+
+

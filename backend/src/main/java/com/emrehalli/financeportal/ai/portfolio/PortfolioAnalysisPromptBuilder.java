@@ -92,3 +92,6 @@ public class PortfolioAnalysisPromptBuilder implements AiPromptBuilder {
         return value == null ? "-" : value.stripTrailingZeros().toPlainString();
     }
 }
+
+
+

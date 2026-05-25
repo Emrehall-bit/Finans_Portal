@@ -9,3 +9,6 @@ public record ComparisonPointDto(
         BigDecimal normalizedValue
 ) {
 }
+
+
+

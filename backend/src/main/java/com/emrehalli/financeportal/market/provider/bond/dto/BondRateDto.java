@@ -24,3 +24,6 @@ public class BondRateDto {
     private LocalDate maturityDate;
     private LocalDateTime dataTimestamp;
 }
+
+
+

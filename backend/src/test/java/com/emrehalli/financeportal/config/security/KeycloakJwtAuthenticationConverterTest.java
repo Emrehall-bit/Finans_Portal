@@ -42,3 +42,6 @@ class KeycloakJwtAuthenticationConverterTest {
         assertThat(converter.extractRole(jwt)).isEqualTo(UserRole.USER_PREMIUM);
     }
 }
+
+
+

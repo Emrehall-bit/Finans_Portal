@@ -1,11 +1,11 @@
 package com.emrehalli.financeportal.company.service;
 
-import com.emrehalli.financeportal.company.dto.CompanyRatioCalculationResponse;
-import com.emrehalli.financeportal.company.entity.*;
-import com.emrehalli.financeportal.company.enums.ParseStatus;
-import com.emrehalli.financeportal.company.enums.ReportType;
-import com.emrehalli.financeportal.company.parser.FinancialItemKey;
-import com.emrehalli.financeportal.company.repository.*;
+import com.emrehalli.financeportal.company.dto.response.CompanyRatioCalculationResponse;
+import com.emrehalli.financeportal.company.domain.entity.*;
+import com.emrehalli.financeportal.company.domain.enums.ParseStatus;
+import com.emrehalli.financeportal.company.domain.enums.ReportType;
+import com.emrehalli.financeportal.company.domain.enums.FinancialItemKey;
+import com.emrehalli.financeportal.company.persistence.*;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -279,3 +279,6 @@ class CompanyRatioServiceTest {
                 .build();
     }
 }
+
+
+

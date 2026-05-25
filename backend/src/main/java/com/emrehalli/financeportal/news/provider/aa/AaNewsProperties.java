@@ -67,3 +67,6 @@ public class AaNewsProperties {
     public List<FeedConfig> getFeeds() { return feeds; }
     public void setFeeds(List<FeedConfig> feeds) { this.feeds = feeds != null ? feeds : new ArrayList<>(); }
 }
+
+
+

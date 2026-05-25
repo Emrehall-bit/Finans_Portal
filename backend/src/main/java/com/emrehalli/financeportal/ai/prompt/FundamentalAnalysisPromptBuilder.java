@@ -2,7 +2,7 @@ package com.emrehalli.financeportal.ai.prompt;
 
 import com.emrehalli.financeportal.ai.insight.FinancialInsight;
 import com.emrehalli.financeportal.ai.insight.FundamentalInsightGenerator;
-import com.emrehalli.financeportal.company.dto.CompanyFundamentalsResponse;
+import com.emrehalli.financeportal.company.dto.response.CompanyFundamentalsResponse;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -100,3 +100,6 @@ public class FundamentalAnalysisPromptBuilder implements AiPromptBuilder {
         return s != null ? s : "-";
     }
 }
+
+
+

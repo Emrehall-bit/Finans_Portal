@@ -115,3 +115,6 @@ class AiProviderRouterTest {
         return new AiProperties();
     }
 }
+
+
+

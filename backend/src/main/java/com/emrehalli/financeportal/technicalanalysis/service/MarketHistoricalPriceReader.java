@@ -26,3 +26,6 @@ public class MarketHistoricalPriceReader implements HistoricalPriceReader {
                 .toList();
     }
 }
+
+
+

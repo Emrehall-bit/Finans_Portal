@@ -35,3 +35,6 @@ public class NewsStartupSyncListener {
         newsScheduler.runProviderSync(NewsProviderType.AA_RSS, "startup");
     }
 }
+
+
+

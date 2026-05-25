@@ -12,3 +12,6 @@ public record TechnicalAnalysisPoint(
         BigDecimal rsi14
 ) {
 }
+
+
+

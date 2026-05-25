@@ -83,3 +83,6 @@ public class AiContextEnricher {
         return Optional.of(new InstrumentContext(symbol, context.instrumentType(), technical, fundamental));
     }
 }
+
+
+

@@ -10,3 +10,6 @@ public record NewsRelatedResponseDto(
         List<RelatedNewsItemDto> relatedNews
 ) {
 }
+
+
+

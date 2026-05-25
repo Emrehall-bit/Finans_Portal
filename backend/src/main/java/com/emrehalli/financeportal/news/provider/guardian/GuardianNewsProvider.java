@@ -51,3 +51,6 @@ public class GuardianNewsProvider implements NewsProvider, ProviderSyncDiagnosti
         return client.getLastDiagnostics();
     }
 }
+
+
+

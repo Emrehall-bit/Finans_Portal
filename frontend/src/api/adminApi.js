@@ -146,6 +146,27 @@ export async function calculateCompanyRatios(ticker) {
   return normalizeApiResponse(response);
 }
 
+export async function importCompanyFinancialCsv({
+  file,
+  dryRun = false,
+  replaceExisting = true,
+  recalculateRatios = true,
+}) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("dryRun", String(dryRun));
+  formData.append("replaceExisting", String(replaceExisting));
+  formData.append("recalculateRatios", String(recalculateRatios));
+
+  const response = await axiosClient.post("/api/v1/admin/companies/financials/import", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return normalizeApiResponse(response);
+}
+
 export async function syncAllCompanyDisclosures() {
   const response = await axiosClient.post(`/api/v1/admin/companies/disclosures/sync-all`);
   return normalizeApiResponse(response);

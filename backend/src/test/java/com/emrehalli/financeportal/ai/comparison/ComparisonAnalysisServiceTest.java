@@ -11,7 +11,7 @@ import com.emrehalli.financeportal.ai.provider.AiTaskType;
 import com.emrehalli.financeportal.ai.service.AiGatewayService;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService;
 import com.emrehalli.financeportal.ai.service.AiResponseLogHelper;
-import com.emrehalli.financeportal.company.dto.CompanyFundamentalsResponse;
+import com.emrehalli.financeportal.company.dto.response.CompanyFundamentalsResponse;
 import com.emrehalli.financeportal.company.service.CompanyQueryService;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
@@ -230,3 +230,6 @@ class ComparisonAnalysisServiceTest {
                 .build();
     }
 }
+
+
+

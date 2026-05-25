@@ -22,3 +22,6 @@ public class ModerationResponseDto {
     private Long createdBy;
     private LocalDateTime createdAt;
 }
+
+
+

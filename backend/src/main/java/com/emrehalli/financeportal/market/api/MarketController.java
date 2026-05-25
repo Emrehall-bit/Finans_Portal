@@ -636,3 +636,6 @@ public class MarketController {
     private record PriceOnDateResult(String symbol, LocalDate date, BigDecimal price) {
     }
 }
+
+
+

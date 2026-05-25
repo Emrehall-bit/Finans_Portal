@@ -12,3 +12,6 @@ public enum ImpactType {
     GLOBAL_MARKET,
     NOT_MARKET_RELEVANT
 }
+
+
+

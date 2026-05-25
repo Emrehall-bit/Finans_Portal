@@ -6,3 +6,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class StockFetchStatus extends AdminJobStatus {
 }
+
+
+

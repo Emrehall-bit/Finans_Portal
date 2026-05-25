@@ -231,3 +231,6 @@ public class NewsImpactAnalysisService {
         );
     }
 }
+
+
+

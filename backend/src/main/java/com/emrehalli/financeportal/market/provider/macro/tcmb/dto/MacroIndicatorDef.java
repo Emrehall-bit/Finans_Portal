@@ -9,3 +9,6 @@ public record MacroIndicatorDef(
         MacroFrequency frequency,
         MacroUnit unit
 ) {}
+
+
+

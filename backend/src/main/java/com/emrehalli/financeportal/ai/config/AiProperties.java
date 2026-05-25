@@ -105,3 +105,6 @@ public class AiProperties {
     public RoutingProperties getRouting() { return routing; }
     public void setRouting(RoutingProperties routing) { this.routing = routing; }
 }
+
+
+
