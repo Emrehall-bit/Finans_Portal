@@ -3,7 +3,6 @@ import AppLayout from "./components/layout/AppLayout";
 import AlertsPage from "./pages/AlertsPage";
 import AnalysisPage from "./pages/AnalysisPage";
 import AdminDataPage from "./pages/AdminDataPage";
-import AdminFinancialImportPage from "./pages/AdminFinancialImportPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import DashboardPage from "./pages/DashboardPage";
 import EconomyPage from "./pages/EconomyPage";
@@ -44,7 +43,6 @@ function App() {
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<Navigate to="/admin/data" replace />} />
             <Route path="/admin/data" element={<AdminDataPage />} />
-            <Route path="/admin/financial-import" element={<AdminFinancialImportPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
           </Route>
         </Route>

@@ -5,6 +5,9 @@ import com.emrehalli.financeportal.company.domain.entity.CompanyRatio;
 import com.emrehalli.financeportal.company.dto.response.MockRatioSeedResponse;
 import com.emrehalli.financeportal.company.persistence.CompanyProfileRepository;
 import com.emrehalli.financeportal.company.persistence.CompanyRatioRepository;
+import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
+import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Service;
@@ -17,51 +20,88 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class CompanyMockRatioSeedService {
 
     private static final Logger logger = LogManager.getLogger(CompanyMockRatioSeedService.class);
 
+    private final MarketInstrumentRepository instrumentRepository;
     private final CompanyProfileRepository profileRepository;
     private final CompanyRatioRepository ratioRepository;
 
-    public CompanyMockRatioSeedService(CompanyProfileRepository profileRepository,
+    public CompanyMockRatioSeedService(MarketInstrumentRepository instrumentRepository,
+                                       CompanyProfileRepository profileRepository,
                                        CompanyRatioRepository ratioRepository) {
+        this.instrumentRepository = instrumentRepository;
         this.profileRepository = profileRepository;
         this.ratioRepository = ratioRepository;
     }
 
     @Transactional
     public MockRatioSeedResponse seedMockRatios() {
-        List<CompanyProfile> allActive = profileRepository.findByActiveTrue();
+        List<MarketInstrument> stocks = instrumentRepository.findAllByInstrumentType(InstrumentType.STOCK);
+
+        Map<String, CompanyProfile> existingProfiles = profileRepository.findAll().stream()
+                .collect(Collectors.toMap(
+                        p -> p.getTickerCode().toUpperCase(Locale.ROOT),
+                        Function.identity()
+                ));
+
         Set<Long> companyIdsWithRatios = new HashSet<>(ratioRepository.findDistinctCompanyIds());
 
+        int autoCreated = 0;
         int created = 0;
         int skipped = 0;
         List<String> errors = new ArrayList<>();
         OffsetDateTime now = OffsetDateTime.now();
 
-        for (CompanyProfile company : allActive) {
+        for (MarketInstrument instrument : stocks) {
+            String ticker = instrument.getInstrumentCode().toUpperCase(Locale.ROOT);
+
             try {
-                if (companyIdsWithRatios.contains(company.getId())) {
+                CompanyProfile profile = existingProfiles.get(ticker);
+
+                if (profile == null) {
+                    profile = profileRepository.save(CompanyProfile.builder()
+                            .tickerCode(ticker)
+                            .companyName(instrument.getInstrumentName())
+                            .sector("Genel")
+                            .market("BIST_ALL")
+                            .active(true)
+                            .createdAt(now)
+                            .updatedAt(now)
+                            .build());
+                    existingProfiles.put(ticker, profile);
+                    autoCreated++;
+                    logger.info("mock.profile.created ticker={}", ticker);
+                }
+
+                if (companyIdsWithRatios.contains(profile.getId())) {
                     skipped++;
                     continue;
                 }
-                CompanyRatio mock = buildMockRatio(company, now);
-                ratioRepository.save(mock);
+
+                ratioRepository.save(buildMockRatio(profile, now));
                 created++;
-                logger.info("mock.ratio.created ticker={}", company.getTickerCode());
+                logger.info("mock.ratio.created ticker={}", ticker);
+
             } catch (Exception e) {
-                errors.add(company.getTickerCode() + ": " + e.getMessage());
-                logger.warn("mock.ratio.failed ticker={} reason={}", company.getTickerCode(), e.getMessage());
+                errors.add(ticker + ": " + e.getMessage());
+                logger.warn("mock.seed.failed ticker={} reason={}", ticker, e.getMessage());
             }
         }
 
-        logger.info("mock.ratio.seed.done created={} skipped={} errors={}", created, skipped, errors.size());
+        logger.info("mock.seed.done autoCreatedProfiles={} createdMockRatios={} skipped={} errors={}",
+                autoCreated, created, skipped, errors.size());
+
         return MockRatioSeedResponse.builder()
+                .autoCreatedProfiles(autoCreated)
                 .createdMockRatios(created)
                 .skippedExistingRatios(skipped)
                 .errors(errors)
@@ -73,7 +113,6 @@ public class CompanyMockRatioSeedService {
         long seed = deterministicSeed(ticker);
         Random rng = new Random(seed);
 
-        // ~20% loss-maker (deterministic per ticker)
         boolean isLoss = (Math.abs(seed) % 5 == 0);
 
         BigDecimal grossMargin    = scale6(0.10 + rng.nextDouble() * 0.60);
@@ -125,7 +164,6 @@ public class CompanyMockRatioSeedService {
                 .build();
     }
 
-    // Deterministic seed: same ticker → same sequence every run
     private long deterministicSeed(String ticker) {
         long seed = 0;
         for (char c : ticker.toCharArray()) {
@@ -142,7 +180,6 @@ public class CompanyMockRatioSeedService {
         return BigDecimal.valueOf(value).setScale(6, RoundingMode.HALF_UP);
     }
 
-    // Mirrors CompanyRatioService.computeHealthLabel
     private String computeHealthLabel(BigDecimal debtToEquity, BigDecimal netMargin, BigDecimal roe) {
         BigDecimal debtThreshold   = new BigDecimal("2");
         BigDecimal marginThreshold = new BigDecimal("0.15");

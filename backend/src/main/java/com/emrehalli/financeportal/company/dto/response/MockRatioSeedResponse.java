@@ -8,6 +8,7 @@ import java.util.List;
 @Data
 @Builder
 public class MockRatioSeedResponse {
+    private int autoCreatedProfiles;
     private int createdMockRatios;
     private int skippedExistingRatios;
     private List<String> errors;

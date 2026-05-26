@@ -85,7 +85,10 @@
       "Bash(Write-Output \"company/kap silindi\")",
       "PowerShell(Remove-Item *)",
       "Bash(npx --no-install eslint src/pages/AdminDataPage.jsx --rule '{\"no-undef\": \"error\"}')",
-      "Bash(npx --no-install eslint src/pages/AdminDataPage.jsx src/api/adminApi.js)"
+      "Bash(npx --no-install eslint src/pages/AdminDataPage.jsx src/api/adminApi.js)",
+      "Bash(npx *)",
+      "Bash(xargs grep -l \"market_instruments\\\\|MarketInstrument\")",
+      "Bash(xargs grep -l \"CompanyProfile\")"
     ]
   }
 }

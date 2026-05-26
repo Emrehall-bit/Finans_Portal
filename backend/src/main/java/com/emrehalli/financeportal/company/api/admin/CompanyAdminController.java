@@ -45,9 +45,9 @@ public class CompanyAdminController {
         return ApiResponse.<MockRatioSeedResponse>builder()
                 .success(true)
                 .data(result)
-                .message(String.format("Mock ratio seed tamamlandi. Created: %d, skipped: %d, errors: %d",
-                        result.getCreatedMockRatios(), result.getSkippedExistingRatios(),
-                        result.getErrors() != null ? result.getErrors().size() : 0))
+                .message(String.format("Mock ratio seed tamamlandi. Profiles: %d, Created: %d, Skipped: %d, Errors: %d",
+                        result.getAutoCreatedProfiles(), result.getCreatedMockRatios(),
+                        result.getSkippedExistingRatios(), result.getErrors() != null ? result.getErrors().size() : 0))
                 .build();
     }
 

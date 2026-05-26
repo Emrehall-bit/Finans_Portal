@@ -31,6 +31,8 @@ public interface MarketInstrumentRepository extends JpaRepository<MarketInstrume
 
     List<MarketInstrument> findAllByInstrumentTypeAndSourceName(InstrumentType instrumentType, SourceName sourceName);
 
+    List<MarketInstrument> findAllByInstrumentType(InstrumentType instrumentType);
+
     Optional<MarketInstrument> findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(String code, InstrumentType type);
 
     boolean existsByInstrumentCodeIgnoreCase(String instrumentCode);

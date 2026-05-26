@@ -27,7 +27,6 @@ import {
   Shield,
   Lock,
   TrendingUp,
-  FileSpreadsheet,
 } from "lucide-react";
 
 const PRIORITY_SYMBOLS = [
@@ -211,12 +210,6 @@ export default function AppLayout() {
             to: "/admin/data",
             label: t("nav.admin"),
             icon: Shield,
-            requiresAuth: true,
-          },
-          {
-            to: "/admin/financial-import",
-            label: "Admin Import",
-            icon: FileSpreadsheet,
             requiresAuth: true,
           },
           {

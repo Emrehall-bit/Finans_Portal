@@ -1146,7 +1146,9 @@ export default function AdminDataPage() {
             {seedMockRatiosResult && (
               <div className="admin-console-job-status">
                 <p className="admin-console-copy">
-                  <strong>Oluşturulan:</strong> {seedMockRatiosResult.createdMockRatios ?? 0}
+                  <strong>Yeni Profil:</strong> {seedMockRatiosResult.autoCreatedProfiles ?? 0}
+                  {" · "}
+                  <strong>Oluşturulan Oran:</strong> {seedMockRatiosResult.createdMockRatios ?? 0}
                   {" · "}
                   <strong>Atlanan:</strong> {seedMockRatiosResult.skippedExistingRatios ?? 0}
                   {" · "}
