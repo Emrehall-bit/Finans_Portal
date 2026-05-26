@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +34,15 @@ public class CompanyRatioService {
     private static final int SCALE = 6;
     private static final RoundingMode ROUNDING = RoundingMode.HALF_UP;
     private static final List<ParseStatus> ELIGIBLE_STATUSES = List.of(ParseStatus.SUCCESS);
+    private static final String STATUS_CALCULATED = "CALCULATED";
+    private static final String PE_STATUS_POSITIVE_EARNINGS = "POSITIVE_EARNINGS";
+    private static final String PE_STATUS_NEGATIVE_EARNINGS = "NEGATIVE_EARNINGS";
+    private static final String PE_STATUS_ZERO_OR_MISSING_EARNINGS = "ZERO_OR_MISSING_EARNINGS";
+    private static final String STATUS_MISSING_PRICE = "MISSING_PRICE";
+    private static final String STATUS_MISSING_SHARES_OUTSTANDING = "MISSING_SHARES_OUTSTANDING";
+    private static final String STATUS_MISSING_NET_PROFIT = "MISSING_NET_PROFIT";
+    private static final String STATUS_MISSING_EQUITY = "MISSING_EQUITY";
+    private static final String STATUS_ZERO_EQUITY = "ZERO_EQUITY";
 
     private final CompanyProfileRepository profileRepository;
     private final CompanyFinancialReportRepository reportRepository;
@@ -181,6 +191,9 @@ public class CompanyRatioService {
                 revGrowth,
                 netProfGrowth);
 
+        RatioFieldStatus peFieldStatus = resolvePeStatus(price, company.getSharesOutstanding(), ttmNetDonemKari, peRatio);
+        RatioFieldStatus pbFieldStatus = resolvePbStatus(price, company.getSharesOutstanding(), ozkaynaklar, pbRatio);
+        String missingReason = combineMissingReasons(peFieldStatus, pbFieldStatus);
         String healthLabel = computeHealthLabel(debtToEq, netMargin, roe);
         OffsetDateTime now = OffsetDateTime.now();
 
@@ -215,6 +228,11 @@ public class CompanyRatioService {
                 .reportPeriod(formatPeriod(report))
                 .priceAtCalc(price)
                 .calculated(true)
+                .missingReason(missingReason)
+                .peStatus(peFieldStatus.status())
+                .peMissingReason(peFieldStatus.reason())
+                .pbStatus(pbFieldStatus.status())
+                .pbMissingReason(pbFieldStatus.reason())
                 .peRatio(peRatio)
                 .pbRatio(pbRatio)
                 .debtToEquity(debtToEq)
@@ -256,8 +274,66 @@ public class CompanyRatioService {
     }
 
     BigDecimal computePeRatio(BigDecimal marketCap, BigDecimal netProfit) {
-        if (netProfit == null || netProfit.compareTo(BigDecimal.ZERO) <= 0) return null;
+        if (netProfit == null || netProfit.compareTo(BigDecimal.ZERO) == 0) return null;
         return divide(marketCap, netProfit);
+    }
+
+    private RatioFieldStatus resolvePeStatus(BigDecimal price,
+                                             BigDecimal sharesOutstanding,
+                                             BigDecimal ttmNetProfit,
+                                             BigDecimal peRatio) {
+        if (peRatio != null) {
+            if (peRatio.compareTo(BigDecimal.ZERO) < 0) {
+                return new RatioFieldStatus(PE_STATUS_NEGATIVE_EARNINGS, "negative earnings");
+            }
+            return new RatioFieldStatus(PE_STATUS_POSITIVE_EARNINGS, null);
+        }
+        if (price == null) {
+            return new RatioFieldStatus(STATUS_MISSING_PRICE, "missing price");
+        }
+        if (sharesOutstanding == null || sharesOutstanding.compareTo(BigDecimal.ZERO) <= 0) {
+            return new RatioFieldStatus(STATUS_MISSING_SHARES_OUTSTANDING, "missing shares outstanding");
+        }
+        if (ttmNetProfit == null) {
+            return new RatioFieldStatus(PE_STATUS_ZERO_OR_MISSING_EARNINGS, "missing net profit");
+        }
+        if (ttmNetProfit.compareTo(BigDecimal.ZERO) == 0) {
+            return new RatioFieldStatus(PE_STATUS_ZERO_OR_MISSING_EARNINGS, "zero or missing earnings");
+        }
+        return new RatioFieldStatus(PE_STATUS_ZERO_OR_MISSING_EARNINGS, "unable to calculate pe ratio");
+    }
+
+    private RatioFieldStatus resolvePbStatus(BigDecimal price,
+                                             BigDecimal sharesOutstanding,
+                                             BigDecimal equity,
+                                             BigDecimal pbRatio) {
+        if (pbRatio != null) {
+            return new RatioFieldStatus(STATUS_CALCULATED, null);
+        }
+        if (price == null) {
+            return new RatioFieldStatus(STATUS_MISSING_PRICE, "missing price");
+        }
+        if (sharesOutstanding == null || sharesOutstanding.compareTo(BigDecimal.ZERO) <= 0) {
+            return new RatioFieldStatus(STATUS_MISSING_SHARES_OUTSTANDING, "missing shares outstanding");
+        }
+        if (equity == null) {
+            return new RatioFieldStatus(STATUS_MISSING_EQUITY, "missing equity");
+        }
+        if (equity.compareTo(BigDecimal.ZERO) == 0) {
+            return new RatioFieldStatus(STATUS_ZERO_EQUITY, "zero equity");
+        }
+        return new RatioFieldStatus(STATUS_MISSING_EQUITY, "unable to calculate pb ratio");
+    }
+
+    private String combineMissingReasons(RatioFieldStatus peStatus, RatioFieldStatus pbStatus) {
+        List<String> reasons = new ArrayList<>();
+        if (peStatus != null && peStatus.reason() != null && !peStatus.reason().isBlank()) {
+            reasons.add("pe: " + peStatus.reason());
+        }
+        if (pbStatus != null && pbStatus.reason() != null && !pbStatus.reason().isBlank()) {
+            reasons.add("pb: " + pbStatus.reason());
+        }
+        return reasons.isEmpty() ? null : String.join("; ", reasons);
     }
 
     BigDecimal growth(BigDecimal current, BigDecimal previous) {
@@ -356,6 +432,9 @@ public class CompanyRatioService {
     }
 
     record GrowthResult(BigDecimal value, String label) {
+    }
+
+    private record RatioFieldStatus(String status, String reason) {
     }
 }
 

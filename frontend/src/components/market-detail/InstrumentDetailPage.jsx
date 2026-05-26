@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams } from "react-router-dom";
 import { getMarketHistory, getMarketBySymbol, getTechnicalAnalysis } from "../../api/marketApi";
 import { getNews } from "../../api/newsApi";
-import { getCompanyFundamentals, getCompanyDisclosures, getCompanyFinancials } from "../../api/companyApi";
+import { getCompanyFundamentals, getCompanyFinancials } from "../../api/companyApi";
 import { extractErrorMessage } from "../../api/responseUtils";
 import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../../api/watchlistApi";
 import { useAuth } from "../../auth/AuthContext";
@@ -23,7 +23,6 @@ import InstrumentChartPanel from "./InstrumentChartPanel";
 import InstrumentFinancialsPanel from "./InstrumentFinancialsPanel";
 import InstrumentFundamentalsPanel from "./InstrumentFundamentalsPanel";
 import InstrumentHeader from "./InstrumentHeader";
-import InstrumentKapDisclosuresPanel from "./InstrumentKapDisclosuresPanel";
 import InstrumentNewsList from "./InstrumentNewsList";
 import InstrumentStatsPanel from "./InstrumentStatsPanel";
 import InstrumentTabs from "./InstrumentTabs";
@@ -74,11 +73,6 @@ export default function InstrumentDetailPage() {
   const [financialReports, setFinancialReports] = useState([]);
   const [financialsLoading, setFinancialsLoading] = useState(false);
   const [financialsError, setFinancialsError] = useState("");
-
-  const [disclosurePage, setDisclosurePage] = useState(null);
-  const [disclosuresLoading, setDisclosuresLoading] = useState(false);
-  const [disclosuresError, setDisclosuresError] = useState("");
-  const [disclosuresPageIndex, setDisclosuresPageIndex] = useState(0);
 
   const isDateRangeInvalid = Boolean(
     dateRange.from && dateRange.to && new Date(dateRange.from).getTime() > new Date(dateRange.to).getTime(),
@@ -357,39 +351,6 @@ export default function InstrumentDetailPage() {
     };
   }, [activeTab, normalizedSymbol, t]);
 
-  useEffect(() => {
-    if (activeTab !== "kapDisclosures" || !normalizedSymbol) {
-      return;
-    }
-
-    let active = true;
-
-    async function loadDisclosures() {
-      try {
-        setDisclosuresLoading(true);
-        setDisclosuresError("");
-        const page = await getCompanyDisclosures(normalizedSymbol, disclosuresPageIndex);
-        if (active) {
-          setDisclosurePage(page ?? null);
-        }
-      } catch (err) {
-        if (active) {
-          setDisclosurePage(null);
-          setDisclosuresError(extractErrorMessage(err, t("instrumentDetail.kapDisclosures.error")));
-        }
-      } finally {
-        if (active) {
-          setDisclosuresLoading(false);
-        }
-      }
-    }
-
-    loadDisclosures();
-    return () => {
-      active = false;
-    };
-  }, [activeTab, normalizedSymbol, disclosuresPageIndex, t]);
-
   const chartData = useMemo(
     () => buildChartData(Array.isArray(analysis?.points) ? analysis.points : [], annualHistory),
     [analysis, annualHistory],
@@ -502,10 +463,6 @@ export default function InstrumentDetailPage() {
   function handleDateRangeChange(field, value) {
     setActiveRange("CUSTOM");
     setDateRange((current) => ({ ...current, [field]: value }));
-  }
-
-  function handleDisclosurePageChange(newPage) {
-    setDisclosuresPageIndex(newPage);
   }
 
   function handleActionSuccess(message) {
@@ -646,15 +603,6 @@ export default function InstrumentDetailPage() {
                   <AiFundamentalInsightCard symbol={displaySymbol} availableData={aiAvailableData} />
                 ) : null}
               </section>
-            ) : null}
-
-            {activeTab === "kapDisclosures" ? (
-              <InstrumentKapDisclosuresPanel
-                loading={disclosuresLoading}
-                error={disclosuresError}
-                page={disclosurePage}
-                onPageChange={handleDisclosurePageChange}
-              />
             ) : null}
           </div>
 

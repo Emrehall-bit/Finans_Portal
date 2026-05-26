@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
   getBinanceHistoryFetchStatus,
@@ -24,13 +25,13 @@ import {
   triggerCommodityHistoryBackfill,
   triggerIndexHistoryBackfill,
   updateMarketTapeConfig,
+  seedMockRatios,
 } from "../api/adminApi";
 import { auditAffectedInstruments, syncNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { getNewsProviderLabel } from "../components/news/newsCardUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
-import KapManagementSection from "../components/admin/KapManagementSection";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 
 const DEFAULT_MARKET_TAPE_SYMBOLS = [
@@ -58,6 +59,7 @@ function buildPayload(symbol, startDate, endDate) {
 
 export default function AdminDataPage() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [busyKey, setBusyKey] = useState(null);
   const [actionsLocked, setActionsLocked] = useState(false);
   const [error, setError] = useState("");
@@ -77,6 +79,8 @@ export default function AdminDataPage() {
   const [marketTapeLoaded, setMarketTapeLoaded] = useState(false);
   const [jobProgress, setJobProgress] = useState(null);
   const [completedJobKey, setCompletedJobKey] = useState(null);
+  const [showMockRatioConfirm, setShowMockRatioConfirm] = useState(false);
+  const [seedMockRatiosResult, setSeedMockRatiosResult] = useState(null);
   const pollingRef = useRef(null);
   const actionsLockedRef = useRef(false);
   const dragStateRef = useRef(null);
@@ -508,6 +512,19 @@ export default function AdminDataPage() {
     }
   };
 
+  const handleSeedMockRatios = async () => {
+    setShowMockRatioConfirm(false);
+    setSeedMockRatiosResult(null);
+    await runAction("seed-mock-ratios", async () => {
+      const response = await seedMockRatios();
+      const data = response?.data ?? null;
+      setSeedMockRatiosResult(data);
+      queryClient.invalidateQueries({ queryKey: ["markets", "screen"] });
+      queryClient.invalidateQueries({ queryKey: ["markets", "symbol"] });
+      return response;
+    });
+  };
+
   const isBusy = useMemo(() => (key) => busyKey === key, [busyKey]);
   const controlsDisabled = actionsLocked || busyKey !== null || jobProgress?.running === true;
   const liveOperationCards = useMemo(() => actionCards.filter((card) => card.group === "live"), [actionCards]);
@@ -781,6 +798,54 @@ export default function AdminDataPage() {
 
   return (
     <div className="dashboard-stack admin-console-shell admin-panel-page">
+      {showMockRatioConfirm && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={() => setShowMockRatioConfirm(false)}
+        >
+          <div
+            className="auth-modal instrument-action-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="instrument-action-modal-head">
+              <div>
+                <p className="eyebrow">Şirket Verileri</p>
+                <h3>Mock Temel Analiz Verisi Oluştur</h3>
+              </div>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setShowMockRatioConfirm(false)}
+              >
+                {t("common.close")}
+              </button>
+            </div>
+            <p className="admin-console-copy">
+              Mevcut <strong>company_ratios</strong>, <strong>financial_reports</strong> ve{" "}
+              <strong>financial_values</strong> verileri silinmez veya ezilmez.
+              Sadece oran kaydı olmayan şirketler için deterministik demo/mock temel analiz verisi
+              oluşturulur. Aynı ticker için her çalıştırmada aynı değerler üretilir.
+            </p>
+            <p className="admin-console-copy">Devam etmek istiyor musunuz?</p>
+            <div className="instrument-action-footer">
+              <button type="button" onClick={handleSeedMockRatios}>
+                Evet, Oluştur
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setShowMockRatioConfirm(false)}
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {error ? <ErrorMessage message={error} /> : null}
 
       <section className="admin-section admin-status-section panel-surface">
@@ -1021,9 +1086,6 @@ export default function AdminDataPage() {
           </article>
         </div>
       </section>
-
-      <KapManagementSection />
-
       <section className="admin-section">
         <div className="admin-section-head">
           <div>
@@ -1049,6 +1111,56 @@ export default function AdminDataPage() {
               <span className="admin-console-button-glow" />
               <span>{isBusy("macro-all") ? t("admin.running") : t("admin.cards.macroSyncAll.action")}</span>
             </button>
+          </article>
+        </div>
+      </section>
+
+      <section className="admin-section">
+        <div className="admin-section-head">
+          <div>
+            <p className="eyebrow">Şirket Verileri</p>
+            <h3>Şirket Veri Yönetimi</h3>
+          </div>
+        </div>
+        <div className="admin-console-grid admin-grid">
+          <article className="admin-console-card admin-operation-card panel-surface">
+            <div className="admin-console-card-copy">
+              <div className="admin-operation-card-head">
+                <p className="eyebrow">Temel Analiz</p>
+              </div>
+              <h3>Mock Temel Analiz Verisi Oluştur</h3>
+              <p>
+                Mevcut gerçek oran verilerini ezmez, sadece oran kaydı olmayan şirketlere
+                demo/mock temel analiz verisi oluşturur.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="admin-console-button"
+              disabled={controlsDisabled}
+              onClick={() => setShowMockRatioConfirm(true)}
+            >
+              <span className="admin-console-button-glow" />
+              <span>{isBusy("seed-mock-ratios") ? t("admin.running") : "Mock Veri Oluştur"}</span>
+            </button>
+            {seedMockRatiosResult && (
+              <div className="admin-console-job-status">
+                <p className="admin-console-copy">
+                  <strong>Oluşturulan:</strong> {seedMockRatiosResult.createdMockRatios ?? 0}
+                  {" · "}
+                  <strong>Atlanan:</strong> {seedMockRatiosResult.skippedExistingRatios ?? 0}
+                  {" · "}
+                  <strong>Hata:</strong> {seedMockRatiosResult.errors?.length ?? 0}
+                </p>
+                {seedMockRatiosResult.errors?.length > 0 && (
+                  <ul className="admin-audit-reasons">
+                    {seedMockRatiosResult.errors.map((err, index) => (
+                      <li key={index}>{err}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </article>
         </div>
       </section>

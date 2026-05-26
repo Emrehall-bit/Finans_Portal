@@ -30,6 +30,7 @@ public class CompanyFundamentalsResponse {
 
     private BigDecimal marketCap;
     private BigDecimal peRatio;
+    private String peStatus;
     private BigDecimal pbRatio;
     private BigDecimal debtToEquity;
     private BigDecimal grossMargin;

@@ -106,6 +106,11 @@ export async function getMarkets(params = {}) {
   return normalizeAggregateMarketsPayload(data);
 }
 
+export async function screenMarkets(params = {}) {
+  const { data } = await axiosClient.get("/api/v1/markets/screen", { params });
+  return normalizeObjectPayload(data);
+}
+
 export async function getMarketQuotes() {
   const [aggregateQuotes, indexQuotes, commodityQuotes] = await Promise.all([
     getMarkets(),

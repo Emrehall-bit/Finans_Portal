@@ -3,7 +3,6 @@ package com.emrehalli.financeportal.company.api.admin;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.company.dto.importcsv.ManualFinancialImportResponse;
 import com.emrehalli.financeportal.company.importcsv.CompanyFinancialImportService;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,18 +19,17 @@ public class CompanyFinancialImportAdminController {
         this.importService = importService;
     }
 
-    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping("/import")
     public ApiResponse<ManualFinancialImportResponse> importFinancials(@RequestParam("file") MultipartFile file,
                                                                        @RequestParam(defaultValue = "false") boolean dryRun,
                                                                        @RequestParam(defaultValue = "true") boolean replaceExisting,
-                                                                       @RequestParam(defaultValue = "true") boolean recalculateRatios) {
-        ManualFinancialImportResponse result = importService.importCsv(file, dryRun, replaceExisting, recalculateRatios);
+                                                                       @RequestParam(defaultValue = "true") boolean recalculateRatios,
+                                                                       @RequestParam(defaultValue = "false") boolean overwriteShareCount) {
+        ManualFinancialImportResponse result = importService.importCsv(file, dryRun, replaceExisting, recalculateRatios, overwriteShareCount);
         return ApiResponse.<ManualFinancialImportResponse>builder()
                 .success(true)
                 .data(result)
-                .message(dryRun ? "CSV import dry-run tamamlandı." : "CSV import tamamlandı.")
+                .message(dryRun ? "CSV import dry-run tamamlandi." : "CSV import tamamlandi.")
                 .build();
     }
 }
-
-

@@ -6789,6 +6789,62 @@ html[data-theme] button.sidebar-register-button:focus-visible {
   flex-wrap: wrap;
 }
 
+.market-inline-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.market-inline-button {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 84%, transparent);
+  color: var(--text-secondary);
+}
+
+.market-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+
+.market-preset-chip {
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.market-active-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.market-active-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--accent-soft) 28%, var(--panel));
+  color: var(--text-main);
+}
+
+.market-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
 .admin-import-form {
   align-items: start;
 }
@@ -10576,9 +10632,23 @@ html[data-theme] button.sidebar-register-button:focus-visible,
   cursor: help;
 }
 
+.fundamentals-ratio-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .fundamentals-ratio-label {
   letter-spacing: 0.02em;
   text-transform: none;
+}
+
+.fundamentals-ratio-badge {
+  min-height: 24px;
+  padding-inline: 10px;
+  font-size: 0.68rem;
+  white-space: nowrap;
 }
 
 .fundamentals-ratio-value {

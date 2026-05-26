@@ -6,6 +6,7 @@ import {
   getMarketQuotes,
   getMarketTapeConfig,
   getMarketsByType,
+  screenMarkets,
   getTechnicalAnalysis,
   searchInstruments,
 } from "../api/marketApi";
@@ -26,6 +27,15 @@ export function useMarketsByType(type, options = {}) {
     queryFn: () => getMarketsByType(type),
     staleTime: 60_000,
     enabled: !!type,
+    ...options,
+  });
+}
+
+export function useMarketScreen(params, options = {}) {
+  return useQuery({
+    queryKey: marketKeys.screen(params),
+    queryFn: () => screenMarkets(params),
+    staleTime: 60_000,
     ...options,
   });
 }

@@ -1,13 +1,10 @@
 package com.emrehalli.financeportal.company.api;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
-import com.emrehalli.financeportal.company.dto.response.CompanyDisclosureResponse;
 import com.emrehalli.financeportal.company.dto.response.CompanyFinancialReportResponse;
 import com.emrehalli.financeportal.company.dto.response.CompanyFundamentalsResponse;
 import com.emrehalli.financeportal.company.dto.response.CompanyProfileResponse;
 import com.emrehalli.financeportal.company.service.CompanyQueryService;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,19 +40,6 @@ public class CompanyController {
         return ApiResponse.<List<CompanyFinancialReportResponse>>builder()
                 .success(true)
                 .data(companyQueryService.getFinancials(ticker))
-                .build();
-    }
-
-    @GetMapping("/{ticker}/disclosures")
-    public ApiResponse<Page<CompanyDisclosureResponse>> getDisclosures(
-            @PathVariable String ticker,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<CompanyDisclosureResponse> result = companyQueryService.getDisclosures(
-                ticker, PageRequest.of(page, size));
-        return ApiResponse.<Page<CompanyDisclosureResponse>>builder()
-                .success(true)
-                .data(result)
                 .build();
     }
 

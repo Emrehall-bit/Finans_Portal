@@ -2,6 +2,7 @@ export const marketKeys = {
   all: ["markets"],
   quotes: () => [...marketKeys.all, "quotes"],
   byType: (type) => [...marketKeys.all, "type", type],
+  screen: (params) => [...marketKeys.all, "screen", params],
   bySymbol: (symbol) => [...marketKeys.all, "symbol", symbol],
   history: (symbol, params) => [...marketKeys.all, "history", symbol, params],
   technicalAnalysis: (symbol, params) => [...marketKeys.all, "technical", symbol, params],

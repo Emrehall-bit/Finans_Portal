@@ -95,8 +95,7 @@ export default function InstrumentFinancialsPanel({ loading, error, reports }) {
           </div>
 
           <p className="financial-footnote">
-            Finansal veriler KAP kaynaklıdır. KAP'ın kümülatif dönem verileri gerektiğinde çeyreklik karşılaştırma
-            için normalize edilmiştir.
+            Finansal veriler dönemler arası karşılaştırma için gerektiğinde normalize edilmiştir.
           </p>
         </>
       )}
@@ -285,7 +284,7 @@ function SourceLink({ sourceUrl }) {
 
   return (
     <a className="financial-source-link" href={sourceUrl} target="_blank" rel="noreferrer">
-      KAP
+      Kaynak
     </a>
   );
 }

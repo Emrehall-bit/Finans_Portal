@@ -17,6 +17,11 @@ public class CompanyRatioCalculationResponse {
     private BigDecimal priceAtCalc;
     private boolean calculated;
     private String failedReason;
+    private String missingReason;
+    private String peStatus;
+    private String peMissingReason;
+    private String pbStatus;
+    private String pbMissingReason;
     private BigDecimal peRatio;
     private BigDecimal pbRatio;
     private BigDecimal debtToEquity;

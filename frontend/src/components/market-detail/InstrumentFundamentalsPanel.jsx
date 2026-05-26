@@ -4,7 +4,7 @@ import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 
 const NO_DATA = "Veri Yok";
-const INSUFFICIENT_DATA = "Yeterli veri yok";
+const INSUFFICIENT_DATA = "Yetersiz veri";
 
 function fmtRatio(value, decimals = 2) {
   if (value === null || value === undefined) return NO_DATA;
@@ -14,13 +14,13 @@ function fmtRatio(value, decimals = 2) {
 }
 
 function fmtPercent(value, decimals = 2, options = {}) {
-  if (value === null || value === undefined) return NO_DATA;
+  if (value === null || value === undefined) return options.noDataLabel ?? NO_DATA;
   const n = Number(value);
-  if (!Number.isFinite(n)) return NO_DATA;
+  if (!Number.isFinite(n)) return options.noDataLabel ?? NO_DATA;
   const pct = n * 100;
   const absPct = Math.abs(pct);
   if (options.floorTiny && absPct > 0 && absPct < 0.01) {
-    return "0,01% altı";
+    return "0,01% alti";
   }
   const resolvedDecimals = absPct > 0 && absPct < 1 ? Math.max(decimals, 4) : decimals;
   return `${pct.toLocaleString("tr-TR", {
@@ -45,6 +45,8 @@ export default function InstrumentFundamentalsPanel({ loading, error, data }) {
   if (error) return <ErrorMessage message={error} />;
 
   const noRatio = !data || data.message;
+  const isBanking = isBankingSector(data?.sector);
+  const ratioCards = noRatio ? [] : buildRatioCards(data, t, isBanking);
 
   return (
     <section className="panel-surface instrument-fundamentals-panel">
@@ -86,31 +88,16 @@ export default function InstrumentFundamentalsPanel({ loading, error, data }) {
       ) : (
         <>
           <div className="indicator-value-grid terminal-indicator-grid">
-            <RatioCard label={t("instrumentDetail.fundamentals.peRatio")} value={fmtRatio(data.peRatio)} rawValue={data.peRatio} />
-            <RatioCard label={t("instrumentDetail.fundamentals.pbRatio")} value={fmtRatio(data.pbRatio)} rawValue={data.pbRatio} />
-            <RatioCard label={t("instrumentDetail.fundamentals.debtToEquity")} value={fmtRatio(data.debtToEquity)} rawValue={data.debtToEquity} />
-            <RatioCard label={t("instrumentDetail.fundamentals.grossMargin")} value={fmtPercent(data.grossMargin)} rawValue={data.grossMargin} />
-            <RatioCard label={t("instrumentDetail.fundamentals.netMargin")} value={fmtPercent(data.netMargin)} rawValue={data.netMargin} />
-            <RatioCard label={t("instrumentDetail.fundamentals.roe")} value={fmtPercent(data.roe)} rawValue={data.roe} />
-            <RatioCard label={t("instrumentDetail.fundamentals.roa")} value={fmtPercent(data.roa, 2, { floorTiny: true })} rawValue={data.roa} />
-            <RatioCard
-              label={t("instrumentDetail.fundamentals.revenueGrowth")}
-              value={fmtGrowth(data.revenueGrowth, data.revenueGrowthLabel)}
-              rawValue={data.revenueGrowth}
-              tooltip={t("instrumentDetail.fundamentals.growthTooltip")}
-            />
-            <RatioCard
-              label={t("instrumentDetail.fundamentals.netProfitGrowth")}
-              value={fmtGrowth(data.netProfitGrowth, data.netProfitGrowthLabel)}
-              rawValue={data.netProfitGrowth}
-              tooltip={t("instrumentDetail.fundamentals.growthTooltip")}
-            />
-            <RatioCard
-              label={t("instrumentDetail.fundamentals.assetGrowth")}
-              value={fmtGrowth(data.assetGrowth, data.assetGrowthLabel)}
-              rawValue={data.assetGrowth}
-              tooltip={t("instrumentDetail.fundamentals.growthTooltip")}
-            />
+            {ratioCards.map((card) => (
+              <RatioCard
+                key={card.key}
+                label={card.label}
+                value={card.value}
+                rawValue={card.rawValue}
+                tooltip={card.tooltip}
+                badge={card.badge}
+              />
+            ))}
           </div>
 
           {data.healthLabel && (
@@ -139,12 +126,92 @@ export default function InstrumentFundamentalsPanel({ loading, error, data }) {
   );
 }
 
-function RatioCard({ label, value, rawValue, tooltip }) {
+function buildRatioCards(data, t, isBanking) {
+  const negativePe = data.peStatus === "NEGATIVE_EARNINGS";
+  const negativePeTooltip = "Negatif net kâr nedeniyle F/K negatiftir.";
+  const cards = [
+    {
+      key: "peRatio",
+      label: t("instrumentDetail.fundamentals.peRatio"),
+      value: fmtRatio(data.peRatio),
+      rawValue: data.peRatio,
+      tooltip: negativePe ? negativePeTooltip : undefined,
+      badge: negativePe ? "Negatif Kâr" : undefined,
+    },
+    {
+      key: "pbRatio",
+      label: t("instrumentDetail.fundamentals.pbRatio"),
+      value: fmtRatio(data.pbRatio),
+      rawValue: data.pbRatio,
+    },
+    {
+      key: "debtToEquity",
+      label: t("instrumentDetail.fundamentals.debtToEquity"),
+      value: fmtRatio(data.debtToEquity),
+      rawValue: data.debtToEquity,
+    },
+    {
+      key: "grossMargin",
+      label: t("instrumentDetail.fundamentals.grossMargin"),
+      value: fmtPercent(data.grossMargin, 2, { noDataLabel: INSUFFICIENT_DATA }),
+      rawValue: data.grossMargin,
+      hidden: isBanking,
+    },
+    {
+      key: "netMargin",
+      label: t("instrumentDetail.fundamentals.netMargin"),
+      value: fmtPercent(data.netMargin),
+      rawValue: data.netMargin,
+      hidden: isBanking,
+    },
+    {
+      key: "roe",
+      label: t("instrumentDetail.fundamentals.roe"),
+      value: fmtPercent(data.roe),
+      rawValue: data.roe,
+    },
+    {
+      key: "roa",
+      label: t("instrumentDetail.fundamentals.roa"),
+      value: fmtPercent(data.roa, 2, { floorTiny: true }),
+      rawValue: data.roa,
+    },
+    {
+      key: "revenueGrowth",
+      label: t("instrumentDetail.fundamentals.revenueGrowth"),
+      value: fmtGrowth(data.revenueGrowth, data.revenueGrowthLabel),
+      rawValue: data.revenueGrowth,
+      tooltip: t("instrumentDetail.fundamentals.growthTooltip"),
+      hidden: isBanking,
+    },
+    {
+      key: "netProfitGrowth",
+      label: t("instrumentDetail.fundamentals.netProfitGrowth"),
+      value: fmtGrowth(data.netProfitGrowth, data.netProfitGrowthLabel),
+      rawValue: data.netProfitGrowth,
+      tooltip: t("instrumentDetail.fundamentals.growthTooltip"),
+    },
+    {
+      key: "assetGrowth",
+      label: t("instrumentDetail.fundamentals.assetGrowth"),
+      value: fmtGrowth(data.assetGrowth, data.assetGrowthLabel),
+      rawValue: data.assetGrowth,
+      tooltip: t("instrumentDetail.fundamentals.growthTooltip"),
+    },
+  ];
+
+  return cards.filter((card) => !card.hidden);
+}
+
+function RatioCard({ label, value, rawValue, tooltip, badge }) {
   const isNoData = value === NO_DATA || value === INSUFFICIENT_DATA;
   const sentiment = resolveSentiment(rawValue);
   return (
     <div className={`indicator-value-card fundamentals-ratio-card ${sentiment}`} title={tooltip}>
-      <span className="fundamentals-ratio-label">{label}</span>
+      <div className="fundamentals-ratio-head">
+        <span className="fundamentals-ratio-label">{label}</span>
+        {badge ? <span className="signal-pill neutral fundamentals-ratio-badge">{badge}</span> : null}
+      </div>
       <strong className={`fundamentals-ratio-value ${isNoData ? "muted-value" : ""}`}>{value}</strong>
     </div>
   );
@@ -160,4 +227,13 @@ function resolveSentiment(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric) || numeric === 0) return "ratio-neutral";
   return numeric > 0 ? "ratio-positive" : "ratio-negative";
+}
+
+function isBankingSector(sector) {
+  if (!sector) return false;
+  const normalized = String(sector)
+    .toLocaleLowerCase("tr-TR")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized.includes("bankac");
 }

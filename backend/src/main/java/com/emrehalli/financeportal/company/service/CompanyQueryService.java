@@ -1,24 +1,19 @@
 package com.emrehalli.financeportal.company.service;
 
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
-import com.emrehalli.financeportal.company.domain.entity.CompanyDisclosure;
 import com.emrehalli.financeportal.company.domain.entity.CompanyFinancialReport;
 import com.emrehalli.financeportal.company.domain.entity.CompanyFinancialValue;
 import com.emrehalli.financeportal.company.domain.entity.CompanyProfile;
 import com.emrehalli.financeportal.company.domain.entity.CompanyRatio;
 import com.emrehalli.financeportal.company.domain.enums.ReportType;
-import com.emrehalli.financeportal.company.dto.response.CompanyDisclosureResponse;
 import com.emrehalli.financeportal.company.dto.response.CompanyFinancialReportResponse;
 import com.emrehalli.financeportal.company.dto.response.CompanyFundamentalsResponse;
 import com.emrehalli.financeportal.company.dto.response.CompanyProfileResponse;
 import com.emrehalli.financeportal.company.dto.response.FinancialValueItemResponse;
-import com.emrehalli.financeportal.company.persistence.CompanyDisclosureRepository;
 import com.emrehalli.financeportal.company.persistence.CompanyFinancialReportRepository;
 import com.emrehalli.financeportal.company.persistence.CompanyFinancialValueRepository;
 import com.emrehalli.financeportal.company.persistence.CompanyProfileRepository;
 import com.emrehalli.financeportal.company.persistence.CompanyRatioRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,20 +32,17 @@ public class CompanyQueryService {
     private final CompanyFinancialReportRepository reportRepository;
     private final CompanyFinancialValueRepository valueRepository;
     private final CompanyRatioRepository ratioRepository;
-    private final CompanyDisclosureRepository disclosureRepository;
     private final FinancialQuarterNormalizer quarterNormalizer;
 
     public CompanyQueryService(CompanyProfileRepository profileRepository,
                                CompanyFinancialReportRepository reportRepository,
                                CompanyFinancialValueRepository valueRepository,
                                CompanyRatioRepository ratioRepository,
-                               CompanyDisclosureRepository disclosureRepository,
                                FinancialQuarterNormalizer quarterNormalizer) {
         this.profileRepository = profileRepository;
         this.reportRepository = reportRepository;
         this.valueRepository = valueRepository;
         this.ratioRepository = ratioRepository;
-        this.disclosureRepository = disclosureRepository;
         this.quarterNormalizer = quarterNormalizer;
     }
 
@@ -86,13 +78,6 @@ public class CompanyQueryService {
                         valueByPeriodAndItem,
                         reportById))
                 .toList();
-    }
-
-    public Page<CompanyDisclosureResponse> getDisclosures(String ticker, Pageable pageable) {
-        requireCompany(ticker);
-        return disclosureRepository
-                .findByCompanyTickerCodeIgnoreCaseOrderByPublishedAtDesc(ticker, pageable)
-                .map(this::toDisclosureResponse);
     }
 
     public CompanyFundamentalsResponse getFundamentals(String ticker) {
@@ -206,18 +191,6 @@ public class CompanyQueryService {
                 .divide(previousValue.abs(), 6, RoundingMode.HALF_UP);
     }
 
-    private CompanyDisclosureResponse toDisclosureResponse(CompanyDisclosure d) {
-        return CompanyDisclosureResponse.builder()
-                .id(d.getId())
-                .disclosureType(d.getDisclosureType())
-                .title(d.getTitle())
-                .kapUrl(d.getKapUrl())
-                .publishedAt(d.getPublishedAt())
-                .summary(d.getSummary())
-                .createdAt(d.getCreatedAt())
-                .build();
-    }
-
     private CompanyFundamentalsResponse toFundamentalsResponse(CompanyProfile company, CompanyRatio ratio) {
         CompanyFundamentalsResponse.CompanyFundamentalsResponseBuilder builder = CompanyFundamentalsResponse.builder()
                 .tickerCode(company.getTickerCode())
@@ -239,6 +212,7 @@ public class CompanyQueryService {
                 .calculatedAt(ratio.getCalculatedAt())
                 .marketCap(ratio.getMarketCap())
                 .peRatio(ratio.getPeRatio())
+                .peStatus(resolvePeStatus(ratio.getPeRatio()))
                 .pbRatio(ratio.getPbRatio())
                 .debtToEquity(ratio.getDebtToEquity())
                 .grossMargin(ratio.getGrossMargin())
@@ -253,6 +227,15 @@ public class CompanyQueryService {
                 .assetGrowthLabel(ratio.getAssetGrowthLabel())
                 .healthLabel(ratio.getHealthLabel())
                 .build();
+    }
+
+    private String resolvePeStatus(BigDecimal peRatio) {
+        if (peRatio == null) {
+            return "ZERO_OR_MISSING_EARNINGS";
+        }
+        return peRatio.compareTo(BigDecimal.ZERO) < 0
+                ? "NEGATIVE_EARNINGS"
+                : "POSITIVE_EARNINGS";
     }
 
     private String formatPeriod(CompanyFinancialReport report) {

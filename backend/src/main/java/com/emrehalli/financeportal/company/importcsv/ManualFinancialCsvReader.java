@@ -30,14 +30,34 @@ public class ManualFinancialCsvReader {
             "unit_multiplier"
     );
 
+    private static final List<String> SHARE_COUNT_HEADERS = List.of(
+            "shares_outstanding",
+            "share_count",
+            "odenmis_sermaye",
+            "odenmis sermaye",
+            "cikarilmis_sermaye",
+            "cikarilmis sermaye",
+            "çıkarılmış sermaye",
+            "ödenmiş sermaye"
+    );
+
     public CsvReadResult read(MultipartFile file) {
-        List<CsvRow> rows = new ArrayList<>();
+        List<ManualFinancialImportRow> rows = new ArrayList<>();
         List<ManualFinancialImportError> errors = new ArrayList<>();
 
         if (file == null || file.isEmpty()) {
             errors.add(ManualFinancialImportError.builder()
                     .fieldName("file")
                     .message("CSV dosyası boş.")
+                    .build());
+            return new CsvReadResult(rows, errors);
+        }
+
+        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
+        if (originalFilename.endsWith(".xlsx")) {
+            errors.add(ManualFinancialImportError.builder()
+                    .fieldName("file")
+                    .message("Bu alan manual financial CSV icindir. XLSX desteklenmiyor.")
                     .build());
             return new CsvReadResult(rows, errors);
         }
@@ -68,7 +88,20 @@ public class ManualFinancialCsvReader {
                     continue;
                 }
                 List<String> columns = parseCsvLine(line);
-                rows.add(new CsvRow(lineNumber, headerIndex, columns));
+                rows.add(new ManualFinancialImportRow(
+                        lineNumber,
+                        valueOf(headerIndex, columns, "ticker_code"),
+                        null,
+                        valueOf(headerIndex, columns, "period_year"),
+                        valueOf(headerIndex, columns, "report_type"),
+                        valueOf(headerIndex, columns, "published_at"),
+                        valueOf(headerIndex, columns, "source_url"),
+                        valueOf(headerIndex, columns, "item_key"),
+                        valueOf(headerIndex, columns, "raw_label"),
+                        valueOf(headerIndex, columns, "value"),
+                        valueOf(headerIndex, columns, "currency"),
+                        valueOf(headerIndex, columns, "unit_multiplier"),
+                        valueOfAny(headerIndex, columns, SHARE_COUNT_HEADERS)));
             }
         } catch (IOException e) {
             errors.add(ManualFinancialImportError.builder()
@@ -78,6 +111,24 @@ public class ManualFinancialCsvReader {
         }
 
         return new CsvReadResult(rows, errors);
+    }
+
+    private String valueOf(Map<String, Integer> headerIndex, List<String> columns, String header) {
+        Integer index = headerIndex.get(header);
+        if (index == null || index >= columns.size()) {
+            return "";
+        }
+        return columns.get(index).trim();
+    }
+
+    private String valueOfAny(Map<String, Integer> headerIndex, List<String> columns, List<String> headers) {
+        for (String header : headers) {
+            Integer index = headerIndex.get(header);
+            if (index != null && index < columns.size()) {
+                return columns.get(index).trim();
+            }
+        }
+        return "";
     }
 
     private Map<String, Integer> buildHeaderIndex(List<String> headerValues) {
@@ -101,7 +152,23 @@ public class ManualFinancialCsvReader {
     }
 
     private String normalizeHeader(String value) {
-        return value == null ? "" : value.trim().toLowerCase();
+        if (value == null) {
+            return "";
+        }
+        return value.trim()
+                .toLowerCase()
+                .replace('\u0131', 'i')
+                .replace('\u0130', 'i')
+                .replace('\u015f', 's')
+                .replace('\u015e', 's')
+                .replace('\u011f', 'g')
+                .replace('\u011e', 'g')
+                .replace('\u00fc', 'u')
+                .replace('\u00dc', 'u')
+                .replace('\u00f6', 'o')
+                .replace('\u00d6', 'o')
+                .replace('\u00e7', 'c')
+                .replace('\u00c7', 'c');
     }
 
     private String stripBom(String value) {
@@ -137,31 +204,7 @@ public class ManualFinancialCsvReader {
         return values;
     }
 
-    public record CsvReadResult(List<CsvRow> rows, List<ManualFinancialImportError> errors) {
-    }
-
-    public static final class CsvRow {
-        private final int lineNumber;
-        private final Map<String, Integer> headerIndex;
-        private final List<String> columns;
-
-        private CsvRow(int lineNumber, Map<String, Integer> headerIndex, List<String> columns) {
-            this.lineNumber = lineNumber;
-            this.headerIndex = headerIndex;
-            this.columns = columns;
-        }
-
-        public int lineNumber() {
-            return lineNumber;
-        }
-
-        public String get(String header) {
-            Integer index = headerIndex.get(header);
-            if (index == null || index >= columns.size()) {
-                return "";
-            }
-            return columns.get(index).trim();
-        }
+    public record CsvReadResult(List<ManualFinancialImportRow> rows, List<ManualFinancialImportError> errors) {
     }
 }
 

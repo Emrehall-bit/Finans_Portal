@@ -22,8 +22,8 @@ public class CompanyRatio {
     @JoinColumn(name = "company_id", nullable = false)
     private CompanyProfile company;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "report_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "report_id", nullable = true)
     private CompanyFinancialReport report;
 
     @Column(name = "price_at_calc", precision = 20, scale = 6)

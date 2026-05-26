@@ -1,8 +1,10 @@
 package com.emrehalli.financeportal.market.api;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
+import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.market.api.dto.FxRateResponse;
 import com.emrehalli.financeportal.market.api.dto.MarketAggregateResponse;
+import com.emrehalli.financeportal.market.api.dto.MarketScreenResponse;
 import com.emrehalli.financeportal.market.api.dto.PriceHistoryDto;
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
@@ -17,10 +19,13 @@ import com.emrehalli.financeportal.market.provider.stock.dto.StockPriceDto;
 import com.emrehalli.financeportal.market.service.CryptoService;
 import com.emrehalli.financeportal.market.service.FundService;
 import com.emrehalli.financeportal.market.service.FxService;
+import com.emrehalli.financeportal.market.service.MarketScreenCriteria;
+import com.emrehalli.financeportal.market.service.MarketScreeningService;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.market.service.StockService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,6 +63,7 @@ public class MarketController {
     private final FundService fundService;
     private final StockService stockService;
     private final MarketQueryService marketQueryService;
+    private final MarketScreeningService marketScreeningService;
     private final MarketInstrumentRepository instrumentRepository;
     private final MarketPriceHistoryRepository historyRepository;
 
@@ -91,6 +97,121 @@ public class MarketController {
                 .message("OK")
                 .data(data)
                 .dataDate(resolveDataDate(fx, cryptoSnapshots))
+                .build();
+    }
+
+    @GetMapping("/screen")
+    public ApiResponse<MarketScreenResponse> screenMarkets(
+            @RequestParam(name = "type", required = false) String type,
+            @RequestParam(name = "source", required = false) String source,
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "minPrice", required = false) BigDecimal minPrice,
+            @RequestParam(name = "maxPrice", required = false) BigDecimal maxPrice,
+            @RequestParam(name = "minChangePercent", required = false) BigDecimal minChangePercent,
+            @RequestParam(name = "maxChangePercent", required = false) BigDecimal maxChangePercent,
+            @RequestParam(name = "sector", required = false) String sector,
+            @RequestParam(name = "market", required = false) String market,
+            @RequestParam(name = "minPe", required = false) BigDecimal minPe,
+            @RequestParam(name = "maxPe", required = false) BigDecimal maxPe,
+            @RequestParam(name = "minPb", required = false) BigDecimal minPb,
+            @RequestParam(name = "maxPb", required = false) BigDecimal maxPb,
+            @RequestParam(name = "minRoe", required = false) BigDecimal minRoe,
+            @RequestParam(name = "minRoa", required = false) BigDecimal minRoa,
+            @RequestParam(name = "maxDebtToEquity", required = false) BigDecimal maxDebtToEquity,
+            @RequestParam(name = "minRevenueGrowth", required = false) BigDecimal minRevenueGrowth,
+            @RequestParam(name = "minNetProfitGrowth", required = false) BigDecimal minNetProfitGrowth,
+            @RequestParam(name = "onlyWithFundamentals", defaultValue = "false") boolean onlyWithFundamentals,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "50") int size,
+            @RequestParam(name = "sort", required = false) String sort
+    ) {
+        if (isFxScreenRequest(type)) {
+            MarketScreenResponse data = screenFxMarkets(type, source, q, minPrice, maxPrice, minChangePercent, maxChangePercent, page, size, sort);
+            return ApiResponse.<MarketScreenResponse>builder()
+                    .success(true)
+                    .message("OK")
+                    .data(data)
+                    .build();
+        }
+
+        validateRange("price", minPrice, maxPrice);
+        validateRange("changePercent", minChangePercent, maxChangePercent);
+        validateRange("peRatio", minPe, maxPe);
+        validateRange("pbRatio", minPb, maxPb);
+
+        Page<com.emrehalli.financeportal.market.api.dto.MarketScreenItemResponse> result = marketScreeningService.screen(
+                MarketScreenCriteria.builder()
+                        .type(type)
+                        .source(source)
+                        .q(q)
+                        .minPrice(minPrice)
+                        .maxPrice(maxPrice)
+                        .minChangePercent(minChangePercent)
+                        .maxChangePercent(maxChangePercent)
+                        .sector(sector)
+                        .market(market)
+                        .minPe(minPe)
+                        .maxPe(maxPe)
+                        .minPb(minPb)
+                        .maxPb(maxPb)
+                        .minRoe(minRoe)
+                        .minRoa(minRoa)
+                        .maxDebtToEquity(maxDebtToEquity)
+                        .minRevenueGrowth(minRevenueGrowth)
+                        .minNetProfitGrowth(minNetProfitGrowth)
+                        .onlyWithFundamentals(onlyWithFundamentals)
+                        .page(page)
+                        .size(size)
+                        .sort(sort)
+                        .build()
+        );
+
+        MarketScreenResponse data = MarketScreenResponse.builder()
+                .content(result.getContent())
+                .totalElements(result.getTotalElements())
+                .page(result.getNumber())
+                .size(result.getSize())
+                .build();
+
+        return ApiResponse.<MarketScreenResponse>builder()
+                .success(true)
+                .message("OK")
+                .data(data)
+                .build();
+    }
+
+    private MarketScreenResponse screenFxMarkets(String type,
+                                                 String source,
+                                                 String q,
+                                                 BigDecimal minPrice,
+                                                 BigDecimal maxPrice,
+                                                 BigDecimal minChangePercent,
+                                                 BigDecimal maxChangePercent,
+                                                 int page,
+                                                 int size,
+                                                 String sort) {
+        validateRange("price", minPrice, maxPrice);
+        validateRange("changePercent", minChangePercent, maxChangePercent);
+
+        List<com.emrehalli.financeportal.market.api.dto.MarketScreenItemResponse> filtered = fxService.getAll().stream()
+                .filter(rate -> matchesFxSource(rate, source))
+                .filter(rate -> matchesFxQuery(rate, q))
+                .filter(rate -> matchesFxPrice(rate, minPrice, maxPrice))
+                .filter(rate -> matchesFxChange(rate, minChangePercent, maxChangePercent))
+                .sorted((left, right) -> compareFxItems(left, right, sort))
+                .map(this::toFxScreenItem)
+                .toList();
+
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 500);
+        int fromIndex = Math.min(safePage * safeSize, filtered.size());
+        int toIndex = Math.min(fromIndex + safeSize, filtered.size());
+
+        return MarketScreenResponse.builder()
+                .content(filtered.subList(fromIndex, toIndex))
+                .totalElements(filtered.size())
+                .page(safePage)
+                .size(safeSize)
                 .build();
     }
 
@@ -513,6 +634,122 @@ public class MarketController {
             return fxLatest;
         }
         return fxLatest.isAfter(cryptoLatest) ? fxLatest : cryptoLatest;
+    }
+
+    private boolean isFxScreenRequest(String type) {
+        return type != null && "FX".equalsIgnoreCase(type.trim());
+    }
+
+    private boolean matchesFxSource(FxRateResponse rate, String source) {
+        if (source == null || source.isBlank()) {
+            return true;
+        }
+        return source.trim().equalsIgnoreCase(rate.getSource());
+    }
+
+    private boolean matchesFxQuery(FxRateResponse rate, String q) {
+        if (q == null || q.isBlank()) {
+            return true;
+        }
+        String normalized = q.trim().toUpperCase(Locale.ROOT);
+        return (rate.getCode() != null && rate.getCode().toUpperCase(Locale.ROOT).contains(normalized))
+                || (rate.getName() != null && rate.getName().toUpperCase(Locale.ROOT).contains(normalized));
+    }
+
+    private boolean matchesFxPrice(FxRateResponse rate, BigDecimal minPrice, BigDecimal maxPrice) {
+        BigDecimal comparable = firstNonNull(rate.getSellRate(), rate.getLast(), rate.getBuyRate());
+        if (minPrice != null && (comparable == null || comparable.compareTo(minPrice) < 0)) {
+            return false;
+        }
+        if (maxPrice != null && (comparable == null || comparable.compareTo(maxPrice) > 0)) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean matchesFxChange(FxRateResponse rate, BigDecimal minChangePercent, BigDecimal maxChangePercent) {
+        BigDecimal comparable = rate.getChangePercent();
+        if (minChangePercent != null && (comparable == null || comparable.compareTo(minChangePercent) < 0)) {
+            return false;
+        }
+        if (maxChangePercent != null && (comparable == null || comparable.compareTo(maxChangePercent) > 0)) {
+            return false;
+        }
+        return true;
+    }
+
+    private int compareFxItems(FxRateResponse left, FxRateResponse right, String sort) {
+        String normalized = sort != null ? sort.trim().toLowerCase(Locale.ROOT) : "";
+        return switch (normalized) {
+            case "price_asc" -> compareNullable(firstNonNull(left.getSellRate(), left.getLast(), left.getBuyRate()),
+                    firstNonNull(right.getSellRate(), right.getLast(), right.getBuyRate()), true, left.getCode(), right.getCode());
+            case "price_desc" -> compareNullable(firstNonNull(left.getSellRate(), left.getLast(), left.getBuyRate()),
+                    firstNonNull(right.getSellRate(), right.getLast(), right.getBuyRate()), false, left.getCode(), right.getCode());
+            case "change_asc" -> compareNullable(left.getChangePercent(), right.getChangePercent(), true, left.getCode(), right.getCode());
+            case "change_desc" -> compareNullable(left.getChangePercent(), right.getChangePercent(), false, left.getCode(), right.getCode());
+            default -> compareText(left.getCode(), right.getCode());
+        };
+    }
+
+    private int compareNullable(BigDecimal left, BigDecimal right, boolean ascending, String leftCode, String rightCode) {
+        if (left == null && right == null) {
+            return compareText(leftCode, rightCode);
+        }
+        if (left == null) {
+            return 1;
+        }
+        if (right == null) {
+            return -1;
+        }
+        int compared = left.compareTo(right);
+        if (!ascending) {
+            compared = compared * -1;
+        }
+        return compared != 0 ? compared : compareText(leftCode, rightCode);
+    }
+
+    private int compareText(String left, String right) {
+        String safeLeft = left != null ? left : "";
+        String safeRight = right != null ? right : "";
+        return safeLeft.compareToIgnoreCase(safeRight);
+    }
+
+    @SafeVarargs
+    private final <T> T firstNonNull(T... values) {
+        for (T value : values) {
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private com.emrehalli.financeportal.market.api.dto.MarketScreenItemResponse toFxScreenItem(FxRateResponse rate) {
+        String code = rate.getCode() != null ? rate.getCode().toUpperCase(Locale.ROOT) : null;
+        String name = rate.getName();
+        String displayName = (name == null || name.isBlank() || code != null && name.equalsIgnoreCase(code))
+                ? (code != null ? code + "/TRY" : null)
+                : name;
+
+        return com.emrehalli.financeportal.market.api.dto.MarketScreenItemResponse.builder()
+                .symbol(code)
+                .name(displayName)
+                .type(InstrumentType.FX.name())
+                .source(rate.getSource())
+                .buyPrice(rate.getBuyRate())
+                .sellPrice(rate.getSellRate())
+                .buyChangePercent(null)
+                .sellChangePercent(rate.getChangePercent())
+                .lastPrice(rate.getLast())
+                .changePercent(rate.getChangePercent())
+                .dataTimestamp(rate.getPriceTimestamp())
+                .build();
+    }
+
+    private void validateRange(String fieldName, BigDecimal min, BigDecimal max) {
+        if (min != null && max != null && min.compareTo(max) > 0) {
+            throw new BadRequestException(fieldName + " min değeri max değerinden büyük olamaz.");
+        }
     }
 
     private InstrumentSearchResult toInstrumentSearchResult(MarketInstrument instrument) {

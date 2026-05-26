@@ -52,6 +52,8 @@ class CompanyRatioServiceTest {
                 .id(1L).tickerCode("TEST").companyName("Test A.Ş.")
                 .sector("Sektör").market("BIST").build();
 
+        company.setSharesOutstanding(new BigDecimal("100000"));
+
         report = CompanyFinancialReport.builder()
                 .id(10L).company(company)
                 .periodYear(2024).periodQuarter(4).reportType(ReportType.ANNUAL)
@@ -71,7 +73,7 @@ class CompanyRatioServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void peRatio_isNull_whenNetProfitIsNegative() {
+    void peRatio_isNegative_whenNetProfitIsNegative() {
         stubMarketPrice("100");
         stubValues(List.of(
                 value(FinancialItemKey.HASILAT, "1000000"),
@@ -90,7 +92,9 @@ class CompanyRatioServiceTest {
         CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
 
         assertThat(result.isCalculated()).isTrue();
-        assertThat(result.getPeRatio()).isNull();
+        assertThat(result.getPeRatio()).isEqualByComparingTo("-200.000000");
+        assertThat(result.getPeStatus()).isEqualTo("NEGATIVE_EARNINGS");
+        assertThat(result.getPeMissingReason()).isEqualTo("negative earnings");
         assertThat(result.getNetMargin()).isNotNull().isNegative();
     }
 
@@ -110,6 +114,8 @@ class CompanyRatioServiceTest {
         CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
 
         assertThat(result.getPeRatio()).isNull();
+        assertThat(result.getPeStatus()).isEqualTo("ZERO_OR_MISSING_EARNINGS");
+        assertThat(result.getPeMissingReason()).isEqualTo("zero or missing earnings");
     }
 
     // -------------------------------------------------------------------------
@@ -133,6 +139,8 @@ class CompanyRatioServiceTest {
 
         assertThat(result.isCalculated()).isTrue();
         assertThat(result.getPbRatio()).isNull();
+        assertThat(result.getPbStatus()).isEqualTo("ZERO_EQUITY");
+        assertThat(result.getPbMissingReason()).isEqualTo("zero equity");
         assertThat(result.getRoe()).isNull();
         assertThat(result.getRoa()).isNull();
         assertThat(result.getDebtToEquity()).isNull();
@@ -165,6 +173,63 @@ class CompanyRatioServiceTest {
         assertThat(result.getRevenueGrowth()).isNull();
         assertThat(result.getNetProfitGrowth()).isNull();
         assertThat(result.getAssetGrowth()).isNull();
+    }
+
+    @Test
+    void pbRatio_isCalculated_whenEquityExists_evenIfGrossMarginInputsAreMissing() {
+        stubMarketPrice("100");
+        stubValues(List.of(
+                value(FinancialItemKey.HASILAT, "1000000"),
+                value(FinancialItemKey.NET_DONEM_KARI, "100000"),
+                value(FinancialItemKey.OZKAYNAKLAR, "500000"),
+                value(FinancialItemKey.TOPLAM_VARLIKLAR, "800000"),
+                value(FinancialItemKey.TOPLAM_YUKUMLULUKLER, "300000")
+        ));
+        when(quarterNormalizer.getQuarterlyValue(1L, FinancialItemKey.HASILAT, 2024, 4))
+                .thenReturn(new BigDecimal("1000000"));
+        when(quarterNormalizer.getQuarterlyValue(1L, FinancialItemKey.BRUT_KAR, 2024, 4))
+                .thenReturn(null);
+        when(quarterNormalizer.getQuarterlyValue(1L, FinancialItemKey.NET_DONEM_KARI, 2024, 4))
+                .thenReturn(new BigDecimal("100000"));
+        when(quarterNormalizer.getTtmValue(1L, FinancialItemKey.NET_DONEM_KARI, 2024, 4))
+                .thenReturn(new BigDecimal("100000"));
+
+        CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
+
+        assertThat(result.isCalculated()).isTrue();
+        assertThat(result.getGrossMargin()).isNull();
+        assertThat(result.getPbRatio()).isEqualByComparingTo("20.000000");
+        assertThat(result.getPbStatus()).isEqualTo("CALCULATED");
+        assertThat(result.getPbMissingReason()).isNull();
+    }
+
+    @Test
+    void peAndPbStatuses_reportMissingSharesOutstanding() {
+        company.setSharesOutstanding(null);
+        stubMarketPrice("100");
+        stubValues(List.of(
+                value(FinancialItemKey.HASILAT, "1000000"),
+                value(FinancialItemKey.NET_DONEM_KARI, "100000"),
+                value(FinancialItemKey.OZKAYNAKLAR, "500000"),
+                value(FinancialItemKey.TOPLAM_VARLIKLAR, "800000"),
+                value(FinancialItemKey.TOPLAM_YUKUMLULUKLER, "300000")
+        ));
+        when(quarterNormalizer.getQuarterlyValue(1L, FinancialItemKey.HASILAT, 2024, 4))
+                .thenReturn(new BigDecimal("1000000"));
+        when(quarterNormalizer.getQuarterlyValue(1L, FinancialItemKey.NET_DONEM_KARI, 2024, 4))
+                .thenReturn(new BigDecimal("100000"));
+        when(quarterNormalizer.getTtmValue(1L, FinancialItemKey.NET_DONEM_KARI, 2024, 4))
+                .thenReturn(new BigDecimal("100000"));
+
+        CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
+
+        assertThat(result.isCalculated()).isTrue();
+        assertThat(result.getPeRatio()).isNull();
+        assertThat(result.getPbRatio()).isNull();
+        assertThat(result.getPeStatus()).isEqualTo("MISSING_SHARES_OUTSTANDING");
+        assertThat(result.getPbStatus()).isEqualTo("MISSING_SHARES_OUTSTANDING");
+        assertThat(result.getMissingReason()).contains("pe: missing shares outstanding");
+        assertThat(result.getMissingReason()).contains("pb: missing shares outstanding");
     }
 
     // -------------------------------------------------------------------------
