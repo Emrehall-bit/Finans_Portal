@@ -52,7 +52,7 @@ public class TechnicalAnalysisService {
         validateDateRange(from, to);
 
         Set<IndicatorType> requestedIndicators = resolveIndicators(indicators);
-        List<HistoricalPricePoint> history = historicalPriceReader.read(symbol, from, to);
+        List<HistoricalPricePoint> history = filterIncompleteCloses(historicalPriceReader.read(symbol, from, to));
         int requiredPointCount = REQUIRED_HISTORY_POINT_COUNT;
         if (history.size() < requiredPointCount) {
             logger.warn("Technical analysis has insufficient history: symbol={}, from={}, to={}, pointCount={}, requiredPointCount={}",
@@ -233,6 +233,16 @@ public class TechnicalAnalysisService {
         if (from.isAfter(to)) {
             throw new TechnicalAnalysisValidationException("from cannot be after to");
         }
+    }
+
+    private List<HistoricalPricePoint> filterIncompleteCloses(List<HistoricalPricePoint> history) {
+        if (history == null || history.isEmpty()) {
+            return List.of();
+        }
+
+        return history.stream()
+                .filter(point -> point != null && point.close() != null)
+                .toList();
     }
 }
 

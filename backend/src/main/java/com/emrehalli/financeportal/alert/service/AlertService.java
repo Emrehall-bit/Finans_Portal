@@ -106,7 +106,9 @@ public class AlertService {
         if (symbol == null || symbol.isBlank()) {
             throw new BadRequestException("instrumentCode cannot be blank");
         }
-        return symbol.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+        return symbol.trim()
+                .replaceAll("[^A-Za-z0-9:_\\-]", "")
+                .toUpperCase();
     }
 
     private AlertResponseDto toResponse(Alert alert) {

@@ -2891,6 +2891,22 @@ html[data-theme] button.sidebar-register-button:focus-visible {
   background: rgba(0, 0, 0, 0.22);
 }
 
+.drawing-chip-action {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.drawing-chip-action:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 /* ── Dark mode overrides ── */
 
 [data-theme="dark"] .chart-toolbar-sep {

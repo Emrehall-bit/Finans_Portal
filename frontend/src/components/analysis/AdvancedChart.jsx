@@ -1,44 +1,50 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createChart, LineSeries } from "lightweight-charts";
-import { getAdvancedTechnical } from "../../api/analysisApi";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createChart, CandlestickSeries, LineSeries } from "lightweight-charts";
+import { Check, CircleAlert, Minus, MousePointer2, Target, TrendingUp, X } from "lucide-react";
+import { createAlert } from "../../api/alertApi";
+import { getAdvancedTechnical, getTechnicalCandles } from "../../api/analysisApi";
+import { extractErrorMessage } from "../../api/responseUtils";
+import { useAuth } from "../../auth/AuthContext";
+import useToast from "../../hooks/useToast";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatNumber } from "../../utils/formatters";
 
-// ── Sabitler ──────────────────────────────────────────────────────────────────
-
-const TIMEFRAMES = [
-  { label: "1S", value: "1h" },
-  { label: "4S", value: "4h" },
-  { label: "1G", value: "1d" },
-  { label: "1Hft", value: "1w" },
+const RANGE_OPTIONS = [
+  { label: "1A", value: "1m" },
+  { label: "3A", value: "3m" },
+  { label: "6A", value: "6m" },
+  { label: "1Y", value: "1y" },
+  { label: "MAX", value: "max" },
 ];
 
 const INDICATOR_COLORS = {
-  ma20: "#3b82f6",
-  ma50: "#f59e0b",
-  ema20: "#a855f7",
-  bollinger_upper: "#64748b",
-  bollinger_middle: "#94a3b8",
-  bollinger_lower: "#64748b",
+  sma7: "#0f766e",
+  sma20: "#2563eb",
+  sma50: "#f59e0b",
 };
 
 const INDICATOR_BUTTONS = [
-  { key: "ma20",      label: "MA 20",     color: "#3b82f6" },
-  { key: "ma50",      label: "MA 50",     color: "#f59e0b" },
-  { key: "ema20",     label: "EMA 20",    color: "#a855f7" },
-  { key: "bollinger", label: "Bollinger", color: "#64748b",
-    keys: ["bollinger_upper", "bollinger_middle", "bollinger_lower"] },
+  { key: "sma7", label: "MA 7", color: "#0f766e" },
+  { key: "sma20", label: "MA 20", color: "#2563eb" },
+  { key: "sma50", label: "MA 50", color: "#f59e0b" },
 ];
 
 const DRAW_TOOLS = [
-  { key: "cursor",     icon: "↖", label: "İmleç" },
-  { key: "horizontal", icon: "—", label: "Yatay Çizgi" },
-  { key: "trend",      icon: "╱", label: "Trend Çizgisi" },
-  { key: "stopLoss",   icon: "🔴", label: "Stop-Loss" },
-  { key: "takeProfit", icon: "🟢", label: "Take-Profit" },
+  { key: "cursor", icon: MousePointer2, label: "Imlec" },
+  { key: "horizontal", icon: Minus, label: "Yatay Cizgi" },
+  { key: "trend", icon: TrendingUp, label: "Trend Cizgisi" },
+  { key: "stopLoss", icon: CircleAlert, label: "Stop-Loss" },
+  { key: "takeProfit", icon: Target, label: "Take-Profit" },
 ];
 
-// ── Bileşen ───────────────────────────────────────────────────────────────────
+const DEFAULT_RANGE = "6m";
+const DEFAULT_INDICATORS = "SMA7,SMA20,SMA50,RSI14";
+const CRYPTO_CANDLE_ERROR_MESSAGE = "Yeterli mum verisi bulunamadi.";
+const DEFAULT_BAR_SPACING = 12;
+const MIN_BAR_SPACING = 8;
+const DEFAULT_RIGHT_OFFSET = 3;
+const MAX_VISIBLE_CANDLE_BARS = 180;
+const MAX_VISIBLE_LINE_BARS = 260;
 
 export default function AdvancedChart({
   instrumentCode,
@@ -48,47 +54,170 @@ export default function AdvancedChart({
   quote = null,
 }) {
   const { chartTheme } = useTheme();
+  const { userId, login } = useAuth();
+  const { toast, showToast } = useToast();
 
-  // ── Refs ──────────────────────────────────────────────────────────────────
-  const containerRef         = useRef(null);
-  const chartRef             = useRef(null);
-  const priceSeriesRef       = useRef(null);
-  const indicatorRefs        = useRef({});
-  const indicatorDataRef     = useRef({});
-  const activeIndicatorsRef  = useRef(null);
+  const containerRef = useRef(null);
+  const chartRef = useRef(null);
+  const priceSeriesRef = useRef(null);
+  const primarySeriesModeRef = useRef(null);
+  const indicatorRefs = useRef({});
+  const indicatorDataRef = useRef({});
+  const activeToolRef = useRef("cursor");
+  const drawingsRef = useRef({ stopLoss: null, takeProfit: null, horizontalLines: [], trendLines: [] });
+  const trendStartRef = useRef(null);
+  const prevInstrumentRef = useRef(null);
+  const pendingAutoFitRef = useRef(true);
+  const dataPointCountRef = useRef(0);
+  const rangeAdjustLockRef = useRef(false);
 
-  // Çizim aracı refs — Effect 1'in click handler'ı stale closure olmadan okur
-  const activeToolRef        = useRef("cursor");
-  const drawingsRef          = useRef({ stopLoss: null, takeProfit: null, horizontalLines: [], trendLines: [] });
-  const trendStartRef        = useRef(null);
-  const prevInstrumentRef    = useRef(null);
-
-  // ── State ─────────────────────────────────────────────────────────────────
-  const [timeframe, setTimeframe]       = useState(initialTimeframe);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState(null);
-  const [activeIndicators, setActiveIndicators] = useState(
-    () => new Set(["ma20", "ma50", "bollinger_upper", "bollinger_middle", "bollinger_lower"]),
-  );
-
-  const [activeTool, setActiveTool]     = useState("cursor");
-  const [drawings, setDrawings]         = useState({
+  const [range, setRange] = useState(() => mapLegacyTimeframeToRange(initialTimeframe));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [activeIndicators, setActiveIndicators] = useState(() => new Set(["sma20", "sma50"]));
+  const [activeTool, setActiveTool] = useState(() => mapInitialTool(initialHighlightTool));
+  const [drawings, setDrawings] = useState({
     stopLoss: null,
     takeProfit: null,
     horizontalLines: [],
     trendLines: [],
   });
-  const [trendStart, setTrendStart]     = useState(null); // { time, price } — ilk tıklama
+  const [trendStart, setTrendStart] = useState(null);
+  const [creatingAlertKey, setCreatingAlertKey] = useState(null);
 
-  // Render'da refs'i güncelle
-  activeIndicatorsRef.current = activeIndicators;
-  activeToolRef.current       = activeTool;
-  drawingsRef.current         = drawings;
-  trendStartRef.current       = trendStart;
+  activeToolRef.current = activeTool;
+  drawingsRef.current = drawings;
+  trendStartRef.current = trendStart;
 
-  // ── Effect 1: Chart'ı BİR KEZ oluştur + click handler ───────────────────
+  const isCrypto = String(quote?.instrumentType || "").toUpperCase() === "CRYPTO";
+  const changeRate = quote?.changeRate;
+  const isPositive = changeRate != null && changeRate >= 0;
+  const hasDrawings = Boolean(
+    drawings.stopLoss ||
+    drawings.takeProfit ||
+    drawings.horizontalLines.length ||
+    drawings.trendLines.length,
+  );
+
+  const rangeDates = useMemo(() => buildDateRange(range), [range]);
+
+  const clearAllDrawings = useCallback(() => {
+    const current = drawingsRef.current;
+    const priceSeries = priceSeriesRef.current;
+    const chart = chartRef.current;
+
+    if (priceSeries) {
+      if (current.stopLoss?.priceLine) {
+        try { priceSeries.removePriceLine(current.stopLoss.priceLine); } catch { /* noop */ }
+      }
+      if (current.takeProfit?.priceLine) {
+        try { priceSeries.removePriceLine(current.takeProfit.priceLine); } catch { /* noop */ }
+      }
+      current.horizontalLines.forEach((line) => {
+        try { priceSeries.removePriceLine(line.priceLine); } catch { /* noop */ }
+      });
+    }
+
+    if (chart) {
+      current.trendLines.forEach((line) => {
+        try { chart.removeSeries(line.series); } catch { /* noop */ }
+      });
+    }
+
+    setDrawings({ stopLoss: null, takeProfit: null, horizontalLines: [], trendLines: [] });
+    setTrendStart(null);
+  }, []);
+
+  const ensurePrimarySeries = useCallback((mode) => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return null;
+    }
+
+    if (priceSeriesRef.current && primarySeriesModeRef.current === mode) {
+      return priceSeriesRef.current;
+    }
+
+    clearAllDrawings();
+
+    if (priceSeriesRef.current) {
+      try { chart.removeSeries(priceSeriesRef.current); } catch { /* noop */ }
+    }
+
+    const series = mode === "candlestick"
+      ? chart.addSeries(CandlestickSeries, {
+          upColor: "#22c55e",
+          borderUpColor: "#22c55e",
+          wickUpColor: "#22c55e",
+          downColor: "#ef4444",
+          borderDownColor: "#ef4444",
+          wickDownColor: "#ef4444",
+          priceLineVisible: false,
+          lastValueVisible: true,
+        })
+      : chart.addSeries(LineSeries, {
+          color: "#4c7fff",
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: true,
+        });
+
+    priceSeriesRef.current = series;
+    primarySeriesModeRef.current = mode;
+    return series;
+  }, [clearAllDrawings]);
+
+  const syncIndicatorSeries = useCallback((indicatorData) => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+
+    Object.entries(indicatorRefs.current).forEach(([key, series]) => {
+      if (!activeIndicators.has(key) || !indicatorData[key]?.length) {
+        try { chart.removeSeries(series); } catch { /* noop */ }
+        delete indicatorRefs.current[key];
+      }
+    });
+
+    Object.entries(indicatorData).forEach(([key, data]) => {
+      if (!activeIndicators.has(key) || !data.length) {
+        return;
+      }
+
+      if (!indicatorRefs.current[key]) {
+        indicatorRefs.current[key] = chart.addSeries(LineSeries, {
+          color: INDICATOR_COLORS[key] ?? "#94a3b8",
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+      }
+
+      indicatorRefs.current[key].setData(data);
+    });
+  }, [activeIndicators]);
+
+  const applyPresetLine = useCallback(() => {
+    const tool = mapInitialTool(initialHighlightTool);
+    if (!tool || !Number.isFinite(presetPrice) || presetPrice <= 0 || !priceSeriesRef.current) {
+      return;
+    }
+
+    if (tool === "stopLoss" && !drawingsRef.current.stopLoss) {
+      addPriceLine(tool, presetPrice);
+    }
+
+    if (tool === "takeProfit" && !drawingsRef.current.takeProfit) {
+      addPriceLine(tool, presetPrice);
+    }
+  }, [initialHighlightTool, presetPrice]);
+
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      return undefined;
+    }
 
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
@@ -107,171 +236,167 @@ export default function AdvancedChart({
         borderColor: chartTheme.grid,
         timeVisible: true,
         secondsVisible: false,
+        rightOffset: DEFAULT_RIGHT_OFFSET,
+        barSpacing: DEFAULT_BAR_SPACING,
+        minBarSpacing: MIN_BAR_SPACING,
+        fixLeftEdge: true,
+        lockVisibleTimeRangeOnResize: true,
       },
     });
 
-    const priceSeries = chart.addSeries(LineSeries, {
-      color:            "#4c7fff",
-      lineWidth:        2,
-      priceLineVisible: false,
-      lastValueVisible: true,
-    });
+    chartRef.current = chart;
+    ensurePrimarySeries("line");
+    const handleVisibleRangeChange = (logicalRange) => {
+      if (!logicalRange || rangeAdjustLockRef.current) {
+        return;
+      }
 
-    chartRef.current       = chart;
-    priceSeriesRef.current = priceSeries;
+      const maxVisibleBars = primarySeriesModeRef.current === "candlestick"
+        ? Math.min(dataPointCountRef.current || MAX_VISIBLE_CANDLE_BARS, MAX_VISIBLE_CANDLE_BARS)
+        : Math.min(dataPointCountRef.current || MAX_VISIBLE_LINE_BARS, MAX_VISIBLE_LINE_BARS);
 
-    // ── Çizim tıklama handler'ı ──────────────────────────────────────────
+      if (!maxVisibleBars) {
+        return;
+      }
+
+      const visibleBars = logicalRange.to - logicalRange.from;
+      if (visibleBars <= maxVisibleBars) {
+        return;
+      }
+
+      const center = (logicalRange.from + logicalRange.to) / 2;
+      rangeAdjustLockRef.current = true;
+      chart.timeScale().setVisibleLogicalRange({
+        from: center - (maxVisibleBars / 2),
+        to: center + (maxVisibleBars / 2),
+      });
+      requestAnimationFrame(() => {
+        rangeAdjustLockRef.current = false;
+      });
+    };
+    chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
+
     chart.subscribeClick((param) => {
+      const priceSeries = priceSeriesRef.current;
       const tool = activeToolRef.current;
-      if (tool === "cursor" || !param.point) return;
+
+      if (!priceSeries || tool === "cursor" || !param.point) {
+        return;
+      }
 
       const price = priceSeries.coordinateToPrice(param.point.y);
-      if (price == null) return;
+      if (price == null) {
+        return;
+      }
 
       if (tool === "horizontal") {
         const priceLine = priceSeries.createPriceLine({
           price,
-          color:            "#6b7280",
-          lineWidth:        1,
-          lineStyle:        2,   // dashed
+          color: "#6b7280",
+          lineWidth: 1,
+          lineStyle: 2,
           axisLabelVisible: true,
         });
-        setDrawings((p) => ({
-          ...p,
-          horizontalLines: [...p.horizontalLines, { id: Date.now(), price, priceLine }],
+        setDrawings((current) => ({
+          ...current,
+          horizontalLines: [...current.horizontalLines, { id: Date.now(), price, priceLine }],
         }));
+        return;
+      }
 
-      } else if (tool === "stopLoss") {
-        const cur = drawingsRef.current;
-        if (cur.stopLoss) {
-          try { priceSeries.removePriceLine(cur.stopLoss.priceLine); } catch { /* */ }
-        }
-        const priceLine = priceSeries.createPriceLine({
-          price,
-          color:            "#ef4444",
-          lineWidth:        2,
-          lineStyle:        0,   // solid
-          axisLabelVisible: true,
-          title:            "🔴 Stop-Loss",
-        });
-        setDrawings((p) => ({ ...p, stopLoss: { price, priceLine } }));
+      if (tool === "stopLoss" || tool === "takeProfit") {
+        addPriceLine(tool, price);
+        return;
+      }
 
-      } else if (tool === "takeProfit") {
-        const cur = drawingsRef.current;
-        if (cur.takeProfit) {
-          try { priceSeries.removePriceLine(cur.takeProfit.priceLine); } catch { /* */ }
-        }
-        const priceLine = priceSeries.createPriceLine({
-          price,
-          color:            "#22c55e",
-          lineWidth:        2,
-          lineStyle:        0,
-          axisLabelVisible: true,
-          title:            "🟢 Take-Profit",
-        });
-        setDrawings((p) => ({ ...p, takeProfit: { price, priceLine } }));
-
-      } else if (tool === "trend") {
+      if (tool === "trend") {
         const start = trendStartRef.current;
         if (!start) {
-          // İlk tıklama — başlangıç noktası
-          if (param.time == null) return;
-          setTrendStart({ time: param.time, price });
-        } else {
-          // İkinci tıklama — trend çizgisini çiz
-          if (param.time == null || param.time === start.time) {
-            setTrendStart(null);
+          if (param.time == null) {
             return;
           }
-          const data = [
-            { time: start.time, value: start.price },
-            { time: param.time, value: price },
-          ].sort((a, b) => a.time - b.time);
-
-          const trendSeries = chart.addSeries(LineSeries, {
-            color:            "#8b5cf6",
-            lineWidth:        1,
-            priceLineVisible: false,
-            lastValueVisible: false,
-          });
-          trendSeries.setData(data);
-          setDrawings((p) => ({
-            ...p,
-            trendLines: [...p.trendLines, { id: Date.now(), series: trendSeries }],
-          }));
-          setTrendStart(null);
+          setTrendStart({ time: param.time, price });
+          return;
         }
+
+        if (param.time == null || param.time === start.time) {
+          setTrendStart(null);
+          return;
+        }
+
+        const lineData = [
+          { time: start.time, value: start.price },
+          { time: param.time, value: price },
+        ].sort((left, right) => left.time - right.time);
+
+        const trendSeries = chart.addSeries(LineSeries, {
+          color: "#8b5cf6",
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+        trendSeries.setData(lineData);
+
+        setDrawings((current) => ({
+          ...current,
+          trendLines: [...current.trendLines, { id: Date.now(), series: trendSeries }],
+        }));
+        setTrendStart(null);
       }
     });
 
-    // ── Resize ────────────────────────────────────────────────────────────
     const onResize = () => {
       if (containerRef.current && chartRef.current) {
         chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
       }
     };
+
     window.addEventListener("resize", onResize);
 
     return () => {
       window.removeEventListener("resize", onResize);
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
       chart.remove();
-      chartRef.current       = null;
+      chartRef.current = null;
       priceSeriesRef.current = null;
-      indicatorRefs.current  = {};
-      indicatorDataRef.current = {};
+      primarySeriesModeRef.current = null;
+      indicatorRefs.current = {};
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ensurePrimarySeries]);
 
-  // ── Effect 2: Tema renk güncelle ─────────────────────────────────────────
   useEffect(() => {
-    if (!chartRef.current) return;
+    if (!chartRef.current) {
+      return;
+    }
+
     chartRef.current.applyOptions({
-      layout:          { textColor: chartTheme.axis },
-      grid:            { vertLines: { color: chartTheme.grid }, horzLines: { color: chartTheme.grid } },
+      layout: { textColor: chartTheme.axis },
+      grid: {
+        vertLines: { color: chartTheme.grid },
+        horzLines: { color: chartTheme.grid },
+      },
       rightPriceScale: { borderColor: chartTheme.grid, autoScale: true },
-      timeScale:       { borderColor: chartTheme.grid },
+      timeScale: {
+        borderColor: chartTheme.grid,
+        rightOffset: DEFAULT_RIGHT_OFFSET,
+        barSpacing: DEFAULT_BAR_SPACING,
+        minBarSpacing: MIN_BAR_SPACING,
+        fixLeftEdge: true,
+        lockVisibleTimeRangeOnResize: true,
+      },
     });
   }, [chartTheme]);
 
-  // ── Yardımcı: indicator görünürlüğünü senkronize et ──────────────────────
-  const applyIndicatorVisibility = useCallback(() => {
-    if (!chartRef.current) return;
-    Object.keys(indicatorDataRef.current).forEach((key) => {
-      const data     = indicatorDataRef.current[key];
-      const existing = indicatorRefs.current[key];
-      const show     = activeIndicatorsRef.current.has(key);
-
-      if (show && !existing) {
-        const series = chartRef.current.addSeries(LineSeries, {
-          color:            INDICATOR_COLORS[key] ?? "#94a3b8",
-          lineWidth:        key.startsWith("bollinger") ? 1 : 2,
-          priceLineVisible: false,
-          lastValueVisible: false,
-        });
-        series.setData(data);
-        indicatorRefs.current[key] = series;
-      } else if (!show && existing) {
-        try { chartRef.current.removeSeries(existing); } catch { /* */ }
-        indicatorRefs.current[key] = null;
-      }
-    });
-  }, []);
-
-  // ── Effect 3: Veri çek ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!instrumentCode || !priceSeriesRef.current) return;
+    if (!instrumentCode || !chartRef.current) {
+      return undefined;
+    }
 
-    // Enstrüman değişince çizimleri temizle
     if (prevInstrumentRef.current && prevInstrumentRef.current !== instrumentCode) {
-      const d = drawingsRef.current;
-      if (d.stopLoss)   try { priceSeriesRef.current.removePriceLine(d.stopLoss.priceLine); }   catch { /* */ }
-      if (d.takeProfit) try { priceSeriesRef.current.removePriceLine(d.takeProfit.priceLine); } catch { /* */ }
-      d.horizontalLines.forEach((l) => { try { priceSeriesRef.current.removePriceLine(l.priceLine); } catch { /* */ } });
-      d.trendLines.forEach((t) => { try { chartRef.current?.removeSeries(t.series); } catch { /* */ } });
-      setDrawings({ stopLoss: null, takeProfit: null, horizontalLines: [], trendLines: [] });
-      setTrendStart(null);
+      clearAllDrawings();
     }
     prevInstrumentRef.current = instrumentCode;
+    pendingAutoFitRef.current = true;
 
     let cancelled = false;
 
@@ -280,251 +405,500 @@ export default function AdvancedChart({
       setError(null);
 
       try {
-        const res = await getAdvancedTechnical(instrumentCode, { timeframe });
-        if (cancelled) return;
+        const result = isCrypto
+          ? await loadCryptoData(instrumentCode, range)
+          : await loadLineData(instrumentCode, rangeDates);
 
-        const prices = res?.prices;
-        if (!prices || prices.length === 0) {
-          setError("Bu enstrüman için veri bulunamadı.");
-          setLoading(false);
+        if (cancelled) {
           return;
         }
 
-        const lineData = prices.map((p) => ({
-          time:  p.time,
-          value: p.value ?? p.close ?? p.close_price ?? p.price_value ?? 0,
-        }));
+        const primarySeries = ensurePrimarySeries(result.mode);
+        if (!primarySeries) {
+          return;
+        }
 
-        priceSeriesRef.current.setData(lineData);
-        chartRef.current.timeScale().fitContent();
-
-        Object.values(indicatorRefs.current).forEach((s) => {
-          if (s) { try { chartRef.current.removeSeries(s); } catch { /* */ } }
-        });
-        indicatorRefs.current    = {};
-        indicatorDataRef.current = {};
-
-        const times = prices.map((p) => p.time);
-        Object.entries(res?.indicators ?? {}).forEach(([key, values]) => {
-          if (!Array.isArray(values) || values.length === 0) return;
-          const chartData = values
-            .map((v, i) => (v != null && times[i] != null ? { time: times[i], value: v } : null))
-            .filter(Boolean);
-          if (chartData.length > 0) indicatorDataRef.current[key] = chartData;
-        });
-
-        applyIndicatorVisibility();
-
-      } catch {
-        if (!cancelled) setError("Veri yüklenirken hata oluştu. Tekrar deneyin.");
+        primarySeries.setData(result.priceData);
+        dataPointCountRef.current = result.priceData.length;
+        indicatorDataRef.current = result.indicatorData;
+        syncIndicatorSeries(result.indicatorData);
+        if (pendingAutoFitRef.current) {
+          chartRef.current?.timeScale().fitContent();
+          pendingAutoFitRef.current = false;
+        }
+        applyPresetLine();
+      } catch (fetchError) {
+        if (!cancelled) {
+          setError(extractErrorMessage(fetchError, "Veri yuklenirken hata olustu."));
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     fetchData();
-    return () => { cancelled = true; };
-  }, [instrumentCode, timeframe, applyIndicatorVisibility]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    applyPresetLine,
+    clearAllDrawings,
+    ensurePrimarySeries,
+    instrumentCode,
+    isCrypto,
+    range,
+    rangeDates,
+    reloadToken,
+    syncIndicatorSeries,
+  ]);
 
-  // ── Effect 4: Indicator toggle ────────────────────────────────────────────
   useEffect(() => {
-    applyIndicatorVisibility();
-  }, [activeIndicators, applyIndicatorVisibility]);
+    syncIndicatorSeries(indicatorDataRef.current);
+  }, [activeIndicators, syncIndicatorSeries]);
 
-  // ── Effect 5: Grafik dışına tıklayınca imlece dön ───────────────────────
   useEffect(() => {
-    if (activeTool === "cursor") return;
-    const handleOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+    const handleOutside = (event) => {
+      if (activeTool === "cursor") {
+        return;
+      }
+
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
         setActiveTool("cursor");
         setTrendStart(null);
       }
     };
+
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [activeTool]);
 
-  // ── Çizim silme fonksiyonları ─────────────────────────────────────────────
-  function removeStopLoss() {
-    if (drawings.stopLoss) {
-      try { priceSeriesRef.current?.removePriceLine(drawings.stopLoss.priceLine); } catch { /* */ }
+  function addPriceLine(tool, price) {
+    const priceSeries = priceSeriesRef.current;
+    if (!priceSeries) {
+      return;
     }
-    setDrawings((p) => ({ ...p, stopLoss: null }));
+
+    const current = drawingsRef.current;
+    const previous = tool === "stopLoss" ? current.stopLoss : current.takeProfit;
+    if (previous?.priceLine) {
+      try { priceSeries.removePriceLine(previous.priceLine); } catch { /* noop */ }
+    }
+
+    const config = tool === "stopLoss"
+      ? { color: "#ef4444", title: "Stop-Loss" }
+      : { color: "#22c55e", title: "Take-Profit" };
+
+    const priceLine = priceSeries.createPriceLine({
+      price,
+      color: config.color,
+      lineWidth: 2,
+      lineStyle: 0,
+      axisLabelVisible: true,
+      title: config.title,
+    });
+
+    setDrawings((currentState) => ({
+      ...currentState,
+      [tool]: { price, priceLine },
+    }));
+  }
+
+  function removeStopLoss() {
+    if (drawings.stopLoss?.priceLine) {
+      try { priceSeriesRef.current?.removePriceLine(drawings.stopLoss.priceLine); } catch { /* noop */ }
+    }
+    setDrawings((current) => ({ ...current, stopLoss: null }));
   }
 
   function removeTakeProfit() {
-    if (drawings.takeProfit) {
-      try { priceSeriesRef.current?.removePriceLine(drawings.takeProfit.priceLine); } catch { /* */ }
+    if (drawings.takeProfit?.priceLine) {
+      try { priceSeriesRef.current?.removePriceLine(drawings.takeProfit.priceLine); } catch { /* noop */ }
     }
-    setDrawings((p) => ({ ...p, takeProfit: null }));
+    setDrawings((current) => ({ ...current, takeProfit: null }));
   }
 
   function removeHorizontalLine(id) {
-    const line = drawings.horizontalLines.find((l) => l.id === id);
-    if (line) try { priceSeriesRef.current?.removePriceLine(line.priceLine); } catch { /* */ }
-    setDrawings((p) => ({ ...p, horizontalLines: p.horizontalLines.filter((l) => l.id !== id) }));
+    const line = drawings.horizontalLines.find((item) => item.id === id);
+    if (line?.priceLine) {
+      try { priceSeriesRef.current?.removePriceLine(line.priceLine); } catch { /* noop */ }
+    }
+    setDrawings((current) => ({
+      ...current,
+      horizontalLines: current.horizontalLines.filter((item) => item.id !== id),
+    }));
   }
 
   function removeTrendLine(id) {
-    const tl = drawings.trendLines.find((t) => t.id === id);
-    if (tl) try { chartRef.current?.removeSeries(tl.series); } catch { /* */ }
-    setDrawings((p) => ({ ...p, trendLines: p.trendLines.filter((t) => t.id !== id) }));
+    const trendLine = drawings.trendLines.find((item) => item.id === id);
+    if (trendLine?.series) {
+      try { chartRef.current?.removeSeries(trendLine.series); } catch { /* noop */ }
+    }
+    setDrawings((current) => ({
+      ...current,
+      trendLines: current.trendLines.filter((item) => item.id !== id),
+    }));
   }
 
-  // ── Indicator toggle ──────────────────────────────────────────────────────
-  function toggleGroup(btn) {
-    const keys = btn.keys ?? [btn.key];
-    setActiveIndicators((prev) => {
-      const next = new Set(prev);
-      const anyActive = keys.some((k) => next.has(k));
-      if (anyActive) keys.forEach((k) => next.delete(k));
-      else           keys.forEach((k) => next.add(k));
+  async function handleCreateAlert(kind) {
+    const drawing = kind === "stopLoss" ? drawings.stopLoss : drawings.takeProfit;
+    if (!drawing?.price || !instrumentCode) {
+      return;
+    }
+
+    if (!userId) {
+      await login();
+      return;
+    }
+
+    const conditionType = kind === "stopLoss" ? "BELOW" : "ABOVE";
+
+    try {
+      setCreatingAlertKey(kind);
+      await createAlert(userId, {
+        instrumentCode,
+        conditionType,
+        targetPrice: Number(drawing.price.toFixed(8)),
+      });
+      showToast("success", kind === "stopLoss" ? "Stop-loss alarmi olusturuldu." : "Take-profit alarmi olusturuldu.");
+    } catch (createError) {
+      showToast("error", extractErrorMessage(createError, "Alarm olusturulamadi."));
+    } finally {
+      setCreatingAlertKey(null);
+    }
+  }
+
+  function toggleIndicator(key) {
+    setActiveIndicators((current) => {
+      const next = new Set(current);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
       return next;
     });
   }
 
-  function isGroupActive(btn) {
-    const keys = btn.keys ?? [btn.key];
-    return keys.some((k) => activeIndicators.has(k));
-  }
-
-  // ── Hesaplamalar ──────────────────────────────────────────────────────────
-  const changeRate  = quote?.changeRate;
-  const isPositive  = changeRate != null && changeRate >= 0;
-  const isDrawing   = activeTool !== "cursor";
-  const hasDrawings = !!(
-    drawings.stopLoss ||
-    drawings.takeProfit ||
-    drawings.horizontalLines.length ||
-    drawings.trendLines.length
-  );
-
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <section className="panel-surface advanced-chart-card">
+      {toast ? (
+        <div className={`toast-notify ${toast.type}`}>
+          {toast.type === "success"
+            ? <Check size={15} strokeWidth={2.5} className="toast-notify-icon" />
+            : <X size={15} strokeWidth={2.5} className="toast-notify-icon" />}
+          <span>{toast.message}</span>
+        </div>
+      ) : null}
 
-      {/* ── Başlık ── */}
       <div className="advanced-chart-header">
         <div className="advanced-chart-header-left">
-          <span className="advanced-chart-symbol">{instrumentCode?.toUpperCase() ?? "—"}</span>
-          {quote?.displayName && quote.displayName !== instrumentCode?.toUpperCase() && (
+          <span className="advanced-chart-symbol">{instrumentCode?.toUpperCase() ?? "-"}</span>
+          {quote?.displayName && quote.displayName !== instrumentCode?.toUpperCase() ? (
             <span className="advanced-chart-name">{quote.displayName}</span>
-          )}
-          {quote?.price != null && (
+          ) : null}
+          {quote?.price != null ? (
             <span className="advanced-chart-price">{formatNumber(quote.price, 2)}</span>
-          )}
-          {changeRate != null && (
+          ) : null}
+          {changeRate != null ? (
             <span className={`advanced-chart-change ${isPositive ? "positive" : "negative"}`}>
-              {isPositive ? "+" : ""}{changeRate.toFixed(2)}%
+              {isPositive ? "+" : ""}{Number(changeRate).toFixed(2)}%
             </span>
-          )}
+          ) : null}
         </div>
 
         <div className="chart-timeframes">
-          {TIMEFRAMES.map((tf) => (
+          {RANGE_OPTIONS.map((option) => (
             <button
-              key={tf.value}
-              className={`chart-tf-btn${timeframe === tf.value ? " active" : ""}`}
-              onClick={() => setTimeframe(tf.value)}
+              key={option.value}
+              className={`chart-tf-btn${range === option.value ? " active" : ""}`}
+              onClick={() => setRange(option.value)}
             >
-              {tf.label}
+              {option.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── İndikatör + Çizim toolbar satırı ── */}
       <div className="advanced-chart-indicators">
-        {/* Mevcut indikatör toggle'ları */}
-        {INDICATOR_BUTTONS.map((btn) => (
+        {INDICATOR_BUTTONS.map((button) => (
           <button
-            key={btn.key}
-            className={`chart-indicator-btn${isGroupActive(btn) ? " active" : ""}`}
-            style={{ "--indicator-color": btn.color }}
-            onClick={() => toggleGroup(btn)}
+            key={button.key}
+            className={`chart-indicator-btn${activeIndicators.has(button.key) ? " active" : ""}`}
+            style={{ "--indicator-color": button.color }}
+            onClick={() => toggleIndicator(button.key)}
           >
             <span className="chart-indicator-dot" />
-            {btn.label}
+            {button.label}
           </button>
         ))}
 
-        {/* Ayırıcı */}
         <span className="chart-toolbar-sep" aria-hidden="true" />
 
-        {/* Çizim araçları */}
-        {DRAW_TOOLS.map((tool) => (
-          <button
-            key={tool.key}
-            title={tool.label}
-            className={`draw-tool-btn${activeTool === tool.key ? " active" : ""}`}
-            onClick={() => {
-              setActiveTool(tool.key);
-              if (tool.key !== "trend") setTrendStart(null);
-            }}
-          >
-            {tool.icon}
-          </button>
-        ))}
+        {DRAW_TOOLS.map((tool) => {
+          const Icon = tool.icon;
+          return (
+            <button
+              key={tool.key}
+              title={tool.label}
+              className={`draw-tool-btn${activeTool === tool.key ? " active" : ""}`}
+              onClick={() => {
+                setActiveTool(tool.key);
+                if (tool.key !== "trend") {
+                  setTrendStart(null);
+                }
+              }}
+            >
+              <Icon size={16} strokeWidth={2} />
+            </button>
+          );
+        })}
       </div>
 
-      {/* ── Trend çizgisi ipucu ── */}
-      {trendStart && (
+      {trendStart ? (
         <div className="chart-trend-hint">
-          Bitiş noktasını seçin — başlangıç: <strong>{formatNumber(trendStart.price, 2)}</strong>
+          Bitis noktasini secin. Baslangic: <strong>{formatNumber(trendStart.price, 2)}</strong>
         </div>
-      )}
+      ) : null}
 
-      {/* ── Aktif çizimler bar'ı ── */}
-      {hasDrawings && (
+      {hasDrawings ? (
         <div className="advanced-chart-drawings-bar">
-          {drawings.stopLoss && (
+          {drawings.stopLoss ? (
             <span className="drawing-chip drawing-chip--sl">
-              🔴 Stop: {formatNumber(drawings.stopLoss.price, 2)}
-              <button className="drawing-chip-del" onClick={removeStopLoss} title="Sil">×</button>
+              Stop: {formatNumber(drawings.stopLoss.price, 2)}
+              <button
+                className="drawing-chip-action"
+                onClick={() => handleCreateAlert("stopLoss")}
+                disabled={creatingAlertKey === "stopLoss"}
+              >
+                {creatingAlertKey === "stopLoss" ? "Ekleniyor" : "Alarm olarak ekle"}
+              </button>
+              <button className="drawing-chip-del" onClick={removeStopLoss} title="Sil">x</button>
             </span>
-          )}
-          {drawings.takeProfit && (
+          ) : null}
+
+          {drawings.takeProfit ? (
             <span className="drawing-chip drawing-chip--tp">
-              🟢 TP: {formatNumber(drawings.takeProfit.price, 2)}
-              <button className="drawing-chip-del" onClick={removeTakeProfit} title="Sil">×</button>
+              TP: {formatNumber(drawings.takeProfit.price, 2)}
+              <button
+                className="drawing-chip-action"
+                onClick={() => handleCreateAlert("takeProfit")}
+                disabled={creatingAlertKey === "takeProfit"}
+              >
+                {creatingAlertKey === "takeProfit" ? "Ekleniyor" : "Alarm olarak ekle"}
+              </button>
+              <button className="drawing-chip-del" onClick={removeTakeProfit} title="Sil">x</button>
             </span>
-          )}
+          ) : null}
+
           {drawings.horizontalLines.map((line) => (
             <span key={line.id} className="drawing-chip drawing-chip--hline">
-              — {formatNumber(line.price, 2)}
-              <button className="drawing-chip-del" onClick={() => removeHorizontalLine(line.id)} title="Sil">×</button>
+              Yatay: {formatNumber(line.price, 2)}
+              <button className="drawing-chip-del" onClick={() => removeHorizontalLine(line.id)} title="Sil">x</button>
             </span>
           ))}
-          {drawings.trendLines.map((tl) => (
-            <span key={tl.id} className="drawing-chip drawing-chip--trend">
-              ╱ Trend
-              <button className="drawing-chip-del" onClick={() => removeTrendLine(tl.id)} title="Sil">×</button>
+
+          {drawings.trendLines.map((line) => (
+            <span key={line.id} className="drawing-chip drawing-chip--trend">
+              Trend
+              <button className="drawing-chip-del" onClick={() => removeTrendLine(line.id)} title="Sil">x</button>
             </span>
           ))}
         </div>
-      )}
+      ) : null}
 
-      {/* ── Grafik canvas ── */}
-      <div className={`advanced-chart-body${isDrawing ? " drawing-mode" : ""}`}>
-        {loading && (
+      <div className={`advanced-chart-body${activeTool !== "cursor" ? " drawing-mode" : ""}`}>
+        {loading ? (
           <div className="advanced-chart-overlay">
-            <span>Yükleniyor…</span>
+            <span>Yukleniyor...</span>
           </div>
-        )}
-        {!loading && error && (
+        ) : null}
+
+        {!loading && error ? (
           <div className="advanced-chart-overlay advanced-chart-overlay--error">
             <span>{error}</span>
-            <button
-              className="chart-retry-btn"
-              onClick={() => setTimeframe((t) => t)}
-            >
-              Tekrar Dene
+            <button className="chart-retry-btn" onClick={() => setReloadToken((value) => value + 1)}>
+              Tekrar dene
             </button>
           </div>
-        )}
+        ) : null}
+
         <div ref={containerRef} className="advanced-chart-canvas" />
       </div>
-
     </section>
   );
+}
+
+async function loadCryptoData(symbol, range) {
+  const candles = await getTechnicalCandles(symbol, { range, interval: "1d" });
+  const normalizedCandles = normalizeCandles(candles);
+
+  if (!normalizedCandles.length) {
+    throw new Error(CRYPTO_CANDLE_ERROR_MESSAGE);
+  }
+
+  return {
+    mode: "candlestick",
+    priceData: normalizedCandles.map((candle) => ({
+      time: candle.time,
+      open: candle.open,
+      high: candle.high,
+      low: candle.low,
+      close: candle.close,
+    })),
+    indicatorData: {
+      sma7: mapIndicatorSeries(normalizedCandles, "sma7"),
+      sma20: mapIndicatorSeries(normalizedCandles, "sma20"),
+      sma50: mapIndicatorSeries(normalizedCandles, "sma50"),
+    },
+  };
+}
+
+async function loadLineData(symbol, rangeDates) {
+  const analysis = await getAdvancedTechnical(symbol, {
+    from: rangeDates.from,
+    to: rangeDates.to,
+    indicators: DEFAULT_INDICATORS,
+  });
+
+  const points = Array.isArray(analysis?.points) ? analysis.points : [];
+  if (!points.length) {
+    throw new Error("Bu enstruman icin veri bulunamadi.");
+  }
+
+  return {
+    mode: "line",
+    priceData: points
+      .filter((point) => point?.date && point?.close != null)
+      .map((point) => ({
+        time: toEpochSeconds(point.date),
+        value: point.close,
+      })),
+    indicatorData: {
+      sma7: points
+        .filter((point) => point?.date && point?.sma7 != null)
+        .map((point) => ({ time: toEpochSeconds(point.date), value: point.sma7 })),
+      sma20: points
+        .filter((point) => point?.date && point?.sma20 != null)
+        .map((point) => ({ time: toEpochSeconds(point.date), value: point.sma20 })),
+      sma50: points
+        .filter((point) => point?.date && point?.sma50 != null)
+        .map((point) => ({ time: toEpochSeconds(point.date), value: point.sma50 })),
+    },
+  };
+}
+
+function mapIndicatorSeries(candles, key) {
+  return candles
+    .filter((candle) => candle?.time != null && candle?.[key] != null)
+    .map((candle) => ({ time: candle.time, value: candle[key] }));
+}
+
+function normalizeCandles(candles) {
+  if (!Array.isArray(candles)) {
+    return [];
+  }
+
+  const deduped = new Map();
+
+  candles.forEach((candle) => {
+    const time = Number(candle?.timestamp);
+    const open = toFiniteNumber(candle?.open);
+    const high = toFiniteNumber(candle?.high);
+    const low = toFiniteNumber(candle?.low);
+    const close = toFiniteNumber(candle?.close);
+
+    if (!Number.isInteger(time) || time <= 0) {
+      return;
+    }
+    if ([open, high, low, close].some((value) => value == null)) {
+      return;
+    }
+
+    deduped.set(time, {
+      time,
+      open,
+      high,
+      low,
+      close,
+      sma7: toFiniteNumber(candle?.sma7),
+      sma20: toFiniteNumber(candle?.sma20),
+      sma50: toFiniteNumber(candle?.sma50),
+    });
+  });
+
+  return Array.from(deduped.values()).sort((left, right) => left.time - right.time);
+}
+
+function toFiniteNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function buildDateRange(range) {
+  const today = new Date();
+  const from = new Date(today);
+
+  switch (range) {
+    case "1m":
+      from.setMonth(from.getMonth() - 1);
+      break;
+    case "3m":
+      from.setMonth(from.getMonth() - 3);
+      break;
+    case "6m":
+      from.setMonth(from.getMonth() - 6);
+      break;
+    case "1y":
+      from.setFullYear(from.getFullYear() - 1);
+      break;
+    case "max":
+      return {
+        from: "2000-01-01",
+        to: toIsoDate(today),
+      };
+      break;
+    default:
+      from.setMonth(from.getMonth() - 6);
+      break;
+  }
+
+  return {
+    from: toIsoDate(from),
+    to: toIsoDate(today),
+  };
+}
+
+function toIsoDate(value) {
+  return value.toISOString().slice(0, 10);
+}
+
+function toEpochSeconds(date) {
+  return Math.floor(new Date(`${date}T00:00:00Z`).getTime() / 1000);
+}
+
+function mapLegacyTimeframeToRange(value) {
+  switch (String(value || "").toLowerCase()) {
+    case "1h":
+      return "1m";
+    case "4h":
+      return "3m";
+    case "1w":
+      return "1y";
+    case "1d":
+    default:
+      return DEFAULT_RANGE;
+  }
+}
+
+function mapInitialTool(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "STOPLOSS_LINE") {
+    return "stopLoss";
+  }
+  if (normalized === "TAKEPROFIT_LINE") {
+    return "takeProfit";
+  }
+  return null;
 }

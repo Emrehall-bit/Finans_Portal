@@ -4,7 +4,7 @@ import axiosClient from "./axiosClient";
 
 export async function getAdvancedTechnical(instrumentCode, params = {}) {
   try {
-    const res = await axiosClient.get(`/api/v1/analysis/technical/${instrumentCode}`, { params });
+    const res = await axiosClient.get(`/api/v1/technical-analysis/${instrumentCode}`, { params });
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error(`Teknik veri alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
@@ -12,9 +12,19 @@ export async function getAdvancedTechnical(instrumentCode, params = {}) {
   }
 }
 
+export async function getTechnicalCandles(symbol, params = {}) {
+  try {
+    const res = await axiosClient.get(`/api/v1/technical-analysis/${encodeURIComponent(symbol)}/candles`, { params });
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Mum verisi alÄ±namadÄ± [${symbol}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
 export async function getUserIndicators(instrumentCode) {
   try {
-    const res = await axiosClient.get(`/api/v1/analysis/technical/${instrumentCode}/indicators`);
+    const res = await axiosClient.get(`/api/v1/technical-analysis/${instrumentCode}/indicators`);
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error(`Gösterge konfigürasyonları alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
@@ -24,7 +34,7 @@ export async function getUserIndicators(instrumentCode) {
 
 export async function saveIndicatorConfig(instrumentCode, body) {
   try {
-    const res = await axiosClient.post(`/api/v1/analysis/technical/${instrumentCode}/indicators`, body);
+    const res = await axiosClient.post(`/api/v1/technical-analysis/${instrumentCode}/indicators`, body);
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error(`Gösterge konfigürasyonu kaydedilemedi [${instrumentCode}]:`, err?.response?.status ?? err.message);
@@ -34,7 +44,7 @@ export async function saveIndicatorConfig(instrumentCode, body) {
 
 export async function deleteIndicatorConfig(id) {
   try {
-    const res = await axiosClient.delete(`/api/v1/analysis/technical/indicators/${id}`);
+    const res = await axiosClient.delete(`/api/v1/technical-analysis/indicators/${id}`);
     return res.data;
   } catch (err) {
     console.error(`Gösterge konfigürasyonu silinemedi [id=${id}]:`, err?.response?.status ?? err.message);
