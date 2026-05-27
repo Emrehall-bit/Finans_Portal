@@ -9,6 +9,7 @@ import AnalysisInsightPanel from "../components/analysis/AnalysisInsightPanel";
 import AnalysisSymbolPicker from "../components/analysis/AnalysisSymbolPicker";
 import { ANALYSIS_RANGE_PRESETS, buildChartData, buildPresetRange, DEFAULT_INDICATORS } from "../components/analysis/analysisUtils";
 import AdvancedChart from "../components/analysis/AdvancedChart";
+import FundamentalAnalysis from "../components/analysis/FundamentalAnalysis";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -213,6 +214,10 @@ export default function AnalysisPage() {
                 <section className="panel-surface analysis-lab-panel">
                   <EmptyState title={t("analysis.primaryEmptyTitle")} description={t("analysis.primaryEmptyDescription")} />
                 </section>
+              )}
+
+              {primarySymbol && ["STOCK", "FUND"].includes(primaryQuote?.instrumentType) && (
+                <FundamentalAnalysis instrumentCode={primarySymbol} />
               )}
 
               <AnalysisComparisonPanel

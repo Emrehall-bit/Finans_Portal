@@ -101,7 +101,14 @@
       "PowerShell(Stop-Process *)",
       "Bash(./mvnw spring-boot:run -q)",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); p=d.get\\('data',{}\\).get\\('prices',[]\\); print\\('İlk 3 nokta:', p[:3]\\); print\\('Alan adları:', list\\(p[0].keys\\(\\)\\) if p else 'veri yok'\\)\")",
-      "Bash(wmic process *)"
+      "Bash(wmic process *)",
+      "Bash(psql -h localhost -p 5433 -U postgres -d financeportaldb -c \"SELECT COUNT\\(*\\) FROM fundamental_ratios;\")",
+      "Bash(psql -h localhost -p 5433 -U postgres -d financeportaldb -c \"SELECT COUNT\\(*\\) FROM company_financials;\")",
+      "PowerShell($env:PGPASSWORD=\"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -c \"SELECT id, ticker_code, shares_outstanding FROM company_profiles WHERE ticker_code ILIKE 'THYAO' LIMIT 3;\" 2>&1)",
+      "PowerShell($env:PGPASSWORD=\"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -c \"SELECT instrument_type FROM market_instruments WHERE instrument_code = 'THYAO';\" 2>&1)",
+      "PowerShell($env:PGPASSWORD=\"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -c \"SELECT instrument_code, instrument_type FROM market_instruments WHERE instrument_code IN \\('THYAO','AUD'\\) LIMIT 5;\" 2>&1)",
+      "PowerShell($env:PGPASSWORD=\"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -c \"SELECT close_price FROM market_price_history WHERE instrument_id = 392 AND interval_type = 'ONE_DAY' ORDER BY price_timestamp DESC LIMIT 1;\" 2>&1)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8080/api/v1/analysis/fundamental/THYAO\" -Headers @{\"Accept\"=\"application/json\"} -TimeoutSec 5; $r.Content | ConvertFrom-Json | ConvertTo-Json -Depth 3 } catch { \"Backend erişilemiyor: $_\" })"
     ]
   }
 }

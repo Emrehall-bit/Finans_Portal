@@ -18,3 +18,28 @@ html[data-theme] h5,
 html[data-theme] h6 {
   color: inherit;
 }
+
+.eyebrow {
+  margin: 0 0 6px;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.muted {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.page-header h1 {
+  font-size: clamp(1.5rem, 2.2vw, 2.4rem);
+  color: var(--text-main);
+  line-height: 1.05;
+  margin: 0 0 6px;
+}
+
+.page-description {
+  max-width: 720px;
+  line-height: 1.6;
+}

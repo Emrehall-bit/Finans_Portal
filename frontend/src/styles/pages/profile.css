@@ -1,0 +1,359 @@
+/* ── Profile / Settings Page ───────────────── */
+
+.profile-settings-page,
+.profile-settings-page * {
+  min-width: 0;
+}
+
+.profile-settings-page {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow-x: hidden;
+}
+
+/* 2×2 dashboard grid */
+
+.profile-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.profile-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Cards base */
+
+.profile-summary-card,
+.profile-form-card,
+.profile-security-card,
+.profile-danger-card {
+  padding: 22px 26px;
+  border-radius: 18px;
+}
+
+/* ── Profile Summary Card ─── */
+
+.profile-summary-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.profile-summary-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.profile-avatar-large {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  font-size: 1.1rem;
+  flex: 0 0 auto;
+}
+
+.profile-summary-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-summary-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-summary-email {
+  font-size: 0.84rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-logout-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  padding: 6px 14px;
+  min-height: 32px;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+}
+
+.profile-logout-button:hover {
+  background: rgba(239, 68, 68, 0.09);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #ef4444;
+}
+
+/* ── Account Settings Card ─── */
+
+.profile-form-grid,
+.profile-technical-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.profile-field {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-field span {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+  letter-spacing: 0.03em;
+}
+
+.profile-field input,
+.profile-field select,
+.profile-form-actions button {
+  width: 100%;
+  max-width: 100%;
+}
+
+.profile-field input:disabled {
+  background: var(--surface-muted);
+  color: var(--text-soft);
+}
+
+.profile-form-actions {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.profile-note {
+  padding: 11px 14px;
+  border-radius: 11px;
+  background: rgba(76, 127, 255, 0.07);
+  border: 1px solid rgba(76, 127, 255, 0.13);
+  font-size: 0.83rem;
+  color: var(--text-soft);
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.profile-contact-note {
+  margin-top: 20px;
+  font-size: 0.81rem;
+  color: var(--text-soft);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.profile-contact-note a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.profile-contact-note a:hover {
+  text-decoration: underline;
+}
+
+/* ── Security Card ─── */
+
+.profile-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.profile-stat {
+  padding: 14px 16px;
+  border-radius: 13px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-soft);
+}
+
+.profile-stat span {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 0.79rem;
+  color: var(--text-soft);
+  letter-spacing: 0.03em;
+}
+
+.profile-stat strong {
+  color: var(--text-main);
+  font-size: 0.94rem;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.profile-technical-session {
+  margin-top: 12px;
+  padding: 13px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 13px;
+  background: rgba(76, 127, 255, 0.04);
+}
+
+.profile-technical-session summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-soft);
+  letter-spacing: 0.02em;
+}
+
+.profile-technical-grid {
+  margin-top: 14px;
+}
+
+/* ── Danger Zone Card ─── */
+
+.profile-danger-card {
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+.profile-danger-eyebrow {
+  color: rgba(239, 68, 68, 0.75) !important;
+}
+
+.profile-danger-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+  border-top: 1px solid var(--border-soft);
+}
+
+.profile-danger-item-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.profile-danger-item-copy strong {
+  font-size: 0.92rem;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.profile-danger-item-copy p {
+  margin: 0;
+  font-size: 0.81rem;
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+
+.profile-danger-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  padding: 6px 14px;
+  min-height: 32px;
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.profile-danger-btn:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.profile-interactions-card .empty-state {
+  margin-top: 4px;
+}
+
+.profile-delete-modal-desc {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  line-height: 1.6;
+  margin: 0 0 4px;
+}
+
+.profile-delete-confirm-field {
+  margin-top: 4px;
+}
+
+@media (max-width: 1180px) {
+
+  .profile-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-col {
+    gap: 12px;
+  }
+
+  .profile-logout-button {
+    width: auto;
+  }
+}
+
+@media (max-width: 920px) {
+  .profile-form-grid,
+  .profile-stat-grid,
+  .profile-technical-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Profile Premium Card ── */
+
+.profile-premium-card {
+  padding: 22px 26px;
+  border-radius: 18px;
+}
+
+.profile-premium-desc {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  line-height: 1.55;
+  margin-top: 4px;
+}
+
+.premium-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.premium-status-ACTIVE {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success, #34d399);
+  border: 1px solid rgba(16, 185, 129, 0.24);
+}
+
+.premium-status-PAYMENT_PENDING,
+.premium-status-PREMIUM_REQUESTED {
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--warning, #fbbf24);
+  border: 1px solid rgba(251, 191, 36, 0.24);
+}
+
+.premium-status-PAYMENT_FAILED,
+.premium-status-CANCELLED {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}

@@ -1,0 +1,77 @@
+.alerts-management-shell,
+.alerts-side-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.alerts-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.82fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.alerts-panel {
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+}
+
+.alerts-modal {
+  width: min(680px, 100%);
+}
+
+.alerts-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.alerts-selected-quote {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.alerts-selected-quote span,
+.alerts-selected-quote strong,
+.alerts-selected-quote p {
+  margin: 0;
+}
+
+.alerts-selected-quote span,
+.alerts-selected-quote p {
+  color: var(--text-soft);
+}
+
+.alerts-archive-list {
+  display: grid;
+  gap: 12px;
+}
+
+.alerts-archive-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  display: grid;
+  gap: 6px;
+}
+
+.alerts-archive-card strong,
+.alerts-archive-card p,
+.alerts-archive-card span {
+  margin: 0;
+}
+
+.alerts-archive-card p,
+.alerts-archive-card span {
+  color: var(--text-soft);
+}
+
+@media (max-width: 1320px) {
+  .alerts-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}

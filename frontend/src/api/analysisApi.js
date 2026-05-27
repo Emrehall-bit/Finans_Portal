@@ -118,12 +118,14 @@ export async function getFundamentalHistory(instrumentCode) {
   }
 }
 
-export async function getFinancialData(instrumentCode) {
+export async function getFinancialData(instrumentCode, periodType = "ANNUAL") {
   try {
-    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${instrumentCode}/financials`);
+    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${instrumentCode}/financials`, {
+      params: { periodType },
+    });
     return res.data?.data ?? res.data;
   } catch (err) {
-    console.error(`Ham finansal veriler alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
+    console.error(`Ham finansal veriler alınamadı [${instrumentCode}/${periodType}]:`, err?.response?.status ?? err.message);
     throw err;
   }
 }

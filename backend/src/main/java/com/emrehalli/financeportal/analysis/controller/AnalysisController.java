@@ -363,15 +363,17 @@ public class AnalysisController {
     }
 
     @GetMapping("/fundamental/{instrumentCode}/financials")
-    public ApiResponse<List<FinancialDataResponse>> getFinancialData(@PathVariable String instrumentCode) {
-        logger.info("Ham finansal veriler getiriliyor: instrument={}", instrumentCode);
+    public ApiResponse<List<FinancialDataResponse>> getFinancialData(
+            @PathVariable String instrumentCode,
+            @RequestParam(defaultValue = "ANNUAL") String periodType) {
+        logger.info("Ham finansal veriler getiriliyor: instrument={}, periodType={}", instrumentCode, periodType);
 
         MarketInstrument instrument = marketInstrumentRepository
                 .findByInstrumentCodeIgnoreCase(instrumentCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Enstrüman bulunamadı: " + instrumentCode));
 
         List<FinancialDataResponse> financials = companyFinancialsRepository
-                .findByInstrumentIdAndPeriodTypeOrderByPeriodDesc(instrument.getId(), "ANNUAL")
+                .findByInstrumentIdAndPeriodTypeOrderByPeriodDesc(instrument.getId(), periodType.toUpperCase())
                 .stream()
                 .map(f -> FinancialDataResponse.builder()
                         .id(f.getId())
@@ -393,6 +395,53 @@ public class AnalysisController {
                 .success(true)
                 .data(financials)
                 .message("Ham finansal veriler getirildi")
+                .build();
+    }
+
+    @PostMapping("/fundamental/{instrumentCode}/calculate")
+    public ApiResponse<FundamentalRatiosResponse> triggerCalculation(@PathVariable String instrumentCode) {
+        CurrentUser currentUser = currentUserResolver.resolve();
+        if (currentUser.role() != UserRole.ADMIN) {
+            throw new PremiumRequiredException("Bu işlem sadece admin kullanıcılara açıktır");
+        }
+        logger.info("Temel analiz hesaplama tetikleniyor: instrument={}, by={}", instrumentCode, currentUser.keycloakId());
+
+        MarketInstrument instrument = marketInstrumentRepository
+                .findByInstrumentCodeIgnoreCase(instrumentCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Enstrüman bulunamadı: " + instrumentCode));
+
+        CompanyFinancials latest = companyFinancialsRepository
+                .findTopByInstrumentIdAndPeriodTypeOrderByPeriodDesc(instrument.getId(), "ANNUAL")
+                .orElseThrow(() -> new ResourceNotFoundException("ANNUAL finansal veri bulunamadı: " + instrumentCode));
+
+        FundamentalRatios ratios = fundamentalAnalysisService.calculateRatios(instrument.getId(), latest.getPeriod());
+
+        FundamentalRatiosResponse response = FundamentalRatiosResponse.builder()
+                .period(ratios.getPeriod())
+                .calculationPrice(ratios.getCalculationPrice())
+                .peRatio(ratios.getPeRatio())
+                .pbRatio(ratios.getPbRatio())
+                .grossMargin(ratios.getGrossMargin())
+                .netMargin(ratios.getNetMargin())
+                .roe(ratios.getRoe())
+                .roa(ratios.getRoa())
+                .revenueGrowthYoy(ratios.getRevenueGrowthYoy())
+                .netIncomeGrowthYoy(ratios.getNetIncomeGrowthYoy())
+                .assetGrowthYoy(ratios.getAssetGrowthYoy())
+                .debtToEquity(ratios.getDebtToEquity())
+                .currentRatio(ratios.getCurrentRatio())
+                .overallSignal(ratios.getOverallSignal())
+                .grahamNumber(ratios.getGrahamNumber())
+                .piotroskiScore(ratios.getPiotroskiScore())
+                .altmanZScore(ratios.getAltmanZScore())
+                .premiumRequired(false)
+                .calculatedAt(ratios.getCalculatedAt())
+                .build();
+
+        return ApiResponse.<FundamentalRatiosResponse>builder()
+                .success(true)
+                .data(response)
+                .message("Temel analiz hesaplaması tamamlandı")
                 .build();
     }
 
