@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import com.emrehalli.financeportal.news.service.FinancialImpactClassifier;
 
 class ConservativeNewsRelationServiceTest {
 
@@ -30,7 +31,7 @@ class ConservativeNewsRelationServiceTest {
     void setUp() {
         newsRepository = mock(NewsRepository.class);
         marketQueryService = mock(MarketQueryService.class);
-        service = new ConservativeNewsRelationService(newsRepository, marketQueryService);
+        service = new ConservativeNewsRelationService(newsRepository, marketQueryService, new FinancialImpactClassifier());
 
         // Default: no price data unless test overrides
         when(marketQueryService.findBySymbol(anyString(), any())).thenReturn(Optional.empty());

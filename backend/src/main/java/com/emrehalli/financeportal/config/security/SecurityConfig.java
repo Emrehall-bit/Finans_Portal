@@ -63,6 +63,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/technical-analysis/**").permitAll()
+
+                        // Analiz modülü
+                        .requestMatchers(HttpMethod.GET, "/api/v1/analysis/technical/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/analysis/fundamental/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers("/api/v1/analysis/drawings/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers("/api/v1/analysis/technical/*/indicators").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/analysis/technical/*/indicators").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/analysis/technical/indicators/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers("/api/v1/premium/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/technical/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/ai/fundamental/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")

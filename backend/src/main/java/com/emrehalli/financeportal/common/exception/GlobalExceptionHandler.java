@@ -1,5 +1,7 @@
 package com.emrehalli.financeportal.common.exception;
 
+import com.emrehalli.financeportal.analysis.exception.DrawingNotFoundException;
+import com.emrehalli.financeportal.analysis.exception.PremiumRequiredException;
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;
@@ -28,6 +30,30 @@ public class GlobalExceptionHandler {
 
     public GlobalExceptionHandler(AppMessageSource appMessageSource) {
         this.appMessageSource = appMessageSource;
+    }
+
+    @ExceptionHandler(PremiumRequiredException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiResponse<Object> handlePremiumRequiredException(PremiumRequiredException e, HttpServletRequest request) {
+        logException("Premium erişim gerekli", e, request, false);
+        return ApiResponse.builder()
+                .success(false)
+                .data(null)
+                .message(e.getMessage())
+                .requestId(currentRequestId())
+                .build();
+    }
+
+    @ExceptionHandler(DrawingNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Object> handleDrawingNotFoundException(DrawingNotFoundException e, HttpServletRequest request) {
+        logException("Çizim bulunamadı", e, request, false);
+        return ApiResponse.builder()
+                .success(false)
+                .data(null)
+                .message(e.getMessage())
+                .requestId(currentRequestId())
+                .build();
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)

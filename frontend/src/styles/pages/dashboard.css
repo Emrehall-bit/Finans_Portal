@@ -1,0 +1,242 @@
+.hero-copy h2 {
+  margin: 0;
+}
+
+.quick-link-card p,
+.mini-stat-row span {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.welcome-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  background:
+    radial-gradient(circle at top right, rgba(76, 127, 255, 0.12), transparent 26%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-strong) 94%, transparent), color-mix(in srgb, var(--panel) 90%, transparent));
+}
+
+.welcome-banner-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.welcome-banner-copy strong {
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+.welcome-banner-close {
+  min-width: 96px;
+  box-shadow: none;
+}
+
+.dashboard-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
+  gap: 18px;
+}
+
+.hero-card,
+.dashboard-panel {
+  padding: 22px;
+}
+
+.hero-card {
+  min-height: 380px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.95fr);
+  gap: 18px;
+}
+
+.hero-copy {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.hero-chart,
+.dashboard-chart {
+  min-height: 260px;
+}
+
+.ticker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.quick-link-card strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.9fr);
+  gap: 18px;
+}
+
+.dashboard-panel-large {
+  grid-row: span 2;
+}
+
+.mini-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mini-stat-row div {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(244, 247, 255, 0.88);
+  border: 1px solid rgba(216, 225, 245, 0.78);
+}
+
+.mini-stat-row strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.35rem;
+}
+
+.quick-link-card {
+  padding: 16px;
+  border-radius: 18px;
+  text-decoration: none;
+  background: rgba(247, 249, 255, 0.82);
+  border: 1px solid rgba(214, 222, 241, 0.78);
+}
+
+.quick-link-card span {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+@media (max-width: 1180px) {
+  .hero-grid,
+  .dashboard-grid,
+  .hero-card {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-panel-large {
+    grid-row: auto;
+  }
+}
+
+.finance-dashboard-shell {
+  gap: 18px;
+}
+
+.finance-dashboard-kpis .summary-card {
+  min-height: 168px;
+}
+
+.finance-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.finance-dashboard-main,
+.finance-dashboard-side,
+.finance-dashboard-subgrid {
+  display: grid;
+  gap: 18px;
+}
+
+.finance-dashboard-subgrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.finance-dashboard-panel {
+  padding: 22px;
+}
+
+.finance-news-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.finance-warning-list,
+.finance-notification-list {
+  display: grid;
+  gap: 12px;
+}
+
+.finance-warning-card,
+.finance-notification-card {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  display: grid;
+  gap: 8px;
+}
+
+.finance-warning-card strong,
+.finance-notification-card strong,
+.finance-warning-card p,
+.finance-notification-card p,
+.finance-notification-card span {
+  margin: 0;
+}
+
+.finance-warning-card p,
+.finance-notification-card p,
+.finance-notification-card span {
+  color: var(--text-soft);
+}
+
+@media (max-width: 1320px) {
+  .finance-dashboard-grid,
+  .finance-dashboard-subgrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-section-title {
+  margin-bottom: 18px;
+}
+
+.dashboard-news-list {
+  max-height: 760px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.dashboard-news-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dashboard-news-list::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 999px;
+}
+
+.dashboard-news-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.finance-news-link {
+  padding: 10px 12px;
+}
+
+.finance-news-link strong {
+  font-size: 1rem;
+  line-height: 1.2;
+}

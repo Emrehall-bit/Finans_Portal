@@ -88,7 +88,20 @@
       "Bash(npx --no-install eslint src/pages/AdminDataPage.jsx src/api/adminApi.js)",
       "Bash(npx *)",
       "Bash(xargs grep -l \"market_instruments\\\\|MarketInstrument\")",
-      "Bash(xargs grep -l \"CompanyProfile\")"
+      "Bash(xargs grep -l \"CompanyProfile\")",
+      "Bash(npm install *)",
+      "Bash(./mvnw spring-boot:run)",
+      "Bash(./mvnw spring-boot:run -Dspring-boot.run.jvmArguments=\"-Dspring.profiles.active=default\")",
+      "Bash(docker exec finance_portal_postgres *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :8080)",
+      "Bash(findstr :5173)",
+      "Bash(Get-Content \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\node_modules\\\\lightweight-charts\\\\dist\\\\lightweight-charts.standalone.development.js\")",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(./mvnw spring-boot:run -q)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); p=d.get\\('data',{}\\).get\\('prices',[]\\); print\\('İlk 3 nokta:', p[:3]\\); print\\('Alan adları:', list\\(p[0].keys\\(\\)\\) if p else 'veri yok'\\)\")",
+      "Bash(wmic process *)"
     ]
   }
 }

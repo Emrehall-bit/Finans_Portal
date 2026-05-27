@@ -1,0 +1,25 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  color: var(--text-main);
+  background: var(--app-bg);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, #eef4ff 0%, #e9eef9 35%, #e5ebf7 100%);
+}

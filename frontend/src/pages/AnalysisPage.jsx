@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useComparisonAnalysis, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
@@ -7,6 +8,7 @@ import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPa
 import AnalysisInsightPanel from "../components/analysis/AnalysisInsightPanel";
 import AnalysisSymbolPicker from "../components/analysis/AnalysisSymbolPicker";
 import { ANALYSIS_RANGE_PRESETS, buildChartData, buildPresetRange, DEFAULT_INDICATORS } from "../components/analysis/analysisUtils";
+import AdvancedChart from "../components/analysis/AdvancedChart";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -16,15 +18,26 @@ import InstrumentChartPanel from "../components/market-detail/InstrumentChartPan
 export default function AnalysisPage() {
   const { t } = useTranslation();
   const { convertAmount, currency } = useCurrency();
-  const [primarySymbol, setPrimarySymbol] = useState("");
-  const [selectedSymbols, setSelectedSymbols] = useState([]);
+  const [searchParams] = useSearchParams();
+  const [primarySymbol, setPrimarySymbol] = useState(() => searchParams.get("symbol") || "");
+  const [selectedSymbols, setSelectedSymbols] = useState(() => {
+    const sym = searchParams.get("symbol");
+    return sym ? [sym] : [];
+  });
   const [activeRange, setActiveRange] = useState("3M");
   const [dateRange, setDateRange] = useState(() => buildPresetRange(90));
   const [selectedIndicators, setSelectedIndicators] = useState(() => new Set(DEFAULT_INDICATORS));
   const [comparisonMode, setComparisonMode] = useState("normalized");
+  const [chartMode, setChartMode] = useState(() => (searchParams.get("tool") ? "advanced" : "simple"));
+  const initialHighlightTool = searchParams.get("tool") || null;
+  const presetPrice = searchParams.get("preset") ? Number(searchParams.get("preset")) : null;
 
   const { data: rawQuotes = [], isLoading: quotesLoading, error: quotesQueryError } = useMarketQuotes();
   const quotes = useMemo(() => (Array.isArray(rawQuotes) ? rawQuotes : []), [rawQuotes]);
+  const primaryQuote = useMemo(
+    () => quotes.find((q) => q.symbol === primarySymbol || q.code === primarySymbol) ?? null,
+    [quotes, primarySymbol],
+  );
   const quotesError = quotesQueryError ? extractErrorMessage(quotesQueryError, t("analysis.quotesError")) : "";
 
   useMemo(() => {
@@ -158,18 +171,44 @@ export default function AnalysisPage() {
           <section className="analysis-lab-grid">
             <div className="analysis-lab-main">
               {primarySymbol ? (
-                <InstrumentChartPanel
-                  activeRange={activeRange}
-                  onRangeChange={handleRangeChange}
-                  dateRange={dateRange}
-                  onDateRangeChange={handleDateRangeChange}
-                  selectedIndicators={selectedIndicators}
-                  onToggleIndicator={toggleIndicator}
-                  loading={analysisLoading}
-                  error={analysisError}
-                  chartData={displayChartData}
-                  presets={ANALYSIS_RANGE_PRESETS}
-                />
+                <>
+                  <div className="analysis-chart-mode-toggle">
+                    <button
+                      className={`chart-mode-btn${chartMode === "simple" ? " active" : ""}`}
+                      onClick={() => setChartMode("simple")}
+                    >
+                      {t("analysis.simpleChart", "Basit Grafik")}
+                    </button>
+                    <button
+                      className={`chart-mode-btn${chartMode === "advanced" ? " active" : ""}`}
+                      onClick={() => setChartMode("advanced")}
+                    >
+                      {t("analysis.advancedChart", "Gelişmiş Grafik")}
+                    </button>
+                  </div>
+
+                  {chartMode === "simple" ? (
+                    <InstrumentChartPanel
+                      activeRange={activeRange}
+                      onRangeChange={handleRangeChange}
+                      dateRange={dateRange}
+                      onDateRangeChange={handleDateRangeChange}
+                      selectedIndicators={selectedIndicators}
+                      onToggleIndicator={toggleIndicator}
+                      loading={analysisLoading}
+                      error={analysisError}
+                      chartData={displayChartData}
+                      presets={ANALYSIS_RANGE_PRESETS}
+                    />
+                  ) : (
+                    <AdvancedChart
+                      instrumentCode={primarySymbol}
+                      initialHighlightTool={initialHighlightTool}
+                      presetPrice={presetPrice}
+                      quote={primaryQuote}
+                    />
+                  )}
+                </>
               ) : (
                 <section className="panel-surface analysis-lab-panel">
                   <EmptyState title={t("analysis.primaryEmptyTitle")} description={t("analysis.primaryEmptyDescription")} />

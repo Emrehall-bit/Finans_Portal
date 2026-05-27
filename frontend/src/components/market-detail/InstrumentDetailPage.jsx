@@ -22,6 +22,7 @@ import CreateAlertModal from "./CreateAlertModal";
 import InstrumentChartPanel from "./InstrumentChartPanel";
 import InstrumentFinancialsPanel from "./InstrumentFinancialsPanel";
 import InstrumentFundamentalsPanel from "./InstrumentFundamentalsPanel";
+import FundamentalAnalysis from "../analysis/FundamentalAnalysis";
 import InstrumentHeader from "./InstrumentHeader";
 import InstrumentNewsList from "./InstrumentNewsList";
 import InstrumentStatsPanel from "./InstrumentStatsPanel";
@@ -598,6 +599,8 @@ export default function InstrumentDetailPage() {
                   error={fundamentalsError}
                   data={fundamentals}
                 />
+
+                <FundamentalAnalysis instrumentCode={normalizedSymbol} />
 
                 {supportsFundamentalAi(resolvedInstrumentType) ? (
                   <AiFundamentalInsightCard symbol={displaySymbol} availableData={aiAvailableData} />

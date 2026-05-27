@@ -1,0 +1,129 @@
+import axiosClient from "./axiosClient";
+
+// ── Teknik Analiz ─────────────────────────────────────────────────────────────
+
+export async function getAdvancedTechnical(instrumentCode, params = {}) {
+  try {
+    const res = await axiosClient.get(`/api/v1/analysis/technical/${instrumentCode}`, { params });
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Teknik veri alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+export async function getUserIndicators(instrumentCode) {
+  try {
+    const res = await axiosClient.get(`/api/v1/analysis/technical/${instrumentCode}/indicators`);
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Gösterge konfigürasyonları alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+export async function saveIndicatorConfig(instrumentCode, body) {
+  try {
+    const res = await axiosClient.post(`/api/v1/analysis/technical/${instrumentCode}/indicators`, body);
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Gösterge konfigürasyonu kaydedilemedi [${instrumentCode}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+export async function deleteIndicatorConfig(id) {
+  try {
+    const res = await axiosClient.delete(`/api/v1/analysis/technical/indicators/${id}`);
+    return res.data;
+  } catch (err) {
+    console.error(`Gösterge konfigürasyonu silinemedi [id=${id}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+// ── Çizimler ─────────────────────────────────────────────────────────────────
+
+export async function getDrawings(instrumentCode, timeframe = "1d") {
+  try {
+    const res = await axiosClient.get(`/api/v1/analysis/drawings/${instrumentCode}`, {
+      params: { timeframe },
+    });
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Çizimler alınamadı [${instrumentCode}/${timeframe}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+export async function saveDrawing(instrumentCode, body) {
+  try {
+    const res = await axiosClient.post(`/api/v1/analysis/drawings/${instrumentCode}`, body);
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Çizim kaydedilemedi [${instrumentCode}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+export async function updateDrawing(id, body) {
+  try {
+    const res = await axiosClient.patch(`/api/v1/analysis/drawings/${id}`, body);
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Çizim güncellenemedi [id=${id}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+export async function deleteDrawing(id) {
+  try {
+    const res = await axiosClient.delete(`/api/v1/analysis/drawings/${id}`);
+    return res.data;
+  } catch (err) {
+    console.error(`Çizim silinemedi [id=${id}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+export async function linkDrawingToAlert(drawingId, alertId) {
+  try {
+    const res = await axiosClient.post(`/api/v1/analysis/drawings/${drawingId}/link-alert`, { alertId });
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Çizim alert'e bağlanamadı [drawing=${drawingId}, alert=${alertId}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+// ── Temel Analiz ─────────────────────────────────────────────────────────────
+
+export async function getFundamentalRatios(instrumentCode) {
+  try {
+    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${instrumentCode}`);
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Temel analiz oranları alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+export async function getFundamentalHistory(instrumentCode) {
+  try {
+    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${instrumentCode}/history`);
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Temel analiz geçmişi alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
+export async function getFinancialData(instrumentCode) {
+  try {
+    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${instrumentCode}/financials`);
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error(`Ham finansal veriler alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
+    throw err;
+  }
+}

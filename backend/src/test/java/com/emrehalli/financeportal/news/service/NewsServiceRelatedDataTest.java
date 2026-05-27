@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import com.emrehalli.financeportal.news.service.FinancialImpactClassifier;
 import static org.mockito.Mockito.when;
 
 class NewsServiceRelatedDataTest {
@@ -656,7 +657,7 @@ class NewsServiceRelatedDataTest {
         when(legacyProps.isConservativeMode()).thenReturn(false);
 
         ConservativeNewsRelationService conservativeService =
-                new ConservativeNewsRelationService(newsRepository, marketQueryService);
+                new ConservativeNewsRelationService(newsRepository, marketQueryService, new FinancialImpactClassifier());
 
         return new NewsService(
                 newsRepository,
@@ -669,7 +670,8 @@ class NewsServiceRelatedDataTest {
                 new NewsCategoryClassifier(),
                 marketQueryService,
                 legacyProps,
-                conservativeService
+                conservativeService,
+                new FinancialImpactClassifier()
         );
     }
 

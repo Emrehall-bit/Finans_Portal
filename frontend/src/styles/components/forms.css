@@ -1,0 +1,120 @@
+.currency-toggle {
+  display: inline-flex;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  padding: 3px;
+}
+
+.currency-toggle-btn {
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  line-height: 1.4;
+}
+
+.currency-toggle-btn.is-active {
+  background: var(--panel-strong, #fff);
+  color: var(--text-main);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.currency-toggle-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+input,
+select {
+  border: 1px solid var(--input-border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  color: var(--input-text);
+  background: var(--input-bg);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--input-placeholder);
+}
+
+.form-grid,
+.form-inline,
+.filters-row,
+.actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.currency-toggle.simulation-lab-inline-currency-toggle {
+  display: inline-flex;
+  gap: 0;
+  padding: 0 !important;
+  border: 0;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none;
+  backdrop-filter: none;
+  outline: none;
+  overflow: visible;
+}
+
+.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn {
+  min-width: 44px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  color: #7b8fb0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  box-shadow: none;
+  line-height: 1.2;
+  position: relative;
+}
+
+.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn:hover,
+.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn:focus-visible {
+  background: transparent !important;
+  color: #5f769a;
+}
+
+.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn + .currency-toggle-btn::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1px;
+  height: 16px;
+  background: rgba(47, 99, 216, 0.16);
+  transform: translateY(-50%);
+}
+
+.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn.is-active {
+  background: #2f63d8 !important;
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn.is-active::before,
+.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn.is-active + .currency-toggle-btn::before {
+  opacity: 0;
+}
+
+.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn.is-unavailable {
+  color: #93a7ca !important;
+  -webkit-text-fill-color: #93a7ca;
+  opacity: 1;
+  filter: none;
+  cursor: default;
+}

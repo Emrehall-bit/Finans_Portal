@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import com.emrehalli.financeportal.news.service.FinancialImpactClassifier;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -490,7 +491,8 @@ class NewsServiceIngestValidationTest {
                 new NewsCategoryClassifier(),
                 mqs,
                 legacyProps,
-                new ConservativeNewsRelationService(newsRepository, mqs)
+                new ConservativeNewsRelationService(newsRepository, mqs, new FinancialImpactClassifier()),
+                new FinancialImpactClassifier()
         );
     }
 

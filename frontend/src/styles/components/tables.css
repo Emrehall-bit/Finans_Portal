@@ -1,0 +1,73 @@
+.table-wrap {
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.table-chip-button {
+  min-width: 74px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(76, 127, 255, 0.28);
+  background: rgba(76, 127, 255, 0.14);
+  color: #1d4ed8;
+  box-shadow: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.table-chip-button.active {
+  background: linear-gradient(135deg, #2f5ec7, #4b7eff);
+  border-color: transparent;
+  color: white;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  padding: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(219, 227, 246, 0.72);
+}
+
+th {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+
+  letter-spacing: 0.08em;
+}
+
+html[data-theme] .table-chip-button {
+  background: var(--secondary-bg);
+  border-color: var(--secondary-border);
+  color: var(--accent);
+}
+
+html[data-theme] .table-chip-button.active {
+  background: linear-gradient(135deg, #2f5ec7, #4b7eff);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+html[data-theme] table {
+  color: var(--text-main);
+}
+
+html[data-theme] th {
+  color: var(--text-soft);
+}
+
+html[data-theme] td {
+  border-color: var(--table-border);
+}

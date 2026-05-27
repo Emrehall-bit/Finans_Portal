@@ -1,0 +1,141 @@
+.summary-card h3 {
+  margin: 0;
+}
+
+.summary-card-subtitle {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.card,
+.summary-card,
+.list-item {
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.page-shell {
+  min-height: 70vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 24px;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.pill,
+.summary-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(76, 127, 255, 0.12);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.summary-card {
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+  min-height: 176px;
+}
+
+.summary-card-cool {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(238, 244, 255, 0.95));
+}
+
+.summary-card-warm {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 247, 231, 0.95));
+}
+
+.summary-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.summary-card-title {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
+.summary-card h3 {
+  font-size: 1.95rem;
+  color: var(--text-main);
+}
+
+.cards-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  padding: 18px;
+}
+
+.cards-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.status-box {
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.status-box.loading,
+.status-box.empty {
+  background: rgba(76, 127, 255, 0.12);
+  color: var(--accent);
+}
+
+.status-box.error {
+  background: rgba(249, 92, 92, 0.1);
+  color: #be3131;
+}
+
+.status-box.success {
+  background: rgba(34, 176, 125, 0.12);
+  color: var(--success);
+}
+
+.list-item {
+  width: 100%;
+  padding: 14px;
+  text-align: left;
+  display: grid;
+  gap: 6px;
+}
+
+.list-item.active {
+  border-color: rgba(76, 127, 255, 0.4);
+  background: rgba(240, 244, 255, 0.92);
+}
+
+@media (max-width: 920px) {
+  .page-header {
+    padding: 16px;
+  }
+}
