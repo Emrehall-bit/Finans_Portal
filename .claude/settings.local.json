@@ -110,7 +110,10 @@
       "PowerShell($env:PGPASSWORD=\"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -c \"SELECT close_price FROM market_price_history WHERE instrument_id = 392 AND interval_type = 'ONE_DAY' ORDER BY price_timestamp DESC LIMIT 1;\" 2>&1)",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8080/api/v1/analysis/fundamental/THYAO\" -Headers @{\"Accept\"=\"application/json\"} -TimeoutSec 5; $r.Content | ConvertFrom-Json | ConvertTo-Json -Depth 3 } catch { \"Backend erişilemiyor: $_\" })",
       "Bash(xargs grep -l \"analysis\")",
-      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Directory -Depth 2)"
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Directory -Depth 2)",
+      "Bash(awk '/^\\\\./ {selector=$1; if \\(selectors[selector]\\) print \"DUPLICATE: \" selector \" at line \" NR \" \\(first at line \" selectors[selector] \"\\)\"; else selectors[selector]=NR}' technical-analysis.css)",
+      "Bash(awk '/^\\\\./ && !seen[$0]++ {line=$0; linenum=NR} /^\\\\./ && seen[$0] && line == $0 {print \"Line \" linenum \": \" line \" is followed by conflicting rule at line \" NR}' technical-analysis.css)",
+      "Bash(awk ' *)"
     ]
   }
 }

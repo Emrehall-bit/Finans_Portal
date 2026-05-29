@@ -545,6 +545,7 @@ export default function AdvancedChart({
           },
         }),
       });
+
     }
 
     return {
@@ -1551,25 +1552,16 @@ export default function AdvancedChart({
                 </span>
               </div>
               <div className="advanced-chart-rsi-guides" aria-hidden="true">
-                <div
-                  className="advanced-chart-rsi-guide advanced-chart-rsi-guide--overbought"
-                  style={{ top: "30%" }}
-                />
-                <div
-                  className="advanced-chart-rsi-guide advanced-chart-rsi-guide--neutral"
-                  style={{ top: "50%" }}
-                />
-                <div
-                  className="advanced-chart-rsi-guide advanced-chart-rsi-guide--oversold"
-                  style={{ top: "70%" }}
-                />
+                <div className="advanced-chart-rsi-guide advanced-chart-rsi-guide--overbought" />
+                <div className="advanced-chart-rsi-guide advanced-chart-rsi-guide--neutral" />
+                <div className="advanced-chart-rsi-guide advanced-chart-rsi-guide--oversold" />
               </div>
               <div className="advanced-chart-rsi-axis" aria-hidden="true">
-                <span className="advanced-chart-rsi-axis-label" style={{ top: "0%" }}>100</span>
-                <span className="advanced-chart-rsi-axis-label" style={{ top: "30%" }}>70</span>
+                <span className="advanced-chart-rsi-axis-label" style={{ top: "8%" }}>100</span>
+                <span className="advanced-chart-rsi-axis-label" style={{ top: "33%" }}>70</span>
                 <span className="advanced-chart-rsi-axis-label" style={{ top: "50%" }}>50</span>
-                <span className="advanced-chart-rsi-axis-label" style={{ top: "70%" }}>30</span>
-                <span className="advanced-chart-rsi-axis-label" style={{ top: "100%" }}>0</span>
+                <span className="advanced-chart-rsi-axis-label" style={{ top: "67%" }}>30</span>
+                <span className="advanced-chart-rsi-axis-label" style={{ top: "92%" }}>0</span>
               </div>
               <div ref={rsiContainerRef} className="advanced-chart-canvas advanced-chart-canvas--rsi" />
             </div>
