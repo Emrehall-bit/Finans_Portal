@@ -71,7 +71,7 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
         String cookie = props.getProviders().getYahoo().getCookie();
         String crumb = props.getProviders().getYahoo().getCrumb();
         if (!hasText(cookie) || !hasText(crumb)) {
-            log.warn("Yahoo Finance cookie/crumb yapılandırılmamış, hisse verisi atlanıyor");
+            log.warn("Yahoo Finance cookie/crumb yapÄ±landÄ±rÄ±lmamÄ±ÅŸ, hisse verisi atlanÄ±yor");
             throw new DataProviderException("Yahoo Finance cookie/crumb is not configured");
         }
 
@@ -161,7 +161,7 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
 
             return prices;
         } catch (HttpClientErrorException.Unauthorized exception) {
-            log.warn("Yahoo Finance cookie süresi dolmuş, manuel güncelleme gerekiyor");
+            log.warn("Yahoo Finance cookie sÃ¼resi dolmuÅŸ, manuel gÃ¼ncelleme gerekiyor");
             throw new DataProviderException("Yahoo Finance cookie expired, manual refresh required", exception);
         } catch (HttpStatusCodeException exception) {
             throw new DataProviderException("Failed to fetch stock quote data from Yahoo Finance: HTTP " + exception.getStatusCode().value(), exception);
@@ -205,6 +205,7 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
         return value != null && !value.isBlank();
     }
 }
+
 
 
 

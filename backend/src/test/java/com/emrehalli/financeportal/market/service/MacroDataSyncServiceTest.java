@@ -36,11 +36,11 @@ class MacroDataSyncServiceTest {
     private MacroObservationRepository observationRepository;
     private MacroDataSyncService service;
 
-    private final MacroIndicator cpiIndicator = indicator(1L, "CPI_TR", "TÜFE");
-    private final MacroIndicator ppiIndicator = indicator(2L, "PPI_TR", "Yİ-ÜFE");
+    private final MacroIndicator cpiIndicator = indicator(1L, "CPI_TR", "TÃœFE");
+    private final MacroIndicator ppiIndicator = indicator(2L, "PPI_TR", "YÄ°-ÃœFE");
     private final MacroIndicator policyRateIndicator = indicator(3L, "POLICY_RATE_TR", "TCMB Politika Faizi");
-    private final MacroIndicator unemploymentIndicator = indicator(4L, "UNEMPLOYMENT_TR", "İşsizlik Oranı");
-    private final MacroIndicator laborForceIndicator = indicator(5L, "LABOR_FORCE_PARTICIPATION_TR", "İşgücüne Katılım Oranı");
+    private final MacroIndicator unemploymentIndicator = indicator(4L, "UNEMPLOYMENT_TR", "Ä°ÅŸsizlik OranÄ±");
+    private final MacroIndicator laborForceIndicator = indicator(5L, "LABOR_FORCE_PARTICIPATION_TR", "Ä°ÅŸgÃ¼cÃ¼ne KatÄ±lÄ±m OranÄ±");
 
     @BeforeEach
     void setUp() {
@@ -198,6 +198,7 @@ class MacroDataSyncServiceTest {
     }
 
 }
+
 
 
 

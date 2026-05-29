@@ -15,3 +15,4 @@ public record TechnicalCandleDto(
         BigDecimal rsi14
 ) {
 }
+

@@ -6,37 +6,84 @@ import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnal
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class TrendAnalysisService {
 
-    public TrendDirection determineTrend(TechnicalAnalysisPoint previousPoint, TechnicalAnalysisPoint latestPoint) {
-        if (previousPoint == null || latestPoint == null
-                || latestPoint.close() == null
-                || previousPoint.close() == null
-                || latestPoint.sma20() == null
-                || latestPoint.sma7() == null) {
+    private static final BigDecimal TREND_THRESHOLD_PCT = BigDecimal.valueOf(0.1);
+
+    /**
+     * Determines trend direction using a 5+5 closing-price window when enough data is available.
+     * Falls back to a two-point comparison when fewer than 10 points exist.
+     */
+    public TrendDirection determineTrend(List<TechnicalAnalysisPoint> points) {
+        if (points == null || points.size() < 2) {
+            return TrendDirection.SIDEWAYS;
+        }
+
+        TechnicalAnalysisPoint latestPoint = points.getLast();
+
+        if (latestPoint.close() == null || latestPoint.sma20() == null || latestPoint.sma7() == null) {
             return TrendDirection.SIDEWAYS;
         }
 
         boolean priceAboveSma20 = latestPoint.close().compareTo(latestPoint.sma20()) > 0;
         boolean sma7AboveSma20 = latestPoint.sma7().compareTo(latestPoint.sma20()) > 0;
-        boolean latestPriceNotBelowPrevious = latestPoint.close().compareTo(previousPoint.close()) >= 0;
         boolean priceBelowSma20 = latestPoint.close().compareTo(latestPoint.sma20()) < 0;
         boolean sma7BelowSma20 = latestPoint.sma7().compareTo(latestPoint.sma20()) < 0;
-        boolean latestPriceNotAbovePrevious = latestPoint.close().compareTo(previousPoint.close()) <= 0;
 
-        if (priceAboveSma20 && sma7AboveSma20 && latestPriceNotBelowPrevious) {
+        boolean shortTermRising;
+        boolean shortTermFalling;
+
+        if (points.size() >= 10) {
+            int size = points.size();
+            BigDecimal recent = windowAverage(points, size - 5, size);
+            BigDecimal earlier = windowAverage(points, size - 10, size - 5);
+            if (recent == null || earlier == null || earlier.signum() == 0) {
+                shortTermRising = false;
+                shortTermFalling = false;
+            } else {
+                BigDecimal changePct = recent.subtract(earlier)
+                        .divide(earlier.abs(), 8, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100));
+                shortTermRising = changePct.compareTo(TREND_THRESHOLD_PCT) > 0;
+                shortTermFalling = changePct.compareTo(TREND_THRESHOLD_PCT.negate()) < 0;
+            }
+        } else {
+            TechnicalAnalysisPoint previousPoint = points.get(points.size() - 2);
+            if (previousPoint.close() == null) {
+                shortTermRising = false;
+                shortTermFalling = false;
+            } else {
+                int cmp = latestPoint.close().compareTo(previousPoint.close());
+                shortTermRising = cmp >= 0;
+                shortTermFalling = cmp <= 0;
+            }
+        }
+
+        if (priceAboveSma20 && sma7AboveSma20 && shortTermRising) {
             return TrendDirection.UPTREND;
         }
-
-        if (priceBelowSma20 && sma7BelowSma20 && latestPriceNotAbovePrevious) {
+        if (priceBelowSma20 && sma7BelowSma20 && shortTermFalling) {
             return TrendDirection.DOWNTREND;
         }
-
         return TrendDirection.SIDEWAYS;
+    }
+
+    private BigDecimal windowAverage(List<TechnicalAnalysisPoint> points, int fromInclusive, int toExclusive) {
+        BigDecimal sum = BigDecimal.ZERO;
+        int count = 0;
+        for (int index = fromInclusive; index < toExclusive; index++) {
+            BigDecimal close = points.get(index).close();
+            if (close != null) {
+                sum = sum.add(close);
+                count++;
+            }
+        }
+        return count == 0 ? null : sum.divide(BigDecimal.valueOf(count), 8, RoundingMode.HALF_UP);
     }
 
     public List<TechnicalSignal> determineSignals(TechnicalAnalysisPoint latestPoint) {
@@ -79,6 +126,7 @@ public class TrendAnalysisService {
         return List.copyOf(signals);
     }
 }
+
 
 
 

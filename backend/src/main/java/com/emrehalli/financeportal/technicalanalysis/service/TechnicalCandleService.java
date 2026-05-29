@@ -268,3 +268,4 @@ public class TechnicalCandleService {
         return symbol.replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
     }
 }
+

@@ -13,3 +13,4 @@ public class BasicProfileSeedResponse {
     private int skippedExisting;
     private List<BasicProfileSeedError> errors;
 }
+

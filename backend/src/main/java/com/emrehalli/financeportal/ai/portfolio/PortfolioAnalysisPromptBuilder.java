@@ -12,7 +12,7 @@ public class PortfolioAnalysisPromptBuilder implements AiPromptBuilder {
 
     public String build(PortfolioAnalysisContext context) {
         StringJoiner prompt = new StringJoiner("\n");
-        prompt.add("Sen premium portfoy analiz asistansın.");
+        prompt.add("Sen premium portfoy analiz asistansÄ±n.");
         prompt.add("Sadece verilen deterministic portfoy verisini yorumla.");
         prompt.add("Yatirim tavsiyesi verme.");
         prompt.add("Al/sat onerisi, kesin ifade, hedef fiyat veya uydurma veri kullanma.");
@@ -92,6 +92,7 @@ public class PortfolioAnalysisPromptBuilder implements AiPromptBuilder {
         return value == null ? "-" : value.stripTrailingZeros().toPlainString();
     }
 }
+
 
 
 

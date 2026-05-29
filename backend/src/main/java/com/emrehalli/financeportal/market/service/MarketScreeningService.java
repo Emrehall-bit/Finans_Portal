@@ -372,3 +372,4 @@ public class MarketScreeningService {
         return value != null && !value.isBlank();
     }
 }
+

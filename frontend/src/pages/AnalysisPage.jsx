@@ -264,19 +264,25 @@ function resolveContextTitle(primaryQuote, displayCode, normalizedType, locale) 
 }
 
 function SimpleComparisonStrip({ quotes, primarySymbol, selectedSymbols, onToggleComparisonSymbol }) {
+  const { t } = useTranslation();
   const comparisonSymbols = selectedSymbols.filter((symbol) => symbol !== primarySymbol);
-  const suggestions = ["BTC", "ETH", "XAUUSD", "THYAO"];
+  const suggestions = useMemo(
+    () => deriveComparisonSuggestions(quotes, primarySymbol),
+    [quotes, primarySymbol],
+  );
+
+  if (suggestions.length === 0) return null;
 
   return (
     <section className="simple-compare-strip">
       <div className="simple-compare-strip-head">
         <div>
-          <strong>{"Kar\u015f\u0131la\u015ft\u0131rma"}</strong>
-          <p>{"Enstr\u00fcmanlar\u0131 kar\u015f\u0131la\u015ft\u0131rarak daha iyi analiz yap\u0131n."}</p>
+          <strong>{t("analysis.comparison.eyebrow")}</strong>
+          <p>{t("analysis.comparison.simpleStripHint")}</p>
         </div>
         {comparisonSymbols.length > 0 ? (
           <button type="button" className="simple-compare-strip-link">
-            <span>{comparisonSymbols.length} aktif</span>
+            <span>{t("analysis.comparison.activeCount", { count: comparisonSymbols.length })}</span>
             <ArrowRight size={15} strokeWidth={2.2} />
           </button>
         ) : null}
@@ -302,6 +308,33 @@ function SimpleComparisonStrip({ quotes, primarySymbol, selectedSymbols, onToggl
       </div>
     </section>
   );
+}
+
+function deriveComparisonSuggestions(quotes, primarySymbol, limit = 4) {
+  const seenTypes = new Set();
+  const result = [];
+
+  for (const quote of quotes) {
+    const sym = quote.symbol || quote.code;
+    if (!sym || sym === primarySymbol) continue;
+    const type = String(quote.instrumentType || "").toUpperCase();
+    if (!seenTypes.has(type)) {
+      result.push(sym);
+      seenTypes.add(type);
+    }
+    if (result.length >= limit) break;
+  }
+
+  if (result.length < limit) {
+    for (const quote of quotes) {
+      const sym = quote.symbol || quote.code;
+      if (!sym || sym === primarySymbol || result.includes(sym)) continue;
+      result.push(sym);
+      if (result.length >= limit) break;
+    }
+  }
+
+  return result;
 }
 
 function resolveChipLabel(symbol, quotes) {

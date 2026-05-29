@@ -97,7 +97,7 @@ public class PortfolioRiskAnalysisService {
 
     private PortfolioRiskMetricDto buildDiversificationMetric(List<PositionContext> positions) {
         if (positions.isEmpty()) {
-            return new PortfolioRiskMetricDto("Nötr", 0, BigDecimal.ZERO, "0 etkin pozisyon", "Portföy dağılımı bulunamadı.");
+            return new PortfolioRiskMetricDto("NÃ¶tr", 0, BigDecimal.ZERO, "0 etkin pozisyon", "PortfÃ¶y daÄŸÄ±lÄ±mÄ± bulunamadÄ±.");
         }
 
         BigDecimal holdingHhi = BigDecimal.ZERO;
@@ -120,11 +120,11 @@ public class PortfolioRiskAnalysisService {
         BigDecimal effectivePositions = BigDecimal.ONE.divide(holdingHhi.max(BigDecimal.valueOf(0.00000001D)), 2, RoundingMode.HALF_UP);
 
         return new PortfolioRiskMetricDto(
-                labelByScore(finalScore, "Zayıf", "Orta", "İyi"),
+                labelByScore(finalScore, "ZayÄ±f", "Orta", "Ä°yi"),
                 finalScore,
                 effectivePositions,
                 effectivePositions.stripTrailingZeros().toPlainString() + " etkin pozisyon",
-                "Mevcut portföy ağırlıkları üzerinden yoğunlaşma (HHI) ve varlık türü dağılımı birlikte değerlendirildi."
+                "Mevcut portfÃ¶y aÄŸÄ±rlÄ±klarÄ± Ã¼zerinden yoÄŸunlaÅŸma (HHI) ve varlÄ±k tÃ¼rÃ¼ daÄŸÄ±lÄ±mÄ± birlikte deÄŸerlendirildi."
         );
     }
 
@@ -152,7 +152,7 @@ public class PortfolioRiskAnalysisService {
         }
 
         if (returns.size() < 10) {
-            return new PortfolioRiskMetricDto("Sınırlı veri", 0, BigDecimal.ZERO, "Yeterli geçmiş yok", "Günlük portföy serisi volatilite hesabı için yeterli değil.");
+            return new PortfolioRiskMetricDto("SÄ±nÄ±rlÄ± veri", 0, BigDecimal.ZERO, "Yeterli geÃ§miÅŸ yok", "GÃ¼nlÃ¼k portfÃ¶y serisi volatilite hesabÄ± iÃ§in yeterli deÄŸil.");
         }
 
         double mean = returns.stream().mapToDouble(Double::doubleValue).average().orElse(0D);
@@ -164,17 +164,17 @@ public class PortfolioRiskAnalysisService {
         BigDecimal rawValue = BigDecimal.valueOf(annualizedVolatility).setScale(2, RoundingMode.HALF_UP);
 
         return new PortfolioRiskMetricDto(
-                labelByScore(score, "Düşük", "Orta", "Yüksek"),
+                labelByScore(score, "DÃ¼ÅŸÃ¼k", "Orta", "YÃ¼ksek"),
                 score,
                 rawValue,
-                "%" + rawValue.stripTrailingZeros().toPlainString() + " yıllıklaştırılmış",
-                "Son " + VOLATILITY_LOOKBACK_DAYS + " günün portföy günlük getirilerinden yıllıklaştırılmış standart sapma hesaplandı."
+                "%" + rawValue.stripTrailingZeros().toPlainString() + " yÄ±llÄ±klaÅŸtÄ±rÄ±lmÄ±ÅŸ",
+                "Son " + VOLATILITY_LOOKBACK_DAYS + " gÃ¼nÃ¼n portfÃ¶y gÃ¼nlÃ¼k getirilerinden yÄ±llÄ±klaÅŸtÄ±rÄ±lmÄ±ÅŸ standart sapma hesaplandÄ±."
         );
     }
 
     private PortfolioRiskMetricDto buildLiquidityMetric(List<PositionContext> positions) {
         if (positions.isEmpty()) {
-            return new PortfolioRiskMetricDto("Nötr", 0, BigDecimal.ZERO, "Veri yok", "Portföy pozisyonu bulunamadı.");
+            return new PortfolioRiskMetricDto("NÃ¶tr", 0, BigDecimal.ZERO, "Veri yok", "PortfÃ¶y pozisyonu bulunamadÄ±.");
         }
 
         BigDecimal weightedScore = BigDecimal.ZERO;
@@ -196,11 +196,11 @@ public class PortfolioRiskAnalysisService {
                 : BigDecimal.ZERO;
 
         return new PortfolioRiskMetricDto(
-                labelByScore(score, "Zayıf", "Orta", "İyi"),
+                labelByScore(score, "ZayÄ±f", "Orta", "Ä°yi"),
                 score,
                 rawCoverage,
                 "%" + rawCoverage.stripTrailingZeros().toPlainString() + " hacim destekli kapsam",
-                "Pozisyonların son " + LIQUIDITY_LOOKBACK_DAYS + " günlük işlem hacmi, fiyat ve pozisyon büyüklüğü karşılaştırıldı; hacim olmayan varlıklarda sınırlı tip fallback kullanıldı."
+                "PozisyonlarÄ±n son " + LIQUIDITY_LOOKBACK_DAYS + " gÃ¼nlÃ¼k iÅŸlem hacmi, fiyat ve pozisyon bÃ¼yÃ¼klÃ¼ÄŸÃ¼ karÅŸÄ±laÅŸtÄ±rÄ±ldÄ±; hacim olmayan varlÄ±klarda sÄ±nÄ±rlÄ± tip fallback kullanÄ±ldÄ±."
         );
     }
 
@@ -266,28 +266,28 @@ public class PortfolioRiskAnalysisService {
         PositionContext topPosition = positions.isEmpty() ? null : positions.getFirst();
         if (topPosition != null && topPosition.weight().compareTo(BigDecimal.valueOf(55)) >= 0) {
             return new RiskAlert(
-                    "Yüksek konsantrasyon riski",
-                    topPosition.instrumentCode() + " portföyün %" + topPosition.weight().setScale(1, RoundingMode.HALF_UP).toPlainString() + "'ini oluşturuyor. Dağılımı dengelemek riski azaltır.",
+                    "YÃ¼ksek konsantrasyon riski",
+                    topPosition.instrumentCode() + " portfÃ¶yÃ¼n %" + topPosition.weight().setScale(1, RoundingMode.HALF_UP).toPlainString() + "'ini oluÅŸturuyor. DaÄŸÄ±lÄ±mÄ± dengelemek riski azaltÄ±r.",
                     "warning"
             );
         }
         if (volatility.score() >= 65 && liquidity.score() < 45) {
             return new RiskAlert(
-                    "Volatilite yüksek, likidite sınırlı",
-                    "Portföy oynaklığı yükselirken işlem hacmi desteği zayıf kalıyor. Pozisyon boyutları ve nakit tamponu gözden geçirilmeli.",
+                    "Volatilite yÃ¼ksek, likidite sÄ±nÄ±rlÄ±",
+                    "PortfÃ¶y oynaklÄ±ÄŸÄ± yÃ¼kselirken iÅŸlem hacmi desteÄŸi zayÄ±f kalÄ±yor. Pozisyon boyutlarÄ± ve nakit tamponu gÃ¶zden geÃ§irilmeli.",
                     "warning"
             );
         }
         if (diversification.score() >= 70 && liquidity.score() >= 60) {
             return new RiskAlert(
-                    "Dağılım ve likidite dengeli",
-                    "Portföy farklı varlıklara yayılmış ve likidite görünümü destekleyici. Mevcut çerçeve korunabilir.",
+                    "DaÄŸÄ±lÄ±m ve likidite dengeli",
+                    "PortfÃ¶y farklÄ± varlÄ±klara yayÄ±lmÄ±ÅŸ ve likidite gÃ¶rÃ¼nÃ¼mÃ¼ destekleyici. Mevcut Ã§erÃ§eve korunabilir.",
                     "positive"
             );
         }
         return new RiskAlert(
-                "Risk görünümü dengeli",
-                "Portföy temel metriklerde izlenebilir seviyede. Büyük ağırlık değişimlerinde volatilite ve likidite birlikte takip edilmeli.",
+                "Risk gÃ¶rÃ¼nÃ¼mÃ¼ dengeli",
+                "PortfÃ¶y temel metriklerde izlenebilir seviyede. BÃ¼yÃ¼k aÄŸÄ±rlÄ±k deÄŸiÅŸimlerinde volatilite ve likidite birlikte takip edilmeli.",
                 "neutral"
         );
     }
@@ -391,6 +391,7 @@ public class PortfolioRiskAnalysisService {
     private record RiskAlert(String title, String message, String tone) {
     }
 }
+
 
 
 

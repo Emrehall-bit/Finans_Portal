@@ -42,10 +42,10 @@ public class AiContextEnricher {
                     yield instrumentContext.map(contextBuilder::buildInstrumentBlock).orElse(null);
                 }
                 case DASHBOARD -> contextBuilder.buildDashboardBlock(
-                        new DashboardContext("Kullanıcı dashboard ekranında; genel piyasa görünümünü inceliyor.")
+                        new DashboardContext("KullanÄ±cÄ± dashboard ekranÄ±nda; genel piyasa gÃ¶rÃ¼nÃ¼mÃ¼nÃ¼ inceliyor.")
                 );
-                case MARKET_OVERVIEW -> "=== EKRAN BAĞLAMI: PİYASA GENEL GÖRÜNÜMÜ ===\n" +
-                        "Kullanıcı piyasa listesini inceliyor.";
+                case MARKET_OVERVIEW -> "=== EKRAN BAÄLAMI: PÄ°YASA GENEL GÃ–RÃœNÃœMÃœ ===\n" +
+                        "KullanÄ±cÄ± piyasa listesini inceliyor.";
             };
         } catch (Exception e) {
             logger.warn("Context enrichment failed. type={}, reason={}", context.type(), e.getMessage());
@@ -83,6 +83,7 @@ public class AiContextEnricher {
         return Optional.of(new InstrumentContext(symbol, context.instrumentType(), technical, fundamental));
     }
 }
+
 
 
 

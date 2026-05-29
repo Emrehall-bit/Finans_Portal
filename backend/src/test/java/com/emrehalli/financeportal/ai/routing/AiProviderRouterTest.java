@@ -31,7 +31,7 @@ class AiProviderRouterTest {
         router = new AiProviderRouter(List.of(geminiProvider, groqProvider), properties);
     }
 
-    // ── Test 1: PAGE_ANALYSIS primary is GROQ ────────────────────
+    // â”€â”€ Test 1: PAGE_ANALYSIS primary is GROQ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
     void pageAnalysis_primaryIsGroq() {
@@ -45,7 +45,7 @@ class AiProviderRouterTest {
         assertThat(fallback.getType()).isEqualTo(AiProviderType.GEMINI);
     }
 
-    // ── Test 2: CHAT primary is GEMINI ───────────────────────────
+    // â”€â”€ Test 2: CHAT primary is GEMINI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
     void chat_primaryIsGemini() {
@@ -59,7 +59,7 @@ class AiProviderRouterTest {
         assertThat(fallback.getType()).isEqualTo(AiProviderType.GROQ);
     }
 
-    // ── All GROQ-primary tasks ───────────────────────────────────
+    // â”€â”€ All GROQ-primary tasks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
     void technicalAnalysis_primaryIsGroq() {
@@ -96,7 +96,7 @@ class AiProviderRouterTest {
         assertThat(router.getPrimary(AiTaskType.NEWS_SUMMARY).getType()).isEqualTo(AiProviderType.GROQ);
     }
 
-    // ── Routing can be overridden via config ─────────────────────
+    // â”€â”€ Routing can be overridden via config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
     void routingConfig_overrideChangesProvider() {
@@ -109,12 +109,13 @@ class AiProviderRouterTest {
         assertThat(overriddenRouter.getPrimary(AiTaskType.CHAT).getType()).isEqualTo(AiProviderType.GROQ);
     }
 
-    // ── Helpers ──────────────────────────────────────────────────
+    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private AiProperties defaultProperties() {
         return new AiProperties();
     }
 }
+
 
 
 

@@ -28,7 +28,7 @@ import java.util.Locale;
 public class AiTechnicalAnalysisService {
 
     private static final Logger logger = LogManager.getLogger(AiTechnicalAnalysisService.class);
-    private static final String DISCLAIMER = "Bu yorum yatırım tavsiyesi değildir; yalnızca mevcut verilerin otomatik analizidir.";
+    private static final String DISCLAIMER = "Bu yorum yatÄ±rÄ±m tavsiyesi deÄŸildir; yalnÄ±zca mevcut verilerin otomatik analizidir.";
     private static final String DEFAULT_INDICATORS = "SMA7,SMA20,SMA50,RSI14";
     private static final Duration CACHE_TTL = Duration.ofHours(24);
     private static final Duration FALLBACK_CACHE_TTL = Duration.ofMinutes(30);
@@ -160,7 +160,7 @@ public class AiTechnicalAnalysisService {
                                 AiSignal signal,
                                 String status) {
         if (!"AVAILABLE".equals(status)) {
-            return symbol + " için teknik veri sınırlı. Yorum, mevcut fiyat geçmişi yetersiz olduğu için temkinli ve nötr değerlendirilmelidir.";
+            return symbol + " iÃ§in teknik veri sÄ±nÄ±rlÄ±. Yorum, mevcut fiyat geÃ§miÅŸi yetersiz olduÄŸu iÃ§in temkinli ve nÃ¶tr deÄŸerlendirilmelidir.";
         }
 
         List<String> reasons = new ArrayList<>();
@@ -169,56 +169,56 @@ public class AiTechnicalAnalysisService {
             reasons.add("RSI " + rsi.stripTrailingZeros().toPlainString());
         }
         if (signals.contains(TechnicalSignal.PRICE_ABOVE_SMA20)) {
-            reasons.add("fiyat 20 günlük ortalamanın üzerinde");
+            reasons.add("fiyat 20 gÃ¼nlÃ¼k ortalamanÄ±n Ã¼zerinde");
         }
         if (signals.contains(TechnicalSignal.PRICE_BELOW_SMA20)) {
-            reasons.add("fiyat 20 günlük ortalamanın altında");
+            reasons.add("fiyat 20 gÃ¼nlÃ¼k ortalamanÄ±n altÄ±nda");
         }
         if (sma20 != null && sma50 != null) {
-            reasons.add("SMA20/SMA50 ilişkisi izlenebilir");
+            reasons.add("SMA20/SMA50 iliÅŸkisi izlenebilir");
         }
 
         String pricePart = latestPrice == null ? "son fiyat verisiyle" : "son fiyat " + latestPrice.stripTrailingZeros().toPlainString() + " ile";
-        return symbol + " " + pricePart + " deterministic teknik kurallara göre " + signal + " sinyal üretiyor; "
+        return symbol + " " + pricePart + " deterministic teknik kurallara gÃ¶re " + signal + " sinyal Ã¼retiyor; "
                 + String.join(", ", reasons) + ".";
     }
 
     private String buildTrendComment(TrendDirection trendDirection, List<TechnicalSignal> signals, BigDecimal latestPrice, BigDecimal sma20) {
         if (signals.contains(TechnicalSignal.PRICE_ABOVE_SMA20)) {
-            return "Fiyat 20 günlük ortalamanın üzerinde; kısa vadeli trend pozitif bölgede değerlendiriliyor.";
+            return "Fiyat 20 gÃ¼nlÃ¼k ortalamanÄ±n Ã¼zerinde; kÄ±sa vadeli trend pozitif bÃ¶lgede deÄŸerlendiriliyor.";
         }
         if (signals.contains(TechnicalSignal.PRICE_BELOW_SMA20)) {
-            return "Fiyat 20 günlük ortalamanın altında; görünüm zayıf ve toparlanma için ortalama üzerine dönüş izlenmeli.";
+            return "Fiyat 20 gÃ¼nlÃ¼k ortalamanÄ±n altÄ±nda; gÃ¶rÃ¼nÃ¼m zayÄ±f ve toparlanma iÃ§in ortalama Ã¼zerine dÃ¶nÃ¼ÅŸ izlenmeli.";
         }
         if (trendDirection == TrendDirection.UPTREND) {
-            return "Trend yönü yukarı; hareketli ortalama teyidi sınırlı olsa da momentum olumlu.";
+            return "Trend yÃ¶nÃ¼ yukarÄ±; hareketli ortalama teyidi sÄ±nÄ±rlÄ± olsa da momentum olumlu.";
         }
         if (trendDirection == TrendDirection.DOWNTREND) {
-            return "Trend yönü aşağı; fiyat üzerinde baskı ve risk artışı var.";
+            return "Trend yÃ¶nÃ¼ aÅŸaÄŸÄ±; fiyat Ã¼zerinde baskÄ± ve risk artÄ±ÅŸÄ± var.";
         }
         if (latestPrice != null && sma20 != null) {
-            return "Fiyat ile 20 günlük ortalama arasındaki ilişki belirgin sinyal üretmiyor; yatay görünüm öne çıkıyor.";
+            return "Fiyat ile 20 gÃ¼nlÃ¼k ortalama arasÄ±ndaki iliÅŸki belirgin sinyal Ã¼retmiyor; yatay gÃ¶rÃ¼nÃ¼m Ã¶ne Ã§Ä±kÄ±yor.";
         }
-        return "Trend yorumu için hareketli ortalama verisi sınırlı; görünüm nötr kabul edilmeli.";
+        return "Trend yorumu iÃ§in hareketli ortalama verisi sÄ±nÄ±rlÄ±; gÃ¶rÃ¼nÃ¼m nÃ¶tr kabul edilmeli.";
     }
 
     private String buildMomentumComment(BigDecimal rsi, TrendDirection trendDirection, List<TechnicalSignal> signals) {
         if (rsi == null) {
-            return "RSI verisi yok; momentum yorumu trend ve SMA sinyalleriyle sınırlı.";
+            return "RSI verisi yok; momentum yorumu trend ve SMA sinyalleriyle sÄ±nÄ±rlÄ±.";
         }
         if (isRsiAbove(rsi, 70)) {
-            return "RSI 70 üzerinde; aşırı alım bölgesi nedeniyle kısa vadeli yorulma ve düzeltme riski artıyor.";
+            return "RSI 70 Ã¼zerinde; aÅŸÄ±rÄ± alÄ±m bÃ¶lgesi nedeniyle kÄ±sa vadeli yorulma ve dÃ¼zeltme riski artÄ±yor.";
         }
         if (isRsiBelow(rsi, 30)) {
-            return "RSI 30 altında; aşırı satım bölgesi tepki potansiyeli yaratsa da risk yüksek kalıyor.";
+            return "RSI 30 altÄ±nda; aÅŸÄ±rÄ± satÄ±m bÃ¶lgesi tepki potansiyeli yaratsa da risk yÃ¼ksek kalÄ±yor.";
         }
         if (trendDirection == TrendDirection.UPTREND || signals.contains(TechnicalSignal.SMA7_ABOVE_SMA20)) {
-            return "RSI nötr bölgede ve trend yukarı; momentum olumlu ancak aşırı alım teyidi yok.";
+            return "RSI nÃ¶tr bÃ¶lgede ve trend yukarÄ±; momentum olumlu ancak aÅŸÄ±rÄ± alÄ±m teyidi yok.";
         }
         if (trendDirection == TrendDirection.DOWNTREND || signals.contains(TechnicalSignal.SMA7_BELOW_SMA20)) {
-            return "RSI nötr bölgede olsa da trend zayıf; momentum baskı altında.";
+            return "RSI nÃ¶tr bÃ¶lgede olsa da trend zayÄ±f; momentum baskÄ± altÄ±nda.";
         }
-        return "RSI nötr bölgede; momentum dengeli ve yön teyidi için yeni fiyat hareketi beklenmeli.";
+        return "RSI nÃ¶tr bÃ¶lgede; momentum dengeli ve yÃ¶n teyidi iÃ§in yeni fiyat hareketi beklenmeli.";
     }
 
     private AiTechnicalAnalysisResponse dataLimitedFallback(String symbol) {
@@ -227,9 +227,9 @@ public class AiTechnicalAnalysisService {
         AiSignal signal = bucket == 0 ? AiSignal.NEUTRAL : bucket == 1 ? AiSignal.NEUTRAL : AiSignal.RISKY;
         return new AiTechnicalAnalysisResponse(
                 symbol,
-                symbol + " için yeterli teknik veri yok. Deterministic yorum, veri eksikliği nedeniyle yön yerine risk ve takip ihtiyacını vurgular.",
-                "SMA ve trend teyidi üretilemedi; fiyat geçmişi tamamlandığında trend yorumu netleşir.",
-                "RSI verisi üretilemedi; momentum nötr kabul edilmeli ve yeni veri beklenmelidir.",
+                symbol + " iÃ§in yeterli teknik veri yok. Deterministic yorum, veri eksikliÄŸi nedeniyle yÃ¶n yerine risk ve takip ihtiyacÄ±nÄ± vurgular.",
+                "SMA ve trend teyidi Ã¼retilemedi; fiyat geÃ§miÅŸi tamamlandÄ±ÄŸÄ±nda trend yorumu netleÅŸir.",
+                "RSI verisi Ã¼retilemedi; momentum nÃ¶tr kabul edilmeli ve yeni veri beklenmelidir.",
                 riskLevel,
                 signal,
                 DISCLAIMER,
@@ -266,8 +266,8 @@ public class AiTechnicalAnalysisService {
 
     private String formatTrend(TrendDirection trendDirection) {
         return switch (trendDirection) {
-            case UPTREND -> "yukarı yönlü";
-            case DOWNTREND -> "aşağı yönlü";
+            case UPTREND -> "yukarÄ± yÃ¶nlÃ¼";
+            case DOWNTREND -> "aÅŸaÄŸÄ± yÃ¶nlÃ¼";
             case SIDEWAYS -> "yatay";
         };
     }
@@ -279,6 +279,7 @@ public class AiTechnicalAnalysisService {
         return symbol.trim().toUpperCase(Locale.ROOT);
     }
 }
+
 
 
 

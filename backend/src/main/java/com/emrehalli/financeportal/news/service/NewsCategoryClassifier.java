@@ -287,18 +287,18 @@ public class NewsCategoryClassifier {
         }
         String normalized = value
                 .replace('I', 'i')
-                .replace('İ', 'i')
-                .replace('ı', 'i')
-                .replace('Ş', 's')
-                .replace('ş', 's')
-                .replace('Ğ', 'g')
-                .replace('ğ', 'g')
-                .replace('Ü', 'u')
-                .replace('ü', 'u')
-                .replace('Ö', 'o')
-                .replace('ö', 'o')
-                .replace('Ç', 'c')
-                .replace('ç', 'c');
+                .replace('\u0130', 'i')
+                .replace('\u0131', 'i')
+                .replace('\u015e', 's')
+                .replace('\u015f', 's')
+                .replace('\u011e', 'g')
+                .replace('\u011f', 'g')
+                .replace('\u00dc', 'u')
+                .replace('\u00fc', 'u')
+                .replace('\u00d6', 'o')
+                .replace('\u00f6', 'o')
+                .replace('\u00c7', 'c')
+                .replace('\u00e7', 'c');
         normalized = Normalizer.normalize(normalized, Normalizer.Form.NFD);
         normalized = DIACRITICS_PATTERN.matcher(normalized).replaceAll("");
         normalized = normalized.toLowerCase(Locale.ROOT)
@@ -597,6 +597,7 @@ public class NewsCategoryClassifier {
     private record TagResolution(Set<String> tags, Map<String, String> tagReasons) {
     }
 }
+
 
 
 

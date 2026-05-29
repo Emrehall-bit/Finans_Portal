@@ -1,7 +1,7 @@
 package com.emrehalli.financeportal.common.exception;
 
-import com.emrehalli.financeportal.analysis.exception.DrawingNotFoundException;
-import com.emrehalli.financeportal.analysis.exception.PremiumRequiredException;
+import com.emrehalli.financeportal.technicalanalysis.exception.DrawingNotFoundException;
+import com.emrehalli.financeportal.technicalanalysis.exception.PremiumRequiredException;
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;
@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PremiumRequiredException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ApiResponse<Object> handlePremiumRequiredException(PremiumRequiredException e, HttpServletRequest request) {
-        logException("Premium erişim gerekli", e, request, false);
+        logException("Premium eriÅŸim gerekli", e, request, false);
         return ApiResponse.builder()
                 .success(false)
                 .data(null)
@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DrawingNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiResponse<Object> handleDrawingNotFoundException(DrawingNotFoundException e, HttpServletRequest request) {
-        logException("Çizim bulunamadı", e, request, false);
+        logException("Ã‡izim bulunamadÄ±", e, request, false);
         return ApiResponse.builder()
                 .success(false)
                 .data(null)
@@ -295,6 +295,7 @@ public class GlobalExceptionHandler {
         return HttpStatus.INTERNAL_SERVER_ERROR.value();
     }
 }
+
 
 
 

@@ -25,7 +25,7 @@ import java.util.Locale;
 public class AiFundamentalAnalysisService {
 
     private static final Logger logger = LogManager.getLogger(AiFundamentalAnalysisService.class);
-    private static final String DISCLAIMER = "Bu yorum yatırım tavsiyesi değildir; yalnızca mevcut verilerin otomatik analizidir.";
+    private static final String DISCLAIMER = "Bu yorum yatÄ±rÄ±m tavsiyesi deÄŸildir; yalnÄ±zca mevcut verilerin otomatik analizidir.";
 
     private static final Duration CACHE_TTL = Duration.ofHours(24);
     private static final Duration FALLBACK_CACHE_TTL = Duration.ofMinutes(30);
@@ -148,34 +148,34 @@ public class AiFundamentalAnalysisService {
     private List<String> buildStrengths(CompanyFundamentalsResponse fundamentals, LatestFinancials latestFinancials) {
         List<String> strengths = new ArrayList<>();
         if (greaterThan(fundamentals.getRevenueGrowth(), "0")) {
-            strengths.add("Hasılat büyümesi pozitif; satış tarafında büyüme güçlü görünüyor.");
+            strengths.add("HasÄ±lat bÃ¼yÃ¼mesi pozitif; satÄ±ÅŸ tarafÄ±nda bÃ¼yÃ¼me gÃ¼Ã§lÃ¼ gÃ¶rÃ¼nÃ¼yor.");
         }
         if (greaterThan(fundamentals.getNetProfitGrowth(), "0")) {
-            strengths.add("Net kâr büyümesi pozitif; kârlılık yıllık bazda destekleniyor.");
+            strengths.add("Net kÃ¢r bÃ¼yÃ¼mesi pozitif; kÃ¢rlÄ±lÄ±k yÄ±llÄ±k bazda destekleniyor.");
         }
         if (greaterThan(fundamentals.getRoe(), "0.15")) {
-            strengths.add("ROE yüksek; özkaynak kârlılığı güçlü.");
+            strengths.add("ROE yÃ¼ksek; Ã¶zkaynak kÃ¢rlÄ±lÄ±ÄŸÄ± gÃ¼Ã§lÃ¼.");
         }
         if (greaterThan(fundamentals.getRoa(), "0.04")) {
-            strengths.add("ROA pozitif ve anlamlı; varlıkların kâr üretme gücü destekleyici.");
+            strengths.add("ROA pozitif ve anlamlÄ±; varlÄ±klarÄ±n kÃ¢r Ã¼retme gÃ¼cÃ¼ destekleyici.");
         }
         if (greaterThan(fundamentals.getGrossMargin(), "0.15")) {
-            strengths.add("Brüt marj operasyonel kârlılığı destekliyor.");
+            strengths.add("BrÃ¼t marj operasyonel kÃ¢rlÄ±lÄ±ÄŸÄ± destekliyor.");
         }
         if (greaterThan(fundamentals.getNetMargin(), "0.05")) {
-            strengths.add("Net marj pozitif; şirket satışlarından kâr üretebiliyor.");
+            strengths.add("Net marj pozitif; ÅŸirket satÄ±ÅŸlarÄ±ndan kÃ¢r Ã¼retebiliyor.");
         }
         if (between(fundamentals.getPeRatio(), "0", "15")) {
-            strengths.add("F/K oranı mevcut kârlılığa göre makul bölgede.");
+            strengths.add("F/K oranÄ± mevcut kÃ¢rlÄ±lÄ±ÄŸa gÃ¶re makul bÃ¶lgede.");
         }
         if (between(fundamentals.getPbRatio(), "0", "2")) {
-            strengths.add("PD/DD oranı özkaynak değerlemesine göre aşırı pahalı sinyal vermiyor.");
+            strengths.add("PD/DD oranÄ± Ã¶zkaynak deÄŸerlemesine gÃ¶re aÅŸÄ±rÄ± pahalÄ± sinyal vermiyor.");
         }
         if (greaterThan(latestFinancials.netProfit(), "0")) {
-            strengths.add("Son raporda net kâr pozitif.");
+            strengths.add("Son raporda net kÃ¢r pozitif.");
         }
         if (strengths.isEmpty()) {
-            strengths.add("Mevcut veriler güçlü bir pozitif sinyal üretmiyor; daha fazla dönem verisi izlenmeli.");
+            strengths.add("Mevcut veriler gÃ¼Ã§lÃ¼ bir pozitif sinyal Ã¼retmiyor; daha fazla dÃ¶nem verisi izlenmeli.");
         }
         return List.copyOf(strengths);
     }
@@ -183,26 +183,26 @@ public class AiFundamentalAnalysisService {
     private List<String> buildWeaknesses(CompanyFundamentalsResponse fundamentals, LatestFinancials latestFinancials) {
         List<String> weaknesses = new ArrayList<>();
         if (fundamentals.getPeRatio() == null) {
-            weaknesses.add("F/K hesaplanamıyor; net kâr veya piyasa değeri verisi eksik olabilir.");
+            weaknesses.add("F/K hesaplanamÄ±yor; net kÃ¢r veya piyasa deÄŸeri verisi eksik olabilir.");
         } else if (greaterThan(fundamentals.getPeRatio(), "25")) {
-            weaknesses.add("F/K yüksek; kâr beklentilerinin önemli kısmı fiyata yansımış olabilir.");
+            weaknesses.add("F/K yÃ¼ksek; kÃ¢r beklentilerinin Ã¶nemli kÄ±smÄ± fiyata yansÄ±mÄ±ÅŸ olabilir.");
         }
         if (fundamentals.getPbRatio() == null) {
-            weaknesses.add("PD/DD hesaplanamıyor; özkaynak veya piyasa değeri verisi eksik olabilir.");
+            weaknesses.add("PD/DD hesaplanamÄ±yor; Ã¶zkaynak veya piyasa deÄŸeri verisi eksik olabilir.");
         } else if (greaterThan(fundamentals.getPbRatio(), "3")) {
-            weaknesses.add("PD/DD yüksek; defter değerine göre primli fiyatlama olabilir.");
+            weaknesses.add("PD/DD yÃ¼ksek; defter deÄŸerine gÃ¶re primli fiyatlama olabilir.");
         }
         if (lessThan(fundamentals.getRevenueGrowth(), "0")) {
-            weaknesses.add("Hasılat büyümesi negatif; satış tarafında baskı var.");
+            weaknesses.add("HasÄ±lat bÃ¼yÃ¼mesi negatif; satÄ±ÅŸ tarafÄ±nda baskÄ± var.");
         }
         if (lessThan(fundamentals.getNetProfitGrowth(), "0")) {
-            weaknesses.add("Net kâr büyümesi negatif; kârlılık ivmesi zayıflıyor.");
+            weaknesses.add("Net kÃ¢r bÃ¼yÃ¼mesi negatif; kÃ¢rlÄ±lÄ±k ivmesi zayÄ±flÄ±yor.");
         }
         if (lessThanOrEqual(fundamentals.getNetMargin(), "0") || lessThanOrEqual(latestFinancials.netProfit(), "0")) {
-            weaknesses.add("Net kâr veya net marj negatif; finansal baskı sinyali oluşuyor.");
+            weaknesses.add("Net kÃ¢r veya net marj negatif; finansal baskÄ± sinyali oluÅŸuyor.");
         }
         if (weaknesses.isEmpty()) {
-            weaknesses.add("Belirgin zayıflık sınırlı; oranlar yine de sektör ortalamasıyla karşılaştırılmalı.");
+            weaknesses.add("Belirgin zayÄ±flÄ±k sÄ±nÄ±rlÄ±; oranlar yine de sektÃ¶r ortalamasÄ±yla karÅŸÄ±laÅŸtÄ±rÄ±lmalÄ±.");
         }
         return List.copyOf(weaknesses);
     }
@@ -210,33 +210,33 @@ public class AiFundamentalAnalysisService {
     private List<String> buildRisks(CompanyFundamentalsResponse fundamentals, LatestFinancials latestFinancials) {
         List<String> risks = new ArrayList<>();
         if (greaterThan(fundamentals.getDebtToEquity(), "2")) {
-            risks.add("Borç/özkaynak oranı yüksek; finansman maliyeti ve bilanço riski artabilir.");
+            risks.add("BorÃ§/Ã¶zkaynak oranÄ± yÃ¼ksek; finansman maliyeti ve bilanÃ§o riski artabilir.");
         }
         if (lessThanOrEqual(latestFinancials.netProfit(), "0")) {
-            risks.add("Son raporda net kâr negatif veya sıfır; kârlılık sürdürülebilirliği izlenmeli.");
+            risks.add("Son raporda net kÃ¢r negatif veya sÄ±fÄ±r; kÃ¢rlÄ±lÄ±k sÃ¼rdÃ¼rÃ¼lebilirliÄŸi izlenmeli.");
         }
         if (lessThan(fundamentals.getRevenueGrowth(), "0")) {
-            risks.add("Negatif hasılat büyümesi operasyonel talep veya fiyatlama baskısına işaret edebilir.");
+            risks.add("Negatif hasÄ±lat bÃ¼yÃ¼mesi operasyonel talep veya fiyatlama baskÄ±sÄ±na iÅŸaret edebilir.");
         }
         if (lessThan(fundamentals.getNetProfitGrowth(), "0")) {
-            risks.add("Negatif net kâr büyümesi marj veya maliyet baskısı yaratabilir.");
+            risks.add("Negatif net kÃ¢r bÃ¼yÃ¼mesi marj veya maliyet baskÄ±sÄ± yaratabilir.");
         }
         if (fundamentals.getRevenueGrowth() == null && fundamentals.getRevenueGrowthLabel() == null) {
-            risks.add("Hasılat büyümesi için yeterli karşılaştırmalı dönem verisi yok.");
+            risks.add("HasÄ±lat bÃ¼yÃ¼mesi iÃ§in yeterli karÅŸÄ±laÅŸtÄ±rmalÄ± dÃ¶nem verisi yok.");
         }
         if (fundamentals.getNetProfitGrowth() == null && fundamentals.getNetProfitGrowthLabel() == null) {
-            risks.add("Net kâr büyümesi için yeterli karşılaştırmalı dönem verisi yok.");
+            risks.add("Net kÃ¢r bÃ¼yÃ¼mesi iÃ§in yeterli karÅŸÄ±laÅŸtÄ±rmalÄ± dÃ¶nem verisi yok.");
         }
         if (risks.isEmpty()) {
-            risks.add("Ana riskler makro koşullar, sektör döngüsü ve finansal veri güncelliğidir.");
+            risks.add("Ana riskler makro koÅŸullar, sektÃ¶r dÃ¶ngÃ¼sÃ¼ ve finansal veri gÃ¼ncelliÄŸidir.");
         }
         return List.copyOf(risks);
     }
 
     private String buildGrowthComment(CompanyFundamentalsResponse fundamentals) {
         List<String> comments = new ArrayList<>();
-        comments.add(growthText("Hasılat", fundamentals.getRevenueGrowth(), fundamentals.getRevenueGrowthLabel()));
-        comments.add(growthText("Net kâr", fundamentals.getNetProfitGrowth(), fundamentals.getNetProfitGrowthLabel()));
+        comments.add(growthText("HasÄ±lat", fundamentals.getRevenueGrowth(), fundamentals.getRevenueGrowthLabel()));
+        comments.add(growthText("Net kÃ¢r", fundamentals.getNetProfitGrowth(), fundamentals.getNetProfitGrowthLabel()));
         comments.add(growthText("Aktifler", fundamentals.getAssetGrowth(), fundamentals.getAssetGrowthLabel()));
         return String.join(" ", comments);
     }
@@ -246,18 +246,18 @@ public class AiFundamentalAnalysisService {
                                 LatestFinancials latestFinancials,
                                 FinancialHealth health) {
         String netProfitPhrase = latestFinancials.netProfit() == null
-                ? "net kâr verisi sınırlı"
+                ? "net kÃ¢r verisi sÄ±nÄ±rlÄ±"
                 : latestFinancials.netProfit().compareTo(BigDecimal.ZERO) < 0
-                ? "son net kâr negatif"
-                : "son net kâr pozitif";
+                ? "son net kÃ¢r negatif"
+                : "son net kÃ¢r pozitif";
 
-        return symbol + " için rule-based finansal sağlık görünümü " + health + ". "
+        return symbol + " iÃ§in rule-based finansal saÄŸlÄ±k gÃ¶rÃ¼nÃ¼mÃ¼ " + health + ". "
                 + "ROE " + formatPercent(fundamentals.getRoe())
                 + ", ROA " + formatPercent(fundamentals.getRoa())
                 + ", F/K " + formatRatio(fundamentals.getPeRatio())
                 + ", PD/DD " + formatRatio(fundamentals.getPbRatio())
-                + ", borç/özkaynak " + formatRatio(fundamentals.getDebtToEquity())
-                + ". " + netProfitPhrase + "; büyüme ve marjlar bu yorumu belirleyen ana girdiler.";
+                + ", borÃ§/Ã¶zkaynak " + formatRatio(fundamentals.getDebtToEquity())
+                + ". " + netProfitPhrase + "; bÃ¼yÃ¼me ve marjlar bu yorumu belirleyen ana girdiler.";
     }
 
     private LatestFinancials extractLatestFinancials(List<CompanyFinancialReportResponse> reports) {
@@ -296,11 +296,11 @@ public class AiFundamentalAnalysisService {
         FinancialHealth health = bucket == 0 ? FinancialHealth.STABLE : bucket == 1 ? FinancialHealth.WATCH : FinancialHealth.RISKY;
         return new AiFundamentalAnalysisResponse(
                 symbol,
-                symbol + " için temel analiz verisi sınırlı. Rule-based yorum, oranlar hesaplanana kadar veri eksikliğini ana risk olarak değerlendirir.",
-                List.of("Finansal veriler tamamlandığında büyüme, marj ve değerleme kuralları otomatik yorumlanabilir."),
-                List.of("F/K, PD/DD, ROE, ROA ve marj verileri yeterli değil."),
-                List.of("Eksik finansal veri nedeniyle kârlılık, borçluluk ve büyüme görünümü teyit edilemiyor."),
-                "Büyüme yorumu için yeterli karşılaştırmalı dönem verisi yok.",
+                symbol + " iÃ§in temel analiz verisi sÄ±nÄ±rlÄ±. Rule-based yorum, oranlar hesaplanana kadar veri eksikliÄŸini ana risk olarak deÄŸerlendirir.",
+                List.of("Finansal veriler tamamlandÄ±ÄŸÄ±nda bÃ¼yÃ¼me, marj ve deÄŸerleme kurallarÄ± otomatik yorumlanabilir."),
+                List.of("F/K, PD/DD, ROE, ROA ve marj verileri yeterli deÄŸil."),
+                List.of("Eksik finansal veri nedeniyle kÃ¢rlÄ±lÄ±k, borÃ§luluk ve bÃ¼yÃ¼me gÃ¶rÃ¼nÃ¼mÃ¼ teyit edilemiyor."),
+                "BÃ¼yÃ¼me yorumu iÃ§in yeterli karÅŸÄ±laÅŸtÄ±rmalÄ± dÃ¶nem verisi yok.",
                 health,
                 DISCLAIMER,
                 AiResponseMetadata.deterministic("INSUFFICIENT")
@@ -315,12 +315,12 @@ public class AiFundamentalAnalysisService {
             return label + ": yeterli veri yok.";
         }
         if (value.compareTo(BigDecimal.ZERO) > 0) {
-            return label + ": pozitif büyüme güçlü görünümü destekliyor (" + formatPercent(value) + ").";
+            return label + ": pozitif bÃ¼yÃ¼me gÃ¼Ã§lÃ¼ gÃ¶rÃ¼nÃ¼mÃ¼ destekliyor (" + formatPercent(value) + ").";
         }
         if (value.compareTo(BigDecimal.ZERO) < 0) {
-            return label + ": negatif büyüme baskı/risk sinyali veriyor (" + formatPercent(value) + ").";
+            return label + ": negatif bÃ¼yÃ¼me baskÄ±/risk sinyali veriyor (" + formatPercent(value) + ").";
         }
-        return label + ": yatay büyüme, sınırlı ivmeye işaret ediyor.";
+        return label + ": yatay bÃ¼yÃ¼me, sÄ±nÄ±rlÄ± ivmeye iÅŸaret ediyor.";
     }
 
     private boolean greaterThan(BigDecimal value, String threshold) {
@@ -385,6 +385,7 @@ public class AiFundamentalAnalysisService {
     private record LatestFinancials(BigDecimal revenue, BigDecimal netProfit) {
     }
 }
+
 
 
 

@@ -47,12 +47,13 @@ public class ViopDataProvider implements MarketDataProvider {
     }
 
     private List<FuturesContractDto> fetchFromApi() {
-        // TODO: Borsa İstanbul açık veri portalından
+        // TODO: Borsa Ä°stanbul aÃ§Ä±k veri portalÄ±ndan
         // (datastore.borsaistanbul.com) endpoint kontrol
         // edilerek doldurulacak. Veri 15 dk gecikmeli.
         return Collections.emptyList();
     }
 }
+
 
 
 

@@ -46,7 +46,7 @@ public class TefasFundHistoricalBackfillService {
     public BackfillResult runBackfill(String fundCode, Integer periyod) {
         try {
             long startedAt = System.currentTimeMillis();
-            log.info("Backfill başladı, fundCode: {}", fundCode);
+            log.info("Backfill baÅŸladÄ±, fundCode: {}", fundCode);
 
             List<String> fundCodes;
             if (fundCode != null && !fundCode.isBlank()) {
@@ -86,7 +86,7 @@ public class TefasFundHistoricalBackfillService {
                     System.currentTimeMillis() - startedAt
             );
         } catch (Exception e) {
-            log.error("Backfill hatası: {}", e.getMessage(), e);
+            log.error("Backfill hatasÄ±: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -101,7 +101,7 @@ public class TefasFundHistoricalBackfillService {
                     .distinct()
                     .toList();
         } catch (Exception e) {
-            log.error("Backfill hatası: {}", e.getMessage(), e);
+            log.error("Backfill hatasÄ±: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -117,7 +117,7 @@ public class TefasFundHistoricalBackfillService {
                 .toList();
 
         if (allCodes.isEmpty()) {
-            log.info("TEFAS fund seed: eklenecek instrument bulunamadı");
+            log.info("TEFAS fund seed: eklenecek instrument bulunamadÄ±");
             return;
         }
 
@@ -146,9 +146,9 @@ public class TefasFundHistoricalBackfillService {
 
         if (!toSave.isEmpty()) {
             marketInstrumentRepository.saveAll(toSave);
-            log.info("TEFAS fund seed tamamlandı: {} yeni instrument eklendi", toSave.size());
+            log.info("TEFAS fund seed tamamlandÄ±: {} yeni instrument eklendi", toSave.size());
         } else {
-            log.info("TEFAS fund seed: tüm instrumentlar zaten mevcut");
+            log.info("TEFAS fund seed: tÃ¼m instrumentlar zaten mevcut");
         }
     }
 
@@ -170,17 +170,17 @@ public class TefasFundHistoricalBackfillService {
             instrument.setInstrumentType(InstrumentType.FUND);
             instrument.setSourceName(SOURCE_NAME);
             marketInstrumentRepository.save(instrument);
-            log.info("TEFAS single fund seed tamamlandı: instrument eklendi, fundCode={}", fundCode);
+            log.info("TEFAS single fund seed tamamlandÄ±: instrument eklendi, fundCode={}", fundCode);
         } catch (Exception e) {
-            log.error("Backfill hatası: {}", e.getMessage(), e);
+            log.error("Backfill hatasÄ±: {}", e.getMessage(), e);
             throw e;
         }
     }
 
     private BackfillCounters backfillSingleFund(String fundCode, Integer requestedPeriod) {
         try {
-            log.info("backfillSingleFund başladı: {}", fundCode);
-            log.info("Instrument aranıyor: {}", fundCode);
+            log.info("backfillSingleFund baÅŸladÄ±: {}", fundCode);
+            log.info("Instrument aranÄ±yor: {}", fundCode);
             Optional<MarketInstrument> instrumentOptional = marketInstrumentRepository
                     .findByInstrumentCodeAndSourceName(fundCode, SOURCE_NAME)
                     .filter(instrument -> instrument.getInstrumentType() == InstrumentType.FUND);
@@ -203,10 +203,10 @@ public class TefasFundHistoricalBackfillService {
                     .orElse(null);
 
             int effectivePeriod = resolvePeriod(lastDate, requestedPeriod);
-            log.info("fetchFundHistory çağrılıyor: {} periyod: {}", fundCode, effectivePeriod);
+            log.info("fetchFundHistory Ã§aÄŸrÄ±lÄ±yor: {} periyod: {}", fundCode, effectivePeriod);
             List<TefasFundPriceResponseItem> history = tefasProvider.fetchFundHistory(fundCode, effectivePeriod);
-            log.info("History kayıt sayısı: {}", history.size());
-            log.info("fetchFundHistory sonucu: {} kayıt", history.size());
+            log.info("History kayÄ±t sayÄ±sÄ±: {}", history.size());
+            log.info("fetchFundHistory sonucu: {} kayÄ±t", history.size());
             if (history.isEmpty()) {
                 return new BackfillCounters(1, 0, 0);
             }
@@ -272,17 +272,17 @@ public class TefasFundHistoricalBackfillService {
                         .build());
             }
 
-            log.info("Kaydedilecek kayıt: {}", recordsToSave.size());
+            log.info("Kaydedilecek kayÄ±t: {}", recordsToSave.size());
             log.info("recordsToSave: {}", recordsToSave.size());
             if (!recordsToSave.isEmpty()) {
-                log.info("saveAll çağrılıyor");
+                log.info("saveAll Ã§aÄŸrÄ±lÄ±yor");
                 marketPriceHistoryRepository.saveAll(recordsToSave);
             }
 
             return new BackfillCounters(1, recordsToSave.size(), duplicates);
         } catch (Exception e) {
-            log.error("backfillSingleFund hatası fundCode={}: {}", fundCode, e.getMessage(), e);
-            log.error("Backfill hatası: {}", e.getMessage(), e);
+            log.error("backfillSingleFund hatasÄ± fundCode={}: {}", fundCode, e.getMessage(), e);
+            log.error("Backfill hatasÄ±: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -314,7 +314,7 @@ public class TefasFundHistoricalBackfillService {
             Thread.sleep(CHUNK_DELAY_MS);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            log.error("Backfill hatası: {}", exception.getMessage(), exception);
+            log.error("Backfill hatasÄ±: {}", exception.getMessage(), exception);
             log.warn("Interrupted while waiting between TEFAS fund backfill chunks.");
         }
     }
@@ -334,6 +334,7 @@ public class TefasFundHistoricalBackfillService {
     ) {
     }
 }
+
 
 
 

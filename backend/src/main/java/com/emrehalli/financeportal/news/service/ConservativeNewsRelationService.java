@@ -143,63 +143,63 @@ public class ConservativeNewsRelationService {
                                                  Map<String, InstrumentMatch> matched, Long newsId) {
         switch (impactType) {
             case MONETARY_POLICY -> {
-                // No individual bank stocks — use XBANK index instead
+                // No individual bank stocks â€” use XBANK index instead
                 matched.putIfAbsent("USDTRY", contextual("USDTRY", "USD/TRY", "FX",
-                        "FX_CONTEXT_MATCH", "Para politikası kararı döviz kurunu etkiler"));
+                        "FX_CONTEXT_MATCH", "Para politikasÄ± kararÄ± dÃ¶viz kurunu etkiler"));
                 matched.putIfAbsent("EURTRY", contextual("EURTRY", "EUR/TRY", "FX",
-                        "FX_CONTEXT_MATCH", "Para politikası kararı döviz kurunu etkiler"));
+                        "FX_CONTEXT_MATCH", "Para politikasÄ± kararÄ± dÃ¶viz kurunu etkiler"));
                 matched.putIfAbsent("XU100", contextual("XU100", "BIST 100", "INDEX",
-                        "MACRO_CONTEXT_MATCH", "Para politikası kararı borsa endeksini etkiler"));
-                matched.putIfAbsent("XBANK", contextual("XBANK", "Bankacılık Endeksi", "INDEX",
-                        "SECTOR_CONTEXT_MATCH", "Para politikası bankacılık sektörünü doğrudan etkiler"));
+                        "MACRO_CONTEXT_MATCH", "Para politikasÄ± kararÄ± borsa endeksini etkiler"));
+                matched.putIfAbsent("XBANK", contextual("XBANK", "BankacÄ±lÄ±k Endeksi", "INDEX",
+                        "SECTOR_CONTEXT_MATCH", "Para politikasÄ± bankacÄ±lÄ±k sektÃ¶rÃ¼nÃ¼ doÄŸrudan etkiler"));
             }
             case FISCAL_POLICY -> {
                 matched.putIfAbsent("XU100", contextual("XU100", "BIST 100", "INDEX",
                         "MACRO_CONTEXT_MATCH", "Mali politika borsa endeksini etkiler"));
                 matched.putIfAbsent("USDTRY", contextual("USDTRY", "USD/TRY", "FX",
-                        "FX_CONTEXT_MATCH", "Hazine/bütçe gelişmeleri döviz kurunu etkiler"));
+                        "FX_CONTEXT_MATCH", "Hazine/bÃ¼tÃ§e geliÅŸmeleri dÃ¶viz kurunu etkiler"));
             }
             case POLITICAL_RISK -> {
                 matched.putIfAbsent("XU100", contextual("XU100", "BIST 100", "INDEX",
                         "MACRO_CONTEXT_MATCH", "Siyasi belirsizlik borsa endeksini etkiler"));
                 matched.putIfAbsent("USDTRY", contextual("USDTRY", "USD/TRY", "FX",
-                        "FX_CONTEXT_MATCH", "Siyasi risk döviz kurunu etkiler"));
-                matched.putIfAbsent("GOLD", contextual("GOLD", "Altın", "COMMODITY",
-                        "COMMODITY_CONTEXT_MATCH", "Siyasi risk güvenli liman talebini artırır"));
+                        "FX_CONTEXT_MATCH", "Siyasi risk dÃ¶viz kurunu etkiler"));
+                matched.putIfAbsent("GOLD", contextual("GOLD", "AltÄ±n", "COMMODITY",
+                        "COMMODITY_CONTEXT_MATCH", "Siyasi risk gÃ¼venli liman talebini artÄ±rÄ±r"));
             }
             case GEOPOLITICAL -> {
                 matched.putIfAbsent("XU100", contextual("XU100", "BIST 100", "INDEX",
-                        "MACRO_CONTEXT_MATCH", "Jeopolitik gelişme borsa endeksini etkiler"));
+                        "MACRO_CONTEXT_MATCH", "Jeopolitik geliÅŸme borsa endeksini etkiler"));
                 matched.putIfAbsent("USDTRY", contextual("USDTRY", "USD/TRY", "FX",
-                        "FX_CONTEXT_MATCH", "Jeopolitik risk döviz kurunu etkiler"));
-                matched.putIfAbsent("GOLD", contextual("GOLD", "Altın", "COMMODITY",
-                        "COMMODITY_CONTEXT_MATCH", "Jeopolitik gerginlik altın talebini artırır"));
+                        "FX_CONTEXT_MATCH", "Jeopolitik risk dÃ¶viz kurunu etkiler"));
+                matched.putIfAbsent("GOLD", contextual("GOLD", "AltÄ±n", "COMMODITY",
+                        "COMMODITY_CONTEXT_MATCH", "Jeopolitik gerginlik altÄ±n talebini artÄ±rÄ±r"));
                 matched.putIfAbsent("BRENT", contextual("BRENT", "Brent Petrol", "COMMODITY",
-                        "COMMODITY_CONTEXT_MATCH", "Jeopolitik gelişme petrol fiyatını etkiler"));
+                        "COMMODITY_CONTEXT_MATCH", "Jeopolitik geliÅŸme petrol fiyatÄ±nÄ± etkiler"));
             }
             case GLOBAL_MARKET -> {
                 matched.putIfAbsent("XU100", contextual("XU100", "BIST 100", "INDEX",
-                        "MACRO_CONTEXT_MATCH", "Küresel piyasa gelişmesi endeksi etkiler"));
-                matched.putIfAbsent("GOLD", contextual("GOLD", "Altın", "COMMODITY",
-                        "COMMODITY_CONTEXT_MATCH", "Küresel belirsizlik altın talebini etkiler"));
+                        "MACRO_CONTEXT_MATCH", "KÃ¼resel piyasa geliÅŸmesi endeksi etkiler"));
+                matched.putIfAbsent("GOLD", contextual("GOLD", "AltÄ±n", "COMMODITY",
+                        "COMMODITY_CONTEXT_MATCH", "KÃ¼resel belirsizlik altÄ±n talebini etkiler"));
                 matched.putIfAbsent("BRENT", contextual("BRENT", "Brent Petrol", "COMMODITY",
-                        "COMMODITY_CONTEXT_MATCH", "Küresel piyasa değişimi petrolü etkiler"));
+                        "COMMODITY_CONTEXT_MATCH", "KÃ¼resel piyasa deÄŸiÅŸimi petrolÃ¼ etkiler"));
                 matched.putIfAbsent("USDTRY", contextual("USDTRY", "USD/TRY", "FX",
-                        "FX_CONTEXT_MATCH", "Küresel piyasa döviz kurunu etkiler"));
+                        "FX_CONTEXT_MATCH", "KÃ¼resel piyasa dÃ¶viz kurunu etkiler"));
             }
             case MACRO -> {
                 matched.putIfAbsent("XU100", contextual("XU100", "BIST 100", "INDEX",
-                        "MACRO_CONTEXT_MATCH", "Makroekonomik gelişme borsa endeksini etkiler"));
+                        "MACRO_CONTEXT_MATCH", "Makroekonomik geliÅŸme borsa endeksini etkiler"));
                 matched.putIfAbsent("USDTRY", contextual("USDTRY", "USD/TRY", "FX",
-                        "FX_CONTEXT_MATCH", "Makroekonomik gelişme döviz kurunu etkiler"));
+                        "FX_CONTEXT_MATCH", "Makroekonomik geliÅŸme dÃ¶viz kurunu etkiler"));
             }
             case REGULATORY -> {
                 matched.putIfAbsent("XU100", contextual("XU100", "BIST 100", "INDEX",
-                        "SECTOR_CONTEXT_MATCH", "Düzenleyici kararı piyasayı etkiler"));
+                        "SECTOR_CONTEXT_MATCH", "DÃ¼zenleyici kararÄ± piyasayÄ± etkiler"));
             }
             case SECTOR -> {
-                matched.putIfAbsent("XBANK", contextual("XBANK", "Bankacılık Endeksi", "INDEX",
-                        "SECTOR_CONTEXT_MATCH", "Bankacılık sektörü gelişmesi endeksi etkiler"));
+                matched.putIfAbsent("XBANK", contextual("XBANK", "BankacÄ±lÄ±k Endeksi", "INDEX",
+                        "SECTOR_CONTEXT_MATCH", "BankacÄ±lÄ±k sektÃ¶rÃ¼ geliÅŸmesi endeksi etkiler"));
             }
             case DIRECT_COMPANY, NOT_MARKET_RELEVANT -> { /* handled elsewhere */ }
         }
@@ -217,9 +217,9 @@ public class ConservativeNewsRelationService {
         NewsService.InstrumentAlias alias = NewsService.BIST_INSTRUMENT_ALIASES.get(sym);
         InstrumentMatch match = alias != null
                 ? new InstrumentMatch(alias.symbol(), alias.name(), alias.instrumentType(),
-                        "OFFICIAL_KAP_MATCH", "HIGH", "KAP bildirimi doğrudan bu şirketle ilişkili")
+                        "OFFICIAL_KAP_MATCH", "HIGH", "KAP bildirimi doÄŸrudan bu ÅŸirketle iliÅŸkili")
                 : new InstrumentMatch(sym, sym, InstrumentType.STOCK.name(),
-                        "OFFICIAL_KAP_MATCH", "HIGH", "KAP bildirimi doğrudan bu şirketle ilişkili");
+                        "OFFICIAL_KAP_MATCH", "HIGH", "KAP bildirimi doÄŸrudan bu ÅŸirketle iliÅŸkili");
         logger.debug("conservative.kap.instrument: newsId={}, symbol={}", news.getId(), match.symbol());
         return List.of(toDto(match));
     }
@@ -251,7 +251,7 @@ public class ConservativeNewsRelationService {
             if (alias.keywords().stream().anyMatch(tokens::contains)) {
                 matched.putIfAbsent(alias.symbol(), new InstrumentMatch(
                         alias.symbol(), alias.name(), alias.instrumentType(),
-                        "DIRECT_COMPANY_MATCH", "HIGH", "Haberde şirket adı geçtiği için ilişkilendirildi"));
+                        "DIRECT_COMPANY_MATCH", "HIGH", "Haberde ÅŸirket adÄ± geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi"));
                 logger.debug("conservative.direct.stock: newsId={}, symbol={}", newsId, alias.symbol());
             }
         }
@@ -260,56 +260,56 @@ public class ConservativeNewsRelationService {
         if (xu100 != null && xu100.keywords().stream().anyMatch(tokens::contains)) {
             matched.putIfAbsent("XU100", new InstrumentMatch(
                     "XU100", "BIST 100", InstrumentType.INDEX.name(),
-                    "MACRO_CONTEXT_MATCH", "HIGH", "BIST 100 endeksi haberde doğrudan geçtiği için ilişkilendirildi"));
+                    "MACRO_CONTEXT_MATCH", "HIGH", "BIST 100 endeksi haberde doÄŸrudan geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi"));
         }
     }
 
     private void collectDirectMacroTextMatches(Set<String> tokens, Map<String, InstrumentMatch> matched, Long newsId) {
-        // Direct FX mentions → HIGH confidence
+        // Direct FX mentions â†’ HIGH confidence
         if (containsAny(tokens, DOLAR_TOKENS)) {
             matched.putIfAbsent("USDTRY", new InstrumentMatch("USDTRY", "USD/TRY", InstrumentType.FX.name(),
-                    "FX_CONTEXT_MATCH", "HIGH", "Haberde dolar/kur doğrudan geçtiği için ilişkilendirildi"));
+                    "FX_CONTEXT_MATCH", "HIGH", "Haberde dolar/kur doÄŸrudan geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi"));
         }
         if (containsAny(tokens, EURO_TOKENS)) {
             matched.putIfAbsent("EURTRY", new InstrumentMatch("EURTRY", "EUR/TRY", InstrumentType.FX.name(),
-                    "FX_CONTEXT_MATCH", "HIGH", "Haberde euro/parite doğrudan geçtiği için ilişkilendirildi"));
+                    "FX_CONTEXT_MATCH", "HIGH", "Haberde euro/parite doÄŸrudan geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi"));
         }
-        // Direct gold/oil mentions → HIGH confidence
+        // Direct gold/oil mentions â†’ HIGH confidence
         if (containsAny(tokens, GOLD_TOKENS)) {
-            matched.putIfAbsent("GOLD", new InstrumentMatch("GOLD", "Altın", InstrumentType.COMMODITY.name(),
-                    "COMMODITY_CONTEXT_MATCH", "HIGH", "Haberde altın doğrudan geçtiği için ilişkilendirildi"));
+            matched.putIfAbsent("GOLD", new InstrumentMatch("GOLD", "AltÄ±n", InstrumentType.COMMODITY.name(),
+                    "COMMODITY_CONTEXT_MATCH", "HIGH", "Haberde altÄ±n doÄŸrudan geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi"));
         }
         if (containsAny(tokens, OIL_TOKENS)) {
             matched.putIfAbsent("BRENT", new InstrumentMatch("BRENT", "Brent Petrol", InstrumentType.COMMODITY.name(),
-                    "COMMODITY_CONTEXT_MATCH", "HIGH", "Haberde petrol doğrudan geçtiği için ilişkilendirildi"));
+                    "COMMODITY_CONTEXT_MATCH", "HIGH", "Haberde petrol doÄŸrudan geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi"));
         }
-        // Direct market/index mention → HIGH
+        // Direct market/index mention â†’ HIGH
         if (containsAny(tokens, MARKET_TOKENS)) {
             matched.putIfAbsent("XU100", new InstrumentMatch("XU100", "BIST 100", InstrumentType.INDEX.name(),
-                    "MACRO_CONTEXT_MATCH", "HIGH", "Haberde borsa/endeks doğrudan geçtiği için ilişkilendirildi"));
+                    "MACRO_CONTEXT_MATCH", "HIGH", "Haberde borsa/endeks doÄŸrudan geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi"));
         }
     }
 
     private void collectInferredMacroMatches(Set<String> tokens, Map<String, InstrumentMatch> matched, Long newsId) {
-        // TCMB/FED/ECB/FAIZ/KUR/DOVIZ/ENFLASYON → USDTRY, EURTRY, XU100 (CONTEXTUAL)
+        // TCMB/FED/ECB/FAIZ/KUR/DOVIZ/ENFLASYON â†’ USDTRY, EURTRY, XU100 (CONTEXTUAL)
         if (containsAny(tokens, RATE_FX_TOKENS)) {
             matched.putIfAbsent("USDTRY", new InstrumentMatch("USDTRY", "USD/TRY", InstrumentType.FX.name(),
-                    "FX_CONTEXT_MATCH", "CONTEXTUAL", "TCMB/faiz/kur bağlamı nedeniyle döviz kuru etkisi"));
+                    "FX_CONTEXT_MATCH", "CONTEXTUAL", "TCMB/faiz/kur baÄŸlamÄ± nedeniyle dÃ¶viz kuru etkisi"));
             matched.putIfAbsent("EURTRY", new InstrumentMatch("EURTRY", "EUR/TRY", InstrumentType.FX.name(),
-                    "FX_CONTEXT_MATCH", "CONTEXTUAL", "TCMB/faiz/kur bağlamı nedeniyle döviz kuru etkisi"));
+                    "FX_CONTEXT_MATCH", "CONTEXTUAL", "TCMB/faiz/kur baÄŸlamÄ± nedeniyle dÃ¶viz kuru etkisi"));
             matched.putIfAbsent("XU100", new InstrumentMatch("XU100", "BIST 100", InstrumentType.INDEX.name(),
-                    "MACRO_CONTEXT_MATCH", "CONTEXTUAL", "Faiz/kur/makro bağlamı nedeniyle piyasa endeksi etkisi"));
+                    "MACRO_CONTEXT_MATCH", "CONTEXTUAL", "Faiz/kur/makro baÄŸlamÄ± nedeniyle piyasa endeksi etkisi"));
         }
-        // HISSE → XU100
+        // HISSE â†’ XU100
         if (tokens.contains("HISSE") || tokens.contains("HISSELER")) {
             matched.putIfAbsent("XU100", new InstrumentMatch("XU100", "BIST 100", InstrumentType.INDEX.name(),
-                    "MACRO_CONTEXT_MATCH", "CONTEXTUAL", "Hisse senedi bağlamı nedeniyle endeks etkisi"));
+                    "MACRO_CONTEXT_MATCH", "CONTEXTUAL", "Hisse senedi baÄŸlamÄ± nedeniyle endeks etkisi"));
         }
-        // ALTIN → also add GRAM_ALTIN
+        // ALTIN â†’ also add GRAM_ALTIN
         if (containsAny(tokens, GOLD_TOKENS)) {
-            matched.putIfAbsent("GRAM_ALTIN", new InstrumentMatch("GRAM_ALTIN", "Gram Altın",
+            matched.putIfAbsent("GRAM_ALTIN", new InstrumentMatch("GRAM_ALTIN", "Gram AltÄ±n",
                     InstrumentType.COMMODITY.name(),
-                    "COMMODITY_CONTEXT_MATCH", "CONTEXTUAL", "Altın bağlamı nedeniyle gram altın etkisi"));
+                    "COMMODITY_CONTEXT_MATCH", "CONTEXTUAL", "AltÄ±n baÄŸlamÄ± nedeniyle gram altÄ±n etkisi"));
         }
     }
 
@@ -564,6 +564,7 @@ public class ConservativeNewsRelationService {
 
     private record ScoredCandidate(News candidate, int score) {}
 }
+
 
 
 

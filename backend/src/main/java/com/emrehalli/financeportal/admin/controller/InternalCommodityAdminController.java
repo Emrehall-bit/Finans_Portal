@@ -20,9 +20,9 @@ import java.util.Map;
  * <p>Workflow:</p>
  * <ol>
  *   <li>POST /api/v1/admin/markets/internal-commodities/history/backfill?days=365
- *       → fetches GC=F + SI=F from Yahoo, saves ONE_DAY INTERNAL history</li>
+ *       â†’ fetches GC=F + SI=F from Yahoo, saves ONE_DAY INTERNAL history</li>
  *   <li>POST /api/v1/admin/markets/commodities/history/backfill?days=365
- *       → derives GRAM_ALTIN, CEYREK_ALTIN, YARIM_ALTIN, TAM_ALTIN, CUMHURIYET_ALTINI, GUMUS_GRAM history</li>
+ *       â†’ derives GRAM_ALTIN, CEYREK_ALTIN, YARIM_ALTIN, TAM_ALTIN, CUMHURIYET_ALTINI, GUMUS_GRAM history</li>
  * </ol>
  */
 @RestController
@@ -60,7 +60,7 @@ public class InternalCommodityAdminController {
 
         if (totalSaved == 0) {
             response.put("hint", totalSkipped > 0
-                    ? "All rows already exist — " + totalSkipped + " duplicates skipped."
+                    ? "All rows already exist â€” " + totalSkipped + " duplicates skipped."
                     : "No data saved. Check Yahoo Finance cookie/crumb configuration.");
         } else {
             response.put("nextStep",
@@ -70,6 +70,7 @@ public class InternalCommodityAdminController {
         return response;
     }
 }
+
 
 
 

@@ -91,7 +91,7 @@ public class YahooHistoricalClient {
         }
     }
 
-    // ── Parsing ────────────────────────────────────────────────────────────────
+    // â”€â”€ Parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private List<StockHistoryDto> parse(String body, String yahooSymbol) throws Exception {
         JsonNode result = objectMapper.readTree(body)
@@ -159,6 +159,7 @@ public class YahooHistoricalClient {
         return value != null && !value.isBlank();
     }
 }
+
 
 
 

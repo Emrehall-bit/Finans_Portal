@@ -101,7 +101,7 @@ public class IndexCommodityDataFetcher {
             log.warn("Commodity provider DataProviderException: {}. Will attempt derived calculation with DB values.", e.getMessage());
         }
 
-        // Step 2: calculate derived commodities — explicit params from Yahoo batch,
+        // Step 2: calculate derived commodities â€” explicit params from Yahoo batch,
         // falls back to DB-persisted INTERNAL prices when batch values are null
         try {
             CommodityService.DerivedCommodityResult result =
@@ -115,6 +115,7 @@ public class IndexCommodityDataFetcher {
         return fetchedCount;
     }
 }
+
 
 
 

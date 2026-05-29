@@ -13,3 +13,4 @@ public class MarketScreenResponse {
     private int page;
     private int size;
 }
+

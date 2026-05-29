@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Fetches article images with an in-memory URL cache and a per-cycle request cap
- * to prevent N×HTTP overhead during feed sync.
+ * to prevent NÃ—HTTP overhead during feed sync.
  */
 @Component
 public class ArticleImageFetcher {
@@ -52,7 +52,7 @@ public class ArticleImageFetcher {
         }
 
         if (cycleCounter.get() >= MAX_FETCHES_PER_CYCLE) {
-            logger.debug("{} article image fetch skipped — per-cycle limit ({}) reached. url: {}", providerName, MAX_FETCHES_PER_CYCLE, articleUrl);
+            logger.debug("{} article image fetch skipped â€” per-cycle limit ({}) reached. url: {}", providerName, MAX_FETCHES_PER_CYCLE, articleUrl);
             return null;
         }
 
@@ -80,6 +80,7 @@ public class ArticleImageFetcher {
         return new AtomicInteger(0);
     }
 }
+
 
 
 

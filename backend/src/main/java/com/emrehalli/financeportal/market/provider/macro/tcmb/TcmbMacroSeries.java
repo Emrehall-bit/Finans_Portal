@@ -18,7 +18,7 @@ public final class TcmbMacroSeries {
                         new MacroSeriesField("TP_TUKFIY2025_GENEL-1", MacroValueType.MONTHLY_CHANGE, "CPI_TR"),
                         new MacroSeriesField("TP_TUKFIY2025_GENEL-3", MacroValueType.YEARLY_CHANGE,  "CPI_TR")
                 ),
-                List.of(new MacroIndicatorDef("CPI_TR", "TÜFE", MacroFrequency.MONTHLY, MacroUnit.PERCENT)),
+                List.of(new MacroIndicatorDef("CPI_TR", "TÃœFE", MacroFrequency.MONTHLY, MacroUnit.PERCENT)),
                 "avg-avg", "1-3", startDate, endDate, "0"
         );
     }
@@ -30,7 +30,7 @@ public final class TcmbMacroSeries {
                         new MacroSeriesField("TP_TUFE1YI_T1-1", MacroValueType.MONTHLY_CHANGE, "PPI_TR"),
                         new MacroSeriesField("TP_TUFE1YI_T1-3", MacroValueType.YEARLY_CHANGE,  "PPI_TR")
                 ),
-                List.of(new MacroIndicatorDef("PPI_TR", "Yİ-ÜFE", MacroFrequency.MONTHLY, MacroUnit.PERCENT)),
+                List.of(new MacroIndicatorDef("PPI_TR", "YÄ°-ÃœFE", MacroFrequency.MONTHLY, MacroUnit.PERCENT)),
                 "avg-avg", "1-3", startDate, endDate, "0"
         );
     }
@@ -54,8 +54,8 @@ public final class TcmbMacroSeries {
                         new MacroSeriesField("TP_YISGUCU2_G6", MacroValueType.LABOR_FORCE_PARTICIPATION_RATE,  "LABOR_FORCE_PARTICIPATION_TR")
                 ),
                 List.of(
-                        new MacroIndicatorDef("UNEMPLOYMENT_TR",              "İşsizlik Oranı",         MacroFrequency.MONTHLY, MacroUnit.PERCENT),
-                        new MacroIndicatorDef("LABOR_FORCE_PARTICIPATION_TR", "İşgücüne Katılım Oranı", MacroFrequency.MONTHLY, MacroUnit.PERCENT)
+                        new MacroIndicatorDef("UNEMPLOYMENT_TR",              "Ä°ÅŸsizlik OranÄ±",         MacroFrequency.MONTHLY, MacroUnit.PERCENT),
+                        new MacroIndicatorDef("LABOR_FORCE_PARTICIPATION_TR", "Ä°ÅŸgÃ¼cÃ¼ne KatÄ±lÄ±m OranÄ±", MacroFrequency.MONTHLY, MacroUnit.PERCENT)
                 ),
                 "last-last", "0-0", startDate, endDate, "0"
         );
@@ -67,7 +67,7 @@ public final class TcmbMacroSeries {
                 List.of(
                         new MacroSeriesField("TP_TG2_Y01", MacroValueType.CONSUMER_CONFIDENCE_INDEX, "CONSUMER_CONFIDENCE_TR")
                 ),
-                List.of(new MacroIndicatorDef("CONSUMER_CONFIDENCE_TR", "Tüketici Güven Endeksi", MacroFrequency.MONTHLY, MacroUnit.INDEX)),
+                List.of(new MacroIndicatorDef("CONSUMER_CONFIDENCE_TR", "TÃ¼ketici GÃ¼ven Endeksi", MacroFrequency.MONTHLY, MacroUnit.INDEX)),
                 "last", "0", startDate, endDate, "0"
         );
     }
@@ -78,13 +78,14 @@ public final class TcmbMacroSeries {
                 List.of(
                         new MacroSeriesField("TP_ODEAYRSUNUM6_Q1", MacroValueType.CURRENT_ACCOUNT_BALANCE, "CURRENT_ACCOUNT_TR")
                 ),
-                List.of(new MacroIndicatorDef("CURRENT_ACCOUNT_TR", "Cari İşlemler Hesabı", MacroFrequency.MONTHLY, MacroUnit.USD)),
+                List.of(new MacroIndicatorDef("CURRENT_ACCOUNT_TR", "Cari Ä°ÅŸlemler HesabÄ±", MacroFrequency.MONTHLY, MacroUnit.USD)),
                 "sum", "0", startDate, endDate, "0"
         );
     }
 
     private TcmbMacroSeries() {}
 }
+
 
 
 

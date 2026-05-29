@@ -12,13 +12,13 @@ import java.util.Map;
 /**
  * Nightly pipeline that keeps BIST index price history up to date.
  *
- * <p>Runs at 01:30 UTC — after NYSE/CME close and after the commodity pipeline (01:15 UTC),
+ * <p>Runs at 01:30 UTC â€” after NYSE/CME close and after the commodity pipeline (01:15 UTC),
  * so all BIST indexes' closing bars are final on Yahoo Finance.</p>
  *
  * <p>Finds the last recorded date per index symbol, computes the gap to yesterday,
  * and fetches only the missing window. Duplicate-safe.</p>
  *
- * <p>Initial 10-year seed: use the admin backfill endpoint —
+ * <p>Initial 10-year seed: use the admin backfill endpoint â€”
  * POST /api/v1/admin/markets/indexes/history/backfill?days=3650.</p>
  */
 @Component
@@ -44,6 +44,7 @@ public class IndexHistoryScheduler {
         }
     }
 }
+
 
 
 

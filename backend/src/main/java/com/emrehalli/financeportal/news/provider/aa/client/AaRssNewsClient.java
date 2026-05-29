@@ -279,7 +279,7 @@ public class AaRssNewsClient {
                 .externalId(rssFeedSupport.resolveExternalId(NewsProviderType.AA_RSS.name(), guid, link))
                 .title(title)
                 .summary(normalizedSummary)
-                .source("Anadolu Ajansı")
+                .source("Anadolu AjansÄ±")
                 .provider(NewsProviderType.AA_RSS.name())
                 .language(properties.getDefaultLanguage())
                 .regionScope(properties.getDefaultRegionScope())
@@ -346,6 +346,7 @@ public class AaRssNewsClient {
         return NewsQualityStatus.SOURCE_LINK_ONLY.name();
     }
 }
+
 
 
 

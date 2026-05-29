@@ -15,7 +15,7 @@ public class AiProperties {
     private ProviderProperties gemini = new ProviderProperties();
     private RoutingProperties routing = new RoutingProperties();
 
-    // ── Provider config ───────────────────────────────────────────
+    // â”€â”€ Provider config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public static class ProviderProperties {
         private boolean enabled = false;
@@ -30,7 +30,7 @@ public class AiProperties {
         public void setModel(String model) { this.model = model; }
     }
 
-    // ── Routing config ────────────────────────────────────────────
+    // â”€â”€ Routing config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public static class RouteConfig {
         private AiProviderType primary = AiProviderType.GROQ;
@@ -90,7 +90,7 @@ public class AiProperties {
         public void setNewsImpactAnalysis(RouteConfig newsImpactAnalysis) { this.newsImpactAnalysis = newsImpactAnalysis; }
     }
 
-    // ── Top-level getters/setters ─────────────────────────────────
+    // â”€â”€ Top-level getters/setters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
@@ -105,6 +105,7 @@ public class AiProperties {
     public RoutingProperties getRouting() { return routing; }
     public void setRouting(RoutingProperties routing) { this.routing = routing; }
 }
+
 
 
 

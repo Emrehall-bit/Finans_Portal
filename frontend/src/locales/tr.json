@@ -537,7 +537,9 @@
       "emptyDescription": "En az iki enstrüman seçildiğinde karşılaştırma oluşur.",
       "modeLabel": "Karşılaştırma modu",
       "normalized": "Normalize",
-      "price": "Fiyat"
+      "price": "Fiyat",
+      "simpleStripHint": "Enstrümanları karşılaştırarak daha iyi analiz yapın.",
+      "activeCount": "{{count}} aktif"
     },
     "insight": {
       "eyebrow": "İndikatörler",

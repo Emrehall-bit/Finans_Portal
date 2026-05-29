@@ -37,8 +37,8 @@ public class ManualFinancialCsvReader {
             "odenmis sermaye",
             "cikarilmis_sermaye",
             "cikarilmis sermaye",
-            "çıkarılmış sermaye",
-            "ödenmiş sermaye"
+            "Ã§Ä±karÄ±lmÄ±ÅŸ sermaye",
+            "Ã¶denmiÅŸ sermaye"
     );
 
     public CsvReadResult read(MultipartFile file) {
@@ -48,7 +48,7 @@ public class ManualFinancialCsvReader {
         if (file == null || file.isEmpty()) {
             errors.add(ManualFinancialImportError.builder()
                     .fieldName("file")
-                    .message("CSV dosyası boş.")
+                    .message("CSV dosyasÄ± boÅŸ.")
                     .build());
             return new CsvReadResult(rows, errors);
         }
@@ -68,7 +68,7 @@ public class ManualFinancialCsvReader {
             if (headerLine == null) {
                 errors.add(ManualFinancialImportError.builder()
                         .fieldName("file")
-                        .message("CSV dosyası boş.")
+                        .message("CSV dosyasÄ± boÅŸ.")
                         .build());
                 return new CsvReadResult(rows, errors);
             }
@@ -106,7 +106,7 @@ public class ManualFinancialCsvReader {
         } catch (IOException e) {
             errors.add(ManualFinancialImportError.builder()
                     .fieldName("file")
-                    .message("CSV okunamadı: " + e.getMessage())
+                    .message("CSV okunamadÄ±: " + e.getMessage())
                     .build());
         }
 
@@ -207,6 +207,7 @@ public class ManualFinancialCsvReader {
     public record CsvReadResult(List<ManualFinancialImportRow> rows, List<ManualFinancialImportError> errors) {
     }
 }
+
 
 
 

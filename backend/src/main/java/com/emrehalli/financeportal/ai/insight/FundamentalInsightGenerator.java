@@ -29,7 +29,7 @@ public class FundamentalInsightGenerator {
         return List.copyOf(insights);
     }
 
-    // ── Profitability ─────────────────────────────────────────────
+    // â”€â”€ Profitability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void addProfitabilityInsights(List<FinancialInsight> out,
                                           CompanyFundamentalsResponse f,
@@ -39,13 +39,13 @@ public class FundamentalInsightGenerator {
             double v = pct(roe);
             if (v < 5) {
                 out.add(FinancialInsight.weakness(
-                        "Özkaynak verimliliği zayıf; ROE " + fmtPct(roe) + " ile özkaynak üzerinden sınırlı getiri üretiliyor."));
+                        "Ã–zkaynak verimliliÄŸi zayÄ±f; ROE " + fmtPct(roe) + " ile Ã¶zkaynak Ã¼zerinden sÄ±nÄ±rlÄ± getiri Ã¼retiliyor."));
             } else if (v < 15) {
                 out.add(FinancialInsight.neutral(
-                        "Özkaynak verimliliği orta düzeyde; ROE " + fmtPct(roe) + "."));
+                        "Ã–zkaynak verimliliÄŸi orta dÃ¼zeyde; ROE " + fmtPct(roe) + "."));
             } else {
                 out.add(FinancialInsight.strength(
-                        "Şirket özkaynaklarını verimli kullanıyor; ROE " + fmtPct(roe) + " ile güçlü seyrediyor."));
+                        "Åirket Ã¶zkaynaklarÄ±nÄ± verimli kullanÄ±yor; ROE " + fmtPct(roe) + " ile gÃ¼Ã§lÃ¼ seyrediyor."));
             }
         }
 
@@ -54,10 +54,10 @@ public class FundamentalInsightGenerator {
             double v = pct(roa);
             if (v < 2) {
                 out.add(FinancialInsight.weakness(
-                        "Varlıkların kâr üretme kapasitesi sınırlı; ROA " + fmtPct(roa) + " seviyesinde."));
+                        "VarlÄ±klarÄ±n kÃ¢r Ã¼retme kapasitesi sÄ±nÄ±rlÄ±; ROA " + fmtPct(roa) + " seviyesinde."));
             } else if (v >= 8) {
                 out.add(FinancialInsight.strength(
-                        "Varlık kârlılığı güçlü; ROA " + fmtPct(roa) + " ile verimli varlık kullanımı görülüyor."));
+                        "VarlÄ±k kÃ¢rlÄ±lÄ±ÄŸÄ± gÃ¼Ã§lÃ¼; ROA " + fmtPct(roa) + " ile verimli varlÄ±k kullanÄ±mÄ± gÃ¶rÃ¼lÃ¼yor."));
             }
         }
 
@@ -66,16 +66,16 @@ public class FundamentalInsightGenerator {
             double v = pct(netMargin);
             if (v < 0) {
                 out.add(FinancialInsight.risk(
-                        "Şirket zarar üretiyor; net marj " + fmtPct(netMargin) + " ile negatif bölgede."));
+                        "Åirket zarar Ã¼retiyor; net marj " + fmtPct(netMargin) + " ile negatif bÃ¶lgede."));
             } else if (v < 10) {
                 out.add(FinancialInsight.neutral(
-                        "Net kârlılık sınırlı; marj " + fmtPct(netMargin) + " ile operasyonel baskı var."));
+                        "Net kÃ¢rlÄ±lÄ±k sÄ±nÄ±rlÄ±; marj " + fmtPct(netMargin) + " ile operasyonel baskÄ± var."));
             } else if (v > 20) {
                 out.add(FinancialInsight.strength(
-                        "Güçlü net kâr marjı; " + fmtPct(netMargin) + " ile operasyonel verimlilik öne çıkıyor."));
+                        "GÃ¼Ã§lÃ¼ net kÃ¢r marjÄ±; " + fmtPct(netMargin) + " ile operasyonel verimlilik Ã¶ne Ã§Ä±kÄ±yor."));
             }
         } else if (netProfit != null && netProfit.compareTo(BigDecimal.ZERO) < 0) {
-            out.add(FinancialInsight.risk("Son raporda net kâr negatif; kârlılık sürdürülebilirliği izlenmeli."));
+            out.add(FinancialInsight.risk("Son raporda net kÃ¢r negatif; kÃ¢rlÄ±lÄ±k sÃ¼rdÃ¼rÃ¼lebilirliÄŸi izlenmeli."));
         }
 
         BigDecimal grossMargin = f.getGrossMargin();
@@ -83,15 +83,15 @@ public class FundamentalInsightGenerator {
             double v = pct(grossMargin);
             if (v < 15) {
                 out.add(FinancialInsight.weakness(
-                        "Brüt marj baskı altında; " + fmtPct(grossMargin) + " ile maliyet yapısı kârlılığı kısıtlıyor."));
+                        "BrÃ¼t marj baskÄ± altÄ±nda; " + fmtPct(grossMargin) + " ile maliyet yapÄ±sÄ± kÃ¢rlÄ±lÄ±ÄŸÄ± kÄ±sÄ±tlÄ±yor."));
             } else if (v > 40) {
                 out.add(FinancialInsight.strength(
-                        "Güçlü brüt marj; " + fmtPct(grossMargin) + " ile ürün/hizmet kârlılığı yüksek."));
+                        "GÃ¼Ã§lÃ¼ brÃ¼t marj; " + fmtPct(grossMargin) + " ile Ã¼rÃ¼n/hizmet kÃ¢rlÄ±lÄ±ÄŸÄ± yÃ¼ksek."));
             }
         }
     }
 
-    // ── Growth ────────────────────────────────────────────────────
+    // â”€â”€ Growth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void addGrowthInsights(List<FinancialInsight> out, CompanyFundamentalsResponse f) {
         BigDecimal revenueGrowth = f.getRevenueGrowth();
@@ -99,19 +99,19 @@ public class FundamentalInsightGenerator {
             double v = pct(revenueGrowth);
             if (v > 20) {
                 out.add(FinancialInsight.growth(
-                        "Gelir büyümesi güçlü; hasılat yıllık +" + fmtPctAbs(revenueGrowth) + " artış gösteriyor."));
+                        "Gelir bÃ¼yÃ¼mesi gÃ¼Ã§lÃ¼; hasÄ±lat yÄ±llÄ±k +" + fmtPctAbs(revenueGrowth) + " artÄ±ÅŸ gÃ¶steriyor."));
             } else if (v >= 5) {
                 out.add(FinancialInsight.growth(
-                        "Gelir büyümesi dengeli; hasılat +" + fmtPctAbs(revenueGrowth) + " ile ılımlı artış sürdürüyor."));
+                        "Gelir bÃ¼yÃ¼mesi dengeli; hasÄ±lat +" + fmtPctAbs(revenueGrowth) + " ile Ä±lÄ±mlÄ± artÄ±ÅŸ sÃ¼rdÃ¼rÃ¼yor."));
             } else if (v < 0) {
                 out.add(FinancialInsight.weakness(
-                        "Gelirlerde daralma görülüyor; hasılat yıllık " + fmtPct(revenueGrowth) + " gerilemiş."));
+                        "Gelirlerde daralma gÃ¶rÃ¼lÃ¼yor; hasÄ±lat yÄ±llÄ±k " + fmtPct(revenueGrowth) + " gerilemiÅŸ."));
             } else {
                 out.add(FinancialInsight.neutral(
-                        "Hasılat büyümesi sınırlı; +" + fmtPctAbs(revenueGrowth) + " ile ivme zayıf."));
+                        "HasÄ±lat bÃ¼yÃ¼mesi sÄ±nÄ±rlÄ±; +" + fmtPctAbs(revenueGrowth) + " ile ivme zayÄ±f."));
             }
         } else if (f.getRevenueGrowthLabel() != null) {
-            out.add(FinancialInsight.growth("Hasılat: " + f.getRevenueGrowthLabel() + "."));
+            out.add(FinancialInsight.growth("HasÄ±lat: " + f.getRevenueGrowthLabel() + "."));
         }
 
         BigDecimal netProfitGrowth = f.getNetProfitGrowth();
@@ -119,29 +119,29 @@ public class FundamentalInsightGenerator {
             double v = pct(netProfitGrowth);
             if (v > 200 && isLossTransition(f.getNetProfitGrowthLabel())) {
                 out.add(FinancialInsight.growth(
-                        "Kârlılığa geçiş yaşandığı için büyüme oranı baz etkisi nedeniyle yüksek görünüyor; sürdürülebilirlik izlenmeli."));
+                        "KÃ¢rlÄ±lÄ±ÄŸa geÃ§iÅŸ yaÅŸandÄ±ÄŸÄ± iÃ§in bÃ¼yÃ¼me oranÄ± baz etkisi nedeniyle yÃ¼ksek gÃ¶rÃ¼nÃ¼yor; sÃ¼rdÃ¼rÃ¼lebilirlik izlenmeli."));
             } else if (v > 200) {
                 out.add(FinancialInsight.growth(
-                        "Net kâr büyümesi olağandışı yüksek (" + fmtPct(netProfitGrowth) + "); baz etkisi veya tek seferlik kalemler etkili olabilir."));
+                        "Net kÃ¢r bÃ¼yÃ¼mesi olaÄŸandÄ±ÅŸÄ± yÃ¼ksek (" + fmtPct(netProfitGrowth) + "); baz etkisi veya tek seferlik kalemler etkili olabilir."));
             } else if (v > 20) {
                 out.add(FinancialInsight.growth(
-                        "Net kâr güçlü büyüyor; yıllık +" + fmtPctAbs(netProfitGrowth) + " artış."));
+                        "Net kÃ¢r gÃ¼Ã§lÃ¼ bÃ¼yÃ¼yor; yÄ±llÄ±k +" + fmtPctAbs(netProfitGrowth) + " artÄ±ÅŸ."));
             } else if (v < 0) {
                 out.add(FinancialInsight.weakness(
-                        "Net kâr daralıyor; yıllık " + fmtPct(netProfitGrowth) + " gerileme."));
+                        "Net kÃ¢r daralÄ±yor; yÄ±llÄ±k " + fmtPct(netProfitGrowth) + " gerileme."));
             }
         } else if (f.getNetProfitGrowthLabel() != null) {
-            out.add(FinancialInsight.growth("Net kâr: " + f.getNetProfitGrowthLabel() + "."));
+            out.add(FinancialInsight.growth("Net kÃ¢r: " + f.getNetProfitGrowthLabel() + "."));
         }
     }
 
     private boolean isLossTransition(String label) {
         if (label == null) return false;
         String lower = label.toLowerCase(Locale.forLanguageTag("tr-TR"));
-        return lower.contains("zarar") || lower.contains("kâra") || lower.contains("kara dön");
+        return lower.contains("zarar") || lower.contains("kÃ¢ra") || lower.contains("kara dÃ¶n");
     }
 
-    // ── Leverage ──────────────────────────────────────────────────
+    // â”€â”€ Leverage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void addLeverageInsights(List<FinancialInsight> out, CompanyFundamentalsResponse f) {
         BigDecimal de = f.getDebtToEquity();
@@ -149,17 +149,17 @@ public class FundamentalInsightGenerator {
         double v = de.doubleValue();
         if (v < 1.0) {
             out.add(FinancialInsight.strength(
-                    "Borçluluk baskısı düşük; D/E " + fmtRatio(de) + "x ile bilanço dengeli."));
+                    "BorÃ§luluk baskÄ±sÄ± dÃ¼ÅŸÃ¼k; D/E " + fmtRatio(de) + "x ile bilanÃ§o dengeli."));
         } else if (v <= 2.0) {
             out.add(FinancialInsight.neutral(
-                    "Borçluluk yönetilebilir seviyede; D/E " + fmtRatio(de) + "x."));
+                    "BorÃ§luluk yÃ¶netilebilir seviyede; D/E " + fmtRatio(de) + "x."));
         } else {
             out.add(FinancialInsight.risk(
-                    "Yüksek finansal kaldıraç; D/E " + fmtRatio(de) + "x ile faiz artışı döneminde borç servisi baskısı oluşabilir."));
+                    "YÃ¼ksek finansal kaldÄ±raÃ§; D/E " + fmtRatio(de) + "x ile faiz artÄ±ÅŸÄ± dÃ¶neminde borÃ§ servisi baskÄ±sÄ± oluÅŸabilir."));
         }
     }
 
-    // ── Valuation ─────────────────────────────────────────────────
+    // â”€â”€ Valuation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void addValuationInsights(List<FinancialInsight> out, CompanyFundamentalsResponse f) {
         BigDecimal pe = f.getPeRatio();
@@ -167,13 +167,13 @@ public class FundamentalInsightGenerator {
             double v = pe.doubleValue();
             if (v < 5) {
                 out.add(FinancialInsight.valuation(
-                        "Düşük değerleme çarpanı; F/K " + fmtRatio(pe) + "x — hisse iskontolu görünüyor (kârlılık kalitesi incelenmeli)."));
+                        "DÃ¼ÅŸÃ¼k deÄŸerleme Ã§arpanÄ±; F/K " + fmtRatio(pe) + "x â€” hisse iskontolu gÃ¶rÃ¼nÃ¼yor (kÃ¢rlÄ±lÄ±k kalitesi incelenmeli)."));
             } else if (v <= 15) {
                 out.add(FinancialInsight.valuation(
-                        "Makul değerleme; F/K " + fmtRatio(pe) + "x mevcut kârlılığa göre dengeli."));
+                        "Makul deÄŸerleme; F/K " + fmtRatio(pe) + "x mevcut kÃ¢rlÄ±lÄ±ÄŸa gÃ¶re dengeli."));
             } else if (v > 25) {
                 out.add(FinancialInsight.valuation(
-                        "Yüksek değerleme çarpanı; F/K " + fmtRatio(pe) + "x ile büyüme beklentileri fiyata yansımış görünüyor."));
+                        "YÃ¼ksek deÄŸerleme Ã§arpanÄ±; F/K " + fmtRatio(pe) + "x ile bÃ¼yÃ¼me beklentileri fiyata yansÄ±mÄ±ÅŸ gÃ¶rÃ¼nÃ¼yor."));
             }
         }
 
@@ -182,15 +182,15 @@ public class FundamentalInsightGenerator {
             double v = pb.doubleValue();
             if (v < 1.0) {
                 out.add(FinancialInsight.valuation(
-                        "Defter değerine göre iskontolu görünüm; PD/DD " + fmtRatio(pb) + "x."));
+                        "Defter deÄŸerine gÃ¶re iskontolu gÃ¶rÃ¼nÃ¼m; PD/DD " + fmtRatio(pb) + "x."));
             } else if (v > 3.0) {
                 out.add(FinancialInsight.valuation(
-                        "Defter değerine göre primli fiyatlama; PD/DD " + fmtRatio(pb) + "x."));
+                        "Defter deÄŸerine gÃ¶re primli fiyatlama; PD/DD " + fmtRatio(pb) + "x."));
             }
         }
     }
 
-    // ── Formatting helpers ────────────────────────────────────────
+    // â”€â”€ Formatting helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private double pct(BigDecimal decimal) {
         return decimal.multiply(BigDecimal.valueOf(100)).doubleValue();
@@ -216,6 +216,7 @@ public class FundamentalInsightGenerator {
         return s.endsWith(".0") ? s.substring(0, s.length() - 2) : s;
     }
 }
+
 
 
 

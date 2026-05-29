@@ -47,12 +47,13 @@ public class BondDataProvider implements MarketDataProvider {
     }
 
     private List<BondRateDto> fetchFromApi() {
-        // TODO: TCMB EVDS üzerinden tahvil/bono faiz serileri
-        // farklı seri kodları ile çekilecek.
-        // TcmbFxProvider ile aynı HTTP yapısı kullanılabilir.
+        // TODO: TCMB EVDS Ã¼zerinden tahvil/bono faiz serileri
+        // farklÄ± seri kodlarÄ± ile Ã§ekilecek.
+        // TcmbFxProvider ile aynÄ± HTTP yapÄ±sÄ± kullanÄ±labilir.
         return Collections.emptyList();
     }
 }
+
 
 
 

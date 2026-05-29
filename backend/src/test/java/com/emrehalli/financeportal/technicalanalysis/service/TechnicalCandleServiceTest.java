@@ -311,3 +311,4 @@ class TechnicalCandleServiceTest {
         assertThat(candles.subList(0, 8)).allMatch(candle -> candle.sma20() == null && candle.sma50() == null);
     }
 }
+

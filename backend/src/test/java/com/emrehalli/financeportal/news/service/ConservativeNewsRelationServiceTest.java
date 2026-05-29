@@ -41,10 +41,10 @@ class ConservativeNewsRelationServiceTest {
 
     @Test
     void siteAidatiNewsProducesNoInstruments() {
-        // "Site aidatı" has no financial market keywords
+        // "Site aidatÄ±" has no financial market keywords
         News news = baseNews(1L,
-                "Site aidatları bu yıl yüzde on arttı",
-                "Konut sakinleri artan aidat maliyetlerini tartışıyor.",
+                "Site aidatlarÄ± bu yÄ±l yÃ¼zde on arttÄ±",
+                "Konut sakinleri artan aidat maliyetlerini tartÄ±ÅŸÄ±yor.",
                 "GENERAL_ECONOMY", "GENERAL_ECONOMY");
 
         when(newsRepository.findById(1L)).thenReturn(Optional.of(news));
@@ -103,8 +103,8 @@ class ConservativeNewsRelationServiceTest {
     @Test
     void newsWithExplicitThyaoTextShowsThyaoAsDirectHighConfidence() {
         News news = baseNews(20L,
-                "Turk Hava Yollari yeni uçuş güzergahları açıkladı",
-                "THY büyüme stratejisi kapsamında yeni destinasyonlar ekliyor.",
+                "Turk Hava Yollari yeni uÃ§uÅŸ gÃ¼zergahlarÄ± aÃ§Ä±kladÄ±",
+                "THY bÃ¼yÃ¼me stratejisi kapsamÄ±nda yeni destinasyonlar ekliyor.",
                 "COMPANY", "STOCKS");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
@@ -116,8 +116,8 @@ class ConservativeNewsRelationServiceTest {
     @Test
     void newsWithExplicitAselsamTextShowsAselsAsDirectHighConfidence() {
         News news = baseNews(21L,
-                "Aselsan yeni ihracat anlaşması imzaladı",
-                "Aselsan savunma elektroniği ihracatını artırıyor.",
+                "Aselsan yeni ihracat anlaÅŸmasÄ± imzaladÄ±",
+                "Aselsan savunma elektroniÄŸi ihracatÄ±nÄ± artÄ±rÄ±yor.",
                 "COMPANY", "STOCKS");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
@@ -128,7 +128,7 @@ class ConservativeNewsRelationServiceTest {
 
     @Test
     void stockWithoutDirectMentionNeverProducedByConservativeService() {
-        // News about banking regulation — "bankacilik" mentioned but no company name
+        // News about banking regulation â€” "bankacilik" mentioned but no company name
         News news = baseNews(22L,
                 "BDDK bankacilik sektorune yeni duzenleme getirdi",
                 "Bankacilik sektoru ve kredi buyumesi acisindan yeni kurallar aciklandi.",
@@ -163,7 +163,7 @@ class ConservativeNewsRelationServiceTest {
     @Test
     void goldNewsReturnsGoldAndGramAltin() {
         News news = baseNews(40L,
-                "Altin fiyatlari rekor kırdi, ons altin yukseliyor",
+                "Altin fiyatlari rekor kÄ±rdi, ons altin yukseliyor",
                 "Guvenli liman talebi arttikca altin piyasasinda yukselis surdu.",
                 "GOLD_COMMODITY", "GOLD_COMMODITY");
 
@@ -193,8 +193,8 @@ class ConservativeNewsRelationServiceTest {
 
     @Test
     void machineExportWithKurFinansmanDoesNotProduceBankOrDefenseStocks() {
-        // "kur" is in text → gate passes; "FINANSMAN" provides export context
-        // No company names → no stocks
+        // "kur" is in text â†’ gate passes; "FINANSMAN" provides export context
+        // No company names â†’ no stocks
         News news = baseNews(60L,
                 "Makine Ihracatcilari Birligi rekor ihracat rakamini acikladi",
                 "Imalat sanayinde finansman kanallari ve kur baskisi nedeniyle ihracat gelirleri tartisiliyor.",
@@ -218,7 +218,7 @@ class ConservativeNewsRelationServiceTest {
     void siteAidatiWithFinansmanAloneStillProducesNoInstruments() {
         // "finansman" alone does NOT open the gate (not in STRONG_GATE_TOKENS)
         News news = baseNews(61L,
-                "Site aidati finansman ihtiyaci artıyor",
+                "Site aidati finansman ihtiyaci artÄ±yor",
                 "Konut yonetim maliyetleri ve finansman kosullari tartisiliyor.",
                 "GENERAL_ECONOMY", "GENERAL_ECONOMY");
 
@@ -246,8 +246,8 @@ class ConservativeNewsRelationServiceTest {
     void maxInstrumentsLimitIsThree() {
         // News with many market signals
         News news = baseNews(70L,
-                "TCMB faiz kararının ardından borsa, altin, dolar ve petrol fiyatlandi",
-                "Faiz kararı sonrasında USDTRY, altin, brent petrol ve BIST 100 yeni seviyelere ulasti.",
+                "TCMB faiz kararÄ±nÄ±n ardÄ±ndan borsa, altin, dolar ve petrol fiyatlandi",
+                "Faiz kararÄ± sonrasÄ±nda USDTRY, altin, brent petrol ve BIST 100 yeni seviyelere ulasti.",
                 "INTEREST_BONDS", "INTEREST_BONDS,FX,GOLD_COMMODITY");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
@@ -261,7 +261,7 @@ class ConservativeNewsRelationServiceTest {
     void lowConfidenceInstrumentsNeverReturned() {
         News news = baseNews(80L,
                 "TCMB faiz kararini acikladi",
-                "Politika faizi haberi piyasaları etkiledi.",
+                "Politika faizi haberi piyasalarÄ± etkiledi.",
                 "INTEREST_BONDS", "INTEREST_BONDS,FX");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
@@ -275,7 +275,7 @@ class ConservativeNewsRelationServiceTest {
     void instrumentsHaveNonEmptyReasonField() {
         News news = baseNews(90L,
                 "TCMB faizini degistirmedi, kur reaksiyon verdi",
-                "Merkez bankasi kararinin ardından doviz kurlari hareket etti.",
+                "Merkez bankasi kararinin ardÄ±ndan doviz kurlari hareket etti.",
                 "INTEREST_BONDS", "INTEREST_BONDS,FX");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
@@ -289,7 +289,7 @@ class ConservativeNewsRelationServiceTest {
         News kapNews = News.builder()
                 .id(91L)
                 .externalId("KAP-91")
-                .title("Garanti BBVA temettü dağıtım kararı")
+                .title("Garanti BBVA temettÃ¼ daÄŸÄ±tÄ±m kararÄ±")
                 .summary("Garanti BBVA yonetim kurulu karar aldi.")
                 .source("KAP")
                 .provider("KAP")
@@ -353,6 +353,7 @@ class ConservativeNewsRelationServiceTest {
                 .build();
     }
 }
+
 
 
 

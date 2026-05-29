@@ -24,7 +24,7 @@ public class JsonMapConverter implements AttributeConverter<Map<String, Object>,
         try {
             return MAPPER.writeValueAsString(attribute);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("JSON map serileştirme hatası", e);
+            throw new IllegalArgumentException("JSON map serileÅŸtirme hatasÄ±", e);
         }
     }
 
@@ -36,7 +36,8 @@ public class JsonMapConverter implements AttributeConverter<Map<String, Object>,
         try {
             return MAPPER.readValue(dbData, TYPE_REF);
         } catch (IOException e) {
-            throw new IllegalArgumentException("JSON map ayrıştırma hatası: " + dbData, e);
+            throw new IllegalArgumentException("JSON map ayrÄ±ÅŸtÄ±rma hatasÄ±: " + dbData, e);
         }
     }
 }
+

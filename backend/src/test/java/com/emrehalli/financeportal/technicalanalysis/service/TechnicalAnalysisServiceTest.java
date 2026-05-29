@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisValidationException;
 import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -49,4 +51,57 @@ class TechnicalAnalysisServiceTest {
         assertThat(result.points()).allMatch(point -> point.close() != null);
         assertThat(result.latestPrice()).isEqualByComparingTo("160");
     }
+
+    @Test
+    void analyze_should_reject_symbol_with_invalid_characters() {
+        TechnicalAnalysisService service = buildService(mock(HistoricalPriceReader.class));
+        LocalDate from = LocalDate.of(2026, 1, 1);
+        LocalDate to = LocalDate.of(2026, 5, 1);
+
+        assertThatThrownBy(() -> service.analyze("BTC<USDT>", from, to, null))
+                .isInstanceOf(TechnicalAnalysisValidationException.class)
+                .hasMessageContaining("invalid characters");
+    }
+
+    @Test
+    void analyze_should_reject_symbol_exceeding_max_length() {
+        TechnicalAnalysisService service = buildService(mock(HistoricalPriceReader.class));
+        LocalDate from = LocalDate.of(2026, 1, 1);
+        LocalDate to = LocalDate.of(2026, 5, 1);
+        String tooLong = "A".repeat(31);
+
+        assertThatThrownBy(() -> service.analyze(tooLong, from, to, null))
+                .isInstanceOf(TechnicalAnalysisValidationException.class)
+                .hasMessageContaining("too long");
+    }
+
+    @Test
+    void analyze_should_accept_valid_symbol_formats() {
+        HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
+        when(historicalPriceReader.read(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of());
+
+        TechnicalAnalysisService service = buildService(historicalPriceReader);
+        LocalDate from = LocalDate.of(2026, 1, 1);
+        LocalDate to = LocalDate.of(2026, 5, 1);
+
+        assertThat(service.analyze("THYAO", from, to, null).symbol()).isEqualTo("THYAO");
+        assertThat(service.analyze("TCMB:USD:SELL", from, to, null).symbol()).isEqualTo("TCMB:USD:SELL");
+        assertThat(service.analyze("BTCUSDT", from, to, null).symbol()).isEqualTo("BTCUSDT");
+        assertThat(service.analyze("USDTRY", from, to, null).symbol()).isEqualTo("USDTRY");
+    }
+
+    private static TechnicalAnalysisService buildService(HistoricalPriceReader historicalPriceReader) {
+        AppMessageSource appMessageSource = mock(AppMessageSource.class);
+        return new TechnicalAnalysisService(
+                historicalPriceReader,
+                new MovingAverageService(),
+                new RsiService(),
+                new TrendAnalysisService(),
+                mock(InstrumentComparisonService.class),
+                appMessageSource
+        );
+    }
 }
+

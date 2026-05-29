@@ -1,9 +1,9 @@
 package com.emrehalli.financeportal.technicalanalysis.controller;
 
-import com.emrehalli.financeportal.analysis.dto.IndicatorConfigRequest;
-import com.emrehalli.financeportal.analysis.dto.IndicatorConfigResponse;
-import com.emrehalli.financeportal.analysis.entity.IndicatorConfig;
-import com.emrehalli.financeportal.analysis.repository.IndicatorConfigRepository;
+import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigRequest;
+import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigResponse;
+import com.emrehalli.financeportal.technicalanalysis.config.entity.IndicatorConfig;
+import com.emrehalli.financeportal.technicalanalysis.config.repository.IndicatorConfigRepository;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.config.security.CurrentUser;
@@ -127,3 +127,4 @@ public class TechnicalIndicatorConfigController {
                 .build();
     }
 }
+

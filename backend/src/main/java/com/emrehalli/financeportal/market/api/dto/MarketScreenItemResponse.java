@@ -35,3 +35,4 @@ public class MarketScreenItemResponse {
     private OffsetDateTime calculatedAt;
     private LocalDateTime dataTimestamp;
 }
+

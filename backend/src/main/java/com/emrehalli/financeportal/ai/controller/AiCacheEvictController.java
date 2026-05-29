@@ -29,13 +29,14 @@ public class AiCacheEvictController {
         return ResponseEntity.ok(Map.of("evicted", key));
     }
 
-    // DELETE /api/v1/admin/ai/cache  →  tüm AI cache'i temizler
+    // DELETE /api/v1/admin/ai/cache  â†’  tÃ¼m AI cache'i temizler
     @DeleteMapping
     public ResponseEntity<Map<String, Object>> evictAll() {
         int count = aiResponseCacheService.evictAll();
         return ResponseEntity.ok(Map.of("evictedCount", count));
     }
 }
+
 
 
 

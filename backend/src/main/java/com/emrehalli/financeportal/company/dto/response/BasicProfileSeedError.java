@@ -10,3 +10,4 @@ public class BasicProfileSeedError {
     private String ticker;
     private String message;
 }
+

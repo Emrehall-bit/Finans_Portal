@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 
 /**
  * Pure-text cleanup utilities for Turkish financial AI output.
- * No LLM calls — only string/regex operations.
+ * No LLM calls â€” only string/regex operations.
  */
 @Component
 public class TurkishFinancialTextCleaner {
@@ -20,10 +20,10 @@ public class TurkishFinancialTextCleaner {
     static final int MAX_LENGTH = 1500;
 
     private static final Pattern MEVCUT_VERI_PATTERN = Pattern.compile(
-            "mevcut verilere göre[,]?\\s*", Pattern.CASE_INSENSITIVE
+            "mevcut verilere gÃ¶re[,]?\\s*", Pattern.CASE_INSENSITIVE
     );
 
-    // ── Public pipeline steps ─────────────────────────────────────
+    // â”€â”€ Public pipeline steps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public String normalizeWhitespace(String text) {
         return text
@@ -35,8 +35,8 @@ public class TurkishFinancialTextCleaner {
     public String fixTypos(String text) {
         // Longer string checked first to avoid partial replacements
         return text
-                .replace("verbesirilmelidir", "iyileştirilmelidir")
-                .replace("verbesirilmeli", "iyileştirilmeli");
+                .replace("verbesirilmelidir", "iyileÅŸtirilmelidir")
+                .replace("verbesirilmeli", "iyileÅŸtirilmeli");
     }
 
     public String reduceRoboticPhrases(String text) {
@@ -44,18 +44,18 @@ public class TurkishFinancialTextCleaner {
 
         // Always-replace: these phrases are robotic in any context
         result = result.replace(
-                "toparlanma işaretlerinin beklenmesi",
-                "toparlanma için fiyatın yeniden güç kazanması"
+                "toparlanma iÅŸaretlerinin beklenmesi",
+                "toparlanma iÃ§in fiyatÄ±n yeniden gÃ¼Ã§ kazanmasÄ±"
         );
         // Sentence-ending variant first so the period stays
         result = result.replace("izlenmelidir.", "takip edilmeli.");
         result = result.replace("izlenmelidir", "takip edilmeli");
 
         // Frequency-aware: keep first occurrence, replace the rest
-        result = reduceRepeated(result, "değerlendirilebilir",
-                new String[]{"dikkat çekiyor", "öne çıkıyor"});
+        result = reduceRepeated(result, "deÄŸerlendirilebilir",
+                new String[]{"dikkat Ã§ekiyor", "Ã¶ne Ã§Ä±kÄ±yor"});
         result = reduceRepeated(result, "incelenebilir",
-                new String[]{"takip edilebilir", "öne çıkıyor"});
+                new String[]{"takip edilebilir", "Ã¶ne Ã§Ä±kÄ±yor"});
 
         return result;
     }
@@ -88,7 +88,7 @@ public class TurkishFinancialTextCleaner {
         return (lastSpace > 0 ? sub.substring(0, lastSpace) : sub).trim();
     }
 
-    // ── Package-private helpers (used in tests) ───────────────────
+    // â”€â”€ Package-private helpers (used in tests) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     String reduceMevcutVeri(String text) {
         return reducePatternInstances(text, MEVCUT_VERI_PATTERN, 2);
@@ -151,6 +151,7 @@ public class TurkishFinancialTextCleaner {
         return sb.toString();
     }
 }
+
 
 
 

@@ -241,7 +241,7 @@ public class PortfolioAnalysisService {
         }
 
         if (summary.getProfitLossPercent() != null && summary.getProfitLossPercent().compareTo(BigDecimal.valueOf(-15)) <= 0) {
-            signals.add("Toplam zarar oranı belirgin seviyede negatif; portfoy baski altinda olabilir.");
+            signals.add("Toplam zarar oranÄ± belirgin seviyede negatif; portfoy baski altinda olabilir.");
         }
 
         long unavailableCount = positions.stream().filter(position -> !position.valuationAvailable()).count();
@@ -545,6 +545,7 @@ public class PortfolioAnalysisService {
         );
     }
 }
+
 
 
 

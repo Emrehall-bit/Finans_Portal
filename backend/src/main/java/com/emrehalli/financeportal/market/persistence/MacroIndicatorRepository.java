@@ -12,3 +12,4 @@ public interface MacroIndicatorRepository extends JpaRepository<MacroIndicator, 
 
 
 
+

@@ -748,7 +748,7 @@ public class MarketController {
 
     private void validateRange(String fieldName, BigDecimal min, BigDecimal max) {
         if (min != null && max != null && min.compareTo(max) > 0) {
-            throw new BadRequestException(fieldName + " min değeri max değerinden büyük olamaz.");
+            throw new BadRequestException(fieldName + " min deÃ„Å¸eri max deÃ„Å¸erinden bÃƒÂ¼yÃƒÂ¼k olamaz.");
         }
     }
 
@@ -778,7 +778,7 @@ public class MarketController {
                 || normalized.contains("cash")
                 || normalized.contains("try")
                 || normalized.contains("turk")
-                || normalized.contains("türk")
+                || normalized.contains("tÃƒÂ¼rk")
                 || normalized.contains("lira");
     }
 
@@ -838,12 +838,12 @@ public class MarketController {
             return "";
         }
         return value.toLowerCase(Locale.ROOT)
-                .replace('ı', 'i')
-                .replace('ğ', 'g')
-                .replace('ü', 'u')
-                .replace('ş', 's')
-                .replace('ö', 'o')
-                .replace('ç', 'c')
+                .replace('\u0131', 'i')
+                .replace('\u011f', 'g')
+                .replace('\u00fc', 'u')
+                .replace('\u015f', 's')
+                .replace('\u00f6', 'o')
+                .replace('\u00e7', 'c')
                 .trim();
     }
 
@@ -873,6 +873,7 @@ public class MarketController {
     private record PriceOnDateResult(String symbol, LocalDate date, BigDecimal price) {
     }
 }
+
 
 
 

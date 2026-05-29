@@ -11,3 +11,4 @@ public class TechnicalAnalysisValidationException extends TechnicalAnalysisExcep
 
 
 
+

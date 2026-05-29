@@ -49,8 +49,8 @@ class CompanyRatioServiceTest {
                 valueRepository, ratioRepository, marketQueryService, quarterNormalizer);
 
         company = CompanyProfile.builder()
-                .id(1L).tickerCode("TEST").companyName("Test A.Ş.")
-                .sector("Sektör").market("BIST").build();
+                .id(1L).tickerCode("TEST").companyName("Test A.Å.")
+                .sector("SektÃ¶r").market("BIST").build();
 
         company.setSharesOutstanding(new BigDecimal("100000"));
 
@@ -69,7 +69,7 @@ class CompanyRatioServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // peRatio — null when net profit is negative or zero
+    // peRatio â€” null when net profit is negative or zero
     // -------------------------------------------------------------------------
 
     @Test
@@ -119,18 +119,18 @@ class CompanyRatioServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // Zero denominator — ratio must be null, no exception
+    // Zero denominator â€” ratio must be null, no exception
     // -------------------------------------------------------------------------
 
     @Test
     void ratios_areNull_whenDenominatorsAreZero() {
         stubMarketPrice("100");
         stubValues(List.of(
-                value(FinancialItemKey.HASILAT, "0"),                // zero → margins null
+                value(FinancialItemKey.HASILAT, "0"),                // zero â†’ margins null
                 value(FinancialItemKey.BRUT_KAR, "200000"),
                 value(FinancialItemKey.NET_DONEM_KARI, "50000"),
-                value(FinancialItemKey.OZKAYNAKLAR, "0"),            // zero → pbRatio, roe, debtToEquity null
-                value(FinancialItemKey.TOPLAM_VARLIKLAR, "0"),       // zero → roa null
+                value(FinancialItemKey.OZKAYNAKLAR, "0"),            // zero â†’ pbRatio, roe, debtToEquity null
+                value(FinancialItemKey.TOPLAM_VARLIKLAR, "0"),       // zero â†’ roa null
                 value(FinancialItemKey.TOPLAM_YUKUMLULUKLER, "300000"),
                 value(FinancialItemKey.ODENMIS_SERMAYE, "100000")
         ));
@@ -149,12 +149,12 @@ class CompanyRatioServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // Growth rates — null when no previous period
+    // Growth rates â€” null when no previous period
     // -------------------------------------------------------------------------
 
     @Test
     void growthRates_areNull_whenNoPreviousPeriod() {
-        // Only one eligible report — no previous period
+        // Only one eligible report â€” no previous period
         when(reportRepository.findEligibleReports(eq("TEST"), anyCollection())).thenReturn(List.of(report));
         stubMarketPrice("100");
         stubValues(List.of(
@@ -267,7 +267,7 @@ class CompanyRatioServiceTest {
                 new BigDecimal("2.5"),
                 new BigDecimal("0.20"),
                 new BigDecimal("0.20"));
-        assertThat(label).isEqualTo("Borçluluk yüksek");
+        assertThat(label).isEqualTo("BorÃ§luluk yÃ¼ksek");
     }
 
     @Test
@@ -276,7 +276,7 @@ class CompanyRatioServiceTest {
                 new BigDecimal("1.0"),
                 new BigDecimal("0.20"),
                 new BigDecimal("0.20"));
-        assertThat(label).isEqualTo("Kârlılık güçlü");
+        assertThat(label).isEqualTo("KÃ¢rlÄ±lÄ±k gÃ¼Ã§lÃ¼");
     }
 
     @Test
@@ -285,7 +285,7 @@ class CompanyRatioServiceTest {
                 new BigDecimal("1.0"),
                 new BigDecimal("-0.05"),
                 new BigDecimal("0.10"));
-        assertThat(label).isEqualTo("Zarar açıklamış");
+        assertThat(label).isEqualTo("Zarar aÃ§Ä±klamÄ±ÅŸ");
     }
 
     @Test
@@ -294,7 +294,7 @@ class CompanyRatioServiceTest {
                 new BigDecimal("1.0"),
                 new BigDecimal("0.05"),
                 new BigDecimal("0.08"));
-        assertThat(label).isEqualTo("Nötr");
+        assertThat(label).isEqualTo("NÃ¶tr");
     }
 
     // -------------------------------------------------------------------------
@@ -329,7 +329,7 @@ class CompanyRatioServiceTest {
     private void stubMarketPrice(String price) {
         when(marketQueryService.findBySymbol("TEST")).thenReturn(Optional.of(
                 new MarketQueryService.MarketSnapshot(
-                        "TEST", "Test A.Ş.", new BigDecimal(price),
+                        "TEST", "Test A.Å.", new BigDecimal(price),
                         BigDecimal.ZERO, "BIST", "STOCK", "TRY", LocalDateTime.now())));
     }
 
@@ -344,6 +344,7 @@ class CompanyRatioServiceTest {
                 .build();
     }
 }
+
 
 
 

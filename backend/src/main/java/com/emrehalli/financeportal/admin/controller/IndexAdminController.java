@@ -87,13 +87,14 @@ public class IndexAdminController {
 
         if (totalSaved == 0) {
             response.put("hint", totalSkipped > 0
-                    ? "All rows already exist — " + totalSkipped + " duplicates skipped."
+                    ? "All rows already exist â€” " + totalSkipped + " duplicates skipped."
                     : "No data saved. Check Yahoo Finance cookie/crumb configuration.");
         }
 
         return response;
     }
 }
+
 
 
 

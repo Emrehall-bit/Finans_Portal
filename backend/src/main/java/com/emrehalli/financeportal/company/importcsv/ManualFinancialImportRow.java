@@ -16,3 +16,4 @@ public record ManualFinancialImportRow(
         String sharesOutstanding
 ) {
 }
+

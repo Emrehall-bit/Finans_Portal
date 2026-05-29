@@ -15,13 +15,14 @@ public class FlywayRepairStrategy {
     @Bean
     public FlywayMigrationStrategy repairAndMigrate() {
         return flyway -> {
-            logger.info("Flyway repair starting — aligning schema history checksums");
+            logger.info("Flyway repair starting â€” aligning schema history checksums");
             flyway.repair();
-            logger.info("Flyway repair complete — running migrations");
+            logger.info("Flyway repair complete â€” running migrations");
             flyway.migrate();
         };
     }
 }
+
 
 
 

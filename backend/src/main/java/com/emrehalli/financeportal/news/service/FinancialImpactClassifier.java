@@ -9,7 +9,7 @@ import java.util.*;
 
 /**
  * Deterministic news classifier that decides whether a news item has financial/market impact
- * and categorises it by impact type. No AI/LLM calls — signal groups + compound rules only.
+ * and categorises it by impact type. No AI/LLM calls â€” signal groups + compound rules only.
  *
  * <p>Scoring is additive (one point per signal group hit), capped per group to prevent
  * any single over-represented keyword dominating.  Impact type is determined by
@@ -36,7 +36,7 @@ public class FinancialImpactClassifier {
     private static final int THRESHOLD_SECTOR = 18;
 
     // =====================================================================
-    // Signal groups — checked via text.contains(token) on normalised text
+    // Signal groups â€” checked via text.contains(token) on normalised text
     // =====================================================================
 
     /** Weight 30 each, cap 60. */
@@ -145,7 +145,7 @@ public class FinancialImpactClassifier {
 
     /** Geopolitical tokens (alone are weak; need commodity/FX context). */
     private static final List<String> GEOPOLITICAL_TOKENS = List.of(
-            "BÖLGESEL GERILIM", "ASKERI OPERASYON",
+            "BÃ–LGESEL GERILIM", "ASKERI OPERASYON",
             "SAVAS", "CATISMA", "AMBARGO", "YAPTIRIM", "NUKLEER", "ATESKES"
     );
 
@@ -186,7 +186,7 @@ public class FinancialImpactClassifier {
 
         String text = normalizeText(title, summary, content, category);
         if (text.isBlank()) {
-            return FinancialImpactResult.notRelevant("Boş metin");
+            return FinancialImpactResult.notRelevant("BoÅŸ metin");
         }
 
         List<String> matched = new ArrayList<>();
@@ -256,30 +256,30 @@ public class FinancialImpactClassifier {
         if (directCompanyScore > 0) {
             impactType = ImpactType.DIRECT_COMPANY;
             assetClasses = List.of(AffectedAssetClass.STOCK);
-            reason = "Haberde şirket adı/tiker doğrudan geçiyor: " + directSymbols;
+            reason = "Haberde ÅŸirket adÄ±/tiker doÄŸrudan geÃ§iyor: " + directSymbols;
 
         } else if (centralBankScore >= THRESHOLD_MONETARY_POLICY_CB
                 || (centralBankScore + rateScore) >= THRESHOLD_MONETARY_POLICY_COMBINED) {
             impactType = ImpactType.MONETARY_POLICY;
             assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX,
                     AffectedAssetClass.BANKING_INDEX, AffectedAssetClass.INTEREST_RATE);
-            reason = "Merkez bankası/faiz sinyalleri para politikası etkisi gösteriyor";
+            reason = "Merkez bankasÄ±/faiz sinyalleri para politikasÄ± etkisi gÃ¶steriyor";
 
         } else if (fiscalScore >= THRESHOLD_FISCAL) {
             impactType = ImpactType.FISCAL_POLICY;
             assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX, AffectedAssetClass.BOND);
-            reason = "Hazine/bütçe sinyalleri mali politika etkisi gösteriyor";
+            reason = "Hazine/bÃ¼tÃ§e sinyalleri mali politika etkisi gÃ¶steriyor";
 
         } else if (politicalScore >= THRESHOLD_POLITICAL_RISK) {
             impactType = ImpactType.POLITICAL_RISK;
             assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX, AffectedAssetClass.GOLD);
-            reason = "Siyasi sinyal + piyasa bağlamı siyasi risk olarak sınıflandırıldı";
+            reason = "Siyasi sinyal + piyasa baÄŸlamÄ± siyasi risk olarak sÄ±nÄ±flandÄ±rÄ±ldÄ±";
 
         } else if (geopoliticalScore >= THRESHOLD_GEOPOLITICAL) {
             impactType = ImpactType.GEOPOLITICAL;
             assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX,
                     AffectedAssetClass.GOLD, AffectedAssetClass.COMMODITY);
-            reason = "Jeopolitik sinyal + emtia/kur bağlamı jeopolitik risk olarak sınıflandırıldı";
+            reason = "Jeopolitik sinyal + emtia/kur baÄŸlamÄ± jeopolitik risk olarak sÄ±nÄ±flandÄ±rÄ±ldÄ±";
 
         } else if (macroScore >= THRESHOLD_MACRO) {
             impactType = ImpactType.MACRO;
@@ -290,17 +290,17 @@ public class FinancialImpactClassifier {
             impactType = ImpactType.GLOBAL_MARKET;
             assetClasses = List.of(AffectedAssetClass.EQUITY_INDEX, AffectedAssetClass.FX,
                     AffectedAssetClass.GOLD, AffectedAssetClass.COMMODITY);
-            reason = "Küresel piyasa sinyalleri tespit edildi";
+            reason = "KÃ¼resel piyasa sinyalleri tespit edildi";
 
         } else if (regulatoryScore >= THRESHOLD_REGULATORY) {
             impactType = ImpactType.REGULATORY;
             assetClasses = List.of(AffectedAssetClass.EQUITY_INDEX);
-            reason = "Düzenleyici kurul kararı sinyali tespit edildi";
+            reason = "DÃ¼zenleyici kurul kararÄ± sinyali tespit edildi";
 
         } else if (bankingScore >= THRESHOLD_SECTOR) {
             impactType = ImpactType.SECTOR;
             assetClasses = List.of(AffectedAssetClass.BANKING_INDEX, AffectedAssetClass.EQUITY_INDEX);
-            reason = "Bankacılık sektörü sinyali tespit edildi";
+            reason = "BankacÄ±lÄ±k sektÃ¶rÃ¼ sinyali tespit edildi";
 
         } else if (goldScore >= THRESHOLD_SECTOR || oilScore >= THRESHOLD_SECTOR) {
             impactType = ImpactType.GLOBAL_MARKET;
@@ -314,15 +314,15 @@ public class FinancialImpactClassifier {
             if (fxScore >= 18) {
                 impactType = ImpactType.MACRO;
                 assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX);
-                reason = "Döviz/kur sinyali piyasa etkisi gösteriyor";
+                reason = "DÃ¶viz/kur sinyali piyasa etkisi gÃ¶steriyor";
             } else if (rateScore >= 20) {
                 impactType = ImpactType.MACRO;
                 assetClasses = List.of(AffectedAssetClass.INTEREST_RATE, AffectedAssetClass.BOND);
-                reason = "Faiz/tahvil sinyali piyasa etkisi gösteriyor";
+                reason = "Faiz/tahvil sinyali piyasa etkisi gÃ¶steriyor";
             } else if (marketScore >= 20) {
                 impactType = ImpactType.SECTOR;
                 assetClasses = List.of(AffectedAssetClass.EQUITY_INDEX);
-                reason = "Borsa/endeks sinyali piyasa etkisi gösteriyor";
+                reason = "Borsa/endeks sinyali piyasa etkisi gÃ¶steriyor";
             } else {
                 impactType = ImpactType.MACRO;
                 assetClasses = List.of(AffectedAssetClass.EQUITY_INDEX);
@@ -331,7 +331,7 @@ public class FinancialImpactClassifier {
         } else {
             impactType = ImpactType.NOT_MARKET_RELEVANT;
             assetClasses = List.of(AffectedAssetClass.NONE);
-            reason = "Yeterli finansal/piyasa sinyali bulunamadı (score=" + totalScore + ")";
+            reason = "Yeterli finansal/piyasa sinyali bulunamadÄ± (score=" + totalScore + ")";
         }
 
         // --- Confidence + marketRelevant ---
@@ -399,8 +399,8 @@ public class FinancialImpactClassifier {
         }
         String combined = sb.toString();
         String normalized = Normalizer.normalize(combined, Normalizer.Form.NFD)
-                .replace('ı', 'i')   // ı → i
-                .replace('İ', 'I')   // İ → I
+                .replace('\u0131', 'i')
+                .replace('\u0130', 'I')
                 .replaceAll("\\p{M}+", "");
         return normalized.toUpperCase(java.util.Locale.ROOT)
                 .replaceAll("\\s+", " ")
@@ -414,9 +414,10 @@ public class FinancialImpactClassifier {
 
     private String truncate(String value, int max) {
         if (value == null) return "";
-        return value.length() <= max ? value : value.substring(0, max) + "…";
+        return value.length() <= max ? value : value.substring(0, max) + "â€¦";
     }
 }
+
 
 
 

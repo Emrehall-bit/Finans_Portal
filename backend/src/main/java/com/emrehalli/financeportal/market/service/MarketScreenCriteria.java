@@ -31,3 +31,4 @@ public class MarketScreenCriteria {
     private int size;
     private String sort;
 }
+

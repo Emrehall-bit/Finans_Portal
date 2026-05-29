@@ -50,12 +50,13 @@ class CommoditySymbolRegistryTest {
     @Test
     void display_names_are_populated() {
         assertThat(registry.toDisplayName("BRENT")).isEqualTo("Brent Petrol");
-        assertThat(registry.toDisplayName("GOLD_USD")).isEqualTo("Altın (Ham USD)");
-        assertThat(registry.toDisplayName("GRAM_ALTIN")).isEqualTo("Gram Altın");
-        assertThat(registry.toDisplayName("CEYREK_ALTIN")).isEqualTo("Çeyrek Altın");
+        assertThat(registry.toDisplayName("GOLD_USD")).isEqualTo("AltÄ±n (Ham USD)");
+        assertThat(registry.toDisplayName("GRAM_ALTIN")).isEqualTo("Gram AltÄ±n");
+        assertThat(registry.toDisplayName("CEYREK_ALTIN")).isEqualTo("Ã‡eyrek AltÄ±n");
         assertThat(registry.toDisplayName("UNKNOWN")).isEqualTo("UNKNOWN");
     }
 }
+
 
 
 

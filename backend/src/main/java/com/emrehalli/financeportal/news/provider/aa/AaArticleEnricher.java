@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Fetches AA article pages and extracts both the og:image and full body text
  * in a single HTTP call. Uses an in-memory cache and a per-cycle request cap
- * to prevent N×HTTP overhead during feed sync.
+ * to prevent NÃ—HTTP overhead during feed sync.
  */
 @Component
 public class AaArticleEnricher {
@@ -58,7 +58,7 @@ public class AaArticleEnricher {
         }
 
         if (cycleCounter.get() >= MAX_FETCHES_PER_CYCLE) {
-            logger.debug("AA article fetch skipped — per-cycle limit ({}) reached. url: {}", MAX_FETCHES_PER_CYCLE, articleUrl);
+            logger.debug("AA article fetch skipped â€” per-cycle limit ({}) reached. url: {}", MAX_FETCHES_PER_CYCLE, articleUrl);
             return AaArticleEnrichment.EMPTY;
         }
 
@@ -141,16 +141,17 @@ public class AaArticleEnricher {
 
     private boolean isSpamText(String text) {
         String lower = text.toLowerCase(Locale.ROOT);
-        return lower.contains("paylaş")
+        return lower.contains("paylaÅŸ")
                 || lower.contains("ilgili konular")
                 || lower.contains("reklam")
                 || lower.contains("abone ol")
                 || lower.contains("haberleri takip")
-                || lower.contains("tümünü gör")
+                || lower.contains("tÃ¼mÃ¼nÃ¼ gÃ¶r")
                 || lower.startsWith("aa/")
                 || lower.startsWith("(aa)");
     }
 }
+
 
 
 

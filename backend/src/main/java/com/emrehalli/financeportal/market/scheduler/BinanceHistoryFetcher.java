@@ -43,36 +43,36 @@ public class BinanceHistoryFetcher {
     @Transactional
     public void initialLoad() {
         if (!pairMapper.isReady()) {
-            log.warn("[BinanceHistoryFetcher] PairMapper hazır değil, initialLoad atlanıyor.");
+            log.warn("[BinanceHistoryFetcher] PairMapper hazÄ±r deÄŸil, initialLoad atlanÄ±yor.");
             return;
         }
 
         List<String> symbols = pairMapper.getAllSymbols();
-        log.info("[BinanceHistoryFetcher] İlk yükleme başlıyor (90 gün). Sembol sayısı: {}", symbols.size());
+        log.info("[BinanceHistoryFetcher] Ä°lk yÃ¼kleme baÅŸlÄ±yor (90 gÃ¼n). Sembol sayÄ±sÄ±: {}", symbols.size());
 
         if (symbols.isEmpty()) {
-            log.warn("[BinanceHistoryFetcher] getAllSymbols() boş döndü, işlem yapılmıyor.");
+            log.warn("[BinanceHistoryFetcher] getAllSymbols() boÅŸ dÃ¶ndÃ¼, iÅŸlem yapÄ±lmÄ±yor.");
             return;
         }
 
         for (String binanceSymbol : symbols) {
             String coin = pairMapper.toDisplayCode(binanceSymbol);
-            log.info("[BinanceHistoryFetcher] İşleniyor: binanceSymbol={}, coin={}", binanceSymbol, coin);
+            log.info("[BinanceHistoryFetcher] Ä°ÅŸleniyor: binanceSymbol={}, coin={}", binanceSymbol, coin);
             try {
                 fetchAndSavePage(coin, binanceSymbol, 90, null);
             } catch (Exception exception) {
-                log.warn("[BinanceHistoryFetcher] initialLoad coin işlenemedi. coin={}, symbol={}", coin, binanceSymbol, exception);
+                log.warn("[BinanceHistoryFetcher] initialLoad coin iÅŸlenemedi. coin={}, symbol={}", coin, binanceSymbol, exception);
             }
         }
 
-        log.info("[BinanceHistoryFetcher] İlk yükleme tamamlandı.");
+        log.info("[BinanceHistoryFetcher] Ä°lk yÃ¼kleme tamamlandÄ±.");
     }
 
     @Scheduled(cron = "0 30 0 * * *", zone = "UTC")
     @Transactional
     public void dailyFetch() {
         if (!pairMapper.isReady()) {
-            log.warn("[BinanceHistoryFetcher] PairMapper hazır değil, dailyFetch atlanıyor.");
+            log.warn("[BinanceHistoryFetcher] PairMapper hazÄ±r deÄŸil, dailyFetch atlanÄ±yor.");
             return;
         }
 
@@ -81,7 +81,7 @@ public class BinanceHistoryFetcher {
             try {
                 fetchAndSavePage(coin, binanceSymbol, 1, null);
             } catch (Exception exception) {
-                log.warn("[BinanceHistoryFetcher] dailyFetch coin işlenemedi. coin={}, symbol={}", coin, binanceSymbol, exception);
+                log.warn("[BinanceHistoryFetcher] dailyFetch coin iÅŸlenemedi. coin={}, symbol={}", coin, binanceSymbol, exception);
             }
         }
     }
@@ -90,7 +90,7 @@ public class BinanceHistoryFetcher {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     private int fetchAndSavePage(String coin, String binanceSymbol, int limit, Long endTime) {
         if (binanceSymbol == null || binanceSymbol.isBlank()) {
-            log.warn("[BinanceHistoryFetcher] Binance sembolü boş, atlanıyor. coin={}", coin);
+            log.warn("[BinanceHistoryFetcher] Binance sembolÃ¼ boÅŸ, atlanÄ±yor. coin={}", coin);
             return 0;
         }
 
@@ -103,7 +103,7 @@ public class BinanceHistoryFetcher {
 
         List<List<Object>> klines = restTemplate.getForObject(url, List.class);
         if (klines == null || klines.isEmpty()) {
-            log.warn("[BinanceHistoryFetcher] Binance kline verisi boş döndü. coin={}, symbol={}, limit={}",
+            log.warn("[BinanceHistoryFetcher] Binance kline verisi boÅŸ dÃ¶ndÃ¼. coin={}, symbol={}, limit={}",
                     coin, binanceSymbol, limit);
             return 0;
         }
@@ -113,7 +113,7 @@ public class BinanceHistoryFetcher {
         for (List<Object> kline : klines) {
             try {
                 if (kline == null || kline.size() < 6) {
-                    log.warn("[BinanceHistoryFetcher] Eksik kline verisi atlandı. coin={}, symbol={}", coin, binanceSymbol);
+                    log.warn("[BinanceHistoryFetcher] Eksik kline verisi atlandÄ±. coin={}, symbol={}", coin, binanceSymbol);
                     continue;
                 }
 
@@ -147,7 +147,7 @@ public class BinanceHistoryFetcher {
                         .build());
                 savedCount++;
             } catch (Exception exception) {
-                log.warn("[BinanceHistoryFetcher] Kline parse/save hatası. coin={}, symbol={}, rawKline={}",
+                log.warn("[BinanceHistoryFetcher] Kline parse/save hatasÄ±. coin={}, symbol={}, rawKline={}",
                         coin, binanceSymbol, kline, exception);
             }
         }
@@ -157,7 +157,7 @@ public class BinanceHistoryFetcher {
     @Transactional
     public int fetchHistoryManual(int days) {
         if (!pairMapper.isReady()) {
-            log.warn("[BinanceHistoryFetcher] PairMapper hazır değil.");
+            log.warn("[BinanceHistoryFetcher] PairMapper hazÄ±r deÄŸil.");
             return 0;
         }
 
@@ -203,11 +203,11 @@ public class BinanceHistoryFetcher {
             try {
                 totalSaved.addAndGet(future.get());
             } catch (Exception ex) {
-                log.warn("[BinanceHistoryFetcher] Future hatası", ex);
+                log.warn("[BinanceHistoryFetcher] Future hatasÄ±", ex);
             }
         }
 
-        log.info("[BinanceHistoryFetcher] Manuel yükleme tamamlandı. Toplam: {}", totalSaved.get());
+        log.info("[BinanceHistoryFetcher] Manuel yÃ¼kleme tamamlandÄ±. Toplam: {}", totalSaved.get());
         return totalSaved.get();
     }
 
@@ -226,6 +226,7 @@ public class BinanceHistoryFetcher {
                 });
     }
 }
+
 
 
 

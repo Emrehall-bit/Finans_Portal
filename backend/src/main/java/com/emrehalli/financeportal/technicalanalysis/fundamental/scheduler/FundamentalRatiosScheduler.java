@@ -1,0 +1,82 @@
+package com.emrehalli.financeportal.technicalanalysis.fundamental.scheduler;
+
+import com.emrehalli.financeportal.technicalanalysis.fundamental.entity.CompanyFinancials;
+import com.emrehalli.financeportal.technicalanalysis.fundamental.repository.CompanyFinancialsRepository;
+import com.emrehalli.financeportal.technicalanalysis.fundamental.service.FundamentalAnalysisService;
+import com.emrehalli.financeportal.technicalanalysis.drawing.service.PortfolioAlertIntegrationService;
+import com.emrehalli.financeportal.technicalanalysis.drawing.repository.ChartDrawingRepository;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+@Component
+public class FundamentalRatiosScheduler {
+
+    private static final Logger logger = LogManager.getLogger(FundamentalRatiosScheduler.class);
+
+    private final FundamentalAnalysisService fundamentalAnalysisService;
+    private final CompanyFinancialsRepository companyFinancialsRepository;
+    private final ChartDrawingRepository chartDrawingRepository;
+    private final PortfolioAlertIntegrationService portfolioAlertIntegrationService;
+
+    public FundamentalRatiosScheduler(FundamentalAnalysisService fundamentalAnalysisService,
+                                       CompanyFinancialsRepository companyFinancialsRepository,
+                                       ChartDrawingRepository chartDrawingRepository,
+                                       PortfolioAlertIntegrationService portfolioAlertIntegrationService) {
+        this.fundamentalAnalysisService = fundamentalAnalysisService;
+        this.companyFinancialsRepository = companyFinancialsRepository;
+        this.chartDrawingRepository = chartDrawingRepository;
+        this.portfolioAlertIntegrationService = portfolioAlertIntegrationService;
+    }
+
+    @Scheduled(cron = "0 0 2 * * *")
+    public void recalculateFundamentalRatios() {
+        logger.info("Temel analiz oranlarÄ± gece hesaplama baÅŸladÄ±");
+
+        // Finansal verisi olan tÃ¼m enstrÃ¼man ID'lerini al
+        List<CompanyFinancials> allFinancials = companyFinancialsRepository.findAll();
+        Set<Long> instrumentIds = new HashSet<>();
+        for (CompanyFinancials f : allFinancials) {
+            if (f.getInstrument() != null) {
+                instrumentIds.add(f.getInstrument().getId());
+            }
+        }
+
+        int success = 0;
+        int errors = 0;
+        for (Long instrumentId : instrumentIds) {
+            try {
+                fundamentalAnalysisService.calculateRatios(instrumentId, null);
+                success++;
+            } catch (Exception e) {
+                logger.error("Temel analiz hesaplama hatasÄ±: instrumentId={}, hata={}", instrumentId, e.getMessage(), e);
+                errors++;
+            }
+        }
+
+        logger.info("Temel analiz oranlarÄ± gÃ¼ncellendi: baÅŸarÄ±lÄ±={}, hata={}, toplam={}", success, errors, instrumentIds.size());
+    }
+
+    @Scheduled(fixedDelay = 60_000)
+    public void checkAlertThresholds() {
+        List<?> linkedDrawings = chartDrawingRepository.findByIsAlertLinkedTrueAndLinkedAlertIdIsNotNull();
+        if (linkedDrawings.isEmpty()) return;
+
+        logger.info("Alert baÄŸlÄ± Ã§izimler kontrol ediliyor: adet={}", linkedDrawings.size());
+
+        linkedDrawings.forEach(d -> {
+            try {
+                portfolioAlertIntegrationService.syncDrawingWithAlert(
+                        (com.emrehalli.financeportal.technicalanalysis.drawing.entity.ChartDrawing) d);
+            } catch (Exception e) {
+                logger.error("Alert senkronizasyon hatasÄ±: hata={}", e.getMessage());
+            }
+        });
+    }
+}
+

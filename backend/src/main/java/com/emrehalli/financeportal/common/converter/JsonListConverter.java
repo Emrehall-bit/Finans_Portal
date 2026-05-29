@@ -25,7 +25,7 @@ public class JsonListConverter implements AttributeConverter<List<Map<String, Ob
         try {
             return MAPPER.writeValueAsString(attribute);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("JSON liste serileştirme hatası", e);
+            throw new IllegalArgumentException("JSON liste serileÅŸtirme hatasÄ±", e);
         }
     }
 
@@ -37,7 +37,8 @@ public class JsonListConverter implements AttributeConverter<List<Map<String, Ob
         try {
             return MAPPER.readValue(dbData, TYPE_REF);
         } catch (IOException e) {
-            throw new IllegalArgumentException("JSON liste ayrıştırma hatası: " + dbData, e);
+            throw new IllegalArgumentException("JSON liste ayrÄ±ÅŸtÄ±rma hatasÄ±: " + dbData, e);
         }
     }
 }
+

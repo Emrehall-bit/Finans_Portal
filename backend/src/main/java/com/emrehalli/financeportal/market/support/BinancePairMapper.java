@@ -51,7 +51,7 @@ public class BinancePairMapper {
     @Scheduled(fixedRate = 30 * 60 * 1000)
     public void scheduledReload() {
         if (loading.get()) {
-            log.debug("[BinancePairMapper] Yükleme devam ediyor, atlanıyor.");
+            log.debug("[BinancePairMapper] YÃ¼kleme devam ediyor, atlanÄ±yor.");
             return;
         }
 
@@ -98,7 +98,7 @@ public class BinancePairMapper {
 
     private boolean tryLoadFromBinance() {
         if (!loading.compareAndSet(false, true)) {
-            log.debug("[BinancePairMapper] Yükleme devam ediyor, atlanıyor.");
+            log.debug("[BinancePairMapper] YÃ¼kleme devam ediyor, atlanÄ±yor.");
             return false;
         }
 
@@ -133,7 +133,7 @@ public class BinancePairMapper {
             }
 
             if (discoveredPairs.isEmpty()) {
-                log.warn("[BinancePairMapper] Binance yanıtı geldi ama hiç TRY pariti bulunamadı.");
+                log.warn("[BinancePairMapper] Binance yanÄ±tÄ± geldi ama hiÃ§ TRY pariti bulunamadÄ±.");
                 return false;
             }
 
@@ -151,7 +151,7 @@ public class BinancePairMapper {
     private void applyFallback() {
         symbolMap.clear();
         symbolMap.putAll(FALLBACK_SYMBOLS);
-        log.info("[BinancePairMapper] Fallback semboller uygulandı: {}", FALLBACK_SYMBOLS.keySet());
+        log.info("[BinancePairMapper] Fallback semboller uygulandÄ±: {}", FALLBACK_SYMBOLS.keySet());
     }
 
     private boolean isTryPair(String symbol) {
@@ -160,6 +160,7 @@ public class BinancePairMapper {
                 && !symbol.endsWith("USTRY");
     }
 }
+
 
 
 

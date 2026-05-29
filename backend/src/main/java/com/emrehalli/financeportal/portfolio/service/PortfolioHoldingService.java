@@ -49,7 +49,7 @@ public class PortfolioHoldingService {
         String instrumentCode = normalizeInstrumentCode(request.getInstrumentCode());
 
         if (!marketInstrumentRepository.existsByInstrumentCodeIgnoreCase(instrumentCode)) {
-            throw new BadRequestException("Sistemde kayıtlı olmayan enstrüman: " + instrumentCode);
+            throw new BadRequestException("Sistemde kayÄ±tlÄ± olmayan enstrÃ¼man: " + instrumentCode);
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -395,6 +395,7 @@ public class PortfolioHoldingService {
         return currentPrice.subtract(previousClose).multiply(quantity);
     }
 }
+
 
 
 

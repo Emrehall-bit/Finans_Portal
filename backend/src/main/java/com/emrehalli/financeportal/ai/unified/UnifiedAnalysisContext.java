@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * Assembled context for the unified AI prompt.
- * All fields are pre-interpreted natural language strings — no raw numbers.
+ * All fields are pre-interpreted natural language strings â€” no raw numbers.
  */
 public record UnifiedAnalysisContext(
         String symbol,
@@ -21,9 +21,10 @@ public record UnifiedAnalysisContext(
         List<String> fundamentalRisks,
         String growthObservation,
         String financialHealthLabel,
-        // Derived reasoning — describes tech vs. fundamental alignment
+        // Derived reasoning â€” describes tech vs. fundamental alignment
         String conflictNote
 ) {}
+
 
 
 

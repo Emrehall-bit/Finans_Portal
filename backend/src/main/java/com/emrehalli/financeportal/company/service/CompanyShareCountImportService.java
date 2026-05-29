@@ -40,10 +40,10 @@ public class CompanyShareCountImportService {
             "paid_capital",
             "cikarilmis_sermaye",
             "odenmis_sermaye",
-            "çıkarılmış_sermaye",
-            "ödenmiş_sermaye",
-            "çıkarılmış sermaye",
-            "ödenmiş sermaye"
+            "Ã§Ä±karÄ±lmÄ±ÅŸ_sermaye",
+            "Ã¶denmiÅŸ_sermaye",
+            "Ã§Ä±karÄ±lmÄ±ÅŸ sermaye",
+            "Ã¶denmiÅŸ sermaye"
     );
 
     private final CompanyProfileRepository companyProfileRepository;
@@ -348,3 +348,4 @@ public class CompanyShareCountImportService {
     private record ParseResult(List<ShareCountRow> rows, List<ShareCountImportRowError> invalidRows) {
     }
 }
+

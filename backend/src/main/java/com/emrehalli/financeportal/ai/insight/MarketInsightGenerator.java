@@ -25,34 +25,34 @@ public class MarketInsightGenerator {
     }
 
     private String buildSentimentSummary(BigDecimal avgChange) {
-        if (avgChange == null) return "Piyasa geneli değişim verisi mevcut değil.";
+        if (avgChange == null) return "Piyasa geneli deÄŸiÅŸim verisi mevcut deÄŸil.";
         double v = avgChange.doubleValue();
-        if (v < -2.0) return "Piyasada belirgin satış baskısı; risk iştahı zayıf (ort. " + fmt(avgChange) + "%).";
-        if (v < -1.0) return "Piyasada risk iştahı zayıf; ortalama değişim " + fmt(avgChange) + "%.";
-        if (v < -0.3) return "Piyasada hafif satış baskısı; ortalama değişim " + fmt(avgChange) + "%.";
-        if (v < 0.3)  return "Piyasa yatay seyrediyor; ortalama değişim " + fmt(avgChange) + "%.";
-        if (v < 1.0)  return "Piyasada hafif pozitif görünüm; ortalama değişim +" + fmt(avgChange) + "%.";
-        if (v < 2.0)  return "Piyasa genelinde olumlu görünüm; ortalama değişim +" + fmt(avgChange) + "%.";
-        return "Piyasada güçlü alım baskısı; risk iştahı yüksek, ortalama değişim +" + fmt(avgChange) + "%.";
+        if (v < -2.0) return "Piyasada belirgin satÄ±ÅŸ baskÄ±sÄ±; risk iÅŸtahÄ± zayÄ±f (ort. " + fmt(avgChange) + "%).";
+        if (v < -1.0) return "Piyasada risk iÅŸtahÄ± zayÄ±f; ortalama deÄŸiÅŸim " + fmt(avgChange) + "%.";
+        if (v < -0.3) return "Piyasada hafif satÄ±ÅŸ baskÄ±sÄ±; ortalama deÄŸiÅŸim " + fmt(avgChange) + "%.";
+        if (v < 0.3)  return "Piyasa yatay seyrediyor; ortalama deÄŸiÅŸim " + fmt(avgChange) + "%.";
+        if (v < 1.0)  return "Piyasada hafif pozitif gÃ¶rÃ¼nÃ¼m; ortalama deÄŸiÅŸim +" + fmt(avgChange) + "%.";
+        if (v < 2.0)  return "Piyasa genelinde olumlu gÃ¶rÃ¼nÃ¼m; ortalama deÄŸiÅŸim +" + fmt(avgChange) + "%.";
+        return "Piyasada gÃ¼Ã§lÃ¼ alÄ±m baskÄ±sÄ±; risk iÅŸtahÄ± yÃ¼ksek, ortalama deÄŸiÅŸim +" + fmt(avgChange) + "%.";
     }
 
     private String buildBreadthSummary(int risingCount, int fallingCount) {
         int total = risingCount + fallingCount;
-        if (total == 0) return "Piyasa genişliği verisi mevcut değil.";
+        if (total == 0) return "Piyasa geniÅŸliÄŸi verisi mevcut deÄŸil.";
         double risingRatio = (double) risingCount / total;
         if (risingRatio > 0.70) {
-            return "Yükselenler belirgin üstünlükte (" + risingCount + "/" + total + "); geniş tabanlı pozitif momentum.";
+            return "YÃ¼kselenler belirgin Ã¼stÃ¼nlÃ¼kte (" + risingCount + "/" + total + "); geniÅŸ tabanlÄ± pozitif momentum.";
         }
         if (risingRatio > 0.55) {
-            return "Yükselenler çoğunlukta (" + risingCount + "/" + total + "); genel eğilim olumlu.";
+            return "YÃ¼kselenler Ã§oÄŸunlukta (" + risingCount + "/" + total + "); genel eÄŸilim olumlu.";
         }
         if (risingRatio < 0.30) {
-            return "Düşenler belirgin üstünlükte (" + fallingCount + "/" + total + "); geniş tabanlı satış baskısı.";
+            return "DÃ¼ÅŸenler belirgin Ã¼stÃ¼nlÃ¼kte (" + fallingCount + "/" + total + "); geniÅŸ tabanlÄ± satÄ±ÅŸ baskÄ±sÄ±.";
         }
         if (risingRatio < 0.45) {
-            return "Düşenler çoğunlukta (" + fallingCount + "/" + total + "); genel eğilim olumsuz.";
+            return "DÃ¼ÅŸenler Ã§oÄŸunlukta (" + fallingCount + "/" + total + "); genel eÄŸilim olumsuz.";
         }
-        return "Yükselen ve düşen enstrüman sayısı dengeli (" + risingCount + " yükselen, " + fallingCount + " düşen).";
+        return "YÃ¼kselen ve dÃ¼ÅŸen enstrÃ¼man sayÄ±sÄ± dengeli (" + risingCount + " yÃ¼kselen, " + fallingCount + " dÃ¼ÅŸen).";
     }
 
     private String fmt(BigDecimal value) {
@@ -60,6 +60,7 @@ public class MarketInsightGenerator {
         return String.format("%.2f", value.doubleValue());
     }
 }
+
 
 
 

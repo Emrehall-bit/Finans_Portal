@@ -8,6 +8,7 @@ import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnal
 import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,12 +19,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 public class TechnicalAnalysisService {
 
     private static final Logger logger = LogManager.getLogger(TechnicalAnalysisService.class);
     private static final int REQUIRED_HISTORY_POINT_COUNT = 60;
+    private static final int MAX_SYMBOL_LENGTH = 30;
+    private static final Pattern SYMBOL_PATTERN = Pattern.compile("^[A-Za-z0-9._\\-:]+$");
 
     private final HistoricalPriceReader historicalPriceReader;
     private final MovingAverageService movingAverageService;
@@ -46,6 +50,8 @@ public class TechnicalAnalysisService {
         this.appMessageSource = appMessageSource;
     }
 
+    @Cacheable(value = "technicalAnalysis",
+            key = "#symbol.toUpperCase() + ':' + #from + ':' + #to + ':' + (#indicators != null ? #indicators : '')")
     public TechnicalAnalysisResult analyze(String symbol, LocalDate from, LocalDate to, String indicators) {
         logger.info("Technical analysis started: symbol={}, from={}, to={}, indicators={}", symbol, from, to, indicators);
         validateSymbol(symbol);
@@ -79,7 +85,6 @@ public class TechnicalAnalysisService {
         Map<IndicatorType, List<BigDecimal>> indicatorSeries = calculateIndicatorSeries(closes, requestedIndicators);
         List<TechnicalAnalysisPoint> points = buildPoints(history, indicatorSeries);
         TechnicalAnalysisPoint latestPoint = points.getLast();
-        TechnicalAnalysisPoint previousPoint = points.size() > 1 ? points.get(points.size() - 2) : null;
 
         Map<IndicatorType, BigDecimal> latestIndicatorValues = new EnumMap<>(IndicatorType.class);
         for (IndicatorType indicatorType : requestedIndicators) {
@@ -105,13 +110,14 @@ public class TechnicalAnalysisService {
                 latestPoint.close(),
                 "AVAILABLE",
                 null,
-                trendAnalysisService.determineTrend(previousPoint, latestPoint),
+                trendAnalysisService.determineTrend(points),
                 trendAnalysisService.determineSignals(latestPoint),
                 latestIndicatorValues.isEmpty() ? Map.of() : Map.copyOf(latestIndicatorValues),
                 points
         );
     }
 
+    @Cacheable(value = "instrumentComparison", key = "#symbols + ':' + #from + ':' + #to")
     public ComparisonResult compare(String symbols, LocalDate from, LocalDate to) {
         logger.info("Technical comparison request started: symbols={}, from={}, to={}", symbols, from, to);
         validateDateRange(from, to);
@@ -119,6 +125,9 @@ public class TechnicalAnalysisService {
         List<String> requestedSymbols = parseSymbols(symbols);
         if (requestedSymbols.size() < 2) {
             throw new TechnicalAnalysisValidationException("At least 2 symbols are required for comparison");
+        }
+        for (String sym : requestedSymbols) {
+            validateSymbol(sym);
         }
 
         return instrumentComparisonService.compare(requestedSymbols, from, to);
@@ -219,6 +228,14 @@ public class TechnicalAnalysisService {
         if (symbol == null || symbol.isBlank()) {
             throw new TechnicalAnalysisValidationException("symbol cannot be blank");
         }
+        if (symbol.length() > MAX_SYMBOL_LENGTH) {
+            throw new TechnicalAnalysisValidationException(
+                    "symbol too long: maximum " + MAX_SYMBOL_LENGTH + " characters allowed");
+        }
+        if (!SYMBOL_PATTERN.matcher(symbol).matches()) {
+            throw new TechnicalAnalysisValidationException(
+                    "symbol contains invalid characters: only letters, digits, '.', '-', '_', ':' are allowed");
+        }
     }
 
     private void validateDateRange(LocalDate from, LocalDate to) {
@@ -245,6 +262,7 @@ public class TechnicalAnalysisService {
                 .toList();
     }
 }
+
 
 
 

@@ -32,10 +32,10 @@ import java.util.Optional;
  * Service for COMMODITY instrument persistence and retrieval.
  *
  * <p>Source mapping:
- * - BRENT        → YAHOO_FINANCE (visible in API)
- * - GOLD_USD     → INTERNAL (hidden; raw input for gold calculation)
- * - SILVER_USD   → INTERNAL (hidden; raw input for silver calculation)
- * - GRAM_ALTIN … GUMUS_GRAM → CALCULATED (visible in API)
+ * - BRENT        â†’ YAHOO_FINANCE (visible in API)
+ * - GOLD_USD     â†’ INTERNAL (hidden; raw input for gold calculation)
+ * - SILVER_USD   â†’ INTERNAL (hidden; raw input for silver calculation)
+ * - GRAM_ALTIN â€¦ GUMUS_GRAM â†’ CALCULATED (visible in API)
  * </p>
  */
 @Service
@@ -51,7 +51,7 @@ public class CommodityService {
     private final MarketProperties props;
     private final CommoditySymbolRegistry symbolRegistry;
 
-    // ── Result record returned by calculateAndSaveDerivedCommodities ──────────
+    // â”€â”€ Result record returned by calculateAndSaveDerivedCommodities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public record DerivedCommodityResult(
             BigDecimal goldUsdOz,
@@ -61,12 +61,12 @@ public class CommodityService {
             List<String> savedSymbols
     ) {}
 
-    // ── Public API ─────────────────────────────────────────────────────────────
+    // â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Persists Yahoo-fetched commodity quotes.
-     * BRENT → YAHOO_FINANCE (public).
-     * GOLD_USD / SILVER_USD → INTERNAL (hidden; persisted for use by calculateAndSaveDerivedCommodities).
+     * BRENT â†’ YAHOO_FINANCE (public).
+     * GOLD_USD / SILVER_USD â†’ INTERNAL (hidden; persisted for use by calculateAndSaveDerivedCommodities).
      *
      * @return goldUsdOz and silverUsdOz extracted from the batch (may be null if not in batch).
      */
@@ -247,7 +247,7 @@ public class CommodityService {
         return toResponseFromInstrument(instrument);
     }
 
-    // ── Private helpers ────────────────────────────────────────────────────────
+    // â”€â”€ Private helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /** Saves a single CALCULATED commodity price and logs it with instrumentId. */
     private void saveCalculated(String code, BigDecimal price, LocalDateTime timestamp, List<String> savedSymbols) {
@@ -312,7 +312,7 @@ public class CommodityService {
      *
      * <p>Supported code formats: TCMB:USD:SELL, TCMB:USDTRY:SELL, AKBANK:USD:SELL,
      * ZIRAAT:USD:SELL, etc. Any FX instrument whose code contains both "USD" and "SELL"
-     * (case-insensitive) and does not contain a conflicting major currency (EUR, GBP …)
+     * (case-insensitive) and does not contain a conflicting major currency (EUR, GBP â€¦)
      * qualifies. TCMB-sourced candidates are preferred; ties broken by latest price timestamp.
      */
     public BigDecimal resolveUsdTry() {
@@ -322,7 +322,7 @@ public class CommodityService {
                     .findAllByInstrumentTypeAndInstrumentCodeContainingIgnoreCase(
                             InstrumentType.FX, "USD");
 
-            // Keep only sell-side USD/TRY — exclude cross rates and buy-side
+            // Keep only sell-side USD/TRY â€” exclude cross rates and buy-side
             List<MarketInstrument> candidates = usdFxInstruments.stream()
                     .filter(i -> {
                         String code = i.getInstrumentCode().toUpperCase(Locale.ROOT);
@@ -423,6 +423,7 @@ public class CommodityService {
         return value == null || value.isBlank();
     }
 }
+
 
 
 

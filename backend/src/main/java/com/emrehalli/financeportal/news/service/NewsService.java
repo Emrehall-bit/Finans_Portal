@@ -2027,7 +2027,7 @@ public class NewsService {
                 .filter(candidate -> candidate.score() >= MIN_RELATED_INSTRUMENT_SCORE)
                 .filter(candidate -> !"LOW".equalsIgnoreCase(candidate.confidence()))
                 .filter(candidate -> {
-                    // Hisse senedi (STOCK) yalnızca metinde doğrudan şirket adı/ticker geçiyorsa gösterilir
+                    // Hisse senedi (STOCK) yalnÄ±zca metinde doÄŸrudan ÅŸirket adÄ±/ticker geÃ§iyorsa gÃ¶sterilir
                     if ("STOCK".equalsIgnoreCase(candidate.instrumentType()) && !"DIRECT".equalsIgnoreCase(candidate.relationType())) {
                         logger.debug("REJECTED_STOCK_NO_DIRECT_MATCH: symbol={}, matchType={}, confidence={}, reason={}",
                                 candidate.symbol(), candidate.matchType(), candidate.confidence(), candidate.reason());
@@ -2044,7 +2044,7 @@ public class NewsService {
         if (filtered.isEmpty()) {
             return List.of();
         }
-        // Doğrudan eşleşme (şirket adı/ticker metinde geçiyor) varsa limit 4, yoksa makro/tematik sınırı 3
+        // DoÄŸrudan eÅŸleÅŸme (ÅŸirket adÄ±/ticker metinde geÃ§iyor) varsa limit 4, yoksa makro/tematik sÄ±nÄ±rÄ± 3
         boolean hasDirectMatch = filtered.stream()
                 .anyMatch(candidate -> "DIRECT".equalsIgnoreCase(candidate.relationType()));
         int limit = hasDirectMatch ? MAX_RELATED_INSTRUMENTS : MAX_RELATED_INSTRUMENTS_MACRO_ONLY;
@@ -2121,22 +2121,22 @@ public class NewsService {
         int score = 0;
         boolean hasDirectMatch = false;
 
-        // Kategori eşleşmesi tek başına yeterli değil; diğer sinyallerle desteklenmeli
+        // Kategori eÅŸleÅŸmesi tek baÅŸÄ±na yeterli deÄŸil; diÄŸer sinyallerle desteklenmeli
         if (samePrimaryCategory(sourceNews.getCategory(), candidate.getCategory())) {
             score += 10;
         }
 
-        // Tag overlap: azaltılmış ağırlık, üst sınırlı
+        // Tag overlap: azaltÄ±lmÄ±ÅŸ aÄŸÄ±rlÄ±k, Ã¼st sÄ±nÄ±rlÄ±
         score += Math.min(24, overlapScore(sourceContext.tags(), candidateContext.tags(), 8));
 
-        // Kurum overlap (TCMB, FED vb.) → güçlü makro sinyal
+        // Kurum overlap (TCMB, FED vb.) â†’ gÃ¼Ã§lÃ¼ makro sinyal
         int instScore = overlapScore(sourceContext.institutions(), candidateContext.institutions(), 35);
         if (instScore > 0) {
             hasDirectMatch = true;
             score += instScore;
         }
 
-        // Emtia/enstrüman overlap (GOLD, BRENT, USDTRY vb.) → güçlü tematik sinyal
+        // Emtia/enstrÃ¼man overlap (GOLD, BRENT, USDTRY vb.) â†’ gÃ¼Ã§lÃ¼ tematik sinyal
         Set<String> sourceCommodityInstrument = union(sourceContext.commodities(), sourceContext.instruments());
         Set<String> candidateCommodityInstrument = union(candidateContext.commodities(), candidateContext.instruments());
         int commodScore = overlapScore(sourceCommodityInstrument, candidateCommodityInstrument, 50);
@@ -2145,14 +2145,14 @@ public class NewsService {
             score += commodScore;
         }
 
-        // Şirket overlap → en güçlü sinyal
+        // Åirket overlap â†’ en gÃ¼Ã§lÃ¼ sinyal
         int compScore = overlapScore(sourceContext.companies(), candidateContext.companies(), 70);
         if (compScore > 0) {
             hasDirectMatch = true;
             score += compScore;
         }
 
-        // Aynı KAP şirketi → en yüksek sinyal
+        // AynÄ± KAP ÅŸirketi â†’ en yÃ¼ksek sinyal
         if (Boolean.TRUE.equals(sourceNews.getIsKapDisclosure())
                 && hasText(sourceNews.getRelatedSymbol())
                 && hasText(candidate.getRelatedSymbol())
@@ -2161,7 +2161,7 @@ public class NewsService {
             hasDirectMatch = true;
         }
 
-        // Makro konu overlap (faiz, altın, petrol, döviz vb.)
+        // Makro konu overlap (faiz, altÄ±n, petrol, dÃ¶viz vb.)
         Set<String> sourceMacroTopics = extractMacroTopics(sourceContext);
         Set<String> candidateMacroTopics = extractMacroTopics(candidateContext);
         int macroOverlap = overlapScore(sourceMacroTopics, candidateMacroTopics, 35);
@@ -2170,10 +2170,10 @@ public class NewsService {
             score += macroOverlap;
         }
 
-        // Başlık benzerliği: üst sınırlı
+        // BaÅŸlÄ±k benzerliÄŸi: Ã¼st sÄ±nÄ±rlÄ±
         score += titleSimilarityScore(sourceContext.titleTokens(), candidateContext.titleTokens());
 
-        // Yakınlık bonusu
+        // YakÄ±nlÄ±k bonusu
         if (withinHours(sourceNews.getPublishedAt(), candidate.getPublishedAt(), RELATED_NEWS_RECENCY_HOURS)) {
             score += 10;
         }
@@ -2187,7 +2187,7 @@ public class NewsService {
 
     private Set<String> extractMacroTopics(ExtractedNewsContext context) {
         Set<String> topics = new LinkedHashSet<>();
-        // INTEREST_RATE: kurum gerektirir veya doğrudan faiz dili gerektirir (enflasyon tek başına yetmez)
+        // INTEREST_RATE: kurum gerektirir veya doÄŸrudan faiz dili gerektirir (enflasyon tek baÅŸÄ±na yetmez)
         if (context.institutions().contains("TCMB") || context.institutions().contains("FED") || context.institutions().contains("ECB")
                 || hasAny(context.tokens(), "FAIZ", "POLITIKA FAIZI")) {
             topics.add("INTEREST_RATE");
@@ -2215,10 +2215,10 @@ public class NewsService {
                 InstrumentAlias alias = BIST_INSTRUMENT_ALIASES.get(normalizedSymbol);
                 if (alias != null) {
                     matched.put(normalizedSymbol, RelatedInstrumentCandidate.kap(
-                            alias.symbol(), alias.name(), alias.instrumentType(), "KAP bildirimi doğrudan bu şirketle ilişkili", 140));
+                            alias.symbol(), alias.name(), alias.instrumentType(), "KAP bildirimi doÄŸrudan bu ÅŸirketle iliÅŸkili", 140));
                 } else {
                     matched.put(normalizedSymbol, RelatedInstrumentCandidate.kap(
-                            normalizedSymbol, normalizedSymbol, InstrumentType.STOCK.name(), "KAP bildirimi doğrudan bu şirketle ilişkili", 140));
+                            normalizedSymbol, normalizedSymbol, InstrumentType.STOCK.name(), "KAP bildirimi doÄŸrudan bu ÅŸirketle iliÅŸkili", 140));
                 }
             }
             return matched;
@@ -2230,7 +2230,7 @@ public class NewsService {
             InstrumentAlias alias = BIST_INSTRUMENT_ALIASES.get(companySymbol);
             if (alias != null) {
                 matched.put(alias.symbol(), RelatedInstrumentCandidate.direct(
-                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde şirket adı geçtiği için ilişkilendirildi", 130));
+                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde ÅŸirket adÄ± geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi", 130));
             }
         }
 
@@ -2238,7 +2238,7 @@ public class NewsService {
             InstrumentAlias alias = resolveKnownInstrumentAlias(instrumentSymbol);
             if (alias != null) {
                 matched.putIfAbsent(alias.symbol(), RelatedInstrumentCandidate.direct(
-                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde enstrüman/emtia adı geçtiği için ilişkilendirildi", 120));
+                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde enstrÃ¼man/emtia adÄ± geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi", 120));
             }
         }
 
@@ -2262,43 +2262,43 @@ public class NewsService {
         boolean hasAutomotiveIndustrialContext = hasAutomotiveIndustrialContext(context, automotiveContextScore, defenseContextScore);
 
         if (context.institutions().contains("FED") && hasRateContext) {
-            addThemeCandidate(matched, "USDTRY", "Fed/faiz kararı bağlamı nedeniyle döviz kuru etkisi", 85);
+            addThemeCandidate(matched, "USDTRY", "Fed/faiz kararÄ± baÄŸlamÄ± nedeniyle dÃ¶viz kuru etkisi", 85);
             if (hasSafeHavenGoldContext) {
-                addThemeCandidate(matched, "GOLD", "Fed/faiz ve güvenli liman bağlamı nedeniyle altın etkisi", 72);
+                addThemeCandidate(matched, "GOLD", "Fed/faiz ve gÃ¼venli liman baÄŸlamÄ± nedeniyle altÄ±n etkisi", 72);
             }
             if (hasMarketContext || hasCurrencyContext) {
-                addThemeCandidate(matched, "XU100", "Fed/faiz ve küresel piyasa bağlamı nedeniyle endeks etkisi", 65);
+                addThemeCandidate(matched, "XU100", "Fed/faiz ve kÃ¼resel piyasa baÄŸlamÄ± nedeniyle endeks etkisi", 65);
             }
         }
 
         if (context.institutions().contains("TCMB") && (hasRateContext || hasCurrencyContext)) {
-            addThemeCandidate(matched, "USDTRY", "TCMB/faiz bağlamı nedeniyle makro etki", 95);
-            addThemeCandidate(matched, "EURTRY", "TCMB/faiz bağlamı nedeniyle makro etki", 90);
-            addThemeCandidate(matched, "XU100", "TCMB/faiz/kur bağlamı nedeniyle piyasa endeksi etkisi", 74);
-            // Banka hisseleri yalnızca açık bankacılık bağlamı varsa (hasBankingContext kuralı) eklenir
+            addThemeCandidate(matched, "USDTRY", "TCMB/faiz baÄŸlamÄ± nedeniyle makro etki", 95);
+            addThemeCandidate(matched, "EURTRY", "TCMB/faiz baÄŸlamÄ± nedeniyle makro etki", 90);
+            addThemeCandidate(matched, "XU100", "TCMB/faiz/kur baÄŸlamÄ± nedeniyle piyasa endeksi etkisi", 74);
+            // Banka hisseleri yalnÄ±zca aÃ§Ä±k bankacÄ±lÄ±k baÄŸlamÄ± varsa (hasBankingContext kuralÄ±) eklenir
         }
 
         if (hasEnergyContext) {
-            addThemeCandidate(matched, "BRENT", "Petrol/enerji fiyatı bağlamı nedeniyle emtia etkisi", 95);
-            addThemeCandidate(matched, "XU100", "Petrol/enerji ve piyasa riski bağlamı nedeniyle makro etki", 48);
-            // TUPRS/THYAO/PGSUS yalnızca haber metninde doğrudan adları geçerse (direct match) gösterilir
+            addThemeCandidate(matched, "BRENT", "Petrol/enerji fiyatÄ± baÄŸlamÄ± nedeniyle emtia etkisi", 95);
+            addThemeCandidate(matched, "XU100", "Petrol/enerji ve piyasa riski baÄŸlamÄ± nedeniyle makro etki", 48);
+            // TUPRS/THYAO/PGSUS yalnÄ±zca haber metninde doÄŸrudan adlarÄ± geÃ§erse (direct match) gÃ¶sterilir
         }
 
         if (hasSafeHavenGoldContext) {
-            addThemeCandidate(matched, "GOLD", "Güvenli liman/jeopolitik risk bağlamı nedeniyle altın etkisi", 68);
+            addThemeCandidate(matched, "GOLD", "GÃ¼venli liman/jeopolitik risk baÄŸlamÄ± nedeniyle altÄ±n etkisi", 68);
         }
 
         if (geopoliticalContextScore >= 5 && hasMarketContext) {
-            addThemeCandidate(matched, "XU100", "Jeopolitik riskin piyasalara etkisi bağlamı nedeniyle endeks etkisi", 45);
+            addThemeCandidate(matched, "XU100", "Jeopolitik riskin piyasalara etkisi baÄŸlamÄ± nedeniyle endeks etkisi", 45);
         }
 
         if (hasBankingContext) {
-            addThemeCandidate(matched, "XU100", "Bankacılık ve piyasa bağlamı nedeniyle endeks etkisi", 52);
+            addThemeCandidate(matched, "XU100", "BankacÄ±lÄ±k ve piyasa baÄŸlamÄ± nedeniyle endeks etkisi", 52);
         }
 
         if (hasAutomotiveIndustrialContext) {
             if (hasMarketContext || context.tags().contains("STOCKS")) {
-                addThemeCandidate(matched, "XU100", "Otomotiv ve sanayi bağlamı nedeniyle endeks etkisi", 46);
+                addThemeCandidate(matched, "XU100", "Otomotiv ve sanayi baÄŸlamÄ± nedeniyle endeks etkisi", 46);
             }
         }
     }
@@ -2443,14 +2443,14 @@ public class NewsService {
     }
 
     private boolean hasExplicitMarketContext(ExtractedNewsContext context) {
-        return hasAny(context.tokens(), "PIYASA", "PİYASA", "MARKET", "BORSA", "BIST", "HISSE", "ENDEKS", "RISK", "FIYATLAMA", "YATIRIMCI");
+        return hasAny(context.tokens(), "PIYASA", "PÄ°YASA", "MARKET", "BORSA", "BIST", "HISSE", "ENDEKS", "RISK", "FIYATLAMA", "YATIRIMCI");
     }
 
     private boolean hasGeopoliticalRiskContext(ExtractedNewsContext context) {
         if (containsOnlyGenericMacroSignals(context)) {
             return false;
         }
-        boolean hasEvent = containsAnyToken(context.tokens(), GEOPOLITICAL_EVENT_TOKENS) || hasAny(context.tokens(), "JEOPOLITIK", "JEOPOLİTİK");
+        boolean hasEvent = containsAnyToken(context.tokens(), GEOPOLITICAL_EVENT_TOKENS) || hasAny(context.tokens(), "JEOPOLITIK", "JEOPOLÄ°TÄ°K");
         boolean hasRegionOrActor = context.regions().contains("MIDDLE_EAST")
                 || context.regions().contains("USA")
                 || context.regions().contains("EUROPE")
@@ -2829,27 +2829,27 @@ public class NewsService {
 
     private static Map<String, InstrumentAlias> createInstrumentAliases() {
         Map<String, InstrumentAlias> aliases = new LinkedHashMap<>();
-        aliases.put("THYAO", new InstrumentAlias("THYAO", "TÃ¼rk Hava YollarÄ±", InstrumentType.STOCK.name(), Set.of("THYAO", "TURK HAVA YOLLARI", "THY", "TURKISH AIRLINES")));
+        aliases.put("THYAO", new InstrumentAlias("THYAO", "TÃƒÂ¼rk Hava YollarÃ„Â±", InstrumentType.STOCK.name(), Set.of("THYAO", "TURK HAVA YOLLARI", "THY", "TURKISH AIRLINES")));
         aliases.put("ASELS", new InstrumentAlias("ASELS", "Aselsan", InstrumentType.STOCK.name(), Set.of("ASELS", "ASELSAN")));
         aliases.put("AKBNK", new InstrumentAlias("AKBNK", "Akbank", InstrumentType.STOCK.name(), Set.of("AKBNK", "AKBANK")));
-        aliases.put("BIMAS", new InstrumentAlias("BIMAS", "BÄ°M", InstrumentType.STOCK.name(), Set.of("BIMAS", "BIM", "BIM BIRLESIK", "BIRLESIK MAGAZALAR")));
-        aliases.put("KCHOL", new InstrumentAlias("KCHOL", "KoÃ§ Holding", InstrumentType.STOCK.name(), Set.of("KCHOL", "KOC HOLDING", "KOC")));
-        aliases.put("TUPRS", new InstrumentAlias("TUPRS", "TÃ¼praÅŸ", InstrumentType.STOCK.name(), Set.of("TUPRS", "TUPRAS")));
+        aliases.put("BIMAS", new InstrumentAlias("BIMAS", "BÃ„Â°M", InstrumentType.STOCK.name(), Set.of("BIMAS", "BIM", "BIM BIRLESIK", "BIRLESIK MAGAZALAR")));
+        aliases.put("KCHOL", new InstrumentAlias("KCHOL", "KoÃƒÂ§ Holding", InstrumentType.STOCK.name(), Set.of("KCHOL", "KOC HOLDING", "KOC")));
+        aliases.put("TUPRS", new InstrumentAlias("TUPRS", "TÃƒÂ¼praÃ…Å¸", InstrumentType.STOCK.name(), Set.of("TUPRS", "TUPRAS")));
         aliases.put("GARAN", new InstrumentAlias("GARAN", "Garanti BBVA", InstrumentType.STOCK.name(), Set.of("GARAN", "GARANTI", "GARANTI BBVA")));
-        aliases.put("ISCTR", new InstrumentAlias("ISCTR", "Ä°ÅŸ BankasÄ±", InstrumentType.STOCK.name(), Set.of("ISCTR", "IS BANKASI", "TURKIYE IS BANKASI", "ISBANK")));
-        aliases.put("YKBNK", new InstrumentAlias("YKBNK", "YapÄ± Kredi", InstrumentType.STOCK.name(), Set.of("YKBNK", "YAPI KREDI")));
-        aliases.put("EREGL", new InstrumentAlias("EREGL", "EreÄŸli Demir Ã‡elik", InstrumentType.STOCK.name(), Set.of("EREGL", "EREGLI", "ERDEMIR", "EREGLI DEMIR CELIK")));
-        aliases.put("SISE", new InstrumentAlias("SISE", "ÅiÅŸecam", InstrumentType.STOCK.name(), Set.of("SISE", "SISECAM", "TURKIYE SISE VE CAM")));
+        aliases.put("ISCTR", new InstrumentAlias("ISCTR", "Ã„Â°Ã…Å¸ BankasÃ„Â±", InstrumentType.STOCK.name(), Set.of("ISCTR", "IS BANKASI", "TURKIYE IS BANKASI", "ISBANK")));
+        aliases.put("YKBNK", new InstrumentAlias("YKBNK", "YapÃ„Â± Kredi", InstrumentType.STOCK.name(), Set.of("YKBNK", "YAPI KREDI")));
+        aliases.put("EREGL", new InstrumentAlias("EREGL", "EreÃ„Å¸li Demir Ãƒâ€¡elik", InstrumentType.STOCK.name(), Set.of("EREGL", "EREGLI", "ERDEMIR", "EREGLI DEMIR CELIK")));
+        aliases.put("SISE", new InstrumentAlias("SISE", "Ã…ÂiÃ…Å¸ecam", InstrumentType.STOCK.name(), Set.of("SISE", "SISECAM", "TURKIYE SISE VE CAM")));
         aliases.put("FROTO", new InstrumentAlias("FROTO", "Ford Otosan", InstrumentType.STOCK.name(), Set.of("FROTO", "FORD OTOSAN", "FORD")));
-        aliases.put("TOASO", new InstrumentAlias("TOASO", "TofaÅŸ", InstrumentType.STOCK.name(), Set.of("TOASO", "TOFAS")));
+        aliases.put("TOASO", new InstrumentAlias("TOASO", "TofaÃ…Å¸", InstrumentType.STOCK.name(), Set.of("TOASO", "TOFAS")));
         aliases.put("OTKAR", new InstrumentAlias("OTKAR", "Otokar", InstrumentType.STOCK.name(), Set.of("OTKAR", "OTOKAR")));
         aliases.put("MGROS", new InstrumentAlias("MGROS", "Migros", InstrumentType.STOCK.name(), Set.of("MGROS", "MIGROS")));
         aliases.put("KRDMD", new InstrumentAlias("KRDMD", "Kardemir", InstrumentType.STOCK.name(), Set.of("KRDMD", "KARDEMIR")));
         aliases.put("AKSEN", new InstrumentAlias("AKSEN", "Aksa Enerji", InstrumentType.STOCK.name(), Set.of("AKSEN", "AKSA ENERJI")));
         aliases.put("ENJSA", new InstrumentAlias("ENJSA", "Enerjisa", InstrumentType.STOCK.name(), Set.of("ENJSA", "ENERJISA")));
-        aliases.put("CIMSA", new InstrumentAlias("CIMSA", "Ã‡imsa", InstrumentType.STOCK.name(), Set.of("CIMSA")));
-        aliases.put("OYAKC", new InstrumentAlias("OYAKC", "OYAK Ã‡imento", InstrumentType.STOCK.name(), Set.of("OYAKC", "OYAK CIMENTO")));
-        aliases.put("SAHOL", new InstrumentAlias("SAHOL", "SabancÄ± Holding", InstrumentType.STOCK.name(), Set.of("SAHOL", "SABANCI HOLDING", "SABANCI")));
+        aliases.put("CIMSA", new InstrumentAlias("CIMSA", "Ãƒâ€¡imsa", InstrumentType.STOCK.name(), Set.of("CIMSA")));
+        aliases.put("OYAKC", new InstrumentAlias("OYAKC", "OYAK Ãƒâ€¡imento", InstrumentType.STOCK.name(), Set.of("OYAKC", "OYAK CIMENTO")));
+        aliases.put("SAHOL", new InstrumentAlias("SAHOL", "SabancÃ„Â± Holding", InstrumentType.STOCK.name(), Set.of("SAHOL", "SABANCI HOLDING", "SABANCI")));
         aliases.put("PGSUS", new InstrumentAlias("PGSUS", "Pegasus", InstrumentType.STOCK.name(), Set.of("PGSUS", "PEGASUS")));
         aliases.put("TAVHL", new InstrumentAlias("TAVHL", "TAV Havalimanlari", InstrumentType.STOCK.name(), Set.of("TAVHL", "TAV", "TAV HAVALIMANLARI")));
         aliases.put("XU100", new InstrumentAlias("XU100", "BIST 100", InstrumentType.INDEX.name(), Set.of("XU100", "BIST100", "BIST 100")));
@@ -2863,7 +2863,7 @@ public class NewsService {
         aliases.put("GOLD", new InstrumentAlias("GOLD", "Altin", InstrumentType.COMMODITY.name(), Set.of("GOLD", "ALTIN", "ONS ALTIN", "ONS", "XAUUSD")));
         aliases.put("GRAM_ALTIN", new InstrumentAlias("GRAM_ALTIN", "Gram Altin", InstrumentType.COMMODITY.name(), Set.of("GRAM_ALTIN", "GRAM ALTIN", "ALTIN GRAM")));
         aliases.put("BRENT", new InstrumentAlias("BRENT", "Brent Petrol", InstrumentType.COMMODITY.name(), Set.of("BRENT", "PETROL", "HAM PETROL", "AKARYAKIT")));
-        aliases.put("XBANK", new InstrumentAlias("XBANK", "Bankacılık Endeksi", InstrumentType.INDEX.name(), Set.of("XBANK", "BANKACILIK ENDEKSI")));
+        aliases.put("XBANK", new InstrumentAlias("XBANK", "BankacÄ±lÄ±k Endeksi", InstrumentType.INDEX.name(), Set.of("XBANK", "BANKACILIK ENDEKSI")));
         return aliases;
     }
 
@@ -2914,36 +2914,36 @@ public class NewsService {
                 new ThemeRule(Set.of("KARBON", "EMISYON", "IKLIM", "SURDURULEBILIRLIK", "YESIL DONUSUM", "KARBON FIYATLANDIRMASI"),
                         "Karbon fiyatlandirmasi / emisyon maliyeti temasi",
                         List.of(
-                                new ThemeInstrument("EREGL", "EreÄŸli Demir Ã‡elik", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("EREGL", "EreÃ„Å¸li Demir Ãƒâ€¡elik", InstrumentType.STOCK.name(), "MEDIUM"),
                                 new ThemeInstrument("KRDMD", "Kardemir", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("TUPRS", "TÃ¼praÅŸ", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("TUPRS", "TÃƒÂ¼praÃ…Å¸", InstrumentType.STOCK.name(), "MEDIUM"),
                                 new ThemeInstrument("AKSEN", "Aksa Enerji", InstrumentType.STOCK.name(), "LOW"),
                                 new ThemeInstrument("ENJSA", "Enerjisa", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("CIMSA", "Ã‡imsa", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("OYAKC", "OYAK Ã‡imento", InstrumentType.STOCK.name(), "LOW")
+                                new ThemeInstrument("CIMSA", "Ãƒâ€¡imsa", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("OYAKC", "OYAK Ãƒâ€¡imento", InstrumentType.STOCK.name(), "LOW")
                         )),
                 new ThemeRule(Set.of("BUYUME", "RESESYON", "KURESEL EKONOMI", "TICARET", "TEDARIK ZINCIRI"),
                         "Kuresel buyume ve piyasa geneli etkisi",
                         List.of(
                                 new ThemeInstrument("XU100", "BIST 100", InstrumentType.INDEX.name(), "LOW"),
-                                new ThemeInstrument("THYAO", "TÃ¼rk Hava YollarÄ±", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("TUPRS", "TÃ¼praÅŸ", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("KCHOL", "KoÃ§ Holding", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("SAHOL", "SabancÄ± Holding", InstrumentType.STOCK.name(), "LOW")
+                                new ThemeInstrument("THYAO", "TÃƒÂ¼rk Hava YollarÃ„Â±", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("TUPRS", "TÃƒÂ¼praÃ…Å¸", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("KCHOL", "KoÃƒÂ§ Holding", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("SAHOL", "SabancÃ„Â± Holding", InstrumentType.STOCK.name(), "LOW")
                         )),
                 new ThemeRule(Set.of("FAIZ", "TCMB", "ENFLASYON", "KREDI", "POLITIKA FAIZI"),
                         "Faiz ve kredi hassasiyeti",
                         List.of(
                                 new ThemeInstrument("AKBNK", "Akbank", InstrumentType.STOCK.name(), "MEDIUM"),
                                 new ThemeInstrument("GARAN", "Garanti BBVA", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("ISCTR", "Ä°ÅŸ BankasÄ±", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("YKBNK", "YapÄ± Kredi", InstrumentType.STOCK.name(), "MEDIUM")
+                                new ThemeInstrument("ISCTR", "Ã„Â°Ã…Å¸ BankasÃ„Â±", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("YKBNK", "YapÃ„Â± Kredi", InstrumentType.STOCK.name(), "MEDIUM")
                         )),
                 new ThemeRule(Set.of("PETROL", "BRENT", "AKARYAKIT", "YAKIT"),
                         "Petrol/yakit maliyeti temasi",
                         List.of(
-                                new ThemeInstrument("TUPRS", "TÃ¼praÅŸ", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("THYAO", "TÃ¼rk Hava YollarÄ±", InstrumentType.STOCK.name(), "MEDIUM")
+                                new ThemeInstrument("TUPRS", "TÃƒÂ¼praÃ…Å¸", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("THYAO", "TÃƒÂ¼rk Hava YollarÃ„Â±", InstrumentType.STOCK.name(), "MEDIUM")
                         )),
                 new ThemeRule(Set.of("SAVUNMA", "SAVAS", "JEOPOLITIK", "GUVENLIK"),
                         "Savunma ve jeopolitik tema",
@@ -2951,12 +2951,12 @@ public class NewsService {
                 new ThemeRule(Set.of("GIDA", "PERAKENDE", "TUKETIM"),
                         "Tuketim ve perakende temasi",
                         List.of(
-                                new ThemeInstrument("BIMAS", "BÄ°M", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("BIMAS", "BÃ„Â°M", InstrumentType.STOCK.name(), "LOW"),
                                 new ThemeInstrument("MGROS", "Migros", InstrumentType.STOCK.name(), "LOW")
                         )),
                 new ThemeRule(Set.of("TURIZM", "HAVACILIK", "YOLCU"),
                         "Havacilik/turizm talebi temasi",
-                        List.of(new ThemeInstrument("THYAO", "TÃ¼rk Hava YollarÄ±", InstrumentType.STOCK.name(), "MEDIUM")))
+                        List.of(new ThemeInstrument("THYAO", "TÃƒÂ¼rk Hava YollarÃ„Â±", InstrumentType.STOCK.name(), "MEDIUM")))
         );
     }
 
@@ -3116,6 +3116,7 @@ public class NewsService {
         }
     }
 }
+
 
 
 

@@ -18,7 +18,7 @@ import java.util.Map;
  *
  * <p>This handles the case where the application was not running at the scheduled
  * nightly time (01:15 UTC). On startup it detects gaps since the last recorded date
- * and fills them — identical logic to {@link CommodityHistoryScheduler}.</p>
+ * and fills them â€” identical logic to {@link CommodityHistoryScheduler}.</p>
  *
  * <p>Safe to run repeatedly: duplicate protection in both services ensures no row
  * is written twice regardless of how many times catch-up is triggered.</p>
@@ -26,7 +26,7 @@ import java.util.Map;
  * <p>Prerequisite: initial 10-year seed must be done first via the admin endpoints:
  * POST /api/v1/admin/markets/internal-commodities/history/backfill?days=3650, then
  * POST /api/v1/admin/markets/commodities/history/backfill?days=3650.
- * If no history exists yet, catch-up logs a warning and exits — it never seeds from scratch.</p>
+ * If no history exists yet, catch-up logs a warning and exits â€” it never seeds from scratch.</p>
  */
 @Component
 @Slf4j
@@ -68,6 +68,7 @@ public class CommodityHistoryStartupRunner {
         log.info("CommodityHistoryStartupRunner: startup catch-up finished. sourceSaved={}", sourceSaved);
     }
 }
+
 
 
 

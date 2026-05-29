@@ -544,7 +544,9 @@
       "emptyDescription": "A comparison appears once at least two instruments are selected.",
       "modeLabel": "Comparison mode",
       "normalized": "Normalized",
-      "price": "Price"
+      "price": "Price",
+      "simpleStripHint": "Compare instruments for a better analysis.",
+      "activeCount": "{{count}} active"
     },
     "insight": {
       "eyebrow": "Indicators",

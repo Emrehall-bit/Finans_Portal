@@ -15,14 +15,14 @@ import java.util.Map;
 @Component
 public class CommoditySymbolRegistry {
 
-    // instrument_code → yahoo_symbol (fetched from Yahoo)
+    // instrument_code â†’ yahoo_symbol (fetched from Yahoo)
     private static final Map<String, String> CODE_TO_YAHOO = Map.of(
             "BRENT",      "BZ=F",
             "GOLD_USD",   "GC=F",
             "SILVER_USD", "SI=F"
     );
 
-    // yahoo_symbol → instrument_code
+    // yahoo_symbol â†’ instrument_code
     private static final Map<String, String> YAHOO_TO_CODE = Map.of(
             "BZ=F", "BRENT",
             "GC=F", "GOLD_USD",
@@ -32,14 +32,14 @@ public class CommoditySymbolRegistry {
     // display names: covers both Yahoo-direct and calculated instruments
     private static final Map<String, String> CODE_TO_NAME = Map.of(
             "BRENT",               "Brent Petrol",
-            "GOLD_USD",            "Altın (Ham USD)",
-            "SILVER_USD",          "Gümüş (Ham USD)",
-            "GRAM_ALTIN",          "Gram Altın",
-            "CEYREK_ALTIN",        "Çeyrek Altın",
-            "YARIM_ALTIN",         "Yarım Altın",
-            "TAM_ALTIN",           "Tam Altın",
-            "CUMHURIYET_ALTINI",   "Cumhuriyet Altını",
-            "GUMUS_GRAM",          "Gümüş Gram"
+            "GOLD_USD",            "AltÄ±n (Ham USD)",
+            "SILVER_USD",          "GÃ¼mÃ¼ÅŸ (Ham USD)",
+            "GRAM_ALTIN",          "Gram AltÄ±n",
+            "CEYREK_ALTIN",        "Ã‡eyrek AltÄ±n",
+            "YARIM_ALTIN",         "YarÄ±m AltÄ±n",
+            "TAM_ALTIN",           "Tam AltÄ±n",
+            "CUMHURIYET_ALTINI",   "Cumhuriyet AltÄ±nÄ±",
+            "GUMUS_GRAM",          "GÃ¼mÃ¼ÅŸ Gram"
     );
 
     public List<String> getAllYahooSymbols() {
@@ -62,6 +62,7 @@ public class CommoditySymbolRegistry {
         return CODE_TO_NAME.getOrDefault(code, code);
     }
 }
+
 
 
 

@@ -8,44 +8,44 @@ public class NewsImpactPromptBuilder {
     public String build(NewsImpactContext ctx) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("Türkçe finans haberi etki analizi uzmanısın.\n");
-        sb.append("Haberin finansal, sektörel ve piyasa etkisini analiz et.\n\n");
+        sb.append("TÃ¼rkÃ§e finans haberi etki analizi uzmanÄ±sÄ±n.\n");
+        sb.append("Haberin finansal, sektÃ¶rel ve piyasa etkisini analiz et.\n\n");
 
-        sb.append("DAVRANIŞ KURALLARI:\n");
+        sb.append("DAVRANIÅ KURALLARI:\n");
         sb.append("1. Kesin fiyat hareketi veya fiyat hedefi belirtme\n");
         sb.append("2. Olmayan veri veya istatistik uydurma\n");
-        sb.append("3. 'etkileyebilir', 'baskı oluşturabilir', 'destekleyebilir', 'olabilir' gibi ihtimalli dil kullan\n");
-        sb.append("4. Clickbait veya abartılı ton kullanma\n");
-        sb.append("5. Kısa, anlamlı ve gerçekçi cümleler yaz\n");
-        sb.append("6. Mevcut verilere dayanarak yorum yap; spekülatif tahmin sunma\n\n");
+        sb.append("3. 'etkileyebilir', 'baskÄ± oluÅŸturabilir', 'destekleyebilir', 'olabilir' gibi ihtimalli dil kullan\n");
+        sb.append("4. Clickbait veya abartÄ±lÄ± ton kullanma\n");
+        sb.append("5. KÄ±sa, anlamlÄ± ve gerÃ§ekÃ§i cÃ¼mleler yaz\n");
+        sb.append("6. Mevcut verilere dayanarak yorum yap; spekÃ¼latif tahmin sunma\n\n");
 
-        sb.append("HABER BİLGİSİ:\n");
-        sb.append("Başlık: ").append(ctx.title()).append("\n");
+        sb.append("HABER BÄ°LGÄ°SÄ°:\n");
+        sb.append("BaÅŸlÄ±k: ").append(ctx.title()).append("\n");
         if (hasText(ctx.newsSummary())) {
-            sb.append("Özet: ").append(ctx.newsSummary()).append("\n");
+            sb.append("Ã–zet: ").append(ctx.newsSummary()).append("\n");
         }
         sb.append("Kategori: ").append(ctx.detectedCategory().name()).append("\n");
         sb.append("Kaynak: ").append(ctx.source()).append("\n");
         if (hasText(ctx.relatedSymbol())) {
-            sb.append("İlgili Sembol: ").append(ctx.relatedSymbol()).append("\n");
+            sb.append("Ä°lgili Sembol: ").append(ctx.relatedSymbol()).append("\n");
         }
 
-        sb.append("\nÖN ANALİZ:\n");
+        sb.append("\nÃ–N ANALÄ°Z:\n");
         if (!ctx.affectedSectors().isEmpty()) {
-            sb.append("Tespit Edilen Sektör Etkileri:\n");
+            sb.append("Tespit Edilen SektÃ¶r Etkileri:\n");
             for (String sector : ctx.affectedSectors()) {
                 sb.append("  - ").append(sector).append("\n");
             }
         }
-        sb.append("Başlangıç Değerlendirmesi: ").append(ctx.initialSentiment())
+        sb.append("BaÅŸlangÄ±Ã§ DeÄŸerlendirmesi: ").append(ctx.initialSentiment())
           .append(", Risk Seviyesi: ").append(ctx.initialRiskLevel()).append("\n\n");
 
-        sb.append("TEKNİK GÖREV:\n");
-        sb.append("Aşağıdaki JSON formatında yanıt ver. Başka hiçbir açıklama ekleme:\n");
+        sb.append("TEKNÄ°K GÃ–REV:\n");
+        sb.append("AÅŸaÄŸÄ±daki JSON formatÄ±nda yanÄ±t ver. BaÅŸka hiÃ§bir aÃ§Ä±klama ekleme:\n");
         sb.append("{\n");
-        sb.append("  \"summary\": \"Haberin kısa ve tarafsız finansal özeti (1-2 cümle, ihtimalli dil kullan)\",\n");
-        sb.append("  \"marketImpact\": \"Genel piyasaya olası etkisi (1-2 cümle, kesin konuşma)\",\n");
-        sb.append("  \"highlights\": [\"öne çıkan finansal nokta 1\", \"öne çıkan finansal nokta 2\", \"öne çıkan finansal nokta 3\"]\n");
+        sb.append("  \"summary\": \"Haberin kÄ±sa ve tarafsÄ±z finansal Ã¶zeti (1-2 cÃ¼mle, ihtimalli dil kullan)\",\n");
+        sb.append("  \"marketImpact\": \"Genel piyasaya olasÄ± etkisi (1-2 cÃ¼mle, kesin konuÅŸma)\",\n");
+        sb.append("  \"highlights\": [\"Ã¶ne Ã§Ä±kan finansal nokta 1\", \"Ã¶ne Ã§Ä±kan finansal nokta 2\", \"Ã¶ne Ã§Ä±kan finansal nokta 3\"]\n");
         sb.append("}\n");
 
         return sb.toString();
@@ -55,6 +55,7 @@ public class NewsImpactPromptBuilder {
         return s != null && !s.isBlank();
     }
 }
+
 
 
 

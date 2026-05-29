@@ -46,9 +46,9 @@ public class KapNewsClient {
 
     private static final int DETAIL_PARSE_MIN_LENGTH = 80;
     private static final Set<String> NOISE_BUTTON_LABELS = Set.of(
-            "PDF", "WORD", "EXCEL", "YAZDIR", "A+", "A-", "İMZALI GÖRÜNTÜLE", "IMZALI GORUNTULE", "PRINT"
+            "PDF", "WORD", "EXCEL", "YAZDIR", "A+", "A-", "Ä°MZALI GÃ–RÃœNTÃœLE", "IMZALI GORUNTULE", "PRINT"
     );
-    // Internal KAP field prefix — these are system identifiers, not user-visible labels
+    // Internal KAP field prefix â€” these are system identifiers, not user-visible labels
     private static final Pattern NOISE_FIELD_PATTERN = Pattern.compile("(?i)^oda[_\\s]");
     // Values that are structurally empty (null-equivalent, empty arrays/objects, punctuation-only)
     private static final Pattern NOISE_VALUE_PATTERN = Pattern.compile("^[\\[\\]{}\\s,;|/*:.-]*$");
@@ -188,7 +188,7 @@ public class KapNewsClient {
     private KapDetailContent parseKapDetailContent(String html, String url, Long disclosureIndex) {
         Document doc = Jsoup.parse(html, url);
 
-        // Remove KAP site chrome — navigation, sidebars, toolbars, resize controls
+        // Remove KAP site chrome â€” navigation, sidebars, toolbars, resize controls
         doc.select("nav, header, footer, script, style, noscript").remove();
         doc.select("[class*='sidebar'], [id*='sidebar'], [class*='side-menu'], [id*='side-menu']").remove();
         doc.select("[class*='font-resize'], [class*='text-resize'], [class*='fontsize']").remove();
@@ -652,6 +652,7 @@ public class KapNewsClient {
         return headers;
     }
 }
+
 
 
 

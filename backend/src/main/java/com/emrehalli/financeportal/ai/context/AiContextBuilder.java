@@ -9,13 +9,13 @@ public class AiContextBuilder {
 
     public String buildInstrumentBlock(InstrumentContext ctx) {
         StringBuilder sb = new StringBuilder();
-        sb.append("=== EKRAN BAĞLAMI: ").append(ctx.symbol()).append(" ===\n");
+        sb.append("=== EKRAN BAÄLAMI: ").append(ctx.symbol()).append(" ===\n");
 
         AiTechnicalAnalysisResponse tech = ctx.technicalSummary();
         if (tech != null) {
-            sb.append("TEKNİK ANALİZ:\n");
+            sb.append("TEKNÄ°K ANALÄ°Z:\n");
             if (tech.summary() != null) {
-                sb.append("  Özet: ").append(tech.summary()).append("\n");
+                sb.append("  Ã–zet: ").append(tech.summary()).append("\n");
             }
             if (tech.trendComment() != null) {
                 sb.append("  Trend: ").append(tech.trendComment()).append("\n");
@@ -33,24 +33,24 @@ public class AiContextBuilder {
 
         AiFundamentalAnalysisResponse fund = ctx.fundamentalSummary();
         if (fund != null) {
-            sb.append("TEMEL ANALİZ:\n");
+            sb.append("TEMEL ANALÄ°Z:\n");
             if (fund.summary() != null) {
-                sb.append("  Özet: ").append(fund.summary()).append("\n");
+                sb.append("  Ã–zet: ").append(fund.summary()).append("\n");
             }
             if (fund.strengths() != null && !fund.strengths().isEmpty()) {
-                sb.append("  Güçlü yönler: ").append(String.join(" | ", fund.strengths())).append("\n");
+                sb.append("  GÃ¼Ã§lÃ¼ yÃ¶nler: ").append(String.join(" | ", fund.strengths())).append("\n");
             }
             if (fund.weaknesses() != null && !fund.weaknesses().isEmpty()) {
-                sb.append("  Zayıf yönler: ").append(String.join(" | ", fund.weaknesses())).append("\n");
+                sb.append("  ZayÄ±f yÃ¶nler: ").append(String.join(" | ", fund.weaknesses())).append("\n");
             }
             if (fund.risks() != null && !fund.risks().isEmpty()) {
                 sb.append("  Riskler: ").append(String.join(" | ", fund.risks())).append("\n");
             }
             if (fund.growthComment() != null) {
-                sb.append("  Büyüme: ").append(fund.growthComment()).append("\n");
+                sb.append("  BÃ¼yÃ¼me: ").append(fund.growthComment()).append("\n");
             }
             if (fund.financialHealth() != null) {
-                sb.append("  Finansal sağlık: ").append(fund.financialHealth()).append("\n");
+                sb.append("  Finansal saÄŸlÄ±k: ").append(fund.financialHealth()).append("\n");
             }
         }
 
@@ -58,9 +58,10 @@ public class AiContextBuilder {
     }
 
     public String buildDashboardBlock(DashboardContext ctx) {
-        return "=== EKRAN BAĞLAMI: DASHBOARD ===\n" + ctx.screenNote();
+        return "=== EKRAN BAÄLAMI: DASHBOARD ===\n" + ctx.screenNote();
     }
 }
+
 
 
 

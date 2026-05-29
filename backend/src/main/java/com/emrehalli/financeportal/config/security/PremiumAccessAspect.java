@@ -1,6 +1,6 @@
 package com.emrehalli.financeportal.config.security;
 
-import com.emrehalli.financeportal.analysis.exception.PremiumRequiredException;
+import com.emrehalli.financeportal.technicalanalysis.exception.PremiumRequiredException;
 import com.emrehalli.financeportal.user.entity.UserRole;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -39,7 +39,7 @@ public class PremiumAccessAspect {
 
         UserRole role = keycloakJwtRoleConverter.extractRole(jwt);
         if (role != UserRole.USER_PREMIUM && role != UserRole.ADMIN) {
-            logger.info("Premium erişim reddedildi: role={}, method={}",
+            logger.info("Premium eriÅŸim reddedildi: role={}, method={}",
                     role, joinPoint.getSignature().toShortString());
             throw new PremiumRequiredException();
         }
@@ -47,3 +47,4 @@ public class PremiumAccessAspect {
         return joinPoint.proceed();
     }
 }
+

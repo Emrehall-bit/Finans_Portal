@@ -11,3 +11,4 @@ public class ShareCountImportRowError {
     private String ticker;
     private String message;
 }
+

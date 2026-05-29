@@ -25,10 +25,10 @@ import java.util.Optional;
 
 /**
  * Fetches ONE_DAY OHLCV history from Yahoo Finance for BIST index symbols
- * (XU100.IS → BIST100, XU030.IS → BIST30, etc.) and persists each bar to
+ * (XU100.IS â†’ BIST100, XU030.IS â†’ BIST30, etc.) and persists each bar to
  * market_price_history with source_name=YAHOO_FINANCE.
  *
- * <p>No derivation step needed — BIST indexes are already denominated in TRY.</p>
+ * <p>No derivation step needed â€” BIST indexes are already denominated in TRY.</p>
  */
 @Service
 @Slf4j
@@ -45,9 +45,9 @@ public class IndexHistoryService {
     /**
      * Detects gaps in index ONE_DAY history per symbol and fills them from Yahoo Finance.
      * Finds the last recorded date per symbol, computes the gap to yesterday, and fetches
-     * only the missing window. Duplicate-safe — already-existing rows are skipped.
+     * only the missing window. Duplicate-safe â€” already-existing rows are skipped.
      *
-     * <p>If no history exists yet for a symbol, returns empty and logs a warning —
+     * <p>If no history exists yet for a symbol, returns empty and logs a warning â€”
      * run the admin backfill endpoint first.</p>
      */
     @Transactional
@@ -62,7 +62,7 @@ public class IndexHistoryService {
 
     /**
      * Admin / manual backfill: fetches a fixed look-back window from Yahoo Finance for all index symbols.
-     * Duplicate-safe — rows that already exist are skipped.
+     * Duplicate-safe â€” rows that already exist are skipped.
      *
      * @param days look-back window in calendar days (e.g. 3650 for 10 years)
      */
@@ -76,7 +76,7 @@ public class IndexHistoryService {
         return results;
     }
 
-    // ── Private ────────────────────────────────────────────────────────────────
+    // â”€â”€ Private â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private FetchResult catchUpSymbol(String yahooSymbol, String code) {
         MarketInstrument instrument = instrumentRepository
@@ -93,7 +93,7 @@ public class IndexHistoryService {
                         instrument, IntervalType.ONE_DAY, SourceName.YAHOO_FINANCE);
 
         if (latest.isEmpty()) {
-            log.info("IndexHistory catch-up: no history found for code={} — run admin backfill first", code);
+            log.info("IndexHistory catch-up: no history found for code={} â€” run admin backfill first", code);
             return new FetchResult(0, 0, 0);
         }
 
@@ -166,6 +166,7 @@ public class IndexHistoryService {
                         .build()));
     }
 }
+
 
 
 

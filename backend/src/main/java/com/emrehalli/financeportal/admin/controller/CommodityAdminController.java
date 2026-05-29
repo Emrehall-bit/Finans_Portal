@@ -69,7 +69,7 @@ public class CommodityAdminController {
     }
 
     /**
-     * Diagnostic endpoint — shows all COMMODITY instruments and their latest prices.
+     * Diagnostic endpoint â€” shows all COMMODITY instruments and their latest prices.
      * GET /api/v1/admin/debug/commodities is the fuller version; this is a quick status check.
      */
     @GetMapping("/status")
@@ -126,6 +126,7 @@ public class CommodityAdminController {
         return sb.toString().trim();
     }
 }
+
 
 
 

@@ -118,7 +118,7 @@ public class NewsImportanceScoringService {
         }
         String normalized = value
                 .toLowerCase(Locale.ROOT)
-                .replace('ı', 'i');
+                .replace('\u0131', 'i');
         normalized = Normalizer.normalize(normalized, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "");
         return normalized;
@@ -144,6 +144,7 @@ public class NewsImportanceScoringService {
         return score;
     }
 }
+
 
 
 

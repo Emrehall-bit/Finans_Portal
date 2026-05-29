@@ -6,10 +6,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Bu annotation'ı taşıyan endpoint'ler USER_PREMIUM veya ADMIN rolü gerektirir.
- * PremiumAccessAspect tarafından intercept edilir.
+ * Bu annotation'Ä± taÅŸÄ±yan endpoint'ler USER_PREMIUM veya ADMIN rolÃ¼ gerektirir.
+ * PremiumAccessAspect tarafÄ±ndan intercept edilir.
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RequiresPremium {
 }
+

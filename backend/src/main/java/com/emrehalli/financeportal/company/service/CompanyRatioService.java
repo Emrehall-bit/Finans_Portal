@@ -75,14 +75,14 @@ public class CompanyRatioService {
 
         List<CompanyFinancialReport> eligible = reportRepository.findEligibleReports(ticker, ELIGIBLE_STATUSES);
         if (eligible.isEmpty()) {
-            return failed(ticker, "Hesaplanabilir finansal rapor bulunamadı (SUCCESS).");
+            return failed(ticker, "Hesaplanabilir finansal rapor bulunamadÄ± (SUCCESS).");
         }
 
         CompanyFinancialReport latest = eligible.get(0);
 
         Optional<MarketQueryService.MarketSnapshot> snapshot = marketQueryService.findBySymbol(ticker);
         if (snapshot.isEmpty() || snapshot.get().price() == null) {
-            return failed(ticker, "Güncel fiyat bulunamadı: " + ticker);
+            return failed(ticker, "GÃ¼ncel fiyat bulunamadÄ±: " + ticker);
         }
         BigDecimal price = snapshot.get().price();
 
@@ -350,12 +350,12 @@ public class CompanyRatioService {
             if (current != null && previous != null
                     && previous.compareTo(BigDecimal.ZERO) <= 0
                     && current.compareTo(BigDecimal.ZERO) > 0) {
-                return new GrowthResult(null, "Kârlılığa Geçti");
+                return new GrowthResult(null, "KÃ¢rlÄ±lÄ±ÄŸa GeÃ§ti");
             }
             return new GrowthResult(null, null);
         }
         if (current.compareTo(BigDecimal.ZERO) < 0) {
-            return new GrowthResult(null, "Zarara Geçti");
+            return new GrowthResult(null, "Zarara GeÃ§ti");
         }
         if (current.compareTo(BigDecimal.ZERO) <= 0) {
             return new GrowthResult(null, null);
@@ -372,16 +372,16 @@ public class CompanyRatioService {
         BigDecimal marginThreshold = new BigDecimal("0.15");
 
         if (debtToEquity != null && debtToEquity.compareTo(debtThreshold) > 0) {
-            return "Borçluluk yüksek";
+            return "BorÃ§luluk yÃ¼ksek";
         }
         if (netMargin != null && netMargin.compareTo(marginThreshold) > 0
                 && roe != null && roe.compareTo(marginThreshold) > 0) {
-            return "Kârlılık güçlü";
+            return "KÃ¢rlÄ±lÄ±k gÃ¼Ã§lÃ¼";
         }
         if (netMargin != null && netMargin.compareTo(BigDecimal.ZERO) < 0) {
-            return "Zarar açıklamış";
+            return "Zarar aÃ§Ä±klamÄ±ÅŸ";
         }
-        return "Nötr";
+        return "NÃ¶tr";
     }
 
     // -------------------------------------------------------------------------
@@ -408,7 +408,7 @@ public class CompanyRatioService {
 
     private CompanyProfile requireCompany(String ticker) {
         return profileRepository.findByTickerCodeIgnoreCase(ticker)
-                .orElseThrow(() -> new ResourceNotFoundException("Şirket bulunamadı: " + ticker));
+                .orElseThrow(() -> new ResourceNotFoundException("Åirket bulunamadÄ±: " + ticker));
     }
 
     private String formatPeriod(CompanyFinancialReport report) {
@@ -437,6 +437,7 @@ public class CompanyRatioService {
     private record RatioFieldStatus(String status, String reason) {
     }
 }
+
 
 
 

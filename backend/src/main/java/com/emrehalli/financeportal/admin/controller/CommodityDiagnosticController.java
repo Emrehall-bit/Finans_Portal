@@ -52,7 +52,7 @@ public class CommodityDiagnosticController {
         result.put("commodityInstrumentCount", instrumentRows.size());
         result.put("commodityInstruments", instrumentRows);
 
-        // 2. USDTRY resolution — matches TCMB:USD:SELL, TCMB:USDTRY:SELL, AKBANK:USD:SELL, etc.
+        // 2. USDTRY resolution â€” matches TCMB:USD:SELL, TCMB:USDTRY:SELL, AKBANK:USD:SELL, etc.
         List<MarketInstrument> usdtryCandidates = instrumentRepository
                 .findAllByInstrumentTypeAndInstrumentCodeContainingIgnoreCase(InstrumentType.FX, "USD")
                 .stream()
@@ -84,7 +84,7 @@ public class CommodityDiagnosticController {
 
         result.put("usdtryCandidatesFound", usdtryCandidates.size());
         result.put("usdtryCandidates", usdtryRows);
-        result.put("resolvedUsdTry", usdTry != null ? usdTry : "NULL — derived commodities will be skipped");
+        result.put("resolvedUsdTry", usdTry != null ? usdTry : "NULL â€” derived commodities will be skipped");
 
         // 3. BRENT price check (confirms Yahoo fetch is working)
         instrumentRepository.findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc("BRENT", InstrumentType.COMMODITY)
@@ -102,13 +102,13 @@ public class CommodityDiagnosticController {
 
         String diagnosis;
         if (!hasInstruments) {
-            diagnosis = "A) SEED YOK — V31 migration henüz çalışmamış veya calculated instruments DB'de yok";
+            diagnosis = "A) SEED YOK â€” V31 migration henÃ¼z Ã§alÄ±ÅŸmamÄ±ÅŸ veya calculated instruments DB'de yok";
         } else if (!hasPrices && !usdtryOk) {
-            diagnosis = "C+D) USDTRY bulunamıyor — FX servisi henüz USDTRY:SELL verisi kaydetmemiş. Calculation çalışamıyor.";
+            diagnosis = "C+D) USDTRY bulunamÄ±yor â€” FX servisi henÃ¼z USDTRY:SELL verisi kaydetmemiÅŸ. Calculation Ã§alÄ±ÅŸamÄ±yor.";
         } else if (!hasPrices) {
-            diagnosis = "B) PRICE YOK — Instruments DB'de var ama market_prices kaydı yok. Scheduler henüz hesaplama yapmamış.";
+            diagnosis = "B) PRICE YOK â€” Instruments DB'de var ama market_prices kaydÄ± yok. Scheduler henÃ¼z hesaplama yapmamÄ±ÅŸ.";
         } else {
-            diagnosis = "E) Endpoint/Frontend sorunu — Instruments ve prices DB'de mevcut, getAll() filtreliyor olabilir.";
+            diagnosis = "E) Endpoint/Frontend sorunu â€” Instruments ve prices DB'de mevcut, getAll() filtreliyor olabilir.";
         }
         result.put("diagnosis", diagnosis);
         result.put("checkedAt", LocalDateTime.now());
@@ -133,6 +133,7 @@ public class CommodityDiagnosticController {
         rows.add(row);
     }
 }
+
 
 
 

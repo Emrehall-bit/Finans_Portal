@@ -43,7 +43,7 @@ class AiFallbackExecutorTest {
         executor = new AiFallbackExecutor(router);
     }
 
-    // ── Test 3a: Primary success → fallback not called ───────────
+    // â”€â”€ Test 3a: Primary success â†’ fallback not called â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
     void primarySuccess_fallbackNotCalled() {
@@ -57,7 +57,7 @@ class AiFallbackExecutorTest {
         verify(fallbackProvider, never()).generate(any());
     }
 
-    // ── Test 3b: Primary fails → fallback is tried ───────────────
+    // â”€â”€ Test 3b: Primary fails â†’ fallback is tried â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
     void primaryFails_fallbackIsCalled() {
@@ -71,7 +71,7 @@ class AiFallbackExecutorTest {
         verify(fallbackProvider).generate(any());
     }
 
-    // ── Fallback response has fallbackUsed=true ──────────────────
+    // â”€â”€ Fallback response has fallbackUsed=true â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
     void fallbackResponse_hasCorrectMetadata() {
@@ -86,7 +86,7 @@ class AiFallbackExecutorTest {
         assertThat(result.get().provider()).isEqualTo(AiProviderType.GEMINI);
     }
 
-    // ── Both providers fail → empty ──────────────────────────────
+    // â”€â”€ Both providers fail â†’ empty â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
     void bothProvidersFail_returnsEmpty() {
@@ -100,7 +100,7 @@ class AiFallbackExecutorTest {
         assertThat(result).isEmpty();
     }
 
-    // ── Test 5: Empty/null content is not a cached value ─────────
+    // â”€â”€ Test 5: Empty/null content is not a cached value â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // The providers throw AiProviderException on empty content, so
     // AiFallbackExecutor never returns an AiResponse with null content.
 
@@ -117,7 +117,7 @@ class AiFallbackExecutorTest {
         verify(fallbackProvider).generate(any());
     }
 
-    // ── Primary not configured → skip to fallback ────────────────
+    // â”€â”€ Primary not configured â†’ skip to fallback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
     void primaryNotConfigured_fallbackDirectlyUsed() {
@@ -131,7 +131,7 @@ class AiFallbackExecutorTest {
         verify(fallbackProvider).generate(any());
     }
 
-    // ── Fallback same as primary → no retry ─────────────────────
+    // â”€â”€ Fallback same as primary â†’ no retry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Test
     void fallbackSameAsPrimary_noRetry() {
@@ -145,6 +145,7 @@ class AiFallbackExecutorTest {
         verify(fallbackProvider, never()).generate(any());
     }
 }
+
 
 
 

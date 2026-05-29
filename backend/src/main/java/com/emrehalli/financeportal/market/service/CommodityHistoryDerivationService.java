@@ -48,7 +48,7 @@ public class CommodityHistoryDerivationService {
      * Checks GRAM_ALTIN and GUMUS_GRAM as proxies for the gold and silver chains.
      * Uses the largest detected gap so both chains stay in sync.
      *
-     * <p>If no derived history exists yet, returns empty — run the admin backfill endpoint first.</p>
+     * <p>If no derived history exists yet, returns empty â€” run the admin backfill endpoint first.</p>
      */
     @Transactional
     public Map<String, DerivationResult> catchUp() {
@@ -63,7 +63,7 @@ public class CommodityHistoryDerivationService {
 
     /**
      * Admin / manual backfill: derives history for the given look-back window.
-     * Duplicate-safe — rows that already exist are skipped.
+     * Duplicate-safe â€” rows that already exist are skipped.
      *
      * @param days look-back window in calendar days (e.g. 3650 for 10 years)
      * @return per-symbol saved/skipped counts
@@ -100,7 +100,7 @@ public class CommodityHistoryDerivationService {
         return results;
     }
 
-    // ── Gap detection ──────────────────────────────────────────────────────────
+    // â”€â”€ Gap detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private int computeDerivationGap() {
         LocalDate yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(1);
@@ -117,7 +117,7 @@ public class CommodityHistoryDerivationService {
                     .findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampDesc(
                             instrumentOpt.get(), IntervalType.ONE_DAY, SourceName.CALCULATED);
             if (latest.isEmpty()) {
-                continue; // no history yet — initial backfill needed
+                continue; // no history yet â€” initial backfill needed
             }
 
             LocalDate lastDate = latest.get().getPriceTimestamp().atZone(ZoneOffset.UTC).toLocalDate();
@@ -130,7 +130,7 @@ public class CommodityHistoryDerivationService {
         return maxGap <= 0 ? 0 : maxGap + 3; // +3 day buffer to align with USDTRY history
     }
 
-    // ── Private derivation ─────────────────────────────────────────────────────
+    // â”€â”€ Private derivation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private Map<String, DerivationResult> deriveGoldHistory(
             Map<LocalDate, BigDecimal> goldByDay,
@@ -208,7 +208,7 @@ public class CommodityHistoryDerivationService {
         return new DerivationResult(saved, skipped);
     }
 
-    // ── History loading ────────────────────────────────────────────────────────
+    // â”€â”€ History loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private Map<LocalDate, BigDecimal> loadDailyHistory(
             String code, InstrumentType type, SourceName source, Instant from, Instant to) {
@@ -242,7 +242,7 @@ public class CommodityHistoryDerivationService {
         List<MarketInstrument> allUsd = instrumentRepository
                 .findAllByInstrumentTypeAndInstrumentCodeContainingIgnoreCase(InstrumentType.FX, "USD");
 
-        // Keep sell-side USD/TRY — same filter as CommodityService.resolveUsdTry
+        // Keep sell-side USD/TRY â€” same filter as CommodityService.resolveUsdTry
         List<MarketInstrument> candidates = allUsd.stream()
                 .filter(i -> {
                     String code = i.getInstrumentCode().toUpperCase(Locale.ROOT);
@@ -285,7 +285,7 @@ public class CommodityHistoryDerivationService {
         return byDay;
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
+    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private boolean saveIfAbsent(MarketInstrument instrument, Instant ts, BigDecimal price) {
         if (historyRepository.existsByInstrumentAndIntervalTypeAndPriceTimestamp(
@@ -313,6 +313,7 @@ public class CommodityHistoryDerivationService {
                         .build()));
     }
 }
+
 
 
 

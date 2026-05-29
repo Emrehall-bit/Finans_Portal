@@ -141,8 +141,8 @@ public class TcmbMacroProvider {
         String text = n.asText();
         if (text == null || text.isBlank()) return null;
         try {
-            // "." decimal + "," thousands (e.g. "-1,023.00") → strip commas
-            // "," decimal + no "." (e.g. "4,18") → replace comma with dot
+            // "." decimal + "," thousands (e.g. "-1,023.00") â†’ strip commas
+            // "," decimal + no "." (e.g. "4,18") â†’ replace comma with dot
             String normalized = text.contains(".") ? text.replace(",", "") : text.replace(",", ".");
             return new BigDecimal(normalized.trim());
         } catch (NumberFormatException ex) {
@@ -151,6 +151,7 @@ public class TcmbMacroProvider {
         }
     }
 }
+
 
 
 

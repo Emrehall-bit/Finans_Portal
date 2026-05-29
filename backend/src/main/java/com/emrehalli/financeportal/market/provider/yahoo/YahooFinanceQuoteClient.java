@@ -50,7 +50,7 @@ public class YahooFinanceQuoteClient {
         String cookie = props.getProviders().getYahoo().getCookie();
         String crumb  = props.getProviders().getYahoo().getCrumb();
         if (!hasText(cookie) || !hasText(crumb)) {
-            log.warn("Yahoo Finance cookie/crumb yapılandırılmamış, sorgu atlanıyor");
+            log.warn("Yahoo Finance cookie/crumb yapÄ±landÄ±rÄ±lmamÄ±ÅŸ, sorgu atlanÄ±yor");
             throw new DataProviderException("Yahoo Finance cookie/crumb is not configured");
         }
 
@@ -105,7 +105,7 @@ public class YahooFinanceQuoteClient {
             return items;
 
         } catch (HttpClientErrorException.Unauthorized e) {
-            log.warn("Yahoo Finance cookie süresi dolmuş, manuel güncelleme gerekiyor");
+            log.warn("Yahoo Finance cookie sÃ¼resi dolmuÅŸ, manuel gÃ¼ncelleme gerekiyor");
             throw new DataProviderException("Yahoo Finance cookie expired", e);
         } catch (HttpStatusCodeException e) {
             throw new DataProviderException("Yahoo Finance HTTP error: " + e.getStatusCode().value(), e);
@@ -148,6 +148,7 @@ public class YahooFinanceQuoteClient {
             Long volume
     ) {}
 }
+
 
 
 

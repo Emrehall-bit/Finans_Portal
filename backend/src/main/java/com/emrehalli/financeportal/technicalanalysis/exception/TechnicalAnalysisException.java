@@ -22,3 +22,4 @@ public class TechnicalAnalysisException extends RuntimeException {
 
 
 
+

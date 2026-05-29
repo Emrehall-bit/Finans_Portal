@@ -86,7 +86,7 @@ public class UnifiedAiAnalysisService {
         }
     }
 
-    // ── Computation ───────────────────────────────────────────────
+    // â”€â”€ Computation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private CachedValue<UnifiedAnalysisResponse> compute(String symbol, String instrumentType) {
         AiTechnicalAnalysisResponse technical;
@@ -126,7 +126,7 @@ public class UnifiedAiAnalysisService {
         }
     }
 
-    // ── JSON parsing ──────────────────────────────────────────────
+    // â”€â”€ JSON parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private CachedValue<UnifiedAnalysisResponse> parseResponse(String symbol, AiResponse aiResponse)
             throws Exception {
@@ -174,7 +174,7 @@ public class UnifiedAiAnalysisService {
         return List.copyOf(items);
     }
 
-    // ── Fallbacks ─────────────────────────────────────────────────
+    // â”€â”€ Fallbacks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private UnifiedAnalysisResponse deterministicFallback(String symbol, UnifiedAnalysisContext ctx) {
         String summary = postProcessor.process(
@@ -190,7 +190,7 @@ public class UnifiedAiAnalysisService {
     private UnifiedAnalysisResponse emptyFallback(String symbol) {
         return new UnifiedAnalysisResponse(
                 symbol,
-                "Birleşik AI analizi şu an hazırlanamıyor; teknik ve temel analiz kartlarını ayrı inceleyebilirsiniz.",
+                "BirleÅŸik AI analizi ÅŸu an hazÄ±rlanamÄ±yor; teknik ve temel analiz kartlarÄ±nÄ± ayrÄ± inceleyebilirsiniz.",
                 List.of(),
                 List.of(),
                 null,
@@ -222,6 +222,7 @@ public class UnifiedAiAnalysisService {
         return symbol.trim().toUpperCase(Locale.ROOT);
     }
 }
+
 
 
 

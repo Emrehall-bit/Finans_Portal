@@ -19,9 +19,10 @@ public record FinancialImpactResult(
     static FinancialImpactResult ofKap() {
         return new FinancialImpactResult(true, "HIGH", ImpactType.DIRECT_COMPANY,
                 List.of(AffectedAssetClass.STOCK), 90,
-                "KAP resmi bildirimi – her zaman piyasa etkili", List.of("KAP"));
+                "KAP resmi bildirimi â€“ her zaman piyasa etkili", List.of("KAP"));
     }
 }
+
 
 
 

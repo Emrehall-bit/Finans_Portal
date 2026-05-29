@@ -8,3 +8,4 @@ public interface NewsProviderSyncStateRepository extends JpaRepository<NewsProvi
 
 
 
+

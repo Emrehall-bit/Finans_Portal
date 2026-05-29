@@ -260,7 +260,7 @@ function buildSimpleSummary({ analysis, chartData, quote, trendDirection, latest
   const ma200 = movingAverage(closes, 200);
   const momentumPct = closes.length >= 6 ? derivePercentChange(closes.at(-6), closes.at(-1)) : null;
   const volatilityPct = closes.length >= 2 ? Math.abs(derivePercentChange(closes.at(-2), closes.at(-1)) ?? 0) : null;
-  const latestSignal = analysis?.signals?.[0]?.signalType || analysis?.signals?.[0]?.label || null;
+  const latestSignal = resolveLatestSignal(analysis?.signals?.[0]);
 
   let score = 50;
   if (trendDirection === "UPTREND") score += 18;
@@ -289,14 +289,14 @@ function buildSimpleSummary({ analysis, chartData, quote, trendDirection, latest
     momentumTone: momentumPct == null ? "neutral" : momentumPct >= 1.4 ? "positive" : momentumPct <= -1.4 ? "negative" : "neutral",
     volatilityLabel: volatilityPct == null ? "-" : volatilityPct >= 4 ? "Yüksek" : volatilityPct >= 2 ? "Orta" : "Düşük",
     volatilityTone: volatilityPct == null ? "neutral" : volatilityPct >= 4 ? "warning" : volatilityPct >= 2 ? "neutral" : "positive",
-    maPairLabel: latestClose == null || ma50 == null || ma200 == null
-      ? "-"
+    maPairLabel: ma50 == null || ma200 == null
+      ? "Yetersiz veri"
       : ma50 > ma200
         ? "Yukarı kesişim"
         : ma50 < ma200
           ? "Aşağı kesişim"
           : "Denge",
-    maTone: latestClose == null || ma50 == null || ma200 == null
+    maTone: ma50 == null || ma200 == null
       ? "neutral"
       : ma50 > ma200
         ? "positive"
@@ -349,6 +349,12 @@ function resolveLatestRsi(analysis, chartData) {
     ?.value;
 
   return firstFinite(lastPointRsi, analysisRsi);
+}
+
+function resolveLatestSignal(raw) {
+  if (raw == null) return null;
+  if (typeof raw === "string") return raw;
+  return raw?.signalType || raw?.label || null;
 }
 
 function inferSignalTone(signal) {

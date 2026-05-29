@@ -16,13 +16,13 @@ import java.util.Map;
  *
  * <p>Handles the case where the application was not running at the scheduled
  * nightly time (01:30 UTC). On startup it detects gaps since the last recorded date
- * and fills them — identical logic to {@link IndexHistoryScheduler}.</p>
+ * and fills them â€” identical logic to {@link IndexHistoryScheduler}.</p>
  *
  * <p>Safe to run repeatedly: duplicate protection ensures no row is written twice.</p>
  *
  * <p>Prerequisite: initial 10-year seed must be done first via the admin endpoint:
  * POST /api/v1/admin/markets/indexes/history/backfill?days=3650.
- * If no history exists yet, catch-up logs a warning and exits — it never seeds from scratch.</p>
+ * If no history exists yet, catch-up logs a warning and exits â€” it never seeds from scratch.</p>
  */
 @Component
 @Slf4j
@@ -52,6 +52,7 @@ public class IndexHistoryStartupRunner {
         }
     }
 }
+
 
 
 

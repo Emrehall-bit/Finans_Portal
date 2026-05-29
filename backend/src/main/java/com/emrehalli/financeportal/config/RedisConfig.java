@@ -12,6 +12,8 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.cache.CacheManager;
 
+import java.time.Duration;
+
 @Configuration
 public class RedisConfig {
 
@@ -60,11 +62,16 @@ public class RedisConfig {
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(keySerializer))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(valueSerializer));
 
+        RedisCacheConfiguration shortTtlConfig = cacheConfiguration.entryTtl(Duration.ofMinutes(5));
+
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(cacheConfiguration)
+                .withCacheConfiguration("technicalAnalysis", shortTtlConfig)
+                .withCacheConfiguration("instrumentComparison", shortTtlConfig)
                 .build();
     }
 }
+
 
 
 

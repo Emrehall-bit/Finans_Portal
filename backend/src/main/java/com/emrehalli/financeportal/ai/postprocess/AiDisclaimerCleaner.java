@@ -51,9 +51,9 @@ public class AiDisclaimerCleaner {
 
     boolean isDisclaimer(String sentence) {
         String lower = sentence.toLowerCase(Locale.ROOT);
-        return lower.contains("yatırım tavsiyesi")
-                || lower.contains("tavsiye niteliğinde değil")
-                || lower.contains("bilgilendirme amaçlı")
+        return lower.contains("yatÄ±rÄ±m tavsiyesi")
+                || lower.contains("tavsiye niteliÄŸinde deÄŸil")
+                || lower.contains("bilgilendirme amaÃ§lÄ±")
                 || lower.contains("otomatik analiz");
     }
 
@@ -73,6 +73,7 @@ public class AiDisclaimerCleaner {
         return String.join(" ", sentences).trim();
     }
 }
+
 
 
 

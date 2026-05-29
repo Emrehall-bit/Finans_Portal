@@ -50,7 +50,7 @@ public class InternalCommodityHistoryService {
     /**
      * Detects gaps in GOLD_USD / SILVER_USD ONE_DAY history and fills them from Yahoo Finance.
      * Finds the last recorded date per symbol, computes the gap to yesterday, and fetches only
-     * the missing window. Duplicate-safe — already-existing rows are skipped.
+     * the missing window. Duplicate-safe â€” already-existing rows are skipped.
      *
      * <p>If no history exists yet (initial state), returns empty results and logs a warning.
      * Run the admin backfill endpoint with {@code ?days=3650} first to seed 10 years of data.</p>
@@ -66,7 +66,7 @@ public class InternalCommodityHistoryService {
 
     /**
      * Admin / manual backfill: fetches a fixed look-back window from Yahoo Finance.
-     * Duplicate-safe — rows that already exist are skipped.
+     * Duplicate-safe â€” rows that already exist are skipped.
      *
      * @param days look-back window in calendar days (e.g. 3650 for 10 years)
      */
@@ -79,7 +79,7 @@ public class InternalCommodityHistoryService {
         return results;
     }
 
-    // ── Private ────────────────────────────────────────────────────────────────
+    // â”€â”€ Private â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private FetchResult catchUpSymbol(String yahooSymbol, String code) {
         MarketInstrument instrument = instrumentRepository
@@ -96,7 +96,7 @@ public class InternalCommodityHistoryService {
                         instrument, IntervalType.ONE_DAY, SourceName.INTERNAL);
 
         if (latest.isEmpty()) {
-            log.info("InternalCommodityHistory catch-up: no history found for code={} — run admin backfill first", code);
+            log.info("InternalCommodityHistory catch-up: no history found for code={} â€” run admin backfill first", code);
             return new FetchResult(0, 0, 0);
         }
 
@@ -170,6 +170,7 @@ public class InternalCommodityHistoryService {
                         .build()));
     }
 }
+
 
 
 

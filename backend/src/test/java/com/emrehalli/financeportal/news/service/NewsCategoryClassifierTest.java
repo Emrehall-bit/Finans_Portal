@@ -53,7 +53,7 @@ class NewsCategoryClassifierTest {
 
         var fedResult = classifier.classify(
                 "Fed faiz indirimi sinyali verdi",
-                "Kuresel piyasalar yeni faiz patikasini fiyatliyor. Dolar, altin ve tahvil cephesinde yeni denge aranıyor.",
+                "Kuresel piyasalar yeni faiz patikasini fiyatliyor. Dolar, altin ve tahvil cephesinde yeni denge aranÄ±yor.",
                 "Fed faiz indirimi sinyali verdi",
                 "top_news"
         );
@@ -212,6 +212,7 @@ class NewsCategoryClassifierTest {
         assertThat(companyOnlyResult.tags()).doesNotContain(NewsCategoryClassifier.STOCKS);
     }
 }
+
 
 
 

@@ -28,11 +28,12 @@ public class Portfolio {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    // En önemli kısım: User ile ilişki
+    // En Ã¶nemli kÄ±sÄ±m: User ile iliÅŸki
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 }
+
 
 
 

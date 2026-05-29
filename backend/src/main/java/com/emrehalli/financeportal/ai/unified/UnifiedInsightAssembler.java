@@ -41,11 +41,11 @@ public class UnifiedInsightAssembler {
         );
     }
 
-    // ── Conflict reasoning ────────────────────────────────────────
+    // â”€â”€ Conflict reasoning â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     String buildConflictNote(AiTechnicalAnalysisResponse tech, AiFundamentalAnalysisResponse fund) {
         if (fund == null) {
-            return "Temel analiz bu enstrüman tipi için geçerli değil; yorum yalnızca teknik veriler üzerine kurulu.";
+            return "Temel analiz bu enstrÃ¼man tipi iÃ§in geÃ§erli deÄŸil; yorum yalnÄ±zca teknik veriler Ã¼zerine kurulu.";
         }
 
         boolean techPositive = tech.signal() == AiSignal.POSITIVE;
@@ -55,23 +55,23 @@ public class UnifiedInsightAssembler {
         boolean fundRisky    = fund.financialHealth() == FinancialHealth.RISKY;
 
         if (techPositive && fundRisky) {
-            return "Kısa vadeli momentum olumlu olsa da temel tarafta bazı riskler devam ediyor.";
+            return "KÄ±sa vadeli momentum olumlu olsa da temel tarafta bazÄ± riskler devam ediyor.";
         }
         if (techNegative && fundStrong) {
-            return "Temel görünüm olumlu olsa da teknik momentum tarafı kısa vadede zayıf kalıyor. "
-                 + "Uzun vadeli görünüm kısa vadeye göre daha güçlü olabilir.";
+            return "Temel gÃ¶rÃ¼nÃ¼m olumlu olsa da teknik momentum tarafÄ± kÄ±sa vadede zayÄ±f kalÄ±yor. "
+                 + "Uzun vadeli gÃ¶rÃ¼nÃ¼m kÄ±sa vadeye gÃ¶re daha gÃ¼Ã§lÃ¼ olabilir.";
         }
         if (techPositive && fundStrong) {
-            return "Teknik ve temel görünüm birbirini destekler nitelikte görünüyor.";
+            return "Teknik ve temel gÃ¶rÃ¼nÃ¼m birbirini destekler nitelikte gÃ¶rÃ¼nÃ¼yor.";
         }
         if (techNegative && fundRisky) {
-            return "Hem teknik hem temel tarafta olumsuz işaretler mevcut; "
-                 + "risk yönetimi öncelikli olabilir.";
+            return "Hem teknik hem temel tarafta olumsuz iÅŸaretler mevcut; "
+                 + "risk yÃ¶netimi Ã¶ncelikli olabilir.";
         }
-        return "Teknik ve temel veriler karma sinyaller üretiyor; iki tarafı birlikte değerlendirmek önemli.";
+        return "Teknik ve temel veriler karma sinyaller Ã¼retiyor; iki tarafÄ± birlikte deÄŸerlendirmek Ã¶nemli.";
     }
 
-    // ── Label helpers ─────────────────────────────────────────────
+    // â”€â”€ Label helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private String signalLabel(AiSignal signal) {
         if (signal == null) return "Belirsiz";
@@ -79,16 +79,16 @@ public class UnifiedInsightAssembler {
             case POSITIVE -> "Pozitif";
             case NEGATIVE -> "Negatif";
             case RISKY    -> "Riskli";
-            case NEUTRAL  -> "Nötr";
+            case NEUTRAL  -> "NÃ¶tr";
         };
     }
 
     private String healthLabel(FinancialHealth health) {
         if (health == null) return "Belirsiz";
         return switch (health) {
-            case STRONG -> "Güçlü";
+            case STRONG -> "GÃ¼Ã§lÃ¼";
             case STABLE -> "Dengeli";
-            case WATCH  -> "İzleme";
+            case WATCH  -> "Ä°zleme";
             case RISKY  -> "Riskli";
         };
     }
@@ -97,6 +97,7 @@ public class UnifiedInsightAssembler {
         return list != null ? list : List.of();
     }
 }
+
 
 
 

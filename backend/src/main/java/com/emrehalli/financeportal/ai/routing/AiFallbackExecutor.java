@@ -24,7 +24,7 @@ public class AiFallbackExecutor {
         AiProvider primary = router.getPrimary(request.taskType());
         AiProvider fallback = router.getFallback(request.taskType());
 
-        // ── Primary attempt ───────────────────────────────────────
+        // â”€â”€ Primary attempt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (primary != null && primary.isConfigured()) {
             try {
                 AiResponse response = primary.generate(request);
@@ -40,7 +40,7 @@ public class AiFallbackExecutor {
                     request.taskType(), primary == null ? "null" : primary.getType());
         }
 
-        // ── Fallback attempt ──────────────────────────────────────
+        // â”€â”€ Fallback attempt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (fallback == null || !fallback.isConfigured()) {
             logger.error("AI fallback not available. task={}", request.taskType());
             return Optional.empty();
@@ -63,6 +63,7 @@ public class AiFallbackExecutor {
         }
     }
 }
+
 
 
 

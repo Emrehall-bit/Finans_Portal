@@ -138,7 +138,7 @@ public class CompanyMockRatioSeedService {
 
         String healthLabel        = computeHealthLabel(debtToEquity, netMargin, roe);
         String revenueGrowthLabel = growthLabel(revenueGrowth);
-        String netProfGrowthLabel = isLoss ? "Zarara Geçti" : growthLabel(netProfGrowth);
+        String netProfGrowthLabel = isLoss ? "Zarara GeÃ§ti" : growthLabel(netProfGrowth);
         String assetGrowthLabel   = growthLabel(assetGrowth);
 
         return CompanyRatio.builder()
@@ -183,17 +183,18 @@ public class CompanyMockRatioSeedService {
     private String computeHealthLabel(BigDecimal debtToEquity, BigDecimal netMargin, BigDecimal roe) {
         BigDecimal debtThreshold   = new BigDecimal("2");
         BigDecimal marginThreshold = new BigDecimal("0.15");
-        if (debtToEquity.compareTo(debtThreshold) > 0) return "Borçluluk yüksek";
-        if (netMargin.compareTo(marginThreshold) > 0 && roe.compareTo(marginThreshold) > 0) return "Kârlılık güçlü";
-        if (netMargin.compareTo(BigDecimal.ZERO) < 0) return "Zarar açıklamış";
-        return "Nötr";
+        if (debtToEquity.compareTo(debtThreshold) > 0) return "BorÃ§luluk yÃ¼ksek";
+        if (netMargin.compareTo(marginThreshold) > 0 && roe.compareTo(marginThreshold) > 0) return "KÃ¢rlÄ±lÄ±k gÃ¼Ã§lÃ¼";
+        if (netMargin.compareTo(BigDecimal.ZERO) < 0) return "Zarar aÃ§Ä±klamÄ±ÅŸ";
+        return "NÃ¶tr";
     }
 
     private String growthLabel(BigDecimal growth) {
         double v = growth.doubleValue();
-        if (v >= 0.20) return "Güçlü büyüme";
-        if (v >= 0.05) return "Ilımlı büyüme";
-        if (v >= -0.05) return "Durağan";
-        return "Düşüş";
+        if (v >= 0.20) return "GÃ¼Ã§lÃ¼ bÃ¼yÃ¼me";
+        if (v >= 0.05) return "IlÄ±mlÄ± bÃ¼yÃ¼me";
+        if (v >= -0.05) return "DuraÄŸan";
+        return "DÃ¼ÅŸÃ¼ÅŸ";
     }
 }
+

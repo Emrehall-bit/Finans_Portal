@@ -15,3 +15,4 @@ public class ShareCountImportResponse {
     private List<ShareCountImportRowError> invalidRows;
     private List<String> recalculatedTickers;
 }
+

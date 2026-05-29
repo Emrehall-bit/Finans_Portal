@@ -67,7 +67,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/technical-analysis/indicators/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/technical-analysis/**").permitAll()
 
-                        // Analiz modülü
+                        // Analiz modÃ¼lÃ¼
                         .requestMatchers(HttpMethod.GET, "/api/v1/analysis/fundamental/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers("/api/v1/analysis/drawings/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers("/api/v1/premium/**").authenticated()
@@ -131,11 +131,11 @@ public class SecurityConfig {
             if (token == null) {
                 return null;
             }
-            // "null"/"undefined" gibi sahte token değerlerini ve geçersiz JWT formatlarını yoksay
+            // "null"/"undefined" gibi sahte token deÄŸerlerini ve geÃ§ersiz JWT formatlarÄ±nÄ± yoksay
             if ("null".equalsIgnoreCase(token) || "undefined".equalsIgnoreCase(token)) {
                 return null;
             }
-            // Geçerli bir JWT en az 2 nokta içermeli (header.payload.signature)
+            // GeÃ§erli bir JWT en az 2 nokta iÃ§ermeli (header.payload.signature)
             if (token.indexOf('.') == -1 || token.chars().filter(c -> c == '.').count() < 2) {
                 return null;
             }
@@ -143,4 +143,5 @@ public class SecurityConfig {
         };
     }
 }
+
 

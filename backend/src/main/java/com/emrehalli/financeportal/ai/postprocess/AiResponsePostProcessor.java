@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
  *   3. typo corrections
  *   4. disclaimer policy (remove for analytical tasks, deduplicate for chat)
  *   5. robotic phrase reduction
- *   6. duplicate sentence removal + "mevcut verilere göre" frequency cap
+ *   6. duplicate sentence removal + "mevcut verilere gÃ¶re" frequency cap
  *   7. sentence-boundary-aware truncation at 1 500 chars
  */
 @Component
@@ -49,6 +49,7 @@ public class AiResponsePostProcessor {
         };
     }
 }
+
 
 
 

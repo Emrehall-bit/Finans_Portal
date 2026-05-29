@@ -13,3 +13,4 @@ public class MockRatioSeedResponse {
     private int skippedExistingRatios;
     private List<String> errors;
 }
+

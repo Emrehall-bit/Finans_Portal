@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * Structured context sent from the frontend to describe the user's current screen.
- * All fields are optional — a null AiContext degrades gracefully to a context-free chat.
+ * All fields are optional â€” a null AiContext degrades gracefully to a context-free chat.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -15,6 +15,7 @@ public record AiContext(
         String instrumentType,
         String screenName
 ) {}
+
 
 
 

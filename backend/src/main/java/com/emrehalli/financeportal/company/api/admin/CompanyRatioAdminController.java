@@ -23,7 +23,7 @@ public class CompanyRatioAdminController {
         return ApiResponse.<CompanyRatioCalculationResponse>builder()
                 .success(true)
                 .data(result)
-                .message(result.isCalculated() ? "Oran hesaplandı." : result.getFailedReason())
+                .message(result.isCalculated() ? "Oran hesaplandÄ±." : result.getFailedReason())
                 .build();
     }
 
@@ -34,7 +34,7 @@ public class CompanyRatioAdminController {
         return ApiResponse.<List<CompanyRatioCalculationResponse>>builder()
                 .success(true)
                 .data(results)
-                .message(String.format("%d şirket işlendi. Başarılı: %d", results.size(), successCount))
+                .message(String.format("%d ÅŸirket iÅŸlendi. BaÅŸarÄ±lÄ±: %d", results.size(), successCount))
                 .build();
     }
 
@@ -44,10 +44,11 @@ public class CompanyRatioAdminController {
         return ApiResponse.<CompanyRatioCalculationResponse>builder()
                 .success(true)
                 .data(result)
-                .message(result.isCalculated() ? "Oran yeniden hesaplandı." : result.getFailedReason())
+                .message(result.isCalculated() ? "Oran yeniden hesaplandÄ±." : result.getFailedReason())
                 .build();
     }
 }
+
 
 
 

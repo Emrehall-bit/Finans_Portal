@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Nightly pipeline that keeps commodity price history up to date.
  *
- * <p>Runs at 01:15 UTC — well after NYSE/CME close, so yesterday's gold/silver bars
+ * <p>Runs at 01:15 UTC â€” well after NYSE/CME close, so yesterday's gold/silver bars
  * are final on Yahoo Finance. Two sequential steps:</p>
  * <ol>
  *   <li>Catch up GOLD_USD / SILVER_USD INTERNAL history from Yahoo Finance (GC=F, SI=F)</li>
@@ -25,7 +25,7 @@ import java.util.Map;
  * <p>Step 2 is independent: if step 1 fails, step 2 still runs and may derive the days
  * already covered by source history. Both steps are duplicate-safe.</p>
  *
- * <p>Initial 10-year seed: use the admin backfill endpoints —
+ * <p>Initial 10-year seed: use the admin backfill endpoints â€”
  * POST /api/v1/admin/markets/internal-commodities/history/backfill?days=3650, then
  * POST /api/v1/admin/markets/commodities/history/backfill?days=3650.</p>
  */
@@ -63,6 +63,7 @@ public class CommodityHistoryScheduler {
         log.info("CommodityHistoryScheduler: nightly pipeline finished. sourceSaved={}", sourceSaved);
     }
 }
+
 
 
 

@@ -13,7 +13,7 @@ public class ComparisonAnalysisPromptBuilder implements AiPromptBuilder {
         ComparisonAnalysisContext.InstrumentSnapshot right = context.right();
 
         StringJoiner prompt = new StringJoiner("\n");
-        prompt.add("Sen finansal veri uydurmayan premium bir karsilastirma asistansın.");
+        prompt.add("Sen finansal veri uydurmayan premium bir karsilastirma asistansÄ±n.");
         prompt.add("Sadece verilen deterministic verilere dayan.");
         prompt.add("Veri olmayan alanlarda acikca veri sinirli de.");
         prompt.add("Yatirim tavsiyesi verme.");
@@ -81,6 +81,7 @@ public class ComparisonAnalysisPromptBuilder implements AiPromptBuilder {
         return values == null || values.isEmpty() ? "-" : String.join(" | ", values);
     }
 }
+
 
 
 

@@ -9,3 +9,4 @@ public interface AdminAuditLogRepository extends JpaRepository<AdminAuditLog, Lo
 
 
 
+

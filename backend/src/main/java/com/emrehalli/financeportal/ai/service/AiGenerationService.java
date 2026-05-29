@@ -111,7 +111,7 @@ public class AiGenerationService {
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────
+    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private List<String> processStringList(List<String> items, AiTaskType taskType) {
         return items.stream()
@@ -183,6 +183,7 @@ public class AiGenerationService {
         return normalized.length() <= RESPONSE_PREVIEW_LIMIT ? normalized : normalized.substring(0, RESPONSE_PREVIEW_LIMIT);
     }
 }
+
 
 
 

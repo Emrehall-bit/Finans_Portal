@@ -6,3 +6,4 @@ public record MacroSyncResult(List<String> indicatorCodes, int fetched, int save
 
 
 
+

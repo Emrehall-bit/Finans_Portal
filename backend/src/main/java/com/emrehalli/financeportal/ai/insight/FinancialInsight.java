@@ -14,3 +14,4 @@ public record FinancialInsight(String text, Category category) {
 
 
 
+

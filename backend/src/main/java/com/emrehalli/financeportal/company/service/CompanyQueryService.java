@@ -90,7 +90,7 @@ public class CompanyQueryService {
 
     private CompanyProfile requireCompany(String ticker) {
         return profileRepository.findByTickerCodeIgnoreCase(ticker)
-                .orElseThrow(() -> new ResourceNotFoundException("Şirket bulunamadı: " + ticker));
+                .orElseThrow(() -> new ResourceNotFoundException("Åirket bulunamadÄ±: " + ticker));
     }
 
     private CompanyProfileResponse toProfileResponse(CompanyProfile c) {
@@ -199,7 +199,7 @@ public class CompanyQueryService {
                 .market(company.getMarket());
 
         if (ratio == null) {
-            return builder.message("Temel analiz verisi henüz hesaplanmadı.").build();
+            return builder.message("Temel analiz verisi henÃ¼z hesaplanmadÄ±.").build();
         }
 
         CompanyFinancialReport report = ratio.getReport();
@@ -249,6 +249,7 @@ public class CompanyQueryService {
         };
     }
 }
+
 
 
 
