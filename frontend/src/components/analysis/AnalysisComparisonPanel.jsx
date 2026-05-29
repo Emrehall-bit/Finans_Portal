@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CartesianGrid,
@@ -9,7 +10,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { useTheme } from "../../theme/ThemeContext";
@@ -21,7 +21,7 @@ export default function AnalysisComparisonPanel({ loading, error, comparison, mo
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
   const series = comparison?.series ?? [];
-  const chartData = buildComparisonData(series, mode);
+  const chartData = useMemo(() => buildComparisonData(series, mode), [series, mode]);
 
   return (
     <section className="panel-surface analysis-lab-panel">
@@ -54,13 +54,11 @@ export default function AnalysisComparisonPanel({ loading, error, comparison, mo
 
       {loading ? <LoadingSpinner label={t("analysis.comparison.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
-      {!loading && !error && series.length < 2 ? (
-        <EmptyState title={t("analysis.comparison.emptyTitle")} description={t("analysis.comparison.emptyDescription")} />
-      ) : null}
+      {!loading && !error && series.length < 2 ? <ComparisonEmptyState /> : null}
 
       {!loading && !error && series.length >= 2 ? (
         <div className="analysis-chart-shell terminal-chart-shell market-detail-chart">
-          <ResponsiveContainer width="100%" height={380}>
+          <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData} margin={{ top: 18, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
               <XAxis dataKey="date" stroke={chartTheme.axis} tickLine={false} axisLine={false} />
@@ -112,4 +110,20 @@ function ComparisonTooltip({ active, payload, label, chartTheme }) {
 
 function formatComparisonValue(value) {
   return formatAxisNumber(value);
+}
+
+function ComparisonEmptyState() {
+  const { t } = useTranslation();
+  const suggestions = ["BTC", "ETH", "XAUUSD", "THYAO"];
+
+  return (
+    <div className="comparison-empty-compact">
+      <p>{t("analysis.comparisonEmpty.description")}</p>
+      <div className="analysis-comparison-suggestion-row">
+        {suggestions.map((symbol) => (
+          <span key={symbol} className="analysis-comparison-suggestion-chip">{symbol}</span>
+        ))}
+      </div>
+    </div>
+  );
 }

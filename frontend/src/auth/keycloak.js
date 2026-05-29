@@ -208,6 +208,10 @@ export async function getValidAccessToken() {
     return null;
   }
 
+  if (!keycloak.isTokenExpired(30)) {
+    return keycloak.token;
+  }
+
   try {
     await keycloak.updateToken(30);
     return keycloak.token ?? null;

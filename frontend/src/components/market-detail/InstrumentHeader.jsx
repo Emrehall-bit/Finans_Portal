@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../utils/formatters";
 import { formatMarketChange } from "./marketDetailUtils";
+import { CurrencyToggle } from "../../currency/CurrencyContext";
 
 export default function InstrumentHeader({
   symbol,
@@ -23,50 +24,45 @@ export default function InstrumentHeader({
 
   return (
     <section className="panel-surface instrument-detail-hero">
-      <div className="instrument-detail-hero-main">
-        <Link to="/markets" className="secondary-button market-detail-back">
-          {t("instrumentDetail.back")}
-        </Link>
-        <div className="instrument-detail-heading">
-          <div>
-            <p className="eyebrow">{t("instrumentDetail.eyebrow")}</p>
-            <h1>{symbol || "-"}</h1>
-            <p className="instrument-detail-subtitle">{displayName || t("instrumentDetail.loadingSubtitle")}</p>
-          </div>
-          <div className="instrument-detail-price-block">
-            <strong>{formatNumber(price)}</strong>
-            <span className={isPositive ? "terminal-pill positive" : "terminal-pill negative"}>
-              {formatMarketChange(changeRate)}
-            </span>
-          </div>
-        </div>
-      </div>
+      <Link to="/markets" className="idh-back">
+        ← {t("instrumentDetail.back")}
+      </Link>
 
-      <div className="instrument-detail-hero-side">
-        <div className="instrument-detail-action-row">
-          <button type="button" className="secondary-button" onClick={onFavoriteToggle} disabled={favoriteBusy}>
-            {favoriteBusy ? t("instrumentDetail.processing") : isFavorite ? t("instrumentDetail.removeFavorite") : t("instrumentDetail.addFavorite")}
-          </button>
-          <button type="button" className="secondary-button" onClick={onOpenAlert}>
-            {t("instrumentDetail.createAlert")}
-          </button>
-          <button type="button" onClick={onOpenPortfolio}>
-            {t("instrumentDetail.addToPortfolio")}
-          </button>
+      <div className="idh-body">
+        <div className="idh-identity">
+          <p className="idh-eyebrow">{t("instrumentDetail.eyebrow")}</p>
+          <div className="idh-headline">
+            <h1 className="idh-symbol">{symbol || "-"}</h1>
+            {changeRate != null ? (
+              <span className={`idh-change-badge ${isPositive ? "positive" : "negative"}`}>
+                {isPositive ? "+" : ""}{formatMarketChange(changeRate)}
+              </span>
+            ) : null}
+          </div>
+          <p className="idh-displayname">{displayName || t("instrumentDetail.loadingSubtitle")}</p>
         </div>
 
-        <div className="instrument-detail-hero-meta">
-          <div className="terminal-price-card">
-            <span>{t("instrumentDetail.source")}</span>
-            <strong>{source || "-"}</strong>
+        <div className="idh-price-area">
+          <strong className="idh-price">{price != null ? formatNumber(price) : "—"}</strong>
+          <div className="idh-meta-tags">
+            {source ? <span className="idh-tag">{source}</span> : null}
+            {instrumentType ? <span className="idh-tag">{instrumentType}</span> : null}
+            {currency ? <span className="idh-tag">{currency}</span> : null}
           </div>
-          <div className="terminal-price-card">
-            <span>{t("instrumentDetail.type")}</span>
-            <strong>{instrumentType || "-"}</strong>
-          </div>
-          <div className="terminal-price-card">
-            <span>{t("instrumentDetail.currency")}</span>
-            <strong>{currency || "-"}</strong>
+        </div>
+
+        <div className="idh-controls">
+          <CurrencyToggle />
+          <div className="idh-actions">
+            <button type="button" className="secondary-button" onClick={onFavoriteToggle} disabled={favoriteBusy}>
+              {favoriteBusy ? t("instrumentDetail.processing") : isFavorite ? t("instrumentDetail.removeFavorite") : t("instrumentDetail.addFavorite")}
+            </button>
+            <button type="button" className="secondary-button" onClick={onOpenAlert}>
+              {t("instrumentDetail.createAlert")}
+            </button>
+            <button type="button" onClick={onOpenPortfolio}>
+              {t("instrumentDetail.addToPortfolio")}
+            </button>
           </div>
         </div>
       </div>

@@ -256,4 +256,58 @@ class TechnicalCandleServiceTest {
         assertThat(candles.get(0).close()).isEqualByComparingTo("106");
         assertThat(candles.get(1).timestamp()).isEqualTo(Instant.parse("2026-05-02T00:00:00Z").getEpochSecond());
     }
+
+    @Test
+    void getCandles_should_return_null_sma_values_during_warmup_period() {
+        MarketInstrumentRepository instrumentRepository = mock(MarketInstrumentRepository.class);
+        MarketPriceHistoryRepository historyRepository = mock(MarketPriceHistoryRepository.class);
+        BinancePairMapper binancePairMapper = mock(BinancePairMapper.class);
+
+        MarketInstrument instrument = MarketInstrument.builder()
+                .instrumentCode("BTC")
+                .instrumentType(InstrumentType.CRYPTO)
+                .sourceName(SourceName.BINANCE)
+                .build();
+
+        when(binancePairMapper.toDisplayCode("BTC")).thenReturn("BTC");
+        when(instrumentRepository.findAllByInstrumentCodeInAndSourceName(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(SourceName.BINANCE)))
+                .thenReturn(List.of(instrument));
+
+        List<MarketPriceHistory> history = java.util.stream.IntStream.range(0, 8)
+                .mapToObj(index -> MarketPriceHistory.builder()
+                        .instrument(instrument)
+                        .intervalType(IntervalType.ONE_DAY)
+                        .sourceName(SourceName.BINANCE)
+                        .priceTimestamp(Instant.parse("2026-05-01T00:00:00Z").plusSeconds(index * 86_400L))
+                        .openPrice(BigDecimal.valueOf(100 + index))
+                        .highPrice(BigDecimal.valueOf(110 + index))
+                        .lowPrice(BigDecimal.valueOf(95 + index))
+                        .closePrice(BigDecimal.valueOf(105 + index))
+                        .volume(BigDecimal.valueOf(1000 + index))
+                        .build())
+                .toList();
+
+        when(historyRepository.findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+                org.mockito.ArgumentMatchers.eq(instrument),
+                org.mockito.ArgumentMatchers.eq(IntervalType.ONE_DAY),
+                org.mockito.ArgumentMatchers.eq(SourceName.BINANCE),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(history);
+
+        TechnicalCandleService service = new TechnicalCandleService(
+                instrumentRepository,
+                historyRepository,
+                new MovingAverageService(),
+                new RsiService(),
+                binancePairMapper
+        );
+
+        List<TechnicalCandleDto> candles = service.getCandles("BTC", "1m", "1d");
+
+        assertThat(candles).hasSize(8);
+        assertThat(candles.subList(0, 6)).allMatch(candle -> candle.sma7() == null);
+        assertThat(candles.get(6).sma7()).isEqualByComparingTo("108.00000000");
+        assertThat(candles.subList(0, 8)).allMatch(candle -> candle.sma20() == null && candle.sma50() == null);
+    }
 }

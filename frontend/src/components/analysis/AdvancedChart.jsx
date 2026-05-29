@@ -1,50 +1,77 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createChart, CandlestickSeries, LineSeries } from "lightweight-charts";
-import { Check, CircleAlert, Minus, MousePointer2, Target, TrendingUp, X } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
+import { CandlestickSeries, createChart, HistogramSeries, LineSeries } from "lightweight-charts";
+import {
+  Activity,
+  Check,
+  ChevronDown,
+  CircleAlert,
+  Lock,
+  Minus,
+  MousePointer2,
+  Pen,
+  Signal,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Waves,
+  X,
+} from "lucide-react";
 import { createAlert } from "../../api/alertApi";
 import { getAdvancedTechnical, getTechnicalCandles } from "../../api/analysisApi";
+import { getAiTechnicalAnalysis } from "../../api/aiApi";
 import { extractErrorMessage } from "../../api/responseUtils";
 import { useAuth } from "../../auth/AuthContext";
 import useToast from "../../hooks/useToast";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatNumber } from "../../utils/formatters";
 
-const RANGE_OPTIONS = [
-  { label: "1A", value: "1m" },
-  { label: "3A", value: "3m" },
-  { label: "6A", value: "6m" },
-  { label: "1Y", value: "1y" },
-  { label: "MAX", value: "max" },
+const RANGE_VALUES = ["1m", "3m", "6m", "1y", "max"];
+
+const DRAW_TOOL_DEFS = [
+  { key: "cursor", icon: MousePointer2 },
+  { key: "horizontal", icon: Minus },
+  { key: "trend", icon: TrendingUp },
+  { key: "stopLoss", icon: CircleAlert },
+  { key: "takeProfit", icon: Target },
 ];
 
-const INDICATOR_COLORS = {
-  sma7: "#0f766e",
-  sma20: "#2563eb",
-  sma50: "#f59e0b",
-};
-
-const INDICATOR_BUTTONS = [
-  { key: "sma7", label: "MA 7", color: "#0f766e" },
-  { key: "sma20", label: "MA 20", color: "#2563eb" },
-  { key: "sma50", label: "MA 50", color: "#f59e0b" },
-];
-
-const DRAW_TOOLS = [
-  { key: "cursor", icon: MousePointer2, label: "Imlec" },
-  { key: "horizontal", icon: Minus, label: "Yatay Cizgi" },
-  { key: "trend", icon: TrendingUp, label: "Trend Cizgisi" },
-  { key: "stopLoss", icon: CircleAlert, label: "Stop-Loss" },
-  { key: "takeProfit", icon: Target, label: "Take-Profit" },
+const INDICATOR_REGISTRY = [
+  { key: "sma7", label: "MA 7", pane: "price", color: "#0f766e", children: ["sma7"] },
+  { key: "sma20", label: "MA 20", pane: "price", color: "#2563eb", children: ["sma20"] },
+  { key: "sma50", label: "MA 50", pane: "price", color: "#f59e0b", children: ["sma50"] },
+  { key: "ema20", label: "EMA 20", pane: "price", color: "#8b5cf6", children: ["ema20"] },
+  {
+    key: "bollinger",
+    label: "Bollinger",
+    pane: "price",
+    color: "#94a3b8",
+    children: ["bollingerUpper", "bollingerMiddle", "bollingerLower"],
+  },
+  { key: "volumeMa20", label: "Vol MA", pane: "volume", color: "#64748b", children: ["volumeMa20"] },
 ];
 
 const DEFAULT_RANGE = "6m";
 const DEFAULT_INDICATORS = "SMA7,SMA20,SMA50,RSI14";
-const CRYPTO_CANDLE_ERROR_MESSAGE = "Yeterli mum verisi bulunamadi.";
-const DEFAULT_BAR_SPACING = 12;
+const DEFAULT_BAR_SPACING = 11;
 const MIN_BAR_SPACING = 8;
-const DEFAULT_RIGHT_OFFSET = 3;
+const DEFAULT_RIGHT_OFFSET = 2;
 const MAX_VISIBLE_CANDLE_BARS = 180;
 const MAX_VISIBLE_LINE_BARS = 260;
+const PRICE_CHART_HEIGHT = 680;
+const VOLUME_CHART_HEIGHT = 48;
+const RSI_CHART_HEIGHT = 112;
+const TOOLTIP_WIDTH = 230;
+const TOOLTIP_HEIGHT = 196;
+const TOOLTIP_OFFSET = 18;
+const TOOLTIP_VIEWPORT_MARGIN = 12;
+const DEFAULT_DRAWINGS = {
+  stopLoss: null,
+  takeProfit: null,
+  horizontalLines: [],
+  trendLines: [],
+};
 
 export default function AdvancedChart({
   instrumentCode,
@@ -53,42 +80,70 @@ export default function AdvancedChart({
   presetPrice = null,
   quote = null,
 }) {
+  const { t } = useTranslation();
   const { chartTheme } = useTheme();
-  const { userId, login } = useAuth();
+  const { userId, login, isAuthenticated, isPremium } = useAuth();
   const { toast, showToast } = useToast();
 
-  const containerRef = useRef(null);
-  const chartRef = useRef(null);
+  const rangeOptions = useMemo(
+    () => RANGE_VALUES.map((value) => ({ value, label: t(`analysis.chart.range.${value}`) })),
+    [t],
+  );
+  const drawTools = useMemo(
+    () => DRAW_TOOL_DEFS.map((def) => ({ ...def, label: t(`analysis.chart.tools.${def.key}`) })),
+    [t],
+  );
+
+  const priceContainerRef = useRef(null);
+  const volumeContainerRef = useRef(null);
+  const rsiContainerRef = useRef(null);
+  const priceChartRef = useRef(null);
+  const volumeChartRef = useRef(null);
+  const rsiChartRef = useRef(null);
   const priceSeriesRef = useRef(null);
-  const primarySeriesModeRef = useRef(null);
-  const indicatorRefs = useRef({});
-  const indicatorDataRef = useRef({});
+  const volumeSeriesRef = useRef(null);
+  const rsiSeriesRef = useRef(null);
+  const overlaySeriesRefs = useRef({});
   const activeToolRef = useRef("cursor");
-  const drawingsRef = useRef({ stopLoss: null, takeProfit: null, horizontalLines: [], trendLines: [] });
+  const drawingsRef = useRef(DEFAULT_DRAWINGS);
   const trendStartRef = useRef(null);
   const prevInstrumentRef = useRef(null);
   const pendingAutoFitRef = useRef(true);
   const dataPointCountRef = useRef(0);
+  const syncLockRef = useRef(false);
   const rangeAdjustLockRef = useRef(false);
+  const selectedDrawingKeyRef = useRef(null);
+  const hoveredDrawingKeyRef = useRef(null);
+  const draggingRef = useRef(null);
+  const latestDatasetRef = useRef(null);
+  const toolsDropdownRef = useRef(null);
+  const indicatorsRef = useRef(null);
 
   const [range, setRange] = useState(() => mapLegacyTimeframeToRange(initialTimeframe));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [reloadToken, setReloadToken] = useState(0);
-  const [activeIndicators, setActiveIndicators] = useState(() => new Set(["sma20", "sma50"]));
+  const [activeIndicators, setActiveIndicators] = useState(() => new Set(["sma20", "sma50", "volumeMa20"]));
   const [activeTool, setActiveTool] = useState(() => mapInitialTool(initialHighlightTool));
-  const [drawings, setDrawings] = useState({
-    stopLoss: null,
-    takeProfit: null,
-    horizontalLines: [],
-    trendLines: [],
-  });
+  const [drawings, setDrawings] = useState(DEFAULT_DRAWINGS);
   const [trendStart, setTrendStart] = useState(null);
   const [creatingAlertKey, setCreatingAlertKey] = useState(null);
+  const [tooltipModel, setTooltipModel] = useState(null);
+  const [technicalSnapshot, setTechnicalSnapshot] = useState(null);
+  const [selectedDrawingKey, setSelectedDrawingKey] = useState(null);
+  const [hoveredDrawingKey, setHoveredDrawingKey] = useState(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [indicatorsOpen, setIndicatorsOpen] = useState(false);
+  const [techTab, setTechTab] = useState("rules");
+  const [aiData, setAiData] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
 
   activeToolRef.current = activeTool;
   drawingsRef.current = drawings;
   trendStartRef.current = trendStart;
+  selectedDrawingKeyRef.current = selectedDrawingKey;
+  hoveredDrawingKeyRef.current = hoveredDrawingKey;
 
   const isCrypto = String(quote?.instrumentType || "").toUpperCase() === "CRYPTO";
   const changeRate = quote?.changeRate;
@@ -99,13 +154,17 @@ export default function AdvancedChart({
     drawings.horizontalLines.length ||
     drawings.trendLines.length,
   );
-
   const rangeDates = useMemo(() => buildDateRange(range), [range]);
+  const volumeVisible = Boolean(technicalSnapshot?.volumeVisible);
+
+  const clearTrendSelection = useCallback(() => {
+    setTrendStart(null);
+  }, []);
 
   const clearAllDrawings = useCallback(() => {
     const current = drawingsRef.current;
     const priceSeries = priceSeriesRef.current;
-    const chart = chartRef.current;
+    const priceChart = priceChartRef.current;
 
     if (priceSeries) {
       if (current.stopLoss?.priceLine) {
@@ -119,429 +178,441 @@ export default function AdvancedChart({
       });
     }
 
-    if (chart) {
+    if (priceChart) {
       current.trendLines.forEach((line) => {
-        try { chart.removeSeries(line.series); } catch { /* noop */ }
+        try { priceChart.removeSeries(line.series); } catch { /* noop */ }
       });
     }
 
-    setDrawings({ stopLoss: null, takeProfit: null, horizontalLines: [], trendLines: [] });
-    setTrendStart(null);
+    setDrawings({
+      stopLoss: null,
+      takeProfit: null,
+      horizontalLines: [],
+      trendLines: [],
+    });
+    setSelectedDrawingKey(null);
+    setHoveredDrawingKey(null);
+    clearTrendSelection();
+  }, [clearTrendSelection]);
+
+  const clearOverlaySeries = useCallback(() => {
+    Object.entries(overlaySeriesRefs.current).forEach(([key, entry]) => {
+      try {
+        entry.chart.removeSeries(entry.series);
+      } catch {
+        /* noop */
+      }
+      delete overlaySeriesRefs.current[key];
+    });
   }, []);
 
-  const ensurePrimarySeries = useCallback((mode) => {
-    const chart = chartRef.current;
-    if (!chart) {
+  const getMaxVisibleBars = useCallback(() => {
+    const dataset = latestDatasetRef.current;
+    if (!dataset) {
+      return MAX_VISIBLE_CANDLE_BARS;
+    }
+    return dataset.mode === "candlestick"
+      ? Math.min(dataset.priceData.length || MAX_VISIBLE_CANDLE_BARS, MAX_VISIBLE_CANDLE_BARS)
+      : Math.min(dataset.priceData.length || MAX_VISIBLE_LINE_BARS, MAX_VISIBLE_LINE_BARS);
+  }, []);
+
+  const syncVisibleRangeAcrossCharts = useCallback((sourceChart, logicalRange) => {
+    if (!logicalRange || syncLockRef.current) {
+      return;
+    }
+    syncLockRef.current = true;
+    [priceChartRef.current, volumeChartRef.current, rsiChartRef.current]
+      .filter(Boolean)
+      .filter((chart) => chart !== sourceChart)
+      .forEach((chart) => {
+        chart.timeScale().setVisibleLogicalRange(logicalRange);
+      });
+    requestAnimationFrame(() => {
+      syncLockRef.current = false;
+    });
+  }, []);
+
+  const clampVisibleRange = useCallback((chart, logicalRange) => {
+    if (!logicalRange || rangeAdjustLockRef.current) {
+      return;
+    }
+    const maxVisibleBars = getMaxVisibleBars();
+    if (!maxVisibleBars) {
+      return;
+    }
+    const visibleBars = logicalRange.to - logicalRange.from;
+    if (visibleBars <= maxVisibleBars) {
+      return;
+    }
+    const center = (logicalRange.from + logicalRange.to) / 2;
+    rangeAdjustLockRef.current = true;
+    chart.timeScale().setVisibleLogicalRange({
+      from: center - (maxVisibleBars / 2),
+      to: center + (maxVisibleBars / 2),
+    });
+    requestAnimationFrame(() => {
+      rangeAdjustLockRef.current = false;
+    });
+  }, [getMaxVisibleBars]);
+
+  const updateTooltip = useCallback((param) => {
+    const dataset = latestDatasetRef.current;
+    if (!dataset || !param?.point || !param?.time || !priceContainerRef.current) {
+      setTooltipModel(null);
+      return;
+    }
+
+    const pointX = param.point.x;
+    const pointY = param.point.y;
+    if (
+      pointX < 0 ||
+      pointY < 0 ||
+      pointX > priceContainerRef.current.clientWidth ||
+      pointY > PRICE_CHART_HEIGHT
+    ) {
+      setTooltipModel(null);
+      return;
+    }
+
+    const time = normalizeChartTime(param.time);
+    const row = dataset.infoByTime.get(time);
+    if (!row) {
+      setTooltipModel(null);
+      return;
+    }
+
+    const rect = priceContainerRef.current.getBoundingClientRect();
+    let left = rect.left + pointX + TOOLTIP_OFFSET;
+    let top = rect.top + pointY - TOOLTIP_OFFSET;
+
+    if (left + TOOLTIP_WIDTH > window.innerWidth - TOOLTIP_VIEWPORT_MARGIN) {
+      left = rect.left + pointX - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
+    }
+    if (left < TOOLTIP_VIEWPORT_MARGIN) {
+      left = TOOLTIP_VIEWPORT_MARGIN;
+    }
+
+    if (top + TOOLTIP_HEIGHT > window.innerHeight - TOOLTIP_VIEWPORT_MARGIN) {
+      top = window.innerHeight - TOOLTIP_HEIGHT - TOOLTIP_VIEWPORT_MARGIN;
+    }
+    if (top < TOOLTIP_VIEWPORT_MARGIN) {
+      top = TOOLTIP_VIEWPORT_MARGIN;
+    }
+
+    setTooltipModel({
+      left,
+      top,
+      dateLabel: formatTooltipDate(time),
+      row,
+    });
+  }, []);
+
+  const ensureCoreSeries = useCallback((mode) => {
+    const priceChart = priceChartRef.current;
+    const volumeChart = volumeChartRef.current;
+    const rsiChart = rsiChartRef.current;
+
+    if (!priceChart || !volumeChart || !rsiChart) {
       return null;
     }
 
-    if (priceSeriesRef.current && primarySeriesModeRef.current === mode) {
-      return priceSeriesRef.current;
+    if (!priceSeriesRef.current || priceSeriesRef.current.__mode !== mode) {
+      clearAllDrawings();
+      clearOverlaySeries();
+      if (priceSeriesRef.current) {
+        try { priceChart.removeSeries(priceSeriesRef.current); } catch { /* noop */ }
+      }
+
+      priceSeriesRef.current = mode === "candlestick"
+        ? priceChart.addSeries(CandlestickSeries, {
+            upColor: "#22c55e",
+            borderUpColor: "#22c55e",
+            wickUpColor: "#22c55e",
+            downColor: "#ef4444",
+            borderDownColor: "#ef4444",
+            wickDownColor: "#ef4444",
+            priceLineVisible: false,
+            lastValueVisible: true,
+          })
+        : priceChart.addSeries(LineSeries, {
+            color: "#4c7fff",
+            lineWidth: 2,
+            priceLineVisible: false,
+            lastValueVisible: true,
+          });
+      priceSeriesRef.current.__mode = mode;
     }
 
-    clearAllDrawings();
-
-    if (priceSeriesRef.current) {
-      try { chart.removeSeries(priceSeriesRef.current); } catch { /* noop */ }
+    if (!volumeSeriesRef.current) {
+      volumeSeriesRef.current = volumeChart.addSeries(HistogramSeries, {
+        priceLineVisible: false,
+        lastValueVisible: false,
+        priceFormat: { type: "volume" },
+      });
     }
 
-    const series = mode === "candlestick"
-      ? chart.addSeries(CandlestickSeries, {
-          upColor: "#22c55e",
-          borderUpColor: "#22c55e",
-          wickUpColor: "#22c55e",
-          downColor: "#ef4444",
-          borderDownColor: "#ef4444",
-          wickDownColor: "#ef4444",
-          priceLineVisible: false,
-          lastValueVisible: true,
-        })
-      : chart.addSeries(LineSeries, {
-          color: "#4c7fff",
-          lineWidth: 2,
-          priceLineVisible: false,
-          lastValueVisible: true,
-        });
+    if (!rsiSeriesRef.current) {
+      rsiSeriesRef.current = rsiChart.addSeries(LineSeries, {
+        color: "#a855f7",
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        autoscaleInfoProvider: () => ({
+          priceRange: {
+            minValue: 0,
+            maxValue: 100,
+          },
+        }),
+      });
+      rsiSeriesRef.current.createPriceLine({
+        price: 70,
+        color: "rgba(239, 68, 68, 0.55)",
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "70",
+      });
+      rsiSeriesRef.current.createPriceLine({
+        price: 30,
+        color: "rgba(34, 197, 94, 0.55)",
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "30",
+      });
+    }
 
-    priceSeriesRef.current = series;
-    primarySeriesModeRef.current = mode;
-    return series;
-  }, [clearAllDrawings]);
+    return {
+      priceSeries: priceSeriesRef.current,
+      volumeSeries: volumeSeriesRef.current,
+      rsiSeries: rsiSeriesRef.current,
+    };
+  }, [clearAllDrawings, clearOverlaySeries]);
 
-  const syncIndicatorSeries = useCallback((indicatorData) => {
-    const chart = chartRef.current;
-    if (!chart) {
+  const applyThemeOptions = useCallback(() => {
+    const softenedGrid = withAlpha(chartTheme.grid, 0.52);
+    const commonTimeScale = {
+      borderColor: withAlpha(chartTheme.grid, 0.72),
+      rightOffset: DEFAULT_RIGHT_OFFSET,
+      barSpacing: DEFAULT_BAR_SPACING,
+      minBarSpacing: MIN_BAR_SPACING,
+      fixLeftEdge: true,
+      lockVisibleTimeRangeOnResize: true,
+    };
+
+    [
+      [priceChartRef.current, { height: PRICE_CHART_HEIGHT, rightPriceScale: { borderColor: withAlpha(chartTheme.grid, 0.72), autoScale: true } }],
+      [volumeChartRef.current, { height: VOLUME_CHART_HEIGHT, rightPriceScale: { visible: false }, leftPriceScale: { visible: false } }],
+      [rsiChartRef.current, {
+        height: RSI_CHART_HEIGHT,
+        rightPriceScale: {
+          borderColor: withAlpha(chartTheme.grid, 0.72),
+          autoScale: true,
+          scaleMargins: { top: 0.08, bottom: 0.08 },
+        },
+      }],
+    ].forEach(([chart, extraOptions]) => {
+      if (!chart) {
+        return;
+      }
+      chart.applyOptions({
+        layout: {
+          background: { color: "transparent" },
+          textColor: chartTheme.axis,
+        },
+        grid: {
+          vertLines: { color: softenedGrid },
+          horzLines: { color: softenedGrid },
+        },
+        crosshair: {
+          mode: 1,
+          vertLine: { color: withAlpha(chartTheme.axis, 0.28), labelBackgroundColor: withAlpha(chartTheme.axis, 0.12) },
+          horzLine: { color: withAlpha(chartTheme.axis, 0.2), labelBackgroundColor: withAlpha(chartTheme.axis, 0.12) },
+        },
+        timeScale: commonTimeScale,
+        ...extraOptions,
+      });
+    });
+
+    if (rsiChartRef.current) {
+      rsiChartRef.current.priceScale("right").applyOptions({
+        autoScale: true,
+      });
+    }
+  }, [chartTheme]);
+
+  const syncIndicatorSeries = useCallback((dataset) => {
+    if (!dataset) {
       return;
     }
 
-    Object.entries(indicatorRefs.current).forEach(([key, series]) => {
-      if (!activeIndicators.has(key) || !indicatorData[key]?.length) {
-        try { chart.removeSeries(series); } catch { /* noop */ }
-        delete indicatorRefs.current[key];
-      }
-    });
+    INDICATOR_REGISTRY.forEach((indicator) => {
+      const enabled = activeIndicators.has(indicator.key);
+      indicator.children.forEach((seriesKey) => {
+        const data = dataset.overlayData[seriesKey] ?? [];
+        const existing = overlaySeriesRefs.current[seriesKey];
+        if (!enabled || !data.length) {
+          if (existing) {
+            try { existing.chart.removeSeries(existing.series); } catch { /* noop */ }
+            delete overlaySeriesRefs.current[seriesKey];
+          }
+          return;
+        }
 
-    Object.entries(indicatorData).forEach(([key, data]) => {
-      if (!activeIndicators.has(key) || !data.length) {
-        return;
-      }
+        const targetChart = indicator.pane === "volume" ? volumeChartRef.current : priceChartRef.current;
+        if (!targetChart) {
+          return;
+        }
 
-      if (!indicatorRefs.current[key]) {
-        indicatorRefs.current[key] = chart.addSeries(LineSeries, {
-          color: INDICATOR_COLORS[key] ?? "#94a3b8",
-          lineWidth: 2,
-          priceLineVisible: false,
-          lastValueVisible: false,
-        });
-      }
+        if (!existing) {
+          overlaySeriesRefs.current[seriesKey] = {
+            chart: targetChart,
+            series: targetChart.addSeries(LineSeries, {
+              color: seriesColor(seriesKey),
+              lineWidth: indicator.pane === "volume" ? 1.5 : 2,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            }),
+          };
+        }
 
-      indicatorRefs.current[key].setData(data);
+        overlaySeriesRefs.current[seriesKey].series.setData(data);
+      });
     });
   }, [activeIndicators]);
 
-  const applyPresetLine = useCallback(() => {
-    const tool = mapInitialTool(initialHighlightTool);
-    if (!tool || !Number.isFinite(presetPrice) || presetPrice <= 0 || !priceSeriesRef.current) {
-      return;
-    }
+  const syncIndicatorSeriesRef = useRef(null);
+  syncIndicatorSeriesRef.current = syncIndicatorSeries;
 
-    if (tool === "stopLoss" && !drawingsRef.current.stopLoss) {
-      addPriceLine(tool, presetPrice);
-    }
+  const updateDrawingSelection = useCallback((nextKey, nextHoverKey = null) => {
+    setSelectedDrawingKey(nextKey);
+    setHoveredDrawingKey(nextHoverKey);
+  }, []);
 
-    if (tool === "takeProfit" && !drawingsRef.current.takeProfit) {
-      addPriceLine(tool, presetPrice);
-    }
-  }, [initialHighlightTool, presetPrice]);
-
-  useEffect(() => {
-    if (!containerRef.current) {
-      return undefined;
-    }
-
-    const chart = createChart(containerRef.current, {
-      width: containerRef.current.clientWidth,
-      height: 420,
-      layout: {
-        background: { color: "transparent" },
-        textColor: chartTheme.axis,
-      },
-      grid: {
-        vertLines: { color: chartTheme.grid },
-        horzLines: { color: chartTheme.grid },
-      },
-      crosshair: { mode: 1 },
-      rightPriceScale: { borderColor: chartTheme.grid, autoScale: true },
-      timeScale: {
-        borderColor: chartTheme.grid,
-        timeVisible: true,
-        secondsVisible: false,
-        rightOffset: DEFAULT_RIGHT_OFFSET,
-        barSpacing: DEFAULT_BAR_SPACING,
-        minBarSpacing: MIN_BAR_SPACING,
-        fixLeftEdge: true,
-        lockVisibleTimeRangeOnResize: true,
-      },
-    });
-
-    chartRef.current = chart;
-    ensurePrimarySeries("line");
-    const handleVisibleRangeChange = (logicalRange) => {
-      if (!logicalRange || rangeAdjustLockRef.current) {
-        return;
-      }
-
-      const maxVisibleBars = primarySeriesModeRef.current === "candlestick"
-        ? Math.min(dataPointCountRef.current || MAX_VISIBLE_CANDLE_BARS, MAX_VISIBLE_CANDLE_BARS)
-        : Math.min(dataPointCountRef.current || MAX_VISIBLE_LINE_BARS, MAX_VISIBLE_LINE_BARS);
-
-      if (!maxVisibleBars) {
-        return;
-      }
-
-      const visibleBars = logicalRange.to - logicalRange.from;
-      if (visibleBars <= maxVisibleBars) {
-        return;
-      }
-
-      const center = (logicalRange.from + logicalRange.to) / 2;
-      rangeAdjustLockRef.current = true;
-      chart.timeScale().setVisibleLogicalRange({
-        from: center - (maxVisibleBars / 2),
-        to: center + (maxVisibleBars / 2),
-      });
-      requestAnimationFrame(() => {
-        rangeAdjustLockRef.current = false;
-      });
-    };
-    chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
-
-    chart.subscribeClick((param) => {
-      const priceSeries = priceSeriesRef.current;
-      const tool = activeToolRef.current;
-
-      if (!priceSeries || tool === "cursor" || !param.point) {
-        return;
-      }
-
-      const price = priceSeries.coordinateToPrice(param.point.y);
-      if (price == null) {
-        return;
-      }
-
-      if (tool === "horizontal") {
-        const priceLine = priceSeries.createPriceLine({
-          price,
-          color: "#6b7280",
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: true,
-        });
-        setDrawings((current) => ({
-          ...current,
-          horizontalLines: [...current.horizontalLines, { id: Date.now(), price, priceLine }],
-        }));
-        return;
-      }
-
-      if (tool === "stopLoss" || tool === "takeProfit") {
-        addPriceLine(tool, price);
-        return;
-      }
-
-      if (tool === "trend") {
-        const start = trendStartRef.current;
-        if (!start) {
-          if (param.time == null) {
-            return;
-          }
-          setTrendStart({ time: param.time, price });
-          return;
-        }
-
-        if (param.time == null || param.time === start.time) {
-          setTrendStart(null);
-          return;
-        }
-
-        const lineData = [
-          { time: start.time, value: start.price },
-          { time: param.time, value: price },
-        ].sort((left, right) => left.time - right.time);
-
-        const trendSeries = chart.addSeries(LineSeries, {
-          color: "#8b5cf6",
-          lineWidth: 1,
-          priceLineVisible: false,
-          lastValueVisible: false,
-        });
-        trendSeries.setData(lineData);
-
-        setDrawings((current) => ({
-          ...current,
-          trendLines: [...current.trendLines, { id: Date.now(), series: trendSeries }],
-        }));
-        setTrendStart(null);
-      }
-    });
-
-    const onResize = () => {
-      if (containerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
-      }
-    };
-
-    window.addEventListener("resize", onResize);
-
-    return () => {
-      window.removeEventListener("resize", onResize);
-      chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
-      chart.remove();
-      chartRef.current = null;
-      priceSeriesRef.current = null;
-      primarySeriesModeRef.current = null;
-      indicatorRefs.current = {};
-    };
-  }, [ensurePrimarySeries]);
-
-  useEffect(() => {
-    if (!chartRef.current) {
-      return;
-    }
-
-    chartRef.current.applyOptions({
-      layout: { textColor: chartTheme.axis },
-      grid: {
-        vertLines: { color: chartTheme.grid },
-        horzLines: { color: chartTheme.grid },
-      },
-      rightPriceScale: { borderColor: chartTheme.grid, autoScale: true },
-      timeScale: {
-        borderColor: chartTheme.grid,
-        rightOffset: DEFAULT_RIGHT_OFFSET,
-        barSpacing: DEFAULT_BAR_SPACING,
-        minBarSpacing: MIN_BAR_SPACING,
-        fixLeftEdge: true,
-        lockVisibleTimeRangeOnResize: true,
-      },
-    });
-  }, [chartTheme]);
-
-  useEffect(() => {
-    if (!instrumentCode || !chartRef.current) {
-      return undefined;
-    }
-
-    if (prevInstrumentRef.current && prevInstrumentRef.current !== instrumentCode) {
-      clearAllDrawings();
-    }
-    prevInstrumentRef.current = instrumentCode;
-    pendingAutoFitRef.current = true;
-
-    let cancelled = false;
-
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const result = isCrypto
-          ? await loadCryptoData(instrumentCode, range)
-          : await loadLineData(instrumentCode, rangeDates);
-
-        if (cancelled) {
-          return;
-        }
-
-        const primarySeries = ensurePrimarySeries(result.mode);
-        if (!primarySeries) {
-          return;
-        }
-
-        primarySeries.setData(result.priceData);
-        dataPointCountRef.current = result.priceData.length;
-        indicatorDataRef.current = result.indicatorData;
-        syncIndicatorSeries(result.indicatorData);
-        if (pendingAutoFitRef.current) {
-          chartRef.current?.timeScale().fitContent();
-          pendingAutoFitRef.current = false;
-        }
-        applyPresetLine();
-      } catch (fetchError) {
-        if (!cancelled) {
-          setError(extractErrorMessage(fetchError, "Veri yuklenirken hata olustu."));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchData();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    applyPresetLine,
-    clearAllDrawings,
-    ensurePrimarySeries,
-    instrumentCode,
-    isCrypto,
-    range,
-    rangeDates,
-    reloadToken,
-    syncIndicatorSeries,
-  ]);
-
-  useEffect(() => {
-    syncIndicatorSeries(indicatorDataRef.current);
-  }, [activeIndicators, syncIndicatorSeries]);
-
-  useEffect(() => {
-    const handleOutside = (event) => {
-      if (activeTool === "cursor") {
-        return;
-      }
-
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setActiveTool("cursor");
-        setTrendStart(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [activeTool]);
-
-  function addPriceLine(tool, price) {
+  const addPriceLine = useCallback((tool, price) => {
     const priceSeries = priceSeriesRef.current;
     if (!priceSeries) {
       return;
     }
 
-    const current = drawingsRef.current;
-    const previous = tool === "stopLoss" ? current.stopLoss : current.takeProfit;
-    if (previous?.priceLine) {
-      try { priceSeries.removePriceLine(previous.priceLine); } catch { /* noop */ }
+    const isStopLoss = tool === "stopLoss";
+    const existing = isStopLoss ? drawingsRef.current.stopLoss : drawingsRef.current.takeProfit;
+    if (existing?.priceLine) {
+      try { priceSeries.removePriceLine(existing.priceLine); } catch { /* noop */ }
     }
 
-    const config = tool === "stopLoss"
-      ? { color: "#ef4444", title: "Stop-Loss" }
-      : { color: "#22c55e", title: "Take-Profit" };
-
+    const id = isStopLoss ? "stopLoss" : "takeProfit";
+    const title = isStopLoss ? "Stop-Loss" : "Take-Profit";
+    const color = isStopLoss ? "#ef4444" : "#22c55e";
     const priceLine = priceSeries.createPriceLine({
       price,
-      color: config.color,
+      color,
       lineWidth: 2,
       lineStyle: 0,
       axisLabelVisible: true,
-      title: config.title,
+      title: `${title} ${formatCompactPrice(price)}`,
     });
 
-    setDrawings((currentState) => ({
-      ...currentState,
-      [tool]: { price, priceLine },
-    }));
-  }
-
-  function removeStopLoss() {
-    if (drawings.stopLoss?.priceLine) {
-      try { priceSeriesRef.current?.removePriceLine(drawings.stopLoss.priceLine); } catch { /* noop */ }
-    }
-    setDrawings((current) => ({ ...current, stopLoss: null }));
-  }
-
-  function removeTakeProfit() {
-    if (drawings.takeProfit?.priceLine) {
-      try { priceSeriesRef.current?.removePriceLine(drawings.takeProfit.priceLine); } catch { /* noop */ }
-    }
-    setDrawings((current) => ({ ...current, takeProfit: null }));
-  }
-
-  function removeHorizontalLine(id) {
-    const line = drawings.horizontalLines.find((item) => item.id === id);
-    if (line?.priceLine) {
-      try { priceSeriesRef.current?.removePriceLine(line.priceLine); } catch { /* noop */ }
-    }
     setDrawings((current) => ({
       ...current,
-      horizontalLines: current.horizontalLines.filter((item) => item.id !== id),
+      [id]: {
+        id,
+        kind: id,
+        label: title,
+        color,
+        price,
+        priceLine,
+      },
     }));
-  }
+    setSelectedDrawingKey(id);
+  }, []);
 
-  function removeTrendLine(id) {
-    const trendLine = drawings.trendLines.find((item) => item.id === id);
-    if (trendLine?.series) {
-      try { chartRef.current?.removeSeries(trendLine.series); } catch { /* noop */ }
+  const updateHorizontalDrawingPrice = useCallback((drawingKey, nextPrice) => {
+    const normalizedPrice = Number(nextPrice);
+    if (!Number.isFinite(normalizedPrice) || normalizedPrice <= 0) {
+      return;
     }
-    setDrawings((current) => ({
-      ...current,
-      trendLines: current.trendLines.filter((item) => item.id !== id),
-    }));
-  }
 
-  async function handleCreateAlert(kind) {
+    setDrawings((current) => {
+      if (drawingKey === "stopLoss" || drawingKey === "takeProfit") {
+        const target = current[drawingKey];
+        if (!target?.priceLine) {
+          return current;
+        }
+        target.priceLine.applyOptions({
+          price: normalizedPrice,
+          title: `${target.label} ${formatCompactPrice(normalizedPrice)}`,
+        });
+        return {
+          ...current,
+          [drawingKey]: { ...target, price: normalizedPrice },
+        };
+      }
+
+      const nextHorizontalLines = current.horizontalLines.map((line) => {
+        if (line.id !== drawingKey) {
+          return line;
+        }
+        line.priceLine.applyOptions({
+          price: normalizedPrice,
+          title: `${t("analysis.chart.drawing.horizontal")} ${formatCompactPrice(normalizedPrice)}`,
+        });
+        return { ...line, price: normalizedPrice };
+      });
+
+      return {
+        ...current,
+        horizontalLines: nextHorizontalLines,
+      };
+    });
+  }, [t]);
+
+  const removeDrawingByKey = useCallback((drawingKey) => {
+    if (!drawingKey) {
+      return;
+    }
+
+    if (drawingKey === "stopLoss") {
+      if (drawingsRef.current.stopLoss?.priceLine) {
+        try { priceSeriesRef.current?.removePriceLine(drawingsRef.current.stopLoss.priceLine); } catch { /* noop */ }
+      }
+      setDrawings((current) => ({ ...current, stopLoss: null }));
+      setSelectedDrawingKey(null);
+      return;
+    }
+
+    if (drawingKey === "takeProfit") {
+      if (drawingsRef.current.takeProfit?.priceLine) {
+        try { priceSeriesRef.current?.removePriceLine(drawingsRef.current.takeProfit.priceLine); } catch { /* noop */ }
+      }
+      setDrawings((current) => ({ ...current, takeProfit: null }));
+      setSelectedDrawingKey(null);
+      return;
+    }
+
+    const horizontalLine = drawingsRef.current.horizontalLines.find((item) => item.id === drawingKey);
+    if (horizontalLine) {
+      try { priceSeriesRef.current?.removePriceLine(horizontalLine.priceLine); } catch { /* noop */ }
+      setDrawings((current) => ({
+        ...current,
+        horizontalLines: current.horizontalLines.filter((item) => item.id !== drawingKey),
+      }));
+      setSelectedDrawingKey(null);
+      return;
+    }
+
+    const trendLine = drawingsRef.current.trendLines.find((item) => item.id === drawingKey);
+    if (trendLine) {
+      try { priceChartRef.current?.removeSeries(trendLine.series); } catch { /* noop */ }
+      setDrawings((current) => ({
+        ...current,
+        trendLines: current.trendLines.filter((item) => item.id !== drawingKey),
+      }));
+      setSelectedDrawingKey(null);
+    }
+  }, []);
+
+  const handleCreateAlert = useCallback(async (kind) => {
     const drawing = kind === "stopLoss" ? drawings.stopLoss : drawings.takeProfit;
     if (!drawing?.price || !instrumentCode) {
       return;
@@ -561,28 +632,456 @@ export default function AdvancedChart({
         conditionType,
         targetPrice: Number(drawing.price.toFixed(8)),
       });
-      showToast("success", kind === "stopLoss" ? "Stop-loss alarmi olusturuldu." : "Take-profit alarmi olusturuldu.");
+      showToast("success", kind === "stopLoss" ? t("analysis.chart.alerts.stopLossCreated") : t("analysis.chart.alerts.takeProfitCreated"));
     } catch (createError) {
-      showToast("error", extractErrorMessage(createError, "Alarm olusturulamadi."));
+      showToast("error", extractErrorMessage(createError, t("analysis.chart.alerts.createFailed")));
     } finally {
       setCreatingAlertKey(null);
     }
-  }
+  }, [drawings.stopLoss, drawings.takeProfit, instrumentCode, login, showToast, userId, t]);
 
-  function toggleIndicator(key) {
+  useEffect(() => {
+    if (!priceContainerRef.current || !volumeContainerRef.current || !rsiContainerRef.current) {
+      return undefined;
+    }
+
+    const priceChart = createChart(priceContainerRef.current, {
+      width: priceContainerRef.current.clientWidth,
+      height: PRICE_CHART_HEIGHT,
+    });
+    const volumeChart = createChart(volumeContainerRef.current, {
+      width: volumeContainerRef.current.clientWidth,
+      height: VOLUME_CHART_HEIGHT,
+    });
+    const rsiChart = createChart(rsiContainerRef.current, {
+      width: rsiContainerRef.current.clientWidth,
+      height: RSI_CHART_HEIGHT,
+      localization: {
+        priceFormatter: (value) => value.toFixed(0),
+      },
+    });
+
+    priceChartRef.current = priceChart;
+    volumeChartRef.current = volumeChart;
+    rsiChartRef.current = rsiChart;
+      ensureCoreSeries("line");
+      applyThemeOptions();
+
+      rsiChart.priceScale("right").applyOptions({
+        autoScale: true,
+        scaleMargins: { top: 0.08, bottom: 0.08 },
+      });
+
+    const bindTimeScale = (chart) => {
+      const handler = (logicalRange) => {
+        clampVisibleRange(chart, logicalRange);
+        syncVisibleRangeAcrossCharts(chart, logicalRange);
+      };
+      chart.timeScale().subscribeVisibleLogicalRangeChange(handler);
+      return handler;
+    };
+
+    const priceRangeHandler = bindTimeScale(priceChart);
+    const volumeRangeHandler = bindTimeScale(volumeChart);
+    const rsiRangeHandler = bindTimeScale(rsiChart);
+
+    const handleCrosshairMove = (param) => {
+      updateTooltip(param);
+
+      const hoverKey = resolveHoveredDrawingKey(param);
+      setHoveredDrawingKey(hoverKey);
+      if (priceContainerRef.current) {
+        priceContainerRef.current.style.cursor = hoverKey && activeToolRef.current === "cursor" ? "row-resize" : (activeToolRef.current === "cursor" ? "default" : "crosshair");
+      }
+    };
+
+    priceChart.subscribeCrosshairMove(handleCrosshairMove);
+
+    const handleChartClick = (param) => {
+      const tool = activeToolRef.current;
+      const priceSeries = priceSeriesRef.current;
+      if (!priceSeries || !param?.point) {
+        return;
+      }
+
+      const hoveredKey = resolveHoveredDrawingKey(param);
+      if (tool === "cursor" && hoveredKey) {
+        setSelectedDrawingKey(hoveredKey);
+        return;
+      }
+
+      const price = priceSeries.coordinateToPrice(param.point.y);
+      if (price == null) {
+        return;
+      }
+
+      if (tool === "horizontal") {
+        const id = `hline-${Date.now()}`;
+        const priceLine = priceSeries.createPriceLine({
+          price,
+          color: "#64748b",
+          lineWidth: 1,
+          lineStyle: 2,
+          axisLabelVisible: true,
+          title: `${t("analysis.chart.drawing.horizontal")} ${formatCompactPrice(price)}`,
+        });
+        setDrawings((current) => ({
+          ...current,
+          horizontalLines: [...current.horizontalLines, {
+            id,
+            kind: "horizontal",
+            label: t("analysis.chart.drawing.horizontal"),
+            color: "#64748b",
+            price,
+            priceLine,
+          }],
+        }));
+        setSelectedDrawingKey(id);
+        return;
+      }
+
+      if (tool === "stopLoss" || tool === "takeProfit") {
+        addPriceLine(tool, price);
+        return;
+      }
+
+      if (tool === "trend") {
+        const start = trendStartRef.current;
+        if (!start) {
+          if (param.time == null) {
+            return;
+          }
+          setTrendStart({ time: normalizeChartTime(param.time), price });
+          return;
+        }
+
+        const nextTime = normalizeChartTime(param.time);
+        if (nextTime == null || nextTime === start.time) {
+          setTrendStart(null);
+          return;
+        }
+
+        const lineData = [
+          { time: start.time, value: start.price },
+          { time: nextTime, value: price },
+        ].sort((left, right) => left.time - right.time);
+
+        const trendSeries = priceChart.addSeries(LineSeries, {
+          color: "#8b5cf6",
+          lineWidth: 1.5,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+        trendSeries.setData(lineData);
+
+        const id = `trend-${Date.now()}`;
+        setDrawings((current) => ({
+          ...current,
+          trendLines: [...current.trendLines, {
+            id,
+            kind: "trend",
+            label: t("analysis.chart.drawing.trend"),
+            color: "#8b5cf6",
+            series: trendSeries,
+            data: lineData,
+          }],
+        }));
+        setSelectedDrawingKey(id);
+        setTrendStart(null);
+      }
+    };
+
+    priceChart.subscribeClick(handleChartClick);
+
+    const handleMouseDown = (event) => {
+      if (activeToolRef.current !== "cursor") {
+        return;
+      }
+      const hoveredKey = hoveredDrawingKeyRef.current;
+      if (!hoveredKey) {
+        return;
+      }
+      const price = priceSeriesRef.current?.coordinateToPrice(event.offsetY);
+      if (price == null) {
+        return;
+      }
+      draggingRef.current = {
+        drawingKey: hoveredKey,
+      };
+      setSelectedDrawingKey(hoveredKey);
+    };
+
+    const handleMouseMove = (event) => {
+      if (!draggingRef.current) {
+        return;
+      }
+      const nextPrice = priceSeriesRef.current?.coordinateToPrice(event.offsetY);
+      if (nextPrice == null) {
+        return;
+      }
+      updateHorizontalDrawingPrice(draggingRef.current.drawingKey, nextPrice);
+    };
+
+    const handleMouseUp = () => {
+      draggingRef.current = null;
+    };
+
+    const handleResize = () => {
+      if (!priceContainerRef.current || !volumeContainerRef.current || !rsiContainerRef.current) {
+        return;
+      }
+      priceChart.applyOptions({ width: priceContainerRef.current.clientWidth });
+      volumeChart.applyOptions({ width: volumeContainerRef.current.clientWidth });
+      rsiChart.applyOptions({ width: rsiContainerRef.current.clientWidth });
+    };
+
+    priceContainerRef.current.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      priceContainerRef.current?.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("resize", handleResize);
+
+      priceChart.unsubscribeCrosshairMove(handleCrosshairMove);
+      priceChart.unsubscribeClick(handleChartClick);
+      priceChart.timeScale().unsubscribeVisibleLogicalRangeChange(priceRangeHandler);
+      volumeChart.timeScale().unsubscribeVisibleLogicalRangeChange(volumeRangeHandler);
+      rsiChart.timeScale().unsubscribeVisibleLogicalRangeChange(rsiRangeHandler);
+      priceChart.remove();
+      volumeChart.remove();
+      rsiChart.remove();
+
+      priceChartRef.current = null;
+      volumeChartRef.current = null;
+      rsiChartRef.current = null;
+      priceSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+      rsiSeriesRef.current = null;
+      overlaySeriesRefs.current = {};
+    };
+  }, [
+    addPriceLine,
+    applyThemeOptions,
+    clampVisibleRange,
+    ensureCoreSeries,
+    syncVisibleRangeAcrossCharts,
+    updateHorizontalDrawingPrice,
+    updateTooltip,
+  ]);
+
+  useEffect(() => {
+    applyThemeOptions();
+  }, [applyThemeOptions]);
+
+  useEffect(() => {
+    if (!instrumentCode || !priceChartRef.current) {
+      return undefined;
+    }
+
+    if (prevInstrumentRef.current && prevInstrumentRef.current !== instrumentCode) {
+      clearAllDrawings();
+    }
+    prevInstrumentRef.current = instrumentCode;
+    pendingAutoFitRef.current = true;
+    setTooltipModel(null);
+
+    let cancelled = false;
+
+    async function fetchData() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const dataset = isCrypto
+          ? await loadCryptoData(instrumentCode, range, t)
+          : await loadLineData(instrumentCode, rangeDates, t);
+
+        if (cancelled) {
+          return;
+        }
+
+        const coreSeries = ensureCoreSeries(dataset.mode);
+        if (!coreSeries) {
+          return;
+        }
+
+        coreSeries.priceSeries.setData(dataset.priceData);
+        coreSeries.volumeSeries.setData(dataset.volumeData);
+        coreSeries.rsiSeries.setData(dataset.rsiData);
+        latestDatasetRef.current = dataset;
+        dataPointCountRef.current = dataset.priceData.length;
+        const rsiDebug = {
+          ...dataset.summary.rsiDebug,
+          renderedSeriesCount: [coreSeries.rsiSeries].filter(Boolean).length,
+        };
+        setTechnicalSnapshot({
+          ...dataset.summary,
+          rsiDebug,
+        });
+        console.debug("[AdvancedChart][RSI]", rsiDebug);
+        syncIndicatorSeriesRef.current(dataset);
+
+        if (pendingAutoFitRef.current) {
+          priceChartRef.current?.timeScale().fitContent();
+          volumeChartRef.current?.timeScale().fitContent();
+          rsiChartRef.current?.timeScale().fitContent();
+          pendingAutoFitRef.current = false;
+        }
+
+        if (presetPrice && initialHighlightTool) {
+          const tool = mapInitialTool(initialHighlightTool);
+          if (tool && Number.isFinite(presetPrice) && presetPrice > 0) {
+            addPriceLine(tool, presetPrice);
+          }
+        }
+      } catch (fetchError) {
+        if (!cancelled) {
+          setTechnicalSnapshot(null);
+          setError(extractErrorMessage(fetchError, t("analysis.chart.errors.loadFailed")));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchData();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    addPriceLine,
+    clearAllDrawings,
+    ensureCoreSeries,
+    initialHighlightTool,
+    instrumentCode,
+    isCrypto,
+    presetPrice,
+    range,
+    rangeDates,
+    reloadToken,
+  ]);
+
+  useEffect(() => {
+    if (!latestDatasetRef.current) {
+      return;
+    }
+    syncIndicatorSeries(latestDatasetRef.current);
+  }, [syncIndicatorSeries]);
+
+  useEffect(() => {
+    const handleOutside = (event) => {
+      if (priceContainerRef.current && !priceContainerRef.current.contains(event.target)) {
+        if (activeToolRef.current !== "cursor") {
+          setActiveTool("cursor");
+        }
+        setHoveredDrawingKey(null);
+      }
+      if (toolsDropdownRef.current && !toolsDropdownRef.current.contains(event.target)) {
+        setToolsOpen(false);
+      }
+      if (indicatorsRef.current && !indicatorsRef.current.contains(event.target)) {
+        setIndicatorsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setActiveTool("cursor");
+        setTrendStart(null);
+        draggingRef.current = null;
+        return;
+      }
+
+      if ((event.key === "Delete" || event.key === "Backspace") && selectedDrawingKeyRef.current) {
+        event.preventDefault();
+        removeDrawingByKey(selectedDrawingKeyRef.current);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [removeDrawingByKey]);
+
+  useEffect(() => {
+    setAiData(null);
+    setAiError(null);
+    setTechTab("rules");
+  }, [instrumentCode]);
+
+  useEffect(() => {
+    if (techTab !== "ai" || !isAuthenticated || !isPremium || !instrumentCode) {
+      return undefined;
+    }
+    if (aiData || aiLoading) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function fetchAiData() {
+      setAiLoading(true);
+      setAiError(null);
+      try {
+        const data = await getAiTechnicalAnalysis(instrumentCode);
+        if (!cancelled) setAiData(data ?? null);
+      } catch (err) {
+          if (!cancelled) setAiError(extractErrorMessage(err, t("analysis.chart.aiPanel.loadError")));
+      } finally {
+        if (!cancelled) setAiLoading(false);
+      }
+    }
+
+    fetchAiData();
+    return () => { cancelled = true; };
+  }, [techTab, isAuthenticated, isPremium, instrumentCode, aiData, aiLoading, t]);
+
+  const toggleIndicator = useCallback((indicatorKey) => {
     setActiveIndicators((current) => {
       const next = new Set(current);
-      if (next.has(key)) {
-        next.delete(key);
+      if (next.has(indicatorKey)) {
+        next.delete(indicatorKey);
       } else {
-        next.add(key);
+        next.add(indicatorKey);
       }
       return next;
     });
+  }, []);
+
+  function resolveHoveredDrawingKey(param) {
+    if (!param?.point || !priceSeriesRef.current) {
+      return null;
+    }
+    const priceAtPointer = priceSeriesRef.current.coordinateToPrice(param.point.y);
+    if (priceAtPointer == null) {
+      return null;
+    }
+    const threshold = Math.max(Math.abs(priceAtPointer) * 0.0025, 0.75);
+
+    const horizontalCandidates = [
+      drawingsRef.current.stopLoss,
+      drawingsRef.current.takeProfit,
+      ...drawingsRef.current.horizontalLines,
+    ].filter(Boolean);
+
+    const hit = horizontalCandidates.find((line) => Math.abs(line.price - priceAtPointer) <= threshold);
+    if (hit) {
+      return hit.id ?? hit.kind;
+    }
+    return null;
   }
 
   return (
-    <section className="panel-surface advanced-chart-card">
+    <section className="panel-surface advanced-chart-card advanced-chart-card--terminal">
       {toast ? (
         <div className={`toast-notify ${toast.type}`}>
           {toast.type === "success"
@@ -592,207 +1091,506 @@ export default function AdvancedChart({
         </div>
       ) : null}
 
-      <div className="advanced-chart-header">
-        <div className="advanced-chart-header-left">
-          <span className="advanced-chart-symbol">{instrumentCode?.toUpperCase() ?? "-"}</span>
-          {quote?.displayName && quote.displayName !== instrumentCode?.toUpperCase() ? (
-            <span className="advanced-chart-name">{quote.displayName}</span>
-          ) : null}
-          {quote?.price != null ? (
-            <span className="advanced-chart-price">{formatNumber(quote.price, 2)}</span>
-          ) : null}
-          {changeRate != null ? (
-            <span className={`advanced-chart-change ${isPositive ? "positive" : "negative"}`}>
-              {isPositive ? "+" : ""}{Number(changeRate).toFixed(2)}%
-            </span>
+        <div className="advanced-chart-toolbar">
+          <div className="advanced-chart-toolbar-primary">
+            {quote?.price != null ? (
+              <span className="advanced-chart-price">{formatNumber(quote.sellRate ?? quote.price, 2)}</span>
+            ) : null}
+            {changeRate != null ? (
+              <span className={`advanced-chart-change ${isPositive ? "positive" : "negative"}`}>
+                {isPositive ? "+" : ""}{Number(changeRate).toFixed(2)}%
+              </span>
           ) : null}
         </div>
 
-        <div className="chart-timeframes">
-          {RANGE_OPTIONS.map((option) => (
+        <div className="advanced-chart-toolbar-controls">
+          <div className="chart-timeframes">
+            {rangeOptions.map((option) => (
+              <button
+                key={option.value}
+                className={`chart-tf-btn${range === option.value ? " active" : ""}`}
+                onClick={() => setRange(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <span className="chart-toolbar-sep" aria-hidden="true" />
+
+          <div className="indicators-dropdown" ref={indicatorsRef}>
             <button
-              key={option.value}
-              className={`chart-tf-btn${range === option.value ? " active" : ""}`}
-              onClick={() => setRange(option.value)}
+              className={`indicators-trigger${activeIndicators.size > 0 ? " has-active" : ""}`}
+              onClick={() => setIndicatorsOpen((o) => !o)}
             >
-              {option.label}
+              <span>{t("analysis.chart.indicators.label")}</span>
+              {activeIndicators.size > 0 ? (
+                <span className="indicators-count">{activeIndicators.size}</span>
+              ) : null}
+              <ChevronDown size={10} strokeWidth={2.5} />
             </button>
-          ))}
+            {indicatorsOpen ? (
+              <div className="indicators-menu">
+                {INDICATOR_REGISTRY.map((indicator) => (
+                  <label key={indicator.key} className="indicators-item">
+                    <input
+                      type="checkbox"
+                      checked={activeIndicators.has(indicator.key)}
+                      onChange={() => toggleIndicator(indicator.key)}
+                    />
+                    <span className="indicators-item-dot" style={{ "--indicator-color": indicator.color }} />
+                    <span className="indicators-item-label">{indicator.label}</span>
+                  </label>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <span className="chart-toolbar-sep" aria-hidden="true" />
+
+          <div className="draw-tools-dropdown" ref={toolsDropdownRef}>
+            <button
+              className={`draw-tools-toggle${activeTool !== "cursor" ? " is-active" : ""}`}
+              onClick={() => setToolsOpen((o) => !o)}
+            >
+              <Pen size={13} strokeWidth={2} />
+            </button>
+            {toolsOpen ? (
+              <div className="draw-tools-menu">
+                {drawTools.map((tool) => {
+                  const Icon = tool.icon;
+                  return (
+                    <button
+                      key={tool.key}
+                      className={`draw-tool-btn${activeTool === tool.key ? " active" : ""}`}
+                      onClick={() => {
+                        setActiveTool(tool.key);
+                        if (tool.key !== "trend") setTrendStart(null);
+                        setToolsOpen(false);
+                      }}
+                    >
+                      <Icon size={14} strokeWidth={2} />
+                      <span>{tool.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
         </div>
-      </div>
-
-      <div className="advanced-chart-indicators">
-        {INDICATOR_BUTTONS.map((button) => (
-          <button
-            key={button.key}
-            className={`chart-indicator-btn${activeIndicators.has(button.key) ? " active" : ""}`}
-            style={{ "--indicator-color": button.color }}
-            onClick={() => toggleIndicator(button.key)}
-          >
-            <span className="chart-indicator-dot" />
-            {button.label}
-          </button>
-        ))}
-
-        <span className="chart-toolbar-sep" aria-hidden="true" />
-
-        {DRAW_TOOLS.map((tool) => {
-          const Icon = tool.icon;
-          return (
-            <button
-              key={tool.key}
-              title={tool.label}
-              className={`draw-tool-btn${activeTool === tool.key ? " active" : ""}`}
-              onClick={() => {
-                setActiveTool(tool.key);
-                if (tool.key !== "trend") {
-                  setTrendStart(null);
-                }
-              }}
-            >
-              <Icon size={16} strokeWidth={2} />
-            </button>
-          );
-        })}
       </div>
 
       {trendStart ? (
         <div className="chart-trend-hint">
-          Bitis noktasini secin. Baslangic: <strong>{formatNumber(trendStart.price, 2)}</strong>
+          {t("analysis.chart.trendHint")} <strong>{formatNumber(trendStart.price, 2)}</strong>
         </div>
       ) : null}
 
-      {hasDrawings ? (
-        <div className="advanced-chart-drawings-bar">
-          {drawings.stopLoss ? (
-            <span className="drawing-chip drawing-chip--sl">
-              Stop: {formatNumber(drawings.stopLoss.price, 2)}
-              <button
-                className="drawing-chip-action"
-                onClick={() => handleCreateAlert("stopLoss")}
-                disabled={creatingAlertKey === "stopLoss"}
-              >
-                {creatingAlertKey === "stopLoss" ? "Ekleniyor" : "Alarm olarak ekle"}
-              </button>
-              <button className="drawing-chip-del" onClick={removeStopLoss} title="Sil">x</button>
-            </span>
+      <div className="advanced-chart-layout">
+        <div className="advanced-chart-workspace">
+          {hasDrawings ? (
+            <div className="advanced-chart-drawings-bar">
+              {drawings.stopLoss ? (
+                <DrawingChip
+                  drawing={drawings.stopLoss}
+                  selected={selectedDrawingKey === "stopLoss"}
+                  hovered={hoveredDrawingKey === "stopLoss"}
+                  actionLabel={creatingAlertKey === "stopLoss" ? t("analysis.chart.drawing.saving") : t("analysis.chart.drawing.addAlert")}
+                  actionDisabled={creatingAlertKey === "stopLoss"}
+                  deleteLabel={t("analysis.chart.drawing.delete")}
+                  onAction={() => handleCreateAlert("stopLoss")}
+                  onDelete={() => removeDrawingByKey("stopLoss")}
+                  onSelect={() => updateDrawingSelection("stopLoss")}
+                />
+              ) : null}
+
+              {drawings.takeProfit ? (
+                <DrawingChip
+                  drawing={drawings.takeProfit}
+                  selected={selectedDrawingKey === "takeProfit"}
+                  hovered={hoveredDrawingKey === "takeProfit"}
+                  actionLabel={creatingAlertKey === "takeProfit" ? t("analysis.chart.drawing.saving") : t("analysis.chart.drawing.addAlert")}
+                  actionDisabled={creatingAlertKey === "takeProfit"}
+                  deleteLabel={t("analysis.chart.drawing.delete")}
+                  onAction={() => handleCreateAlert("takeProfit")}
+                  onDelete={() => removeDrawingByKey("takeProfit")}
+                  onSelect={() => updateDrawingSelection("takeProfit")}
+                />
+              ) : null}
+
+              {drawings.horizontalLines.map((line) => (
+                <DrawingChip
+                  key={line.id}
+                  drawing={line}
+                  selected={selectedDrawingKey === line.id}
+                  hovered={hoveredDrawingKey === line.id}
+                  deleteLabel={t("analysis.chart.drawing.delete")}
+                  onDelete={() => removeDrawingByKey(line.id)}
+                  onSelect={() => updateDrawingSelection(line.id)}
+                />
+              ))}
+
+              {drawings.trendLines.map((line) => (
+                <DrawingChip
+                  key={line.id}
+                  drawing={line}
+                  selected={selectedDrawingKey === line.id}
+                  hovered={hoveredDrawingKey === line.id}
+                  deleteLabel={t("analysis.chart.drawing.delete")}
+                  onDelete={() => removeDrawingByKey(line.id)}
+                  onSelect={() => updateDrawingSelection(line.id)}
+                />
+              ))}
+            </div>
           ) : null}
 
-          {drawings.takeProfit ? (
-            <span className="drawing-chip drawing-chip--tp">
-              TP: {formatNumber(drawings.takeProfit.price, 2)}
-              <button
-                className="drawing-chip-action"
-                onClick={() => handleCreateAlert("takeProfit")}
-                disabled={creatingAlertKey === "takeProfit"}
-              >
-                {creatingAlertKey === "takeProfit" ? "Ekleniyor" : "Alarm olarak ekle"}
-              </button>
-              <button className="drawing-chip-del" onClick={removeTakeProfit} title="Sil">x</button>
-            </span>
-          ) : null}
+          <div className={`advanced-chart-stack${activeTool !== "cursor" ? " drawing-mode" : ""}`}>
+            <div className="advanced-chart-canvas-shell advanced-chart-canvas-shell--price">
+              {loading ? (
+                <div className="advanced-chart-overlay">
+                  <span>{t("analysis.chart.loading")}</span>
+                </div>
+              ) : null}
 
-          {drawings.horizontalLines.map((line) => (
-            <span key={line.id} className="drawing-chip drawing-chip--hline">
-              Yatay: {formatNumber(line.price, 2)}
-              <button className="drawing-chip-del" onClick={() => removeHorizontalLine(line.id)} title="Sil">x</button>
-            </span>
-          ))}
+              {!loading && error ? (
+                <div className="advanced-chart-overlay advanced-chart-overlay--error">
+                  <span>{error}</span>
+                  <button className="chart-retry-btn" onClick={() => setReloadToken((value) => value + 1)}>
+                    {t("analysis.chart.retry")}
+                  </button>
+                </div>
+              ) : null}
 
-          {drawings.trendLines.map((line) => (
-            <span key={line.id} className="drawing-chip drawing-chip--trend">
-              Trend
-              <button className="drawing-chip-del" onClick={() => removeTrendLine(line.id)} title="Sil">x</button>
-            </span>
-          ))}
-        </div>
-      ) : null}
+              <div ref={priceContainerRef} className="advanced-chart-canvas advanced-chart-canvas--price" />
+            </div>
 
-      <div className={`advanced-chart-body${activeTool !== "cursor" ? " drawing-mode" : ""}`}>
-        {loading ? (
-          <div className="advanced-chart-overlay">
-            <span>Yukleniyor...</span>
+            {volumeVisible ? (
+              <div className="advanced-chart-canvas-shell advanced-chart-canvas-shell--volume">
+                <div className="advanced-chart-subpanel-head">
+                  <span>Volume</span>
+                  <span>{technicalSnapshot?.lastVolume != null ? formatNumber(technicalSnapshot.lastVolume, 0) : "-"}</span>
+                </div>
+                <div ref={volumeContainerRef} className="advanced-chart-canvas advanced-chart-canvas--volume" />
+              </div>
+            ) : (
+              <div ref={volumeContainerRef} className="advanced-chart-canvas advanced-chart-canvas--volume is-hidden" />
+            )}
+
+            <div className="advanced-chart-canvas-shell advanced-chart-canvas-shell--rsi">
+              <div className="advanced-chart-rsi-band advanced-chart-rsi-band--overbought" aria-hidden="true" />
+              <div className="advanced-chart-rsi-band advanced-chart-rsi-band--oversold" aria-hidden="true" />
+              <div className="advanced-chart-subpanel-head">
+                <span>RSI 14</span>
+                <span>{technicalSnapshot?.rsiValue != null ? technicalSnapshot.rsiValue.toFixed(2) : "-"}</span>
+              </div>
+              <div ref={rsiContainerRef} className="advanced-chart-canvas advanced-chart-canvas--rsi" />
+            </div>
           </div>
-        ) : null}
+        </div>
 
-        {!loading && error ? (
-          <div className="advanced-chart-overlay advanced-chart-overlay--error">
-            <span>{error}</span>
-            <button className="chart-retry-btn" onClick={() => setReloadToken((value) => value + 1)}>
-              Tekrar dene
+        <aside className="advanced-tech-panel">
+          <div className="advanced-tech-tabs">
+            <button
+              className={`tech-tab-btn${techTab === "rules" ? " active" : ""}`}
+              onClick={() => setTechTab("rules")}
+            >
+              {t("analysis.chart.aiPanel.tabRules")}
+            </button>
+            <button
+              className={`tech-tab-btn${techTab === "ai" ? " active" : ""}`}
+              onClick={() => setTechTab("ai")}
+            >
+              <Sparkles size={11} strokeWidth={2} />
+              {t("analysis.chart.aiPanel.tabAi")}
             </button>
           </div>
-        ) : null}
 
-        <div ref={containerRef} className="advanced-chart-canvas" />
+          {techTab === "rules" ? (
+            <>
+          <div className="advanced-tech-panel-head">
+            <span>{t("analysis.chart.techPanel.title")}</span>
+            <span className={`advanced-tech-badge advanced-tech-badge--${toneFromSignal(technicalSnapshot?.latestSignalTone)}`}>
+              {technicalSnapshot?.signalKey
+                ? t(`analysis.chart.signal.${technicalSnapshot.signalKey}.short`)
+                : (technicalSnapshot?.rawSignalLabel ?? t("analysis.chart.techPanel.waiting"))}
+            </span>
+          </div>
+
+          <div className="advanced-tech-kpi-stack">
+            <KpiCard
+              label="RSI 14"
+              value={technicalSnapshot?.rsiValue != null ? technicalSnapshot.rsiValue.toFixed(2) : "-"}
+              tone={toneFromRsi(technicalSnapshot?.rsiValue)}
+              detail={technicalSnapshot?.rsiRegimeKey ? t(`analysis.chart.rsiRegime.${technicalSnapshot.rsiRegimeKey}`) : t("analysis.chart.techPanel.awaitingData")}
+            />
+            <KpiCard
+              label={t("analysis.chart.techPanel.trend")}
+              value={technicalSnapshot?.trendKey ? t(`analysis.chart.trend.${technicalSnapshot.trendKey}`) : "-"}
+              tone={toneFromSignal(technicalSnapshot?.trendTone)}
+              detail={technicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${technicalSnapshot.momentumKey}`) : t("analysis.chart.techPanel.awaitingData")}
+            />
+            <KpiCard
+              label={t("analysis.chart.techPanel.latestSignal")}
+              value={technicalSnapshot?.signalKey
+                ? t(`analysis.chart.signal.${technicalSnapshot.signalKey}.short`)
+                : (technicalSnapshot?.rawSignalLabel ?? "-")}
+              tone={toneFromSignal(technicalSnapshot?.latestSignalTone)}
+              detail={technicalSnapshot?.rawSignalText ?? t("analysis.chart.signal.neutral.text")}
+              wrap
+            />
+          </div>
+
+          <div className="advanced-tech-details-stack">
+            <StackedStatCard
+              label={t("analysis.chart.techPanel.momentum")}
+              value={technicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${technicalSnapshot.momentumKey}`) : "-"}
+              tone={technicalSnapshot?.momentumTone ?? "neutral"}
+              detail={technicalSnapshot?.momentumValue != null ? `${technicalSnapshot.momentumValue >= 0 ? "+" : ""}${technicalSnapshot.momentumValue.toFixed(2)}%` : t("analysis.chart.techPanel.awaitingData")}
+            />
+            <StackedStatCard
+              label={t("analysis.chart.techPanel.support")}
+              value={technicalSnapshot?.supportLevel != null ? formatNumber(technicalSnapshot.supportLevel, 2) : "-"}
+              tone="neutral"
+              detail={technicalSnapshot?.supportDistancePct != null ? `${technicalSnapshot.supportDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
+            />
+            <StackedStatCard
+              label={t("analysis.chart.techPanel.resistance")}
+              value={technicalSnapshot?.resistanceLevel != null ? formatNumber(technicalSnapshot.resistanceLevel, 2) : "-"}
+              tone="neutral"
+              detail={technicalSnapshot?.resistanceDistancePct != null ? `${technicalSnapshot.resistanceDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
+            />
+            <StackedStatCard
+              label={t("analysis.chart.techPanel.volatility")}
+              value={technicalSnapshot?.volatilityKey ? t(`analysis.chart.volatilityLevel.${technicalSnapshot.volatilityKey}`) : "-"}
+              tone={technicalSnapshot?.volatilityTone ?? "neutral"}
+              detail={technicalSnapshot?.volatilitySummaryKey ? t(`analysis.chart.volatilitySummary.${technicalSnapshot.volatilitySummaryKey}`) : t("analysis.chart.techPanel.awaitingData")}
+            />
+            <StackedStatCard
+              label={t("analysis.chart.techPanel.maAlignment")}
+              value={technicalSnapshot?.maAlignmentKey ? t(`analysis.chart.maAlign.${technicalSnapshot.maAlignmentKey}`) : "-"}
+              tone={technicalSnapshot?.maAlignmentTone ?? "neutral"}
+              detail={technicalSnapshot?.lastClose != null ? `${t("analysis.chart.techPanel.lastClose")}: ${formatNumber(technicalSnapshot.lastClose, 2)}` : t("analysis.chart.techPanel.awaitingData")}
+            />
+          </div>
+            </>
+          ) : (
+            <AiTechPanel
+              instrumentCode={instrumentCode}
+              isAuthenticated={isAuthenticated}
+              isPremium={isPremium}
+              aiData={aiData}
+              aiLoading={aiLoading}
+              aiError={aiError}
+              onRetry={() => { setAiData(null); setAiError(null); }}
+              onLogin={login}
+              t={t}
+            />
+          )}
+        </aside>
       </div>
+
+      {tooltipModel ? <CrosshairTooltip model={tooltipModel} /> : null}
     </section>
   );
 }
 
-async function loadCryptoData(symbol, range) {
-  const candles = await getTechnicalCandles(symbol, { range, interval: "1d" });
-  const normalizedCandles = normalizeCandles(candles);
+const DrawingChip = memo(function DrawingChip({
+  drawing,
+  selected,
+  hovered,
+  actionLabel,
+  actionDisabled,
+  deleteLabel,
+  onAction,
+  onDelete,
+  onSelect,
+}) {
+  return (
+    <span
+      className={`drawing-chip drawing-chip--${chipTone(drawing.kind)}${selected ? " is-selected" : ""}${hovered ? " is-hovered" : ""}`}
+      onMouseEnter={onSelect}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+    >
+      {drawing.kind === "trend" ? drawing.label : `${drawing.label}: ${formatNumber(drawing.price, 2)}`}
+      {onAction ? (
+        <button
+          className="drawing-chip-action"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAction();
+          }}
+          disabled={actionDisabled}
+        >
+          {actionLabel}
+        </button>
+      ) : null}
+      <button
+        className="drawing-chip-del"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete();
+        }}
+        title={deleteLabel}
+      >
+        x
+      </button>
+    </span>
+  );
+});
 
-  if (!normalizedCandles.length) {
-    throw new Error(CRYPTO_CANDLE_ERROR_MESSAGE);
+const KpiCard = memo(function KpiCard({ label, value, tone, detail, wrap = false }) {
+  return (
+    <div className={`advanced-tech-kpi advanced-tech-kpi--${tone}`}>
+      <span className="advanced-tech-kpi-label">{label}</span>
+      <strong className={`advanced-tech-kpi-value${wrap ? " is-wrap" : ""}`}>{value}</strong>
+      <span className="advanced-tech-kpi-detail">{detail}</span>
+    </div>
+  );
+});
+
+const StackedStatCard = memo(function StackedStatCard({ label, value, tone, detail }) {
+  return (
+    <div className={`advanced-tech-stack-card advanced-tech-stack-card--${tone}`}>
+      <div className="advanced-tech-stack-head">
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      <p>{detail}</p>
+    </div>
+  );
+});
+
+const CrosshairTooltip = memo(function CrosshairTooltip({ model }) {
+  const { t } = useTranslation();
+  const row = model.row;
+  if (typeof document === "undefined") {
+    return null;
   }
+
+  return createPortal(
+    <div className="advanced-crosshair-tooltip" style={{ left: model.left, top: model.top }}>
+      <strong>{model.dateLabel}</strong>
+      <div className="advanced-crosshair-grid">
+        <TooltipMetric label={t("analysis.chart.tooltip.open")} value={row.open} />
+        <TooltipMetric label={t("analysis.chart.tooltip.high")} value={row.high} />
+        <TooltipMetric label={t("analysis.chart.tooltip.low")} value={row.low} />
+        <TooltipMetric label={t("analysis.chart.tooltip.close")} value={row.close} />
+        <TooltipMetric label={t("analysis.chart.tooltip.volume")} value={row.volume} digits={0} />
+        <TooltipMetric label={t("analysis.chart.tooltip.change")} value={row.changePct} suffix="%" digits={2} />
+      </div>
+    </div>,
+    document.body,
+  );
+});
+
+const TooltipMetric = memo(function TooltipMetric({ label, value, digits = 2, suffix = "" }) {
+  return (
+    <div className="advanced-crosshair-row">
+      <span>{label}</span>
+      <strong>{value == null ? "-" : `${formatNumber(value, digits)}${suffix}`}</strong>
+    </div>
+  );
+});
+
+async function loadCryptoData(symbol, range, t) {
+  const candles = normalizeCandles(await getTechnicalCandles(symbol, { range, interval: "1d" }));
+  if (!candles.length) {
+    throw new Error(t("analysis.chart.errors.noCandles"));
+  }
+
+  const closes = candles.map((candle) => candle.close);
+  const volumes = candles.map((candle) => candle.volume ?? null);
+  const overlayData = buildOverlayData(candles, closes, volumes);
+  const infoByTime = buildInfoByTime(candles);
+  const rsiData = candles
+    .filter((candle) => candle.rsi14 != null)
+    .map((candle) => ({ time: candle.time, value: candle.rsi14 }));
+  const rsiStats = buildRsiStats(rsiData);
 
   return {
     mode: "candlestick",
-    priceData: normalizedCandles.map((candle) => ({
+    priceData: candles.map((candle) => ({
       time: candle.time,
       open: candle.open,
       high: candle.high,
       low: candle.low,
       close: candle.close,
     })),
-    indicatorData: {
-      sma7: mapIndicatorSeries(normalizedCandles, "sma7"),
-      sma20: mapIndicatorSeries(normalizedCandles, "sma20"),
-      sma50: mapIndicatorSeries(normalizedCandles, "sma50"),
-    },
+    volumeData: candles
+      .filter((candle) => candle.volume != null)
+      .map((candle) => ({
+        time: candle.time,
+        value: candle.volume,
+        color: candle.close >= candle.open ? "rgba(34, 197, 94, 0.72)" : "rgba(239, 68, 68, 0.72)",
+      })),
+    rsiData,
+    overlayData,
+    infoByTime,
+    summary: buildTechnicalSummary({
+      rows: candles,
+      latestRow: candles.at(-1),
+      previousRow: candles.at(-2),
+      trendDirection: deriveTrendDirection(candles),
+      overlayData,
+      mode: "candlestick",
+      volumeVisible: true,
+      volumeDataCount: candles.filter((candle) => candle.volume != null).length,
+      rsiStats,
+    }),
   };
 }
 
-async function loadLineData(symbol, rangeDates) {
+async function loadLineData(symbol, rangeDates, t) {
   const analysis = await getAdvancedTechnical(symbol, {
     from: rangeDates.from,
     to: rangeDates.to,
     indicators: DEFAULT_INDICATORS,
   });
 
-  const points = Array.isArray(analysis?.points) ? analysis.points : [];
+  const points = normalizeLinePoints(Array.isArray(analysis?.points) ? analysis.points : []);
   if (!points.length) {
-    throw new Error("Bu enstruman icin veri bulunamadi.");
+    throw new Error(t("analysis.chart.errors.noData"));
   }
+
+  const closes = points.map((point) => point.close);
+  const overlayData = buildOverlayData(points, closes, []);
+  const infoByTime = buildInfoByTime(points);
+  const rsiData = points
+    .filter((point) => point.rsi14 != null)
+    .map((point) => ({ time: point.time, value: point.rsi14 }));
+  const rsiStats = buildRsiStats(rsiData);
 
   return {
     mode: "line",
-    priceData: points
-      .filter((point) => point?.date && point?.close != null)
-      .map((point) => ({
-        time: toEpochSeconds(point.date),
-        value: point.close,
-      })),
-    indicatorData: {
-      sma7: points
-        .filter((point) => point?.date && point?.sma7 != null)
-        .map((point) => ({ time: toEpochSeconds(point.date), value: point.sma7 })),
-      sma20: points
-        .filter((point) => point?.date && point?.sma20 != null)
-        .map((point) => ({ time: toEpochSeconds(point.date), value: point.sma20 })),
-      sma50: points
-        .filter((point) => point?.date && point?.sma50 != null)
-        .map((point) => ({ time: toEpochSeconds(point.date), value: point.sma50 })),
-    },
+    priceData: points.map((point) => ({
+      time: point.time,
+      value: point.close,
+    })),
+    volumeData: [],
+    rsiData,
+    overlayData,
+    infoByTime,
+    summary: buildTechnicalSummary({
+      rows: points,
+      latestRow: points.at(-1),
+      previousRow: points.at(-2),
+      trendDirection: normalizeTrendDirection(analysis?.trendDirection) ?? deriveTrendDirection(points),
+      overlayData,
+      latestSignal: analysis?.signals?.[0]?.label ?? analysis?.signals?.[0]?.signalType ?? null,
+      mode: "line",
+      volumeVisible: false,
+      volumeDataCount: 0,
+      rsiStats,
+    }),
   };
-}
-
-function mapIndicatorSeries(candles, key) {
-  return candles
-    .filter((candle) => candle?.time != null && candle?.[key] != null)
-    .map((candle) => ({ time: candle.time, value: candle[key] }));
 }
 
 function normalizeCandles(candles) {
@@ -808,6 +1606,10 @@ function normalizeCandles(candles) {
     const high = toFiniteNumber(candle?.high);
     const low = toFiniteNumber(candle?.low);
     const close = toFiniteNumber(candle?.close);
+    const volume = toFiniteNumber(candle?.volume);
+    const rsi14 = toFiniteNumber(candle?.rsi14);
+    const prev = deduped.get(time);
+    const previousClose = prev?.close ?? null;
 
     if (!Number.isInteger(time) || time <= 0) {
       return;
@@ -818,22 +1620,453 @@ function normalizeCandles(candles) {
 
     deduped.set(time, {
       time,
+      dateLabel: formatTooltipDate(time),
       open,
       high,
       low,
       close,
+      volume,
       sma7: toFiniteNumber(candle?.sma7),
       sma20: toFiniteNumber(candle?.sma20),
       sma50: toFiniteNumber(candle?.sma50),
+      rsi14,
+      changePct: previousClose ? ((close - previousClose) / previousClose) * 100 : null,
     });
   });
 
-  return Array.from(deduped.values()).sort((left, right) => left.time - right.time);
+  const sorted = Array.from(deduped.values()).sort((left, right) => left.time - right.time);
+  return sorted.map((row, index) => ({
+    ...row,
+    changePct: index > 0 ? ((row.close - sorted[index - 1].close) / sorted[index - 1].close) * 100 : row.changePct,
+  }));
+}
+
+function normalizeLinePoints(points) {
+  return points
+    .filter((point) => point?.date && point?.close != null)
+    .map((point, index, source) => {
+      const time = toEpochSeconds(point.date);
+      const previous = index > 0 ? source[index - 1] : null;
+      const previousClose = previous?.close != null ? Number(previous.close) : null;
+      return {
+        time,
+        dateLabel: point.date,
+        open: null,
+        high: null,
+        low: null,
+        close: Number(point.close),
+        volume: null,
+        sma7: toFiniteNumber(point.sma7),
+        sma20: toFiniteNumber(point.sma20),
+        sma50: toFiniteNumber(point.sma50),
+        rsi14: toFiniteNumber(point.rsi14),
+        changePct: previousClose ? ((Number(point.close) - previousClose) / previousClose) * 100 : null,
+      };
+    });
+}
+
+function buildOverlayData(rows, closes, volumes) {
+  const timeRows = rows.map((row) => row.time);
+  const ema20 = computeEmaSeries(closes, 20);
+  const volumeMa20 = computeSimpleMovingAverageSeries(volumes, 20);
+  const bollinger = computeBollingerSeries(closes, 20, 2);
+
+  return {
+    sma7: mapSeries(rows, "sma7"),
+    sma20: mapSeries(rows, "sma20"),
+    sma50: mapSeries(rows, "sma50"),
+    ema20: mapSeriesFromValues(timeRows, ema20),
+    bollingerUpper: mapSeriesFromValues(timeRows, bollinger.upper),
+    bollingerMiddle: mapSeriesFromValues(timeRows, bollinger.middle),
+    bollingerLower: mapSeriesFromValues(timeRows, bollinger.lower),
+    volumeMa20: mapSeriesFromValues(timeRows, volumeMa20),
+  };
+}
+
+function mapSeries(rows, key) {
+  return rows
+    .filter((row) => row[key] != null)
+    .map((row) => ({ time: row.time, value: row[key] }));
+}
+
+function mapSeriesFromValues(times, values) {
+  return times
+    .map((time, index) => ({ time, value: values[index] }))
+    .filter((entry) => entry.value != null);
+}
+
+function buildInfoByTime(rows) {
+  return new Map(rows.map((row) => [row.time, row]));
+}
+
+function computeEmaSeries(values, period) {
+  const normalized = values.map((value) => toFiniteNumber(value));
+  if (!normalized.length) {
+    return [];
+  }
+
+  const multiplier = 2 / (period + 1);
+  let previousEma = null;
+
+  return normalized.map((value, index) => {
+    if (value == null) {
+      return null;
+    }
+    if (index < period - 1) {
+      return null;
+    }
+    if (index === period - 1) {
+      const seed = normalized.slice(0, period);
+      if (seed.some((item) => item == null)) {
+        return null;
+      }
+      previousEma = seed.reduce((sum, item) => sum + item, 0) / period;
+      return previousEma;
+    }
+
+    previousEma = ((value - previousEma) * multiplier) + previousEma;
+    return previousEma;
+  });
+}
+
+function computeSimpleMovingAverageSeries(values, period) {
+  const normalized = values.map((v) => toFiniteNumber(v));
+  const result = new Array(normalized.length).fill(null);
+  let windowSum = 0;
+  let validCount = 0;
+
+  for (let i = 0; i < normalized.length; i++) {
+    const val = normalized[i];
+    if (val != null) { windowSum += val; validCount++; }
+    if (i >= period) {
+      const dropping = normalized[i - period];
+      if (dropping != null) { windowSum -= dropping; validCount--; }
+    }
+    if (i >= period - 1 && validCount === period) {
+      result[i] = windowSum / period;
+    }
+  }
+  return result;
+}
+
+function computeBollingerSeries(values, period, multiplier) {
+  const normalized = values.map((v) => toFiniteNumber(v));
+  const middle = computeSimpleMovingAverageSeries(normalized, period);
+  const upper = new Array(normalized.length).fill(null);
+  const lower = new Array(normalized.length).fill(null);
+  let sumSq = 0;
+  let validCount = 0;
+
+  for (let i = 0; i < normalized.length; i++) {
+    const val = normalized[i];
+    if (val != null) { sumSq += val * val; validCount++; }
+    if (i >= period) {
+      const dropping = normalized[i - period];
+      if (dropping != null) { sumSq -= dropping * dropping; validCount--; }
+    }
+    if (i >= period - 1 && validCount === period && middle[i] != null) {
+      const sd = Math.sqrt(Math.max(0, sumSq / period - middle[i] * middle[i])) * multiplier;
+      upper[i] = middle[i] + sd;
+      lower[i] = middle[i] - sd;
+    }
+  }
+  return { upper, middle, lower };
+}
+
+function buildTechnicalSummary({
+  rows,
+  latestRow,
+  previousRow,
+  trendDirection,
+  overlayData,
+  latestSignal,
+  mode,
+  volumeVisible,
+  volumeDataCount,
+  rsiStats,
+}) {
+  const latestRsi = latestRow?.rsi14 ?? null;
+  const maAlignment = deriveMaAlignment(latestRow);
+  const volatility = deriveVolatility(latestRow, previousRow);
+  const momentum = deriveMomentum(rows);
+  const supportResistance = deriveSupportResistance(rows, latestRow);
+  const rawSignal = normalizeSignalDescriptor(latestSignal);
+  const derivedSignal = deriveLatestSignal({ latestRow, trendDirection, maAlignment, volatility });
+  const signalTone = rawSignal?.tone ?? derivedSignal.tone;
+
+  return {
+    rsiValue: latestRsi,
+    rsiRegimeKey: latestRsi == null ? null : latestRsi >= 70 ? "overbought" : latestRsi <= 30 ? "oversold" : "neutral",
+    trendKey: (trendDirection ?? "SIDEWAYS").toLowerCase(),
+    trendTone: trendTone(trendDirection),
+    maAlignmentKey: maAlignment.key,
+    maAlignmentTone: maAlignment.tone,
+    volatilityKey: volatility.key,
+    volatilityTone: volatility.tone,
+    volatilitySummaryKey: volatility.summaryKey,
+    signalKey: rawSignal ? null : derivedSignal.key,
+    rawSignalLabel: rawSignal?.shortLabel ?? null,
+    rawSignalText: rawSignal?.text ?? null,
+    latestSignalTone: signalTone,
+    lastClose: latestRow?.close ?? null,
+    lastVolume: latestRow?.volume ?? null,
+    latestChangePct: latestRow?.changePct ?? null,
+    momentumKey: momentum.key,
+    momentumTone: momentum.tone,
+    momentumValue: momentum.value,
+    supportLevel: supportResistance.support,
+    supportDistancePct: supportResistance.supportDistancePct,
+    resistanceLevel: supportResistance.resistance,
+    resistanceDistancePct: supportResistance.resistanceDistancePct,
+    volumeVisible,
+    volumeDataCount: volumeDataCount ?? 0,
+    rsiDebug: {
+      dataCount: rsiStats?.count ?? 0,
+      min: rsiStats?.min ?? null,
+      max: rsiStats?.max ?? null,
+      renderedSeriesCount: (rsiStats?.count ?? 0) > 0 ? 1 : 0,
+    },
+    mode,
+  };
+}
+
+function deriveMomentum(rows) {
+  const normalized = Array.isArray(rows) ? rows : [];
+  if (normalized.length < 6) {
+    return { key: "awaiting", tone: "neutral", value: null };
+  }
+  const latest = toFiniteNumber(normalized.at(-1)?.close);
+  const anchor = toFiniteNumber(normalized.at(-6)?.close);
+  if (latest == null || anchor == null || anchor === 0) {
+    return { key: "awaiting", tone: "neutral", value: null };
+  }
+  const value = ((latest - anchor) / Math.abs(anchor)) * 100;
+  if (value >= 3) {
+    return { key: "positive", tone: "positive", value };
+  }
+  if (value <= -3) {
+    return { key: "negative", tone: "negative", value };
+  }
+  return { key: "neutral", tone: "neutral", value };
+}
+
+function deriveSupportResistance(rows, latestRow) {
+  const normalized = Array.isArray(rows) ? rows : [];
+  const recent = normalized.slice(-20);
+  const latestClose = toFiniteNumber(latestRow?.close);
+  if (!recent.length || latestClose == null || latestClose === 0) {
+    return { support: null, supportDistancePct: null, resistance: null, resistanceDistancePct: null };
+  }
+
+  const lows = recent
+    .map((row) => toFiniteNumber(row?.low ?? row?.close))
+    .filter((value) => value != null);
+  const highs = recent
+    .map((row) => toFiniteNumber(row?.high ?? row?.close))
+    .filter((value) => value != null);
+
+  const support = lows.length ? Math.min(...lows) : null;
+  const resistance = highs.length ? Math.max(...highs) : null;
+
+  return {
+    support,
+    supportDistancePct: support != null ? Math.abs(((latestClose - support) / latestClose) * 100) : null,
+    resistance,
+    resistanceDistancePct: resistance != null ? Math.abs(((resistance - latestClose) / latestClose) * 100) : null,
+  };
+}
+
+function buildRsiStats(rsiData) {
+  const values = (Array.isArray(rsiData) ? rsiData : [])
+    .map((point) => toFiniteNumber(point?.value))
+    .filter((value) => value != null);
+
+  if (!values.length) {
+    return { count: 0, min: null, max: null };
+  }
+
+  return {
+    count: values.length,
+    min: Math.min(...values),
+    max: Math.max(...values),
+  };
+}
+
+function deriveTrendDirection(rows) {
+  if (!Array.isArray(rows) || rows.length < 2) {
+    return "SIDEWAYS";
+  }
+  const latest = rows.at(-1)?.close;
+  const reference = rows[Math.max(rows.length - 6, 0)]?.close;
+  if (latest == null || reference == null) {
+    return "SIDEWAYS";
+  }
+  if (latest > reference * 1.02) {
+    return "UPTREND";
+  }
+  if (latest < reference * 0.98) {
+    return "DOWNTREND";
+  }
+  return "SIDEWAYS";
+}
+
+function normalizeTrendDirection(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  return normalized || null;
+}
+
+function deriveMaAlignment(latestRow) {
+  const sma7 = latestRow?.sma7;
+  const sma20 = latestRow?.sma20;
+  const sma50 = latestRow?.sma50;
+
+  if ([sma7, sma20, sma50].some((value) => value == null)) {
+    return { key: "limited", tone: "neutral" };
+  }
+  if (sma7 > sma20 && sma20 > sma50) {
+    return { key: "bullish", tone: "positive" };
+  }
+  if (sma7 < sma20 && sma20 < sma50) {
+    return { key: "bearish", tone: "negative" };
+  }
+  return { key: "mixed", tone: "neutral" };
+}
+
+function deriveVolatility(latestRow, previousRow) {
+  if (!latestRow?.close || !previousRow?.close) {
+    return { key: "awaiting", tone: "neutral", summaryKey: "awaiting" };
+  }
+
+  const dailyMove = Math.abs(((latestRow.close - previousRow.close) / previousRow.close) * 100);
+  if (dailyMove >= 4) {
+    return { key: "high", tone: "negative", summaryKey: "high" };
+  }
+  if (dailyMove >= 2) {
+    return { key: "medium", tone: "warning", summaryKey: "medium" };
+  }
+  return { key: "low", tone: "positive", summaryKey: "low" };
+}
+
+function deriveLatestSignal({ latestRow, trendDirection, maAlignment, volatility }) {
+  if (latestRow?.rsi14 != null && latestRow.rsi14 <= 30) {
+    return { key: "oversoldRisk", tone: "positive" };
+  }
+  if (latestRow?.rsi14 != null && latestRow.rsi14 >= 70) {
+    return { key: "overboughtRisk", tone: "warning" };
+  }
+  if (trendDirection === "UPTREND" && maAlignment.tone === "positive") {
+    return { key: "weakBullish", tone: "positive" };
+  }
+  if (trendDirection === "DOWNTREND" && maAlignment.tone === "negative") {
+    return { key: "weakBearish", tone: "negative" };
+  }
+  if (volatility.tone === "negative") {
+    return { key: "highVolatility", tone: "warning" };
+  }
+  return { key: "neutral", tone: "neutral" };
+}
+
+function chipTone(kind) {
+  switch (kind) {
+    case "stopLoss":
+      return "sl";
+    case "takeProfit":
+      return "tp";
+    case "trend":
+      return "trend";
+    default:
+      return "hline";
+  }
+}
+
+function seriesColor(key) {
+  switch (key) {
+    case "sma7":
+      return "#0f766e";
+    case "sma20":
+      return "#2563eb";
+    case "sma50":
+      return "#f59e0b";
+    case "ema20":
+      return "#8b5cf6";
+    case "bollingerUpper":
+    case "bollingerMiddle":
+    case "bollingerLower":
+      return "#94a3b8";
+    case "volumeMa20":
+      return "#64748b";
+    default:
+      return "#94a3b8";
+  }
+}
+
+function toneFromRsi(rsi) {
+  if (rsi == null) {
+    return "neutral";
+  }
+  if (rsi >= 70) {
+    return "warning";
+  }
+  if (rsi <= 30) {
+    return "positive";
+  }
+  return "neutral";
+}
+
+function toneFromSignal(tone) {
+  return tone ?? "neutral";
+}
+
+function normalizeSignalDescriptor(value) {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === "object" && value.shortLabel && value.text) {
+    return value;
+  }
+  const label = String(value).trim();
+  if (!label) {
+    return null;
+  }
+  return {
+    shortLabel: label,
+    text: label,
+    tone: /buy|bull|up|long/i.test(label)
+      ? "positive"
+      : /sell|bear|down|short/i.test(label)
+        ? "negative"
+        : "neutral",
+  };
+}
+
+function trendTone(direction) {
+  switch (direction) {
+    case "UPTREND":
+      return "positive";
+    case "DOWNTREND":
+      return "negative";
+    default:
+      return "neutral";
+  }
+}
+
+function formatCompactPrice(value) {
+  return Number(value).toFixed(Math.abs(value) >= 100 ? 2 : 4);
 }
 
 function toFiniteNumber(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeChartTime(time) {
+  if (typeof time === "number") {
+    return time;
+  }
+  if (time && typeof time === "object" && "year" in time) {
+    return Math.floor(Date.UTC(time.year, time.month - 1, time.day) / 1000);
+  }
+  return null;
 }
 
 function buildDateRange(range) {
@@ -858,7 +2091,6 @@ function buildDateRange(range) {
         from: "2000-01-01",
         to: toIsoDate(today),
       };
-      break;
     default:
       from.setMonth(from.getMonth() - 6);
       break;
@@ -876,6 +2108,28 @@ function toIsoDate(value) {
 
 function toEpochSeconds(date) {
   return Math.floor(new Date(`${date}T00:00:00Z`).getTime() / 1000);
+}
+
+function formatTooltipDate(epochSeconds) {
+  const date = new Date(epochSeconds * 1000);
+  return date.toLocaleDateString("tr-TR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function withAlpha(color, alpha) {
+  if (!color) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
+  if (color.startsWith("rgba")) {
+    return color.replace(/rgba\((.+),\s*[\d.]+\)/, `rgba($1, ${alpha})`);
+  }
+  if (color.startsWith("rgb")) {
+    return color.replace("rgb(", "rgba(").replace(")", `, ${alpha})`);
+  }
+  return color;
 }
 
 function mapLegacyTimeframeToRange(value) {
@@ -900,5 +2154,139 @@ function mapInitialTool(value) {
   if (normalized === "TAKEPROFIT_LINE") {
     return "takeProfit";
   }
-  return null;
+  return "cursor";
+}
+
+function AiTechPanel({ instrumentCode, isAuthenticated, isPremium, aiData, aiLoading, aiError, onRetry, onLogin, t }) {
+  if (!isAuthenticated) {
+    return (
+      <div className="tech-ai-gate">
+        <div className="tech-ai-gate-icon"><Lock size={22} strokeWidth={1.5} /></div>
+          <p className="tech-ai-gate-title">{t("analysis.chart.aiPanel.premiumTitle")}</p>
+          <p className="tech-ai-gate-desc">{t("analysis.chart.aiPanel.authDesc")}</p>
+        <button className="tech-ai-gate-btn" onClick={onLogin}>
+            {t("analysis.chart.aiPanel.loginCta")}
+        </button>
+      </div>
+    );
+  }
+
+  if (!isPremium) {
+    return (
+      <div className="tech-ai-gate tech-ai-gate--premium">
+        <div className="tech-ai-gate-icon tech-ai-gate-icon--premium"><Sparkles size={20} strokeWidth={1.5} /></div>
+          <p className="tech-ai-gate-title">{t("analysis.chart.aiPanel.premiumTitle")}</p>
+          <p className="tech-ai-gate-desc">{t("analysis.chart.aiPanel.premiumDesc")}</p>
+        <a href="/profile" className="tech-ai-gate-btn tech-ai-gate-btn--premium">
+            {t("analysis.chart.aiPanel.premiumCta")}
+        </a>
+        <div className="tech-ai-blur-preview" aria-hidden="true">
+          <div className="tech-ai-blur-line" />
+          <div className="tech-ai-blur-line tech-ai-blur-line--short" />
+          <div className="tech-ai-blur-line" />
+          <div className="tech-ai-blur-line tech-ai-blur-line--short" />
+        </div>
+      </div>
+    );
+  }
+
+  if (aiLoading) {
+    return (
+      <div className="tech-ai-skeleton">
+        <div className="tech-ai-skel-badge" />
+        <div className="tech-ai-skel-line" />
+        <div className="tech-ai-skel-line tech-ai-skel-line--short" />
+        <div className="tech-ai-skel-sep" />
+        <div className="tech-ai-skel-line" />
+        <div className="tech-ai-skel-line tech-ai-skel-line--short" />
+        <div className="tech-ai-skel-line" />
+      </div>
+    );
+  }
+
+  if (aiError) {
+    return (
+      <div className="tech-ai-error">
+        <p>{aiError}</p>
+        <button className="tech-ai-retry-btn" onClick={onRetry}>
+              {t("analysis.chart.aiPanel.retry")}
+        </button>
+      </div>
+    );
+  }
+
+  if (!aiData) {
+    return null;
+  }
+
+  const signalTone = aiSignalTone(aiData.signal);
+  const riskTone = aiRiskTone(aiData.riskLevel);
+
+  return (
+    <div className="tech-ai-content">
+      <div className="tech-ai-badges">
+        {aiData.signal ? (
+          <span className={`tech-ai-badge tech-ai-badge--${signalTone}`}>
+            {aiData.signal}
+          </span>
+        ) : null}
+        {aiData.riskLevel ? (
+          <span className={`tech-ai-badge tech-ai-badge--${riskTone}`}>
+            {aiData.riskLevel} Risk
+          </span>
+        ) : null}
+      </div>
+
+      {aiData.summary ? (
+        <div className="tech-ai-section">
+            <div className="tech-ai-section-label">{t("analysis.chart.aiPanel.summary")}</div>
+          <p className="tech-ai-section-text">{aiData.summary}</p>
+        </div>
+      ) : null}
+
+      {aiData.trendComment ? (
+        <div className="tech-ai-section">
+            <div className="tech-ai-section-label">{t("analysis.chart.aiPanel.trendComment")}</div>
+          <p className="tech-ai-section-text">{aiData.trendComment}</p>
+        </div>
+      ) : null}
+
+      {aiData.momentumComment ? (
+        <div className="tech-ai-section">
+            <div className="tech-ai-section-label">{t("analysis.chart.aiPanel.momentumComment")}</div>
+          <p className="tech-ai-section-text">{aiData.momentumComment}</p>
+        </div>
+      ) : null}
+
+      {aiData.disclaimer ? (
+        <p className="tech-ai-disclaimer">{aiData.disclaimer}</p>
+      ) : (
+          <p className="tech-ai-disclaimer">{t("analysis.chart.aiPanel.defaultDisclaimer")}</p>
+      )}
+
+      {aiData.metadata?.provider ? (
+        <div className="tech-ai-meta">
+          {aiData.metadata.cacheHit ? "⚡ " : "🤖 "}{aiData.metadata.provider}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function aiSignalTone(signal) {
+  switch (String(signal || "").toUpperCase()) {
+    case "POSITIVE": return "positive";
+    case "NEGATIVE": return "negative";
+    case "RISKY": return "warning";
+    default: return "neutral";
+  }
+}
+
+function aiRiskTone(level) {
+  switch (String(level || "").toUpperCase()) {
+    case "LOW": return "positive";
+    case "HIGH": return "negative";
+    case "MEDIUM": return "warning";
+    default: return "neutral";
+  }
 }

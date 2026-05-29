@@ -26,8 +26,8 @@ public class HttpClientConfig {
     @Bean
     public RestClient restClient(RestClient.Builder builder) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout((int) Duration.ofSeconds(10).toMillis());
-        requestFactory.setReadTimeout((int) Duration.ofSeconds(30).toMillis());
+        requestFactory.setConnectTimeout((int) Duration.ofSeconds(5).toMillis());
+        requestFactory.setReadTimeout((int) Duration.ofSeconds(10).toMillis());
         return builder
                 .requestFactory(requestFactory)
                 .requestInterceptor(new ExternalProviderLogInterceptor())

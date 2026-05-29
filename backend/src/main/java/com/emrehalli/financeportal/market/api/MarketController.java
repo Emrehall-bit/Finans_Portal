@@ -458,8 +458,8 @@ public class MarketController {
                     ? symbol.split(":")[1]
                     : symbol;
 
-            return fxService.getByCode(currencyCode).stream()
-                    .findFirst()
+            return fxService.getBySourceAndCode(sourceName, currencyCode)
+                    .or(() -> fxService.getByCode(currencyCode).stream().findFirst())
                     .map(this::toMarketSnapshot)
                     .orElse(fallbackSnapshot);
         }

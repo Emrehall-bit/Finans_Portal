@@ -883,13 +883,144 @@
 }
 
 .instrument-detail-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.72fr);
-  gap: 16px;
-  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
   background:
-    radial-gradient(circle at top right, rgba(96, 165, 250, 0.14), transparent 24%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 244, 255, 0.96));
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 28%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.99), rgba(239, 244, 255, 0.97));
+}
+
+/* ── Instrument Detail Hero (idh-*) ──────────────────────────────────────── */
+
+.idh-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 14px 22px 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-decoration: none;
+  transition: color 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.idh-back:hover { color: #2563eb; }
+
+.idh-body {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 14px 22px 20px;
+  flex-wrap: wrap;
+}
+
+.idh-identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.idh-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  margin: 0 0 4px;
+}
+
+.idh-headline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.idh-symbol {
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.idh-change-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.idh-change-badge.positive {
+  background: rgba(22, 163, 74, 0.1);
+  color: #16a34a;
+}
+
+.idh-change-badge.negative {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.idh-displayname {
+  margin: 5px 0 0;
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.idh-price-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.idh-price {
+  font-size: clamp(1.35rem, 1.8vw, 1.85rem);
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.idh-meta-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.idh-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(148, 163, 184, 0.1);
+  color: #64748b;
+}
+
+.idh-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.idh-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .instrument-detail-hero-main,
@@ -899,69 +1030,6 @@
 .instrument-detail-side-column {
   display: grid;
   gap: 12px;
-}
-
-.instrument-detail-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.instrument-detail-heading h1 {
-  margin: 4px 0 0;
-  font-size: clamp(1.85rem, 2.35vw, 2.65rem);
-  line-height: 1;
-}
-
-.instrument-detail-subtitle {
-  margin: 6px 0 0;
-  color: var(--text-soft);
-}
-
-.instrument-detail-price-block {
-  display: grid;
-  gap: 8px;
-  justify-items: end;
-}
-
-.instrument-detail-price-block strong {
-  font-size: clamp(1.65rem, 2.15vw, 2.45rem);
-}
-
-.instrument-detail-action-row {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.instrument-detail-action-row button {
-  min-height: 42px;
-  padding: 8px 14px;
-  border-radius: 14px;
-}
-
-.instrument-detail-hero-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.instrument-detail-hero .terminal-price-card {
-  padding: 12px 14px;
-  border-radius: 14px;
-}
-
-.instrument-detail-hero .terminal-price-card strong {
-  margin-top: 6px;
-  font-size: 1.18rem;
-  line-height: 1.15;
-}
-
-.instrument-detail-hero .terminal-price-card span {
-  font-size: 0.76rem;
 }
 
 .instrument-detail-tabs {
@@ -997,21 +1065,27 @@
 }
 
 .instrument-overview-metric {
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.04);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 20px 22px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(148, 163, 184, 0.14);
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .instrument-overview-metric span {
   color: var(--text-soft);
-  font-size: 0.84rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .instrument-overview-metric strong {
-  font-size: 1.1rem;
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--text-main);
 }
 
 .instrument-overview-brief {
@@ -1729,4 +1803,101 @@ html[data-theme] .market-row-active {
   .instrument-fundamentals-panel .terminal-indicator-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── InstrumentChartPanel new layout (icp-*) ────────────────────────────── */
+
+.icp-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  margin-bottom: 14px;
+}
+
+.icp-date-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.icp-date-field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.icp-date-field input[type="date"] {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: transparent;
+  font-size: 11px;
+  color: #475569;
+  cursor: pointer;
+}
+
+.icp-indicator-row {
+  display: inline-flex;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 5px;
+  overflow: hidden;
+  gap: 0;
+  margin-left: auto;
+}
+
+.icp-indicator-row .chart-tf-btn {
+  border-right: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 0;
+}
+
+.icp-indicator-row .chart-tf-btn:last-child {
+  border-right: none;
+}
+
+.icp-chart-wrap {
+  border-radius: 14px;
+  overflow: hidden;
+  padding: 6px 0 0;
+}
+
+/* ── Dark mode for hero & icp ───────────────────────────────────────────── */
+
+[data-theme="dark"] .instrument-detail-hero {
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 28%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.98), rgba(8, 16, 40, 0.97));
+}
+
+[data-theme="dark"] .idh-symbol,
+[data-theme="dark"] .idh-price {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .idh-displayname,
+[data-theme="dark"] .idh-tag,
+[data-theme="dark"] .idh-eyebrow {
+  color: #475569;
+}
+
+[data-theme="dark"] .idh-tag {
+  background: rgba(71, 85, 105, 0.25);
+}
+
+[data-theme="dark"] .icp-date-field input[type="date"] {
+  border-color: rgba(71, 85, 105, 0.35);
+  color: #64748b;
+  background: rgba(30, 41, 59, 0.4);
+}
+
+[data-theme="dark"] .instrument-overview-metric {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(51, 65, 85, 0.3);
 }

@@ -7,6 +7,7 @@ import { getCompanyFundamentals, getCompanyFinancials } from "../../api/companyA
 import { extractErrorMessage } from "../../api/responseUtils";
 import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../../api/watchlistApi";
 import { useAuth } from "../../auth/AuthContext";
+import { useCurrency } from "../../currency/CurrencyContext";
 import AiCompanyComparisonCard from "../ai/AiCompanyComparisonCard";
 import AiFundamentalInsightCard from "../ai/AiFundamentalInsightCard";
 import AiTechnicalInsightCard from "../ai/AiTechnicalInsightCard";
@@ -27,6 +28,7 @@ import InstrumentHeader from "./InstrumentHeader";
 import InstrumentNewsList from "./InstrumentNewsList";
 import InstrumentStatsPanel from "./InstrumentStatsPanel";
 import InstrumentTabs from "./InstrumentTabs";
+import { formatInstrumentCode, formatInstrumentLabel } from "../../utils/instrumentUtils";
 import {
   buildChartData,
   buildPresetRange,
@@ -43,6 +45,7 @@ export default function InstrumentDetailPage() {
   const normalizedSymbol = decodeURIComponent(symbol);
   const instrumentType = (searchParams.get("type") || "").trim().toUpperCase();
   const { userId, login } = useAuth();
+  const { convertAmount, currency } = useCurrency();
   const { toast, showToast } = useToast();
 
   const [quote, setQuote] = useState(null);
@@ -356,6 +359,16 @@ export default function InstrumentDetailPage() {
     () => buildChartData(Array.isArray(analysis?.points) ? analysis.points : [], annualHistory),
     [analysis, annualHistory],
   );
+  const displayChartData = useMemo(() => {
+    if (currency === "TRY") return chartData;
+    return chartData.map((point) => ({
+      ...point,
+      close: convertAmount(point.close),
+      sma7: point.sma7 != null ? convertAmount(point.sma7) : null,
+      sma20: point.sma20 != null ? convertAmount(point.sma20) : null,
+      sma50: point.sma50 != null ? convertAmount(point.sma50) : null,
+    }));
+  }, [chartData, currency, convertAmount]);
   const displayTrendDirection = useMemo(
     () => resolveTrendDirection(analysis?.trendDirection, chartData),
     [analysis?.trendDirection, chartData],
@@ -373,7 +386,7 @@ export default function InstrumentDetailPage() {
     [quote?.instrumentType, instrumentType, normalizedSymbol],
   );
   const stats = useMemo(() => buildStats(quote, yearStatsHistory), [quote, yearStatsHistory]);
-  const latestPrice = quote?.price ?? analysis?.latestPrice ?? null;
+  const latestPrice = quote?.sellRate ?? quote?.price ?? analysis?.latestPrice ?? null;
   const aiAvailableData = useMemo(
     () => ({
       analysis,
@@ -559,7 +572,8 @@ export default function InstrumentDetailPage() {
                   onToggleIndicator={toggleIndicator}
                   loading={analysisLoading}
                   error={analysisError}
-                  chartData={chartData}
+                  chartData={displayChartData}
+                  currency={currency}
                 />
 
                 {supportsTechnicalAi(resolvedInstrumentType) ? (
@@ -727,23 +741,14 @@ function supportsFundamentalAi(instrumentType) {
 }
 
 function formatInstrumentDisplaySymbol(symbol) {
-  const tcmbMatch = parseTcmbFxInstrumentCode(symbol);
-  return tcmbMatch?.currency || symbol || "-";
+  return formatInstrumentCode(symbol);
 }
 
 function formatInstrumentDisplayTitle(symbol, fallbackTitle) {
-  const tcmbMatch = parseTcmbFxInstrumentCode(symbol);
-  return tcmbMatch?.currency || fallbackTitle;
-}
-
-function parseTcmbFxInstrumentCode(symbol) {
-  const match = String(symbol || "").trim().toUpperCase().match(/^TCMB:([A-Z0-9]+):(BUY|SELL)$/);
-  if (!match) {
-    return null;
+  const formattedSymbol = formatInstrumentCode(symbol);
+  const formattedLabel = formatInstrumentLabel(symbol);
+  if (formattedSymbol && formattedLabel && formattedLabel !== formattedSymbol) {
+    return formattedLabel;
   }
-
-  return {
-    currency: match[1],
-    side: match[2],
-  };
+  return fallbackTitle || formattedSymbol;
 }

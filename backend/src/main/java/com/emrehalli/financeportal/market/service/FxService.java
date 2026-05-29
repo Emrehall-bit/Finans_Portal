@@ -150,6 +150,22 @@ public class FxService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public Optional<FxRateResponse> getBySourceAndCode(SourceName sourceName, String code) {
+        String normalizedCode = normalizeCode(code);
+        if (normalizedCode.isBlank()) {
+            return Optional.empty();
+        }
+
+        if (sourceName == null) {
+            return getByCode(normalizedCode).stream().findFirst();
+        }
+
+        return getBySource(sourceName).stream()
+                .filter(rate -> normalizedCode.equalsIgnoreCase(rate.getCode()))
+                .findFirst();
+    }
+
     private void savePrice(SourceName sourceName,
                            String currencyCode,
                            FxPriceType priceType,

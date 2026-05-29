@@ -1,23 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useComparisonAnalysis, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
 import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPanel";
-import AnalysisInsightPanel from "../components/analysis/AnalysisInsightPanel";
 import AnalysisSymbolPicker from "../components/analysis/AnalysisSymbolPicker";
 import { ANALYSIS_RANGE_PRESETS, buildChartData, buildPresetRange, DEFAULT_INDICATORS } from "../components/analysis/analysisUtils";
 import AdvancedChart from "../components/analysis/AdvancedChart";
 import FundamentalAnalysis from "../components/analysis/FundamentalAnalysis";
+import SimpleAnalysisChart from "../components/analysis/SimpleAnalysisChart";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import PageHeader from "../components/common/PageHeader";
-import InstrumentChartPanel from "../components/market-detail/InstrumentChartPanel";
+import { formatInstrumentCode, getFxCodeLabel } from "../utils/instrumentUtils";
 
 export default function AnalysisPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { convertAmount, currency } = useCurrency();
   const [searchParams] = useSearchParams();
   const [primarySymbol, setPrimarySymbol] = useState(() => searchParams.get("symbol") || "");
@@ -30,6 +30,7 @@ export default function AnalysisPage() {
   const [selectedIndicators, setSelectedIndicators] = useState(() => new Set(DEFAULT_INDICATORS));
   const [comparisonMode, setComparisonMode] = useState("normalized");
   const [chartMode, setChartMode] = useState(() => (searchParams.get("tool") ? "advanced" : "simple"));
+  const [fundamentalsOpen, setFundamentalsOpen] = useState(false);
   const initialHighlightTool = searchParams.get("tool") || null;
   const presetPrice = searchParams.get("preset") ? Number(searchParams.get("preset")) : null;
 
@@ -39,14 +40,18 @@ export default function AnalysisPage() {
     () => quotes.find((q) => q.symbol === primarySymbol || q.code === primarySymbol) ?? null,
     [quotes, primarySymbol],
   );
+  const primaryContext = useMemo(
+    () => buildInstrumentContext(primarySymbol, primaryQuote, i18n.resolvedLanguage),
+    [primarySymbol, primaryQuote, i18n.resolvedLanguage],
+  );
   const quotesError = quotesQueryError ? extractErrorMessage(quotesQueryError, t("analysis.quotesError")) : "";
 
-  useMemo(() => {
+  useEffect(() => {
     if (quotes.length > 0 && !primarySymbol) {
       setPrimarySymbol(quotes[0]?.symbol || "");
       setSelectedSymbols((current) => (current.length > 0 ? current : quotes[0]?.symbol ? [quotes[0].symbol] : []));
     }
-  }, [quotes]);
+  }, [quotes, primarySymbol]);
 
   const analysisParams = useMemo(
     () => ({
@@ -66,10 +71,10 @@ export default function AnalysisPage() {
 
   const comparisonParams = useMemo(
     () =>
-      selectedSymbols.length >= 2 && dateRange.from && dateRange.to
+      chartMode === "advanced" && selectedSymbols.length >= 2 && dateRange.from && dateRange.to
         ? { symbols: selectedSymbols.join(","), from: dateRange.from, to: dateRange.to }
         : null,
-    [selectedSymbols, dateRange],
+    [chartMode, selectedSymbols, dateRange],
   );
 
   const { data: comparison = null, isLoading: comparisonLoading, error: comparisonQueryError } = useComparisonAnalysis(
@@ -84,9 +89,10 @@ export default function AnalysisPage() {
     return chartData.map((point) => ({
       ...point,
       close: convertAmount(point.close),
-      SMA7: point.SMA7 != null ? convertAmount(point.SMA7) : null,
-      SMA20: point.SMA20 != null ? convertAmount(point.SMA20) : null,
-      SMA50: point.SMA50 != null ? convertAmount(point.SMA50) : null,
+      sma7: point.sma7 != null ? convertAmount(point.sma7) : null,
+      sma20: point.sma20 != null ? convertAmount(point.sma20) : null,
+      sma50: point.sma50 != null ? convertAmount(point.sma50) : null,
+      rsi14: point.rsi14,
     }));
   }, [chartData, currency, convertAmount]);
 
@@ -121,35 +127,8 @@ export default function AnalysisPage() {
     setDateRange(buildPresetRange(preset.days));
   }
 
-  function handleDateRangeChange(field, value) {
-    setActiveRange("CUSTOM");
-    setDateRange((current) => ({ ...current, [field]: value }));
-  }
-
-  function toggleIndicator(indicator) {
-    setSelectedIndicators((current) => {
-      const next = new Set(current);
-      if (next.has(indicator) && next.size > 1) {
-        next.delete(indicator);
-        return next;
-      }
-
-      next.add(indicator);
-      return next;
-    });
-  }
-
   return (
     <div className="dashboard-stack analysis-lab-shell">
-      <div className="analysis-page-header-row">
-        <PageHeader
-          eyebrow={t("analysis.eyebrow")}
-          title={t("analysis.title")}
-          description={t("analysis.description")}
-        />
-        <CurrencyToggle className="analysis-currency-toggle" />
-      </div>
-
       {quotesLoading ? <LoadingSpinner label={t("analysis.quotesLoading")} /> : null}
       {quotesError ? <ErrorMessage message={quotesError} /> : null}
 
@@ -160,66 +139,89 @@ export default function AnalysisPage() {
       ) : null}
 
       {!quotesLoading && !quotesError && quotes.length > 0 ? (
-        <>
-          <AnalysisSymbolPicker
-            quotes={quotes}
-            primarySymbol={primarySymbol}
-            selectedSymbols={selectedSymbols}
-            onPrimaryChange={handlePrimaryChange}
-            onToggleComparisonSymbol={handleToggleComparisonSymbol}
-          />
-
-          <section className="analysis-lab-grid">
-            <div className="analysis-lab-main">
+        <section className="analysis-lab-grid">
+          <div className="analysis-lab-main">
+            <section className="panel-surface analysis-terminal-shell">
               {primarySymbol ? (
-                <>
-                  <div className="analysis-chart-mode-toggle">
-                    <button
-                      className={`chart-mode-btn${chartMode === "simple" ? " active" : ""}`}
-                      onClick={() => setChartMode("simple")}
-                    >
-                      {t("analysis.simpleChart", "Basit Grafik")}
-                    </button>
-                    <button
-                      className={`chart-mode-btn${chartMode === "advanced" ? " active" : ""}`}
-                      onClick={() => setChartMode("advanced")}
-                    >
-                      {t("analysis.advancedChart", "Gelişmiş Grafik")}
-                    </button>
-                  </div>
+                <div className="analysis-chart-stack-shell">
+                  <AnalysisSymbolPicker
+                    quotes={quotes}
+                    primarySymbol={primarySymbol}
+                    selectedSymbols={selectedSymbols}
+                    primaryContext={primaryContext}
+                    primaryQuote={primaryQuote}
+                    currencyToggle={<CurrencyToggle className="analysis-currency-toggle" />}
+                    chartMode={chartMode}
+                    showComparison
+                    showInlineComparisonChips={chartMode === "advanced"}
+                    onChartModeChange={setChartMode}
+                    onPrimaryChange={handlePrimaryChange}
+                    onToggleComparisonSymbol={handleToggleComparisonSymbol}
+                  />
 
-                  {chartMode === "simple" ? (
-                    <InstrumentChartPanel
-                      activeRange={activeRange}
-                      onRangeChange={handleRangeChange}
-                      dateRange={dateRange}
-                      onDateRangeChange={handleDateRangeChange}
-                      selectedIndicators={selectedIndicators}
-                      onToggleIndicator={toggleIndicator}
-                      loading={analysisLoading}
-                      error={analysisError}
-                      chartData={displayChartData}
-                      presets={ANALYSIS_RANGE_PRESETS}
-                    />
-                  ) : (
-                    <AdvancedChart
-                      instrumentCode={primarySymbol}
-                      initialHighlightTool={initialHighlightTool}
-                      presetPrice={presetPrice}
-                      quote={primaryQuote}
-                    />
-                  )}
-                </>
+                  <div className="analysis-terminal-body">
+                    {chartMode === "simple" ? (
+                      <>
+                        <SimpleAnalysisChart
+                          activeRange={activeRange}
+                          onRangeChange={handleRangeChange}
+                          loading={analysisLoading}
+                          error={analysisError}
+                          chartData={displayChartData}
+                          presets={ANALYSIS_RANGE_PRESETS}
+                          quote={primaryQuote}
+                          analysis={analysis}
+                          primaryContext={primaryContext}
+                          onOpenAdvanced={() => setChartMode("advanced")}
+                        />
+                        <SimpleComparisonStrip
+                          quotes={quotes}
+                          primarySymbol={primarySymbol}
+                          selectedSymbols={selectedSymbols}
+                          onToggleComparisonSymbol={handleToggleComparisonSymbol}
+                        />
+                      </>
+                    ) : (
+                      <AdvancedChart
+                        instrumentCode={primarySymbol}
+                        initialHighlightTool={initialHighlightTool}
+                        presetPrice={presetPrice}
+                        quote={primaryQuote}
+                      />
+                    )}
+                  </div>
+                </div>
               ) : (
-                <section className="panel-surface analysis-lab-panel">
+                <section className="analysis-lab-panel analysis-terminal-empty">
                   <EmptyState title={t("analysis.primaryEmptyTitle")} description={t("analysis.primaryEmptyDescription")} />
                 </section>
               )}
+            </section>
 
-              {primarySymbol && ["STOCK", "FUND"].includes(primaryQuote?.instrumentType) && (
-                <FundamentalAnalysis instrumentCode={primarySymbol} />
-              )}
+            {primarySymbol && ["STOCK", "FUND"].includes(primaryQuote?.instrumentType) ? (
+              <section className="panel-surface analysis-fundamentals-shell">
+                <button
+                  type="button"
+                  className={`analysis-fundamentals-toggle${fundamentalsOpen ? " is-open" : ""}`}
+                  onClick={() => setFundamentalsOpen((current) => !current)}
+                  aria-expanded={fundamentalsOpen}
+                >
+                  <div>
+                    <strong>{t("fundamental.title")}</strong>
+                    <span>{fundamentalsOpen ? "Gizle" : "Göster"}</span>
+                  </div>
+                  <ChevronDown size={18} strokeWidth={2.2} className="analysis-fundamentals-chevron" />
+                </button>
 
+                {fundamentalsOpen ? (
+                  <div className="analysis-fundamentals-collapse is-open">
+                    <FundamentalAnalysis instrumentCode={primarySymbol} />
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            {chartMode === "advanced" ? (
               <AnalysisComparisonPanel
                 loading={comparisonLoading}
                 error={comparisonError}
@@ -227,16 +229,81 @@ export default function AnalysisPage() {
                 mode={comparisonMode}
                 onModeChange={setComparisonMode}
               />
-            </div>
-
-            <AnalysisInsightPanel
-              analysis={analysis}
-              loading={analysisLoading}
-              error={analysisError}
-            />
-          </section>
-        </>
+            ) : null}
+          </div>
+        </section>
       ) : null}
     </div>
   );
+}
+
+function buildInstrumentContext(primarySymbol, primaryQuote, locale) {
+  const normalizedType = String(primaryQuote?.instrumentType || "").trim().toUpperCase() || "MARKET";
+  const normalizedSource = primaryQuote?.source || "-";
+  const displayCode = primaryQuote?.code || formatInstrumentCode(primarySymbol) || "-";
+  const symbolLine = normalizedType === "FX" ? `${displayCode}/TRY` : displayCode;
+
+  return {
+    symbolLine,
+    title: resolveContextTitle(primaryQuote, displayCode, normalizedType, locale),
+    metaLine: [normalizedType, normalizedSource].filter(Boolean).join(" \u2022 "),
+  };
+}
+
+function resolveContextTitle(primaryQuote, displayCode, normalizedType, locale) {
+  if (normalizedType === "FX") {
+    return getFxCodeLabel(displayCode, locale);
+  }
+
+  const displayName = String(primaryQuote?.displayName || "").trim();
+  if (displayName && displayName !== displayCode) {
+    return displayName;
+  }
+
+  return displayCode;
+}
+
+function SimpleComparisonStrip({ quotes, primarySymbol, selectedSymbols, onToggleComparisonSymbol }) {
+  const comparisonSymbols = selectedSymbols.filter((symbol) => symbol !== primarySymbol);
+  const suggestions = ["BTC", "ETH", "XAUUSD", "THYAO"];
+
+  return (
+    <section className="simple-compare-strip">
+      <div className="simple-compare-strip-head">
+        <div>
+          <strong>{"Kar\u015f\u0131la\u015ft\u0131rma"}</strong>
+          <p>{"Enstr\u00fcmanlar\u0131 kar\u015f\u0131la\u015ft\u0131rarak daha iyi analiz yap\u0131n."}</p>
+        </div>
+        {comparisonSymbols.length > 0 ? (
+          <button type="button" className="simple-compare-strip-link">
+            <span>{comparisonSymbols.length} aktif</span>
+            <ArrowRight size={15} strokeWidth={2.2} />
+          </button>
+        ) : null}
+      </div>
+
+      <div className="simple-compare-chip-row">
+        {suggestions.map((symbol) => {
+          const active = selectedSymbols.includes(symbol);
+          return (
+            <button
+              key={symbol}
+              type="button"
+              className={`simple-compare-chip${active ? " active" : ""}`}
+              onClick={() => onToggleComparisonSymbol(symbol)}
+            >
+              <span className={`simple-compare-chip-icon simple-compare-chip-icon--${symbol.toLowerCase()}`}>
+                {symbol.slice(0, 2)}
+              </span>
+              <span>{resolveChipLabel(symbol, quotes)}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function resolveChipLabel(symbol, quotes) {
+  return quotes.find((item) => item.symbol === symbol)?.code || formatInstrumentCode(symbol) || symbol;
 }

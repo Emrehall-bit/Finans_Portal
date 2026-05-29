@@ -1,7 +1,8 @@
 button {
   border: 1px solid var(--input-border);
-  border-radius: 14px;
-  padding: 10px 14px;
+  border-radius: 9px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
   color: var(--input-text);
   background: var(--input-bg);
 }
@@ -10,7 +11,7 @@ button {
   background: linear-gradient(135deg, #2f5ec7, #4b7eff);
   color: white;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(69, 108, 214, 0.24);
+  box-shadow: none;
 }
 
 .secondary-button {
@@ -109,5 +110,6 @@ button,
 
 button:hover,
 button:focus-visible {
-  transform: translateY(-1px);
+  transform: none;
+  filter: brightness(1.05);
 }

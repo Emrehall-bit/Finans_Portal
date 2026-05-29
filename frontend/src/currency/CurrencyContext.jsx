@@ -116,7 +116,7 @@ export function CurrencyToggle({ className }) {
         className={`currency-toggle-btn${currency === "TRY" ? " is-active" : ""}`}
         onClick={() => setCurrency("TRY")}
       >
-        ₺ TRY
+        {"\u20ba"} TRY
       </button>
       <button
         type="button"

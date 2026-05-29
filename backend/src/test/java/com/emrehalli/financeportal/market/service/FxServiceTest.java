@@ -116,6 +116,51 @@ class FxServiceTest {
         assertThat(result.getFirst().getChangePercent()).isNull();
     }
 
+    @Test
+    void getBySourceAndCodeReturnsMatchingSourceOnly() {
+        MarketInstrument tcmbSellInstrument = instrument("TCMB:AUD:SELL");
+        MarketInstrument akbankSellInstrument = MarketInstrument.builder()
+                .instrumentCode("AKBANK:AUD:SELL")
+                .instrumentName("AKBANK:AUD:SELL")
+                .instrumentType(InstrumentType.FX)
+                .sourceName(SourceName.AKBANK)
+                .build();
+
+        MarketPrice tcmbSellPrice = MarketPrice.builder()
+                .instrument(tcmbSellInstrument)
+                .sourceName(SourceName.TCMB)
+                .priceValue(new BigDecimal("25.5000"))
+                .priceTimestamp(LocalDateTime.of(2026, 5, 10, 10, 0))
+                .build();
+        MarketPrice akbankSellPrice = MarketPrice.builder()
+                .instrument(akbankSellInstrument)
+                .sourceName(SourceName.AKBANK)
+                .priceValue(new BigDecimal("26.1000"))
+                .priceTimestamp(LocalDateTime.of(2026, 5, 10, 10, 0))
+                .build();
+
+        when(cacheService.getList("fx:source:TCMB", FxRateResponse.class)).thenReturn(List.of());
+        when(cacheService.get("fx:TCMB:AUD", FxRateResponse.class)).thenReturn(Optional.empty());
+        when(marketInstrumentRepository.findAll()).thenReturn(List.of(tcmbSellInstrument, akbankSellInstrument));
+        when(marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(eq(tcmbSellInstrument)))
+                .thenReturn(Optional.of(tcmbSellPrice));
+        when(marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(eq(akbankSellInstrument)))
+                .thenReturn(Optional.of(akbankSellPrice));
+        when(marketPriceHistoryRepository.findTopByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampLessThanOrderByPriceTimestampDesc(
+                eq(tcmbSellInstrument),
+                eq(IntervalType.ONE_DAY),
+                eq(SourceName.TCMB),
+                any(Instant.class)
+        )).thenReturn(Optional.empty());
+
+        Optional<FxRateResponse> result = fxService.getBySourceAndCode(SourceName.TCMB, "AUD");
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getSource()).isEqualTo("TCMB");
+        assertThat(result.get().getCode()).isEqualTo("AUD");
+        assertThat(result.get().getSellRate()).isEqualByComparingTo("25.5000");
+    }
+
     private MarketInstrument instrument(String code) {
         return MarketInstrument.builder()
                 .instrumentCode(code)

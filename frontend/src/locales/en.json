@@ -561,7 +561,171 @@
       "searchComparison": "Search comparison",
       "searchPlaceholder": "BTCUSDT, THYAO, USDTRY...",
       "emptySelection": "Select at least one instrument for comparison."
+    },
+    "simpleChart": "Simple Chart",
+    "advancedChart": "Advanced Chart",
+    "comparisonEmpty": {
+      "title": "Add a second instrument for comparison",
+      "description": "Use + Compare in the toolbar to add a second symbol.",
+      "ariaLabel": "Quick comparison suggestions"
+    },
+    "chart": {
+      "indicators": { "label": "Indicators" },
+      "aiPanel": {
+        "tabRules": "Technical Indicators",
+        "tabAi": "AI Analysis",
+        "loading": "Loading AI analysis...",
+        "loadError": "AI analysis could not be loaded.",
+        "retry": "Retry",
+        "premiumTitle": "AI Technical Analysis",
+        "premiumDesc": "This feature is available for Premium users only.",
+        "premiumCta": "Upgrade to Premium",
+        "authDesc": "Sign in to access AI analysis.",
+        "loginCta": "Sign In",
+        "summary": "Summary",
+        "trendComment": "Trend",
+        "momentumComment": "Momentum",
+        "defaultDisclaimer": "Not financial advice. For informational purposes only."
+      },
+      "range": { "1m": "1M", "3m": "3M", "6m": "6M", "1y": "1Y", "max": "MAX" },
+      "tools": {
+        "cursor": "Cursor",
+        "horizontal": "Horizontal Line",
+        "trend": "Trend Line",
+        "stopLoss": "Stop-Loss",
+        "takeProfit": "Take-Profit"
+      },
+      "drawing": {
+        "horizontal": "Horizontal",
+        "trend": "Trend",
+        "saving": "Adding...",
+        "addAlert": "Add as alert",
+        "delete": "Delete"
+      },
+      "loading": "Loading...",
+      "retry": "Retry",
+      "trendHint": "Select end point. Start:",
+      "errors": {
+        "loadFailed": "An error occurred while loading data.",
+        "noData": "No data found for this instrument.",
+        "noCandles": "Not enough candle data found."
+      },
+      "alerts": {
+        "stopLossCreated": "Stop-loss alert created.",
+        "takeProfitCreated": "Take-profit alert created.",
+        "createFailed": "Failed to create alert."
+      },
+      "techPanel": {
+        "title": "Technical Summary",
+        "waiting": "Waiting",
+        "trend": "Trend",
+        "maAlignment": "MA Alignment",
+        "volatility": "Volatility",
+        "momentum": "Momentum",
+        "support": "Support",
+        "resistance": "Resistance",
+        "latestSignal": "Signal",
+        "snapshot": "Snapshot",
+        "lastClose": "Last close",
+        "dailyChange": "Daily change",
+        "rsiRegime": "RSI regime",
+        "volatilityNote": "Volatility note",
+        "awaitingData": "Awaiting data",
+        "fromPrice": "from price",
+        "momentumState": {
+          "awaiting": "Awaiting data",
+          "positive": "Positive momentum",
+          "negative": "Negative momentum",
+          "neutral": "Neutral momentum"
+        },
+        "showDetails": "Details",
+        "hideDetails": "Hide"
+      },
+      "rsiRegime": {
+        "overbought": "Overbought risk",
+        "oversold": "Oversold risk",
+        "neutral": "Neutral momentum"
+      },
+      "trend": {
+        "uptrend": "Bullish bias",
+        "downtrend": "Bearish bias",
+        "sideways": "Sideways"
+      },
+      "maAlign": {
+        "limited": "Limited structure",
+        "bullish": "Bullish alignment",
+        "bearish": "Bearish alignment",
+        "mixed": "Mixed alignment"
+      },
+      "volatilityLevel": {
+        "awaiting": "Awaiting range",
+        "high": "High volatility",
+        "medium": "Medium volatility",
+        "low": "Low volatility"
+      },
+      "volatilitySummary": {
+        "awaiting": "More price history is needed.",
+        "high": "Wide daily range remains active.",
+        "medium": "Active range with manageable swings.",
+        "low": "Price structure remains relatively calm."
+      },
+      "signal": {
+        "oversoldRisk": { "short": "Oversold risk", "text": "RSI below 30; potential for a bounce is forming." },
+        "overboughtRisk": { "short": "Overbought risk", "text": "RSI above 70; profit-taking risk is rising." },
+        "weakBullish": { "short": "Weak bullish", "text": "Trend and averages are aligning upward." },
+        "weakBearish": { "short": "Weak bearish", "text": "Downtrend and weak average structure persisting." },
+        "highVolatility": { "short": "High volatility", "text": "Daily swings are wide; position sizing must be careful." },
+        "neutral": { "short": "Neutral momentum", "text": "No clear technical advantage has formed." }
+      },
+      "tooltip": {
+        "open": "Open",
+        "high": "High",
+        "low": "Low",
+        "close": "Close",
+        "volume": "Volume",
+        "change": "Change"
+      }
     }
+  },
+  "fundamental": {
+    "title": "Fundamental Analysis",
+    "noData": "N/A",
+    "units": { "trillion": "Tr TRY", "billion": "Bn TRY", "million": "Mn TRY" },
+    "ratios": {
+      "sectionTitle": "Financial Ratios",
+      "peRatio":      { "label": "P/E",           "tooltip": "Price / Earnings. Lower = looks cheaper" },
+      "pbRatio":      { "label": "P/B",           "tooltip": "Price / Book Value. Below 1 = discounted" },
+      "grossMargin":  { "label": "Gross Margin",  "tooltip": "What percentage of sales is gross profit" },
+      "netMargin":    { "label": "Net Margin",     "tooltip": "What percentage of sales is net profit" },
+      "roe":          { "label": "ROE",            "tooltip": "Return on equity" },
+      "roa":          { "label": "ROA",            "tooltip": "Return on assets" },
+      "currentRatio": { "label": "Current Ratio",  "tooltip": "Short-term debt coverage. Above 1 is good" },
+      "debtToEquity": { "label": "Debt/Equity",   "tooltip": "Financial leverage. Lower = less debt" }
+    },
+    "summary": {
+      "revenue": "Revenue", "netIncome": "Net Income",
+      "equity": "Equity", "totalAssets": "Total Assets"
+    },
+    "signal": { "BULLISH": "BULLISH", "NEUTRAL": "NEUTRAL", "BEARISH": "BEARISH" },
+    "piotroski": { "strong": "Strong", "mid": "Mid", "weak": "Weak" },
+    "altman": { "safe": "Safe Zone", "grey": "Grey Zone", "danger": "Danger Zone" },
+    "scores": {
+      "title": "Advanced Scores",
+      "grahamNumber": "Graham Number",
+      "currentPrice": "Current Price",
+      "premium": "premium",
+      "discount": "discount"
+    },
+    "growth": {
+      "title": "YoY Growth",
+      "revenue": "Revenue", "netIncome": "Net Income", "assets": "Assets"
+    },
+    "chart": {
+      "title": "Quarterly Trend",
+      "noData": "No quarterly data found",
+      "revenueSeries": "Revenue (Bn)", "marginSeries": "Net Margin (%)"
+    },
+    "emptyText": "No fundamental analysis data found for this instrument"
   },
   "watchlist": {
     "eyebrow": "Watchlist",
@@ -1439,6 +1603,7 @@
     "analysisEmptyDescription": "No technical summary was generated for this instrument.",
     "trend": "Trend",
     "latestPrice": "Latest price",
+    "dailyChange": "Daily change",
     "dataPoints": "Data points",
     "noSignal": "No notable signal",
     "indicatorsEmptyTitle": "No indicators found",

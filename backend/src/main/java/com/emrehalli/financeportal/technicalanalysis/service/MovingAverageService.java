@@ -18,16 +18,24 @@ public class MovingAverageService {
 
         List<BigDecimal> averages = new ArrayList<>(values.size());
         BigDecimal rollingSum = BigDecimal.ZERO;
+        int validCount = 0;
 
         for (int index = 0; index < values.size(); index++) {
-            BigDecimal value = sanitize(values.get(index));
-            rollingSum = rollingSum.add(value);
-
-            if (index >= period) {
-                rollingSum = rollingSum.subtract(sanitize(values.get(index - period)));
+            BigDecimal value = values.get(index);
+            if (value != null) {
+                rollingSum = rollingSum.add(value);
+                validCount++;
             }
 
-            if (index + 1 < period) {
+            if (index >= period) {
+                BigDecimal dropped = values.get(index - period);
+                if (dropped != null) {
+                    rollingSum = rollingSum.subtract(dropped);
+                    validCount--;
+                }
+            }
+
+            if (index + 1 < period || validCount < period) {
                 averages.add(null);
                 continue;
             }
@@ -36,10 +44,6 @@ public class MovingAverageService {
         }
 
         return Collections.unmodifiableList(new ArrayList<>(averages));
-    }
-
-    private BigDecimal sanitize(BigDecimal value) {
-        return value == null ? BigDecimal.ZERO : value;
     }
 }
 
