@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
 import com.emrehalli.financeportal.market.domain.enums.IntervalType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
+import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -123,6 +124,21 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
             MarketInstrument instrument,
             IntervalType intervalType,
             Instant priceTimestamp
+    );
+
+    @Query("""
+            SELECT mi.instrumentCode AS code, MAX(mph.priceTimestamp) AS lastTimestamp
+            FROM MarketPriceHistory mph
+            JOIN mph.instrument mi
+            WHERE mi.instrumentType = :instrumentType
+              AND mi.sourceName    = :sourceName
+              AND mph.intervalType = :intervalType
+            GROUP BY mi.instrumentCode
+            """)
+    List<LastHistoryDateProjection> findLastDatePerInstrument(
+            @Param("instrumentType") InstrumentType instrumentType,
+            @Param("sourceName")     SourceName sourceName,
+            @Param("intervalType")   IntervalType intervalType
     );
 }
 

@@ -35,6 +35,7 @@ import {
   buildStats,
   DEFAULT_INDICATORS,
   formatTrendLabel,
+  resolveInstrumentSymbols,
   resolveTrendDirection,
 } from "./marketDetailUtils";
 
@@ -81,6 +82,20 @@ export default function InstrumentDetailPage() {
   const isDateRangeInvalid = Boolean(
     dateRange.from && dateRange.to && new Date(dateRange.from).getTime() > new Date(dateRange.to).getTime(),
   );
+  const routeInstrumentType = useMemo(
+    () => resolveInstrumentType(instrumentType, normalizedSymbol),
+    [instrumentType, normalizedSymbol],
+  );
+  const symbolPair = useMemo(
+    () => resolveInstrumentSymbols(normalizedSymbol, routeInstrumentType),
+    [normalizedSymbol, routeInstrumentType],
+  );
+  const apiSymbol = symbolPair.apiSymbol;
+  const routeDisplaySymbol = symbolPair.displaySymbol;
+  const resolvedInstrumentType = useMemo(
+    () => resolveInstrumentType(quote?.instrumentType || instrumentType, apiSymbol || normalizedSymbol),
+    [quote?.instrumentType, instrumentType, apiSymbol, normalizedSymbol],
+  );
 
   useEffect(() => {
     if (!normalizedSymbol) {
@@ -96,7 +111,7 @@ export default function InstrumentDetailPage() {
       try {
         setQuoteLoading(true);
         setQuoteError("");
-        const data = await getMarketBySymbol(normalizedSymbol, { type: instrumentType || undefined });
+        const data = await getMarketBySymbol(apiSymbol, { type: resolvedInstrumentType || instrumentType || undefined });
         if (active) {
           setQuote(data ?? null);
         }
@@ -116,7 +131,7 @@ export default function InstrumentDetailPage() {
     return () => {
       active = false;
     };
-  }, [normalizedSymbol, instrumentType, t]);
+  }, [normalizedSymbol, apiSymbol, resolvedInstrumentType, instrumentType, t]);
 
   useEffect(() => {
     if (!normalizedSymbol) {
@@ -130,8 +145,8 @@ export default function InstrumentDetailPage() {
     async function loadAnnualHistory() {
       try {
         setHistoryLoading(true);
-        const historyRequest = buildHistoryRequest(activeRange, dateRange, quote?.source, instrumentType);
-        const nextHistory = await getMarketHistory(normalizedSymbol, historyRequest);
+        const historyRequest = buildHistoryRequest(activeRange, dateRange, quote?.source, resolvedInstrumentType);
+        const nextHistory = await getMarketHistory(apiSymbol, historyRequest);
         if (active) {
           setAnnualHistory(Array.isArray(nextHistory) ? nextHistory : []);
         }
@@ -150,7 +165,7 @@ export default function InstrumentDetailPage() {
     return () => {
       active = false;
     };
-  }, [normalizedSymbol, activeRange, dateRange, quote?.source, instrumentType]);
+  }, [normalizedSymbol, activeRange, dateRange, quote?.source, resolvedInstrumentType, apiSymbol]);
 
   useEffect(() => {
     if (!normalizedSymbol) {
@@ -163,10 +178,10 @@ export default function InstrumentDetailPage() {
     async function loadYearStatsHistory() {
       try {
         const statsRange = buildPresetRange(365);
-        const data = await getMarketHistory(normalizedSymbol, {
+        const data = await getMarketHistory(apiSymbol, {
           ...statsRange,
           source: quote?.source,
-          type: instrumentType,
+          type: resolvedInstrumentType,
         });
         if (active) {
           setYearStatsHistory(Array.isArray(data) ? data : []);
@@ -182,7 +197,7 @@ export default function InstrumentDetailPage() {
     return () => {
       active = false;
     };
-  }, [normalizedSymbol, quote?.source, instrumentType]);
+  }, [normalizedSymbol, quote?.source, resolvedInstrumentType, apiSymbol]);
 
   useEffect(() => {
     if (!normalizedSymbol || !dateRange.from || !dateRange.to || isDateRangeInvalid) {
@@ -199,7 +214,7 @@ export default function InstrumentDetailPage() {
         setAnalysisLoading(true);
         setAnalysisError("");
         const data = await getTechnicalAnalysis(
-          normalizedSymbol,
+          apiSymbol,
           dateRange.from,
           dateRange.to,
           Array.from(selectedIndicators).join(","),
@@ -223,7 +238,7 @@ export default function InstrumentDetailPage() {
     return () => {
       active = false;
     };
-  }, [normalizedSymbol, dateRange, selectedIndicators, isDateRangeInvalid]);
+  }, [normalizedSymbol, dateRange, selectedIndicators, isDateRangeInvalid, apiSymbol, t]);
 
   useEffect(() => {
     if (activeTab !== "news" || !normalizedSymbol) {
@@ -256,7 +271,7 @@ export default function InstrumentDetailPage() {
     return () => {
       active = false;
     };
-  }, [activeTab, normalizedSymbol]);
+  }, [activeTab, normalizedSymbol, t]);
 
   useEffect(() => {
     if (!userId || !normalizedSymbol) {
@@ -374,16 +389,12 @@ export default function InstrumentDetailPage() {
     [analysis?.trendDirection, chartData],
   );
   const displaySymbol = useMemo(
-    () => formatInstrumentDisplaySymbol(normalizedSymbol),
-    [normalizedSymbol],
+    () => formatInstrumentDisplaySymbol(routeDisplaySymbol || normalizedSymbol),
+    [routeDisplaySymbol, normalizedSymbol],
   );
   const displayTitle = useMemo(
     () => formatInstrumentDisplayTitle(normalizedSymbol, quote?.displayName),
     [normalizedSymbol, quote?.displayName],
-  );
-  const resolvedInstrumentType = useMemo(
-    () => resolveInstrumentType(quote?.instrumentType || instrumentType, normalizedSymbol),
-    [quote?.instrumentType, instrumentType, normalizedSymbol],
   );
   const stats = useMemo(() => buildStats(quote, yearStatsHistory), [quote, yearStatsHistory]);
   const latestPrice = quote?.sellRate ?? quote?.price ?? analysis?.latestPrice ?? null;
@@ -401,12 +412,12 @@ export default function InstrumentDetailPage() {
   );
   const quoteUnavailable = !quoteLoading && !quoteError && (!quote || quote.price == null);
   const isFavorite = useMemo(
-    () => watchlistItems.some((item) => normalizeCode(item.instrumentCode) === normalizeCode(normalizedSymbol)),
-    [watchlistItems, normalizedSymbol],
+    () => watchlistItems.some((item) => normalizeCode(item.instrumentCode) === normalizeCode(apiSymbol)),
+    [watchlistItems, apiSymbol],
   );
   const favoriteItemId = useMemo(
-    () => watchlistItems.find((item) => normalizeCode(item.instrumentCode) === normalizeCode(normalizedSymbol))?.id,
-    [watchlistItems, normalizedSymbol],
+    () => watchlistItems.find((item) => normalizeCode(item.instrumentCode) === normalizeCode(apiSymbol))?.id,
+    [watchlistItems, apiSymbol],
   );
 
   async function ensureSignedIn() {
@@ -430,7 +441,7 @@ export default function InstrumentDetailPage() {
         await removeWatchlistItem(favoriteItemId);
         showToast("success", t("instrumentDetail.favoriteRemoved"));
       } else {
-        await addWatchlistItem(userId, { instrumentCode: normalizedSymbol });
+        await addWatchlistItem(userId, { instrumentCode: apiSymbol });
         showToast("success", t("instrumentDetail.favoriteAdded"));
       }
 
@@ -557,7 +568,6 @@ export default function InstrumentDetailPage() {
                     <p>{buildOverviewMarketSummary(quote, displayTrendDirection, chartData.length, analysisLoading)}</p>
                   </div>
                 </section>
-
               </section>
             ) : null}
 
@@ -632,7 +642,8 @@ export default function InstrumentDetailPage() {
       <AddToPortfolioModal
         isOpen={isPortfolioModalOpen}
         onClose={() => setPortfolioModalOpen(false)}
-        symbol={normalizedSymbol}
+        symbol={apiSymbol}
+        displaySymbol={displaySymbol}
         currentPrice={latestPrice}
         userId={userId}
         onSuccess={() => handleActionSuccess(t("instrumentDetail.addedToPortfolio"))}
@@ -641,7 +652,8 @@ export default function InstrumentDetailPage() {
       <CreateAlertModal
         isOpen={isAlertModalOpen}
         onClose={() => setAlertModalOpen(false)}
-        symbol={normalizedSymbol}
+        symbol={apiSymbol}
+        displaySymbol={displaySymbol}
         currentPrice={latestPrice}
         userId={userId}
         onSuccess={() => handleActionSuccess(t("instrumentDetail.alertCreated"))}
@@ -669,9 +681,9 @@ function normalizeCode(value) {
     return "";
   }
 
-  const rawValue = String(value).trim();
-  if (rawValue.toUpperCase().startsWith("TCMB:")) {
-    return rawValue.toUpperCase();
+  const rawValue = String(value).trim().toUpperCase();
+  if (rawValue.startsWith("TCMB:")) {
+    return rawValue.split(":")[1] || rawValue;
   }
 
   return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();

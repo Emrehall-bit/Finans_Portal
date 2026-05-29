@@ -19,6 +19,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { formatNumber } from "../../utils/formatters";
 import { useCurrency } from "../../currency/CurrencyContext";
 import { formatAxisNumber, formatSignalLabel, formatTrendLabel, resolveTrendDirection } from "./analysisUtils";
+import { formatInstrumentCode } from "../../utils/instrumentUtils";
 
 export default function SimpleAnalysisChart({
   activeRange,
@@ -31,6 +32,10 @@ export default function SimpleAnalysisChart({
   analysis,
   primaryContext,
   onOpenAdvanced,
+  quotes = [],
+  primarySymbol = "",
+  selectedSymbols = [],
+  onToggleComparisonSymbol,
 }) {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
@@ -58,6 +63,7 @@ export default function SimpleAnalysisChart({
     [analysis, chartData, quote, trendDirection, latestRsi],
   );
   const sparklineData = useMemo(() => buildSparklineData(chartData), [chartData]);
+  const suggestions = useMemo(() => deriveComparisonSuggestions(quotes, primarySymbol), [quotes, primarySymbol]);
   const axisLabel = currency === "USD" ? "$" : "\u20ba";
 
   const metrics = [
@@ -95,7 +101,7 @@ export default function SimpleAnalysisChart({
   ];
 
   return (
-    <section className="panel-surface simple-analysis-panel">
+    <section className="simple-analysis-panel">
       <div className="simple-analysis-range-row">
         <div className="simple-analysis-ranges">
           {presets.map((preset) => (
@@ -127,13 +133,10 @@ export default function SimpleAnalysisChart({
         <div className="simple-analysis-workspace">
           <div className="simple-analysis-chart-card">
             <div className="simple-analysis-chart-header">
-              <div>
-                <span className="simple-analysis-axis-label">{axisLabel}</span>
-                <h3>{primaryContext?.symbolLine || "-"}</h3>
-              </div>
+              <h3>{primaryContext?.symbolLine || "-"}</h3>
             </div>
-            <ResponsiveContainer width="100%" height={460}>
-              <LineChart data={chartData} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={580}>
+              <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 32, left: 28 }} padding={{ left: 14, right: 4 }}>
                 <defs>
                   <linearGradient id="simple-analysis-fill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.22} />
@@ -141,12 +144,21 @@ export default function SimpleAnalysisChart({
                   </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} strokeDasharray="2 8" stroke={chartTheme.grid} />
-                <XAxis dataKey="date" stroke={chartTheme.axis} tickLine={false} axisLine={false} />
+                <XAxis
+                  dataKey="date"
+                  stroke={chartTheme.axis}
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 12 }}
+                  tickMargin={10}
+                />
                 <YAxis
                   stroke={chartTheme.axis}
                   tickLine={false}
                   axisLine={false}
-                  width={76}
+                  width={72}
+                  tick={{ fontSize: 12 }}
+                  tickMargin={10}
                   tickFormatter={(value) => `${axisLabel}${formatAxisNumber(value)}`}
                 />
                 <Tooltip content={<SimpleTooltip chartTheme={chartTheme} axisLabel={axisLabel} />} />
@@ -158,22 +170,27 @@ export default function SimpleAnalysisChart({
 
           <aside className="simple-tech-summary-card">
             <div className="simple-tech-summary-head">
-              <span>{t("analysis.chart.techPanel.title")}</span>
-              <span className={`simple-tech-summary-badge simple-tech-summary-badge--${summary.scoreTone}`}>
+              <span className="simple-tech-summary-label">{t("analysis.chart.techPanel.title")}</span>
+              <strong className={`simple-tech-summary-signal simple-tech-summary-signal--${summary.scoreTone}`}>
                 {summary.scoreLabel}
-              </span>
+              </strong>
             </div>
 
             <div className="simple-score-kpi">
-              <div className={`simple-score-kpi-value simple-score-kpi-value--${summary.scoreTone}`}>
+              <span className={`simple-score-kpi-value simple-score-kpi-value--${summary.scoreTone}`}>
                 {Math.round(summary.scorePercent ?? 0)}
                 <span className="simple-score-kpi-total">/100</span>
+              </span>
+              <div className="simple-score-bar">
+                <div
+                  className={`simple-score-bar-fill simple-score-bar-fill--${summary.scoreTone}`}
+                  style={{ width: `${Math.round(summary.scorePercent ?? 0)}%` }}
+                />
               </div>
-              <span className="simple-score-kpi-label">{summary.scoreLabel}</span>
             </div>
 
             <div className="simple-tech-summary-list">
-              <SummaryRow label="RSI (14)" value={latestRsi != null ? Number(latestRsi).toFixed(2) : "-"} tone={toneFromRsi(latestRsi)} />
+              <SummaryRow label="RSI (14)" value={latestRsi != null ? Number(latestRsi).toFixed(1) : "-"} tone={toneFromRsi(latestRsi)} />
               <SummaryRow label={t("analysis.chart.techPanel.trend")} value={trendDirection ? formatTrendLabel(trendDirection) : "-"} tone={summary.scoreTone} />
               <SummaryRow
                 label={t("analysis.chart.techPanel.latestSignal")}
@@ -184,6 +201,24 @@ export default function SimpleAnalysisChart({
               <SummaryRow label={t("analysis.chart.techPanel.volatility")} value={summary.volatilityLabel} tone={summary.volatilityTone} />
               <SummaryRow label="50 MA / 200 MA" value={summary.maPairLabel} tone={summary.maTone} />
             </div>
+
+            {suggestions.length > 0 ? (
+              <div className="simple-panel-compare">
+                <span className="simple-panel-compare-label">{t("analysis.comparison.eyebrow")}</span>
+                <div className="simple-panel-chips">
+                  {suggestions.map((symbol) => (
+                    <button
+                      key={symbol}
+                      type="button"
+                      className={`simple-panel-chip${selectedSymbols.includes(symbol) ? " active" : ""}`}
+                      onClick={() => onToggleComparisonSymbol?.(symbol)}
+                    >
+                      {resolveChipLabel(symbol, quotes)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <button type="button" className="simple-tech-summary-cta" onClick={onOpenAdvanced}>
               <Gauge size={16} strokeWidth={2.2} />
@@ -208,7 +243,7 @@ function SummaryMetric({ metric, sparklineData }) {
       </div>
       <div className={`simple-analysis-spark simple-analysis-spark--${metric.sparkTone}`}>
         {metric.icon ? <span className="simple-analysis-metric-icon">{metric.icon}</span> : null}
-        <ResponsiveContainer width="100%" height={42}>
+        <ResponsiveContainer width="100%" height={24}>
           <AreaChart data={sparklineData}>
             <Area type="monotone" dataKey="value" stroke={sparkColor(metric.sparkTone)} fill="none" strokeWidth={2} />
           </AreaChart>
@@ -222,7 +257,7 @@ function SummaryRow({ label, value, tone = "neutral" }) {
   return (
     <div className="simple-tech-summary-row">
       <span>{label}</span>
-      <strong className={`simple-tech-summary-value simple-tech-summary-value--${tone}`}>{value}</strong>
+      <span className={`simple-summary-chip simple-tech-summary-value--${tone}`}>{value}</span>
     </div>
   );
 }

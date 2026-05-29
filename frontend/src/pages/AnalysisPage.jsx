@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { extractErrorMessage } from "../api/responseUtils";
-import { useComparisonAnalysis, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
+import { useComparisonAnalysis, useMarketHistory, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
 import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPanel";
 import AnalysisSymbolPicker from "../components/analysis/AnalysisSymbolPicker";
 import { ANALYSIS_RANGE_PRESETS, buildChartData, buildPresetRange, DEFAULT_INDICATORS } from "../components/analysis/analysisUtils";
@@ -20,6 +20,7 @@ export default function AnalysisPage() {
   const { t, i18n } = useTranslation();
   const { convertAmount, currency } = useCurrency();
   const [searchParams] = useSearchParams();
+  const routeInstrumentType = String(searchParams.get("type") || "").trim().toUpperCase();
   const [primarySymbol, setPrimarySymbol] = useState(() => searchParams.get("symbol") || "");
   const [selectedSymbols, setSelectedSymbols] = useState(() => {
     const sym = searchParams.get("symbol");
@@ -39,6 +40,10 @@ export default function AnalysisPage() {
   const primaryQuote = useMemo(
     () => quotes.find((q) => q.symbol === primarySymbol || q.code === primarySymbol) ?? null,
     [quotes, primarySymbol],
+  );
+  const primaryApiSymbol = useMemo(
+    () => resolveApiSymbol(primarySymbol, primaryQuote, routeInstrumentType),
+    [primarySymbol, primaryQuote, routeInstrumentType],
   );
   const primaryContext = useMemo(
     () => buildInstrumentContext(primarySymbol, primaryQuote, i18n.resolvedLanguage),
@@ -63,27 +68,57 @@ export default function AnalysisPage() {
   );
 
   const { data: analysis = null, isLoading: analysisLoading, error: analysisQueryError } = useTechnicalAnalysis(
-    primarySymbol,
+    primaryApiSymbol,
     analysisParams,
-    { enabled: !!(primarySymbol && dateRange.from && dateRange.to) },
+    { enabled: !!(primaryApiSymbol && dateRange.from && dateRange.to) },
   );
-  const analysisError = analysisQueryError ? extractErrorMessage(analysisQueryError, t("analysis.analysisError")) : "";
+  const analysisError = analysisQueryError ? resolveAnalysisErrorMessage(analysisQueryError, t) : "";
+  const historyParams = useMemo(
+    () => ({
+      from: dateRange.from,
+      to: dateRange.to,
+      source: primaryQuote?.source,
+      type: primaryQuote?.instrumentType,
+    }),
+    [dateRange, primaryQuote],
+  );
+  const { data: history = [], isLoading: historyLoading } = useMarketHistory(
+    primaryApiSymbol,
+    historyParams,
+    { enabled: !!(primaryApiSymbol && dateRange.from && dateRange.to) },
+  );
 
   const comparisonParams = useMemo(
     () =>
       chartMode === "advanced" && selectedSymbols.length >= 2 && dateRange.from && dateRange.to
-        ? { symbols: selectedSymbols.join(","), from: dateRange.from, to: dateRange.to }
+        ? {
+            symbols: selectedSymbols
+              .map((symbol) => resolveApiSymbol(
+                symbol,
+                quotes.find((q) => q.symbol === symbol || q.code === symbol),
+                symbol === primarySymbol ? routeInstrumentType : "",
+              ))
+              .join(","),
+            from: dateRange.from,
+            to: dateRange.to,
+          }
         : null,
-    [chartMode, selectedSymbols, dateRange],
+    [chartMode, selectedSymbols, dateRange, quotes, primarySymbol, routeInstrumentType],
   );
 
   const { data: comparison = null, isLoading: comparisonLoading, error: comparisonQueryError } = useComparisonAnalysis(
     comparisonParams,
     { enabled: !!comparisonParams },
   );
-  const comparisonError = comparisonQueryError ? extractErrorMessage(comparisonQueryError, t("analysis.comparisonError")) : "";
+  const comparisonError = comparisonQueryError ? resolveComparisonErrorMessage(comparisonQueryError, t) : "";
 
-  const chartData = useMemo(() => buildChartData(Array.isArray(analysis?.points) ? analysis.points : []), [analysis]);
+  const chartData = useMemo(
+    () => buildChartData(Array.isArray(analysis?.points) ? analysis.points : [], history),
+    [analysis, history],
+  );
+  const hasChartData = chartData.length > 0;
+  const simpleChartLoading = analysisLoading || historyLoading;
+  const simpleChartError = !hasChartData ? analysisError : "";
   const displayChartData = useMemo(() => {
     if (currency === "TRY") return chartData;
     return chartData.map((point) => ({
@@ -161,32 +196,29 @@ export default function AnalysisPage() {
 
                   <div className="analysis-terminal-body">
                     {chartMode === "simple" ? (
-                      <>
                         <SimpleAnalysisChart
                           activeRange={activeRange}
                           onRangeChange={handleRangeChange}
-                          loading={analysisLoading}
-                          error={analysisError}
+                          loading={simpleChartLoading}
+                          error={simpleChartError}
                           chartData={displayChartData}
                           presets={ANALYSIS_RANGE_PRESETS}
                           quote={primaryQuote}
                           analysis={analysis}
                           primaryContext={primaryContext}
                           onOpenAdvanced={() => setChartMode("advanced")}
-                        />
-                        <SimpleComparisonStrip
                           quotes={quotes}
                           primarySymbol={primarySymbol}
                           selectedSymbols={selectedSymbols}
                           onToggleComparisonSymbol={handleToggleComparisonSymbol}
                         />
-                      </>
                     ) : (
                       <AdvancedChart
-                        instrumentCode={primarySymbol}
+                        instrumentCode={primaryApiSymbol}
                         initialHighlightTool={initialHighlightTool}
                         presetPrice={presetPrice}
                         quote={primaryQuote}
+                        technicalAnalysis={analysis}
                       />
                     )}
                   </div>
@@ -339,4 +371,40 @@ function deriveComparisonSuggestions(quotes, primarySymbol, limit = 4) {
 
 function resolveChipLabel(symbol, quotes) {
   return quotes.find((item) => item.symbol === symbol)?.code || formatInstrumentCode(symbol) || symbol;
+}
+
+function resolveAnalysisErrorMessage(error, t) {
+  const status = Number(error?.response?.status);
+  if ([400, 404, 422, 500].includes(status)) {
+    return t("analysis.rangeUnavailable");
+  }
+  return extractErrorMessage(error, t("analysis.analysisError"));
+}
+
+function resolveComparisonErrorMessage(error, t) {
+  const status = Number(error?.response?.status);
+  if ([400, 404, 422, 500].includes(status)) {
+    return t("analysis.rangeUnavailable");
+  }
+  return extractErrorMessage(error, t("analysis.comparisonError"));
+}
+
+function resolveApiSymbol(symbol, quote, fallbackInstrumentType = "") {
+  const rawSymbol = String(symbol || "").trim();
+  if (!rawSymbol) {
+    return "";
+  }
+
+  const fullSymbol = String(quote?.symbol || "").trim();
+  if (fullSymbol) {
+    return fullSymbol;
+  }
+
+  const normalizedType = String(quote?.instrumentType || fallbackInstrumentType).trim().toUpperCase();
+  const upperSymbol = rawSymbol.toUpperCase();
+  if (normalizedType === "FX" && !upperSymbol.startsWith("TCMB:") && /^[A-Z]{3}$/.test(upperSymbol)) {
+    return `TCMB:${upperSymbol}:SELL`;
+  }
+
+  return rawSymbol;
 }

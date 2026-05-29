@@ -572,7 +572,9 @@
       "ariaLabel": "Quick comparison suggestions"
     },
     "chart": {
-      "indicators": { "label": "Indicators" },
+      "indicators": {
+        "label": "Indicators"
+      },
       "aiPanel": {
         "tabRules": "Technical Indicators",
         "tabAi": "AI Analysis",
@@ -589,14 +591,21 @@
         "momentumComment": "Momentum",
         "defaultDisclaimer": "Not financial advice. For informational purposes only."
       },
-      "range": { "1m": "1M", "3m": "3M", "6m": "6M", "1y": "1Y", "max": "MAX" },
+      "range": {
+        "1m": "1M",
+        "3m": "3M",
+        "6m": "6M",
+        "1y": "1Y",
+        "max": "MAX"
+      },
       "tools": {
         "label": "Tools",
         "cursor": "Cursor",
         "horizontal": "Horizontal Line",
         "trend": "Trend Line",
         "stopLoss": "Stop-Loss",
-        "takeProfit": "Take-Profit"
+        "takeProfit": "Take-Profit",
+        "structure": "Support/Resistance"
       },
       "drawing": {
         "horizontal": "Horizontal",
@@ -609,9 +618,9 @@
       "retry": "Retry",
       "trendHint": "Select end point. Start:",
       "errors": {
-        "loadFailed": "An error occurred while loading data.",
-        "noData": "No data found for this instrument.",
-        "noCandles": "Not enough candle data found."
+        "loadFailed": "Failed to load data.",
+        "noData": "No data is available for this instrument in the selected range.",
+        "noCandles": "No candle data is available for this instrument in the selected range."
       },
       "alerts": {
         "stopLossCreated": "Stop-loss alert created.",
@@ -673,12 +682,30 @@
         "low": "Price structure remains relatively calm."
       },
       "signal": {
-        "oversoldRisk": { "short": "Oversold risk", "text": "RSI below 30; potential for a bounce is forming." },
-        "overboughtRisk": { "short": "Overbought risk", "text": "RSI above 70; profit-taking risk is rising." },
-        "weakBullish": { "short": "Weak bullish", "text": "Trend and averages are aligning upward." },
-        "weakBearish": { "short": "Weak bearish", "text": "Downtrend and weak average structure persisting." },
-        "highVolatility": { "short": "High volatility", "text": "Daily swings are wide; position sizing must be careful." },
-        "neutral": { "short": "Neutral momentum", "text": "No clear technical advantage has formed." }
+        "oversoldRisk": {
+          "short": "Oversold risk",
+          "text": "RSI below 30; potential for a bounce is forming."
+        },
+        "overboughtRisk": {
+          "short": "Overbought risk",
+          "text": "RSI above 70; profit-taking risk is rising."
+        },
+        "weakBullish": {
+          "short": "Weak bullish",
+          "text": "Trend and averages are aligning upward."
+        },
+        "weakBearish": {
+          "short": "Weak bearish",
+          "text": "Downtrend and weak average structure persisting."
+        },
+        "highVolatility": {
+          "short": "High volatility",
+          "text": "Daily swings are wide; position sizing must be careful."
+        },
+        "neutral": {
+          "short": "Neutral momentum",
+          "text": "No clear technical advantage has formed."
+        }
       },
       "tooltip": {
         "open": "Open",
@@ -687,31 +714,116 @@
         "close": "Close",
         "volume": "Volume",
         "change": "Change"
+      },
+      "rsiZone": {
+        "overbought": "Overbought zone",
+        "oversold": "Oversold zone",
+        "neutral": "Neutral zone"
+      },
+      "rsiMarker": {
+        "overboughtTooltip": "Overbought zone ? RSI > 70",
+        "oversoldTooltip": "Oversold zone ? RSI < 30"
+      },
+      "techView": {
+        "title": "Technical View",
+        "state": {
+          "strongBullish": "Strong bullish",
+          "weakBullish": "Weak bullish",
+          "neutral": "Neutral",
+          "weakBearish": "Weak bearish",
+          "strongBearish": "Strong bearish"
+        },
+        "reason": {
+          "priceAboveMa20": "Price above MA20",
+          "priceBelowMa20": "Price below MA20",
+          "priceNearMa20": "Price near MA20",
+          "maBullish": "MA structure bullish",
+          "maBearish": "MA structure bearish",
+          "momentumPositive": "Momentum positive",
+          "momentumNegative": "Momentum negative",
+          "momentumNeutral": "Momentum flat",
+          "nearResistance": "Resistance {{value}} away",
+          "nearSupport": "Support {{value}} away",
+          "signalPositive": "Latest signal positive",
+          "signalNegative": "Latest signal negative",
+          "rsi": {
+            "overbought": "RSI in overbought zone",
+            "oversold": "RSI in oversold zone",
+            "neutral": "RSI in neutral zone"
+          }
+        }
       }
-    }
+    },
+    "modeHint": {
+      "simple": "Price, compact summary, and core signal view.",
+      "advanced": "MA20/MA50, RSI, support/resistance, indicators, and comparison."
+    },
+    "rangeUnavailable": "Not enough data is available for the selected time range."
   },
   "fundamental": {
     "title": "Fundamental Analysis",
     "noData": "N/A",
-    "units": { "trillion": "Tr TRY", "billion": "Bn TRY", "million": "Mn TRY" },
+    "units": {
+      "trillion": "Tr TRY",
+      "billion": "Bn TRY",
+      "million": "Mn TRY"
+    },
     "ratios": {
       "sectionTitle": "Financial Ratios",
-      "peRatio":      { "label": "P/E",           "tooltip": "Price / Earnings. Lower = looks cheaper" },
-      "pbRatio":      { "label": "P/B",           "tooltip": "Price / Book Value. Below 1 = discounted" },
-      "grossMargin":  { "label": "Gross Margin",  "tooltip": "What percentage of sales is gross profit" },
-      "netMargin":    { "label": "Net Margin",     "tooltip": "What percentage of sales is net profit" },
-      "roe":          { "label": "ROE",            "tooltip": "Return on equity" },
-      "roa":          { "label": "ROA",            "tooltip": "Return on assets" },
-      "currentRatio": { "label": "Current Ratio",  "tooltip": "Short-term debt coverage. Above 1 is good" },
-      "debtToEquity": { "label": "Debt/Equity",   "tooltip": "Financial leverage. Lower = less debt" }
+      "peRatio": {
+        "label": "P/E",
+        "tooltip": "Price / Earnings. Lower = looks cheaper"
+      },
+      "pbRatio": {
+        "label": "P/B",
+        "tooltip": "Price / Book Value. Below 1 = discounted"
+      },
+      "grossMargin": {
+        "label": "Gross Margin",
+        "tooltip": "What percentage of sales is gross profit"
+      },
+      "netMargin": {
+        "label": "Net Margin",
+        "tooltip": "What percentage of sales is net profit"
+      },
+      "roe": {
+        "label": "ROE",
+        "tooltip": "Return on equity"
+      },
+      "roa": {
+        "label": "ROA",
+        "tooltip": "Return on assets"
+      },
+      "currentRatio": {
+        "label": "Current Ratio",
+        "tooltip": "Short-term debt coverage. Above 1 is good"
+      },
+      "debtToEquity": {
+        "label": "Debt/Equity",
+        "tooltip": "Financial leverage. Lower = less debt"
+      }
     },
     "summary": {
-      "revenue": "Revenue", "netIncome": "Net Income",
-      "equity": "Equity", "totalAssets": "Total Assets"
+      "revenue": "Revenue",
+      "netIncome": "Net Income",
+      "equity": "Equity",
+      "totalAssets": "Total Assets"
     },
-    "signal": { "BULLISH": "BULLISH", "NEUTRAL": "NEUTRAL", "BEARISH": "BEARISH" },
-    "piotroski": { "strong": "Strong", "mid": "Mid", "weak": "Weak" },
-    "altman": { "safe": "Safe Zone", "grey": "Grey Zone", "danger": "Danger Zone" },
+    "signal": {
+      "BULLISH": "BULLISH",
+      "NEUTRAL": "NEUTRAL",
+      "BEARISH": "BEARISH"
+    },
+    "piotroski": {
+      "strong": "Strong",
+      "mid": "Mid",
+      "weak": "Weak"
+    },
+    "altman": {
+      "safe": "Safe Zone",
+      "grey": "Grey Zone",
+      "danger": "Danger Zone"
+    },
     "scores": {
       "title": "Advanced Scores",
       "grahamNumber": "Graham Number",
@@ -721,12 +833,15 @@
     },
     "growth": {
       "title": "YoY Growth",
-      "revenue": "Revenue", "netIncome": "Net Income", "assets": "Assets"
+      "revenue": "Revenue",
+      "netIncome": "Net Income",
+      "assets": "Assets"
     },
     "chart": {
       "title": "Quarterly Trend",
       "noData": "No quarterly data found",
-      "revenueSeries": "Revenue (Bn)", "marginSeries": "Net Margin (%)"
+      "revenueSeries": "Revenue (Bn)",
+      "marginSeries": "Net Margin (%)"
     },
     "emptyText": "No fundamental analysis data found for this instrument"
   },

@@ -1,10 +1,8 @@
 import axiosClient from "./axiosClient";
 
-// ── Teknik Analiz ─────────────────────────────────────────────────────────────
-
 export async function getAdvancedTechnical(instrumentCode, params = {}) {
   try {
-    const res = await axiosClient.get(`/api/v1/technical-analysis/${instrumentCode}`, { params });
+    const res = await axiosClient.get(`/api/v1/technical-analysis/${encodeURIComponent(instrumentCode)}`, { params });
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error(`Teknik veri alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
@@ -17,14 +15,14 @@ export async function getTechnicalCandles(symbol, params = {}) {
     const res = await axiosClient.get(`/api/v1/technical-analysis/${encodeURIComponent(symbol)}/candles`, { params });
     return res.data?.data ?? res.data;
   } catch (err) {
-    console.error(`Mum verisi alÄ±namadÄ± [${symbol}]:`, err?.response?.status ?? err.message);
+    console.error(`Mum verisi alınamadı [${symbol}]:`, err?.response?.status ?? err.message);
     throw err;
   }
 }
 
 export async function getUserIndicators(instrumentCode) {
   try {
-    const res = await axiosClient.get(`/api/v1/technical-analysis/${instrumentCode}/indicators`);
+    const res = await axiosClient.get(`/api/v1/technical-analysis/${encodeURIComponent(instrumentCode)}/indicators`);
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error(`Gösterge konfigürasyonları alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
@@ -34,7 +32,7 @@ export async function getUserIndicators(instrumentCode) {
 
 export async function saveIndicatorConfig(instrumentCode, body) {
   try {
-    const res = await axiosClient.post(`/api/v1/technical-analysis/${instrumentCode}/indicators`, body);
+    const res = await axiosClient.post(`/api/v1/technical-analysis/${encodeURIComponent(instrumentCode)}/indicators`, body);
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error(`Gösterge konfigürasyonu kaydedilemedi [${instrumentCode}]:`, err?.response?.status ?? err.message);
@@ -52,11 +50,9 @@ export async function deleteIndicatorConfig(id) {
   }
 }
 
-// ── Çizimler ─────────────────────────────────────────────────────────────────
-
 export async function getDrawings(instrumentCode, timeframe = "1d") {
   try {
-    const res = await axiosClient.get(`/api/v1/analysis/drawings/${instrumentCode}`, {
+    const res = await axiosClient.get(`/api/v1/analysis/drawings/${encodeURIComponent(instrumentCode)}`, {
       params: { timeframe },
     });
     return res.data?.data ?? res.data;
@@ -68,7 +64,7 @@ export async function getDrawings(instrumentCode, timeframe = "1d") {
 
 export async function saveDrawing(instrumentCode, body) {
   try {
-    const res = await axiosClient.post(`/api/v1/analysis/drawings/${instrumentCode}`, body);
+    const res = await axiosClient.post(`/api/v1/analysis/drawings/${encodeURIComponent(instrumentCode)}`, body);
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error(`Çizim kaydedilemedi [${instrumentCode}]:`, err?.response?.status ?? err.message);
@@ -106,11 +102,9 @@ export async function linkDrawingToAlert(drawingId, alertId) {
   }
 }
 
-// ── Temel Analiz ─────────────────────────────────────────────────────────────
-
 export async function getFundamentalRatios(instrumentCode) {
   try {
-    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${instrumentCode}`);
+    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${encodeURIComponent(instrumentCode)}`);
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error(`Temel analiz oranları alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
@@ -120,7 +114,7 @@ export async function getFundamentalRatios(instrumentCode) {
 
 export async function getFundamentalHistory(instrumentCode) {
   try {
-    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${instrumentCode}/history`);
+    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${encodeURIComponent(instrumentCode)}/history`);
     return res.data?.data ?? res.data;
   } catch (err) {
     console.error(`Temel analiz geçmişi alınamadı [${instrumentCode}]:`, err?.response?.status ?? err.message);
@@ -130,7 +124,7 @@ export async function getFundamentalHistory(instrumentCode) {
 
 export async function getFinancialData(instrumentCode, periodType = "ANNUAL") {
   try {
-    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${instrumentCode}/financials`, {
+    const res = await axiosClient.get(`/api/v1/analysis/fundamental/${encodeURIComponent(instrumentCode)}/financials`, {
       params: { periodType },
     });
     return res.data?.data ?? res.data;

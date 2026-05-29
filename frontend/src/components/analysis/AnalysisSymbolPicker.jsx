@@ -103,21 +103,23 @@ export default function AnalysisSymbolPicker({
           {currencyToggle ? <div className="analysis-hero-segment-slot">{currencyToggle}</div> : null}
 
           {onChartModeChange ? (
-            <div className="analysis-mode-toggle" role="group">
-              <button
-                type="button"
-                className={`analysis-mode-btn${chartMode === "simple" ? " active" : ""}`}
-                onClick={() => onChartModeChange("simple")}
-              >
-                {t("analysis.simpleChart")}
-              </button>
-              <button
-                type="button"
-                className={`analysis-mode-btn${chartMode === "advanced" ? " active" : ""}`}
-                onClick={() => onChartModeChange("advanced")}
-              >
-                {t("analysis.advancedChart")}
-              </button>
+            <div className="analysis-mode-shell">
+              <div className="analysis-mode-toggle" role="group">
+                <button
+                  type="button"
+                  className={`analysis-mode-btn${chartMode === "simple" ? " active" : ""}`}
+                  onClick={() => onChartModeChange("simple")}
+                >
+                  {t("analysis.simpleChart")}
+                </button>
+                <button
+                  type="button"
+                  className={`analysis-mode-btn${chartMode === "advanced" ? " active" : ""}`}
+                  onClick={() => onChartModeChange("advanced")}
+                >
+                  {t("analysis.advancedChart")}
+                </button>
+              </div>
             </div>
           ) : null}
 

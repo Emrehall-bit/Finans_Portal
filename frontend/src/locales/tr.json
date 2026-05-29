@@ -565,7 +565,9 @@
       "ariaLabel": "Hızlı karşılaştırma önerileri"
     },
     "chart": {
-      "indicators": { "label": "Göstergeler" },
+      "indicators": {
+        "label": "Göstergeler"
+      },
       "aiPanel": {
         "tabRules": "Teknik Göstergeler",
         "tabAi": "AI Analizi",
@@ -582,14 +584,21 @@
         "momentumComment": "Momentum",
         "defaultDisclaimer": "Yatırım tavsiyesi değildir. Yalnızca bilgi amaçlıdır."
       },
-      "range": { "1m": "1A", "3m": "3A", "6m": "6A", "1y": "1Y", "max": "MAX" },
+      "range": {
+        "1m": "1A",
+        "3m": "3A",
+        "6m": "6A",
+        "1y": "1Y",
+        "max": "MAX"
+      },
       "tools": {
         "label": "Araçlar",
         "cursor": "İmleç",
         "horizontal": "Yatay Çizgi",
         "trend": "Trend Çizgisi",
         "stopLoss": "Stop-Loss",
-        "takeProfit": "Take-Profit"
+        "takeProfit": "Take-Profit",
+        "structure": "Destek/Direnç"
       },
       "drawing": {
         "horizontal": "Yatay",
@@ -602,9 +611,9 @@
       "retry": "Tekrar dene",
       "trendHint": "Bitiş noktasını seçin. Başlangıç:",
       "errors": {
-        "loadFailed": "Veri yüklenirken hata oluştu.",
-        "noData": "Bu enstrüman için veri bulunamadı.",
-        "noCandles": "Yeterli mum verisi bulunamadı."
+        "loadFailed": "Veri yüklenemedi.",
+        "noData": "Bu enstrüman için seçili aralıkta veri bulunamadı.",
+        "noCandles": "Bu enstrüman için seçili aralıkta mum verisi bulunamadı."
       },
       "alerts": {
         "stopLossCreated": "Stop-loss alarmı oluşturuldu.",
@@ -666,12 +675,30 @@
         "low": "Fiyat yapısı görece sakin."
       },
       "signal": {
-        "oversoldRisk": { "short": "Aşırı satım riski", "text": "RSI 30 altında; tepki alımı potansiyeli oluşuyor." },
-        "overboughtRisk": { "short": "Aşırı alım riski", "text": "RSI 70 üstünde; kâr realizasyonu riski yükseliyor." },
-        "weakBullish": { "short": "Zayıf yükseliş", "text": "Trend ve ortalamalar yukarı yöne hizalanıyor." },
-        "weakBearish": { "short": "Zayıf düşüş", "text": "Aşağı eğilim ve zayıf ortalama yapısı korunuyor." },
-        "highVolatility": { "short": "Yüksek volatilite", "text": "Günlük salınım yüksek; pozisyon boyutu dikkatli seçilmeli." },
-        "neutral": { "short": "Nötr momentum", "text": "Belirgin bir teknik avantaj oluşmadı." }
+        "oversoldRisk": {
+          "short": "Aşırı satım riski",
+          "text": "RSI 30 altında; tepki alımı potansiyeli oluşuyor."
+        },
+        "overboughtRisk": {
+          "short": "Aşırı alım riski",
+          "text": "RSI 70 üstünde; kâr realizasyonu riski yükseliyor."
+        },
+        "weakBullish": {
+          "short": "Zayıf yükseliş",
+          "text": "Trend ve ortalamalar yukarı yöne hizalanıyor."
+        },
+        "weakBearish": {
+          "short": "Zayıf düşüş",
+          "text": "Aşağı eğilim ve zayıf ortalama yapısı korunuyor."
+        },
+        "highVolatility": {
+          "short": "Yüksek volatilite",
+          "text": "Günlük salınım yüksek; pozisyon boyutu dikkatli seçilmeli."
+        },
+        "neutral": {
+          "short": "Nötr momentum",
+          "text": "Belirgin bir teknik avantaj oluşmadı."
+        }
       },
       "tooltip": {
         "open": "Açılış",
@@ -680,31 +707,116 @@
         "close": "Kapanış",
         "volume": "Hacim",
         "change": "Değişim"
+      },
+      "rsiZone": {
+        "overbought": "Aşırı alım bölgesi",
+        "oversold": "Aşırı satım bölgesi",
+        "neutral": "Nötr bölge"
+      },
+      "rsiMarker": {
+        "overboughtTooltip": "Aşırı alım bölgesi — RSI > 70",
+        "oversoldTooltip": "Aşırı satım bölgesi — RSI < 30"
+      },
+      "techView": {
+        "title": "Teknik Görünüm",
+        "state": {
+          "strongBullish": "Güçlü yükseliş",
+          "weakBullish": "Zayıf yükseliş",
+          "neutral": "Nötr",
+          "weakBearish": "Zayıf düşüş",
+          "strongBearish": "Güçlü düşüş"
+        },
+        "reason": {
+          "priceAboveMa20": "Fiyat MA20 üzerinde",
+          "priceBelowMa20": "Fiyat MA20 altında",
+          "priceNearMa20": "Fiyat MA20 çevresinde",
+          "maBullish": "MA yapısı yukarı yönlü",
+          "maBearish": "MA yapısı aşağı yönlü",
+          "momentumPositive": "Momentum pozitif",
+          "momentumNegative": "Momentum negatif",
+          "momentumNeutral": "Momentum yatay",
+          "nearResistance": "Dirence %{{value}} uzaklıkta",
+          "nearSupport": "Desteğe %{{value}} uzaklıkta",
+          "signalPositive": "Son sinyal pozitif",
+          "signalNegative": "Son sinyal negatif",
+          "rsi": {
+            "overbought": "RSI aşırı alım bölgesinde",
+            "oversold": "RSI aşırı satım bölgesinde",
+            "neutral": "RSI nötr bölgede"
+          }
+        }
       }
-    }
+    },
+    "modeHint": {
+      "simple": "Fiyat, kompakt özet ve temel sinyal görünümü.",
+      "advanced": "MA20/MA50, RSI, destek/direnç, göstergeler ve karşılaştırma."
+    },
+    "rangeUnavailable": "Seçili zaman aralığı için yeterli veri bulunamadı."
   },
   "fundamental": {
     "title": "Temel Analiz",
     "noData": "Veri Yok",
-    "units": { "trillion": "Trl TRY", "billion": "Myr TRY", "million": "Mln TRY" },
+    "units": {
+      "trillion": "Trl TRY",
+      "billion": "Myr TRY",
+      "million": "Mln TRY"
+    },
     "ratios": {
       "sectionTitle": "Finansal Oranlar",
-      "peRatio":      { "label": "F/K",          "tooltip": "Fiyat / Kazanç. Düşük = ucuz görünür" },
-      "pbRatio":      { "label": "PD/DD",         "tooltip": "Piyasa Değeri / Defter Değeri. 1'in altı iskontolu" },
-      "grossMargin":  { "label": "Brüt Marj",     "tooltip": "Satışların yüzde kaçı brüt kar" },
-      "netMargin":    { "label": "Net Marj",       "tooltip": "Satışların yüzde kaçı net kar" },
-      "roe":          { "label": "ROE",            "tooltip": "Özsermaye karlılığı" },
-      "roa":          { "label": "ROA",            "tooltip": "Aktif karlılığı" },
-      "currentRatio": { "label": "Cari Oran",      "tooltip": "Kısa vadeli borç ödeme gücü. 1'in üzeri iyi" },
-      "debtToEquity": { "label": "Borç/Özkaynak", "tooltip": "Finansal kaldıraç. Düşük = az borç" }
+      "peRatio": {
+        "label": "F/K",
+        "tooltip": "Fiyat / Kazanç. Düşük = ucuz görünür"
+      },
+      "pbRatio": {
+        "label": "PD/DD",
+        "tooltip": "Piyasa Değeri / Defter Değeri. 1'in altı iskontolu"
+      },
+      "grossMargin": {
+        "label": "Brüt Marj",
+        "tooltip": "Satışların yüzde kaçı brüt kar"
+      },
+      "netMargin": {
+        "label": "Net Marj",
+        "tooltip": "Satışların yüzde kaçı net kar"
+      },
+      "roe": {
+        "label": "ROE",
+        "tooltip": "Özsermaye karlılığı"
+      },
+      "roa": {
+        "label": "ROA",
+        "tooltip": "Aktif karlılığı"
+      },
+      "currentRatio": {
+        "label": "Cari Oran",
+        "tooltip": "Kısa vadeli borç ödeme gücü. 1'in üzeri iyi"
+      },
+      "debtToEquity": {
+        "label": "Borç/Özkaynak",
+        "tooltip": "Finansal kaldıraç. Düşük = az borç"
+      }
     },
     "summary": {
-      "revenue": "Hasılat", "netIncome": "Net Dönem Karı",
-      "equity": "Özkaynaklar", "totalAssets": "Toplam Varlıklar"
+      "revenue": "Hasılat",
+      "netIncome": "Net Dönem Karı",
+      "equity": "Özkaynaklar",
+      "totalAssets": "Toplam Varlıklar"
     },
-    "signal": { "BULLISH": "YÜKSELİŞÇİ", "NEUTRAL": "NÖTR", "BEARISH": "DÜŞÜŞÇÜ" },
-    "piotroski": { "strong": "Güçlü", "mid": "Orta", "weak": "Zayıf" },
-    "altman": { "safe": "Güvenli Bölge", "grey": "Gri Bölge", "danger": "Tehlike Bölgesi" },
+    "signal": {
+      "BULLISH": "YÃœKSELÄ°ÅÃ‡Ä°",
+      "NEUTRAL": "NÖTR",
+      "BEARISH": "DÃœÅÃœÅÃ‡Ãœ"
+    },
+    "piotroski": {
+      "strong": "Güçlü",
+      "mid": "Orta",
+      "weak": "Zayıf"
+    },
+    "altman": {
+      "safe": "Güvenli Bölge",
+      "grey": "Gri Bölge",
+      "danger": "Tehlike Bölgesi"
+    },
     "scores": {
       "title": "Gelişmiş Skorlar",
       "grahamNumber": "Graham Sayısı",
@@ -714,12 +826,15 @@
     },
     "growth": {
       "title": "YoY Büyüme",
-      "revenue": "Hasılat", "netIncome": "Net Kar", "assets": "Varlıklar"
+      "revenue": "Hasılat",
+      "netIncome": "Net Kar",
+      "assets": "Varlıklar"
     },
     "chart": {
       "title": "Çeyrek Trend",
       "noData": "Çeyreklik veri bulunamadı",
-      "revenueSeries": "Hasılat (Myr)", "marginSeries": "Net Marj (%)"
+      "revenueSeries": "Hasılat (Myr)",
+      "marginSeries": "Net Marj (%)"
     },
     "emptyText": "Bu enstrüman için temel analiz verisi bulunamadı"
   },
@@ -1506,7 +1621,7 @@
         "currentPortfolioValue": "Mevcut portföy değeri",
         "totalReturn": "Toplam getiri",
         "percentChange": "Yüzde değişim",
-        "profitLoss": "Kâr / Zarar",
+        "profitLoss": "KÃ¢r / Zarar",
         "selectedAsset": "Seçilen varlık"
       },
       "meta": {
@@ -1517,12 +1632,12 @@
     },
     "past": {
       "eyebrow": "Geçmiş Simülasyonu",
-      "title": "Bugün değeri ne olurdu?",
+      "title": "Bug�n de\u001feri ne olurdu?",
       "instrument": "Enstrüman seç",
       "instrumentPlaceholder": "Enstrüman seç",
       "date": "Tarih seç",
       "amount": "Adet/lot gir",
-      "submit": "Bugün değeri ne olurdu?",
+      "submit": "Bug�n de\u001feri ne olurdu?",
       "submitting": "Hesaplanıyor...",
       "emptyTitle": "Geçmiş simülasyonu hazır",
       "emptyDescription": "Tarih ve tutar girildiğinde mevcut market history verisi ile sonuç hesaplanır.",
@@ -1677,7 +1792,7 @@
     "chartEmptyTitle": "Bu sembol için tarihsel veri bulunamadı",
     "chartEmptyDescription": "Seçili aralıkta fiyat serisi dönmedi.",
     "price": "Fiyat",
-    "momentüm": "Momentüm",
+    "momentÃ¼m": "Momentüm",
     "ranges": {
       "1D": "1G",
       "1W": "1H",

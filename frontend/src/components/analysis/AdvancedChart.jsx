@@ -21,6 +21,7 @@ import {
 import { createAlert } from "../../api/alertApi";
 import { getAdvancedTechnical, getTechnicalCandles } from "../../api/analysisApi";
 import { getAiTechnicalAnalysis } from "../../api/aiApi";
+import { getMarketHistory } from "../../api/marketApi";
 import { extractErrorMessage } from "../../api/responseUtils";
 import { useAuth } from "../../auth/AuthContext";
 import useToast from "../../hooks/useToast";
@@ -67,6 +68,7 @@ const TOOLTIP_HEIGHT = 196;
 const TOOLTIP_OFFSET = 18;
 const TOOLTIP_VIEWPORT_MARGIN = 12;
 const RSI_TOOLTIP_LINE_THRESHOLD = 10;
+const STRUCTURE_LINE_HOVER_THRESHOLD = 6;
 const DEFAULT_DRAWINGS = {
   stopLoss: null,
   takeProfit: null,
@@ -80,6 +82,7 @@ export default function AdvancedChart({
   initialHighlightTool = null,
   presetPrice = null,
   quote = null,
+  technicalAnalysis = null,
 }) {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
@@ -105,6 +108,7 @@ export default function AdvancedChart({
   const volumeSeriesRef = useRef(null);
   const rsiSeriesRef = useRef(null);
   const overlaySeriesRefs = useRef({});
+  const structureLineRefs = useRef({ support: null, resistance: null });
   const activeToolRef = useRef("cursor");
   const drawingsRef = useRef(DEFAULT_DRAWINGS);
   const trendStartRef = useRef(null);
@@ -117,6 +121,7 @@ export default function AdvancedChart({
   const hoveredDrawingKeyRef = useRef(null);
   const draggingRef = useRef(null);
   const latestDatasetRef = useRef(null);
+  const technicalSnapshotRef = useRef(null);
   const toolsDropdownRef = useRef(null);
   const indicatorsRef = useRef(null);
 
@@ -137,6 +142,7 @@ export default function AdvancedChart({
   const [toolsOpen, setToolsOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [techTab, setTechTab] = useState("rules");
+  const [showStructureLines, setShowStructureLines] = useState(false);
   const [aiData, setAiData] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(null);
@@ -144,12 +150,18 @@ export default function AdvancedChart({
     () => INDICATOR_REGISTRY.filter((indicator) => activeIndicators.has(indicator.key)),
     [activeIndicators],
   );
+  const resolvedTechnicalSnapshot = useMemo(
+    () => mergeTechnicalSnapshot(technicalSnapshot, technicalAnalysis),
+    [technicalSnapshot, technicalAnalysis],
+  );
+  const technicalView = useMemo(() => buildTechnicalView(resolvedTechnicalSnapshot, t), [resolvedTechnicalSnapshot, t]);
 
   activeToolRef.current = activeTool;
   drawingsRef.current = drawings;
   trendStartRef.current = trendStart;
   selectedDrawingKeyRef.current = selectedDrawingKey;
   hoveredDrawingKeyRef.current = hoveredDrawingKey;
+  technicalSnapshotRef.current = technicalSnapshot;
 
   const isCrypto = String(quote?.instrumentType || "").toUpperCase() === "CRYPTO";
   const hasDrawings = Boolean(
@@ -210,6 +222,57 @@ export default function AdvancedChart({
     });
   }, []);
 
+  const clearStructurePriceLines = useCallback(() => {
+    const priceSeries = priceSeriesRef.current;
+    const currentLines = structureLineRefs.current;
+
+    if (priceSeries) {
+      Object.values(currentLines).forEach((line) => {
+        if (!line) {
+          return;
+        }
+        try {
+          priceSeries.removePriceLine(line);
+        } catch {
+          /* noop */
+        }
+      });
+    }
+
+    structureLineRefs.current = { support: null, resistance: null };
+  }, []);
+
+  const syncStructurePriceLines = useCallback((summary) => {
+    clearStructurePriceLines();
+
+    const priceSeries = priceSeriesRef.current;
+    if (!priceSeries || !summary || !showStructureLines) {
+      return;
+    }
+
+    if (summary.supportLevel != null) {
+      structureLineRefs.current.support = priceSeries.createPriceLine({
+        price: summary.supportLevel,
+        color: "rgba(34, 197, 94, 0.5)",
+        lineWidth: 1,
+        lineStyle: 0,
+        axisLabelVisible: false,
+        title: "",
+      });
+    }
+
+    if (summary.resistanceLevel != null) {
+      structureLineRefs.current.resistance = priceSeries.createPriceLine({
+        price: summary.resistanceLevel,
+        color: "rgba(239, 68, 68, 0.5)",
+        lineWidth: 1,
+        lineStyle: 0,
+        axisLabelVisible: false,
+        title: "",
+      });
+    }
+  }, [clearStructurePriceLines, showStructureLines]);
+
   const getMaxVisibleBars = useCallback(() => {
     const dataset = latestDatasetRef.current;
     if (!dataset) {
@@ -261,7 +324,8 @@ export default function AdvancedChart({
 
   const updateTooltip = useCallback((param) => {
     const dataset = latestDatasetRef.current;
-    if (!dataset || !param?.point || !param?.time || !priceContainerRef.current) {
+    const currentSnapshot = technicalSnapshotRef.current;
+    if (!dataset || !param?.point || !priceContainerRef.current) {
       setTooltipModel(null);
       return;
     }
@@ -278,6 +342,32 @@ export default function AdvancedChart({
       return;
     }
 
+    const rect = priceContainerRef.current.getBoundingClientRect();
+    const hoveredStructureLine = showStructureLines
+      ? resolveHoveredStructureLine({
+          priceSeries: priceSeriesRef.current,
+          pointY,
+          snapshot: currentSnapshot,
+        })
+      : null;
+
+    if (hoveredStructureLine) {
+      const { left, top } = resolveTooltipPosition(rect, pointX, pointY, "price-line");
+      setTooltipModel({
+        kind: "price-line",
+        left,
+        top,
+        label: t(`analysis.chart.techPanel.${hoveredStructureLine.key}`),
+        value: hoveredStructureLine.value,
+      });
+      return;
+    }
+
+    if (!param?.time) {
+      setTooltipModel(null);
+      return;
+    }
+
     const time = normalizeChartTime(param.time);
     const row = dataset.infoByTime.get(time);
     if (!row) {
@@ -285,23 +375,7 @@ export default function AdvancedChart({
       return;
     }
 
-    const rect = priceContainerRef.current.getBoundingClientRect();
-    let left = rect.left + pointX + TOOLTIP_OFFSET;
-    let top = rect.top + pointY - TOOLTIP_OFFSET;
-
-    if (left + TOOLTIP_WIDTH > window.innerWidth - TOOLTIP_VIEWPORT_MARGIN) {
-      left = rect.left + pointX - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
-    }
-    if (left < TOOLTIP_VIEWPORT_MARGIN) {
-      left = TOOLTIP_VIEWPORT_MARGIN;
-    }
-
-    if (top + TOOLTIP_HEIGHT > window.innerHeight - TOOLTIP_VIEWPORT_MARGIN) {
-      top = window.innerHeight - TOOLTIP_HEIGHT - TOOLTIP_VIEWPORT_MARGIN;
-    }
-    if (top < TOOLTIP_VIEWPORT_MARGIN) {
-      top = TOOLTIP_VIEWPORT_MARGIN;
-    }
+    const { left, top } = resolveTooltipPosition(rect, pointX, pointY, "price");
 
     setTooltipModel({
       kind: "price",
@@ -310,7 +384,7 @@ export default function AdvancedChart({
       dateLabel: formatTooltipDate(time),
       row,
     });
-  }, []);
+  }, [showStructureLines, t]);
 
   const updateRsiTooltip = useCallback((param) => {
     const dataset = latestDatasetRef.current;
@@ -334,23 +408,6 @@ export default function AdvancedChart({
     }
 
     const rect = rsiContainer.getBoundingClientRect();
-    let left = rect.left + pointX + TOOLTIP_OFFSET;
-    let top = rect.top + pointY - TOOLTIP_OFFSET;
-
-    if (left + TOOLTIP_WIDTH > window.innerWidth - TOOLTIP_VIEWPORT_MARGIN) {
-      left = rect.left + pointX - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
-    }
-    if (left < TOOLTIP_VIEWPORT_MARGIN) {
-      left = TOOLTIP_VIEWPORT_MARGIN;
-    }
-
-    if (top + TOOLTIP_HEIGHT > window.innerHeight - TOOLTIP_VIEWPORT_MARGIN) {
-      top = window.innerHeight - TOOLTIP_HEIGHT - TOOLTIP_VIEWPORT_MARGIN;
-    }
-    if (top < TOOLTIP_VIEWPORT_MARGIN) {
-      top = TOOLTIP_VIEWPORT_MARGIN;
-    }
-
     const hoveredRsi = rsiSeries.coordinateToPrice(pointY);
     const time = param.time != null ? normalizeChartTime(param.time) : null;
     const row = time != null ? dataset.infoByTime.get(time) : null;
@@ -364,12 +421,14 @@ export default function AdvancedChart({
       Number.isFinite(lineY) &&
       Math.abs(lineY - pointY) <= RSI_TOOLTIP_LINE_THRESHOLD
     ) {
+      const { left, top } = resolveTooltipPosition(rect, pointX, pointY, "rsi-point");
       setTooltipModel({
         kind: "rsi-point",
         left,
         top,
         dateLabel: formatTooltipDate(time),
         rsiValue: lineRsi,
+        zoneLabel: t(`analysis.chart.rsiZone.${resolveRsiZoneKey(lineRsi)}`),
       });
       return;
     }
@@ -380,7 +439,7 @@ export default function AdvancedChart({
     }
 
     setTooltipModel(null);
-  }, []);
+  }, [t]);
 
   const showLegendTooltip = useCallback((event, text) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -424,6 +483,7 @@ export default function AdvancedChart({
 
     if (!priceSeriesRef.current || priceSeriesRef.current.__mode !== mode) {
       clearAllDrawings();
+      clearStructurePriceLines();
       clearOverlaySeries();
       if (priceSeriesRef.current) {
         try { priceChart.removeSeries(priceSeriesRef.current); } catch { /* noop */ }
@@ -470,30 +530,6 @@ export default function AdvancedChart({
           },
         }),
       });
-      rsiSeriesRef.current.createPriceLine({
-        price: 70,
-        color: "rgba(239, 68, 68, 0.55)",
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: false,
-        title: "70",
-      });
-      rsiSeriesRef.current.createPriceLine({
-        price: 50,
-        color: "rgba(100, 116, 139, 0.5)",
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: false,
-        title: "50",
-      });
-      rsiSeriesRef.current.createPriceLine({
-        price: 30,
-        color: "rgba(34, 197, 94, 0.55)",
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: false,
-        title: "30",
-      });
     }
 
     return {
@@ -501,7 +537,7 @@ export default function AdvancedChart({
       volumeSeries: volumeSeriesRef.current,
       rsiSeries: rsiSeriesRef.current,
     };
-  }, [clearAllDrawings, clearOverlaySeries]);
+  }, [clearAllDrawings, clearOverlaySeries, clearStructurePriceLines]);
 
   const applyThemeOptions = useCallback(() => {
     const softenedGrid = withAlpha(chartTheme.grid, 0.52);
@@ -761,15 +797,15 @@ export default function AdvancedChart({
     }
 
     const priceChart = createChart(priceContainerRef.current, {
-      width: priceContainerRef.current.clientWidth,
+      width: Math.max(priceContainerRef.current.clientWidth, 1),
       height: PRICE_CHART_HEIGHT,
     });
     const volumeChart = createChart(volumeContainerRef.current, {
-      width: volumeContainerRef.current.clientWidth,
+      width: Math.max(volumeContainerRef.current.clientWidth, 1),
       height: VOLUME_CHART_HEIGHT,
     });
     const rsiChart = createChart(rsiContainerRef.current, {
-      width: rsiContainerRef.current.clientWidth,
+      width: Math.max(rsiContainerRef.current.clientWidth, 1),
       height: RSI_CHART_HEIGHT,
       localization: {
         priceFormatter: (value) => value.toFixed(0),
@@ -952,10 +988,27 @@ export default function AdvancedChart({
       if (!priceContainerRef.current || !volumeContainerRef.current || !rsiContainerRef.current) {
         return;
       }
-      priceChart.applyOptions({ width: priceContainerRef.current.clientWidth });
-      volumeChart.applyOptions({ width: volumeContainerRef.current.clientWidth });
-      rsiChart.applyOptions({ width: rsiContainerRef.current.clientWidth });
+      const priceWidth = Math.max(priceContainerRef.current.clientWidth, 1);
+      const volumeWidth = Math.max(volumeContainerRef.current.clientWidth, 1);
+      const rsiWidth = Math.max(rsiContainerRef.current.clientWidth, 1);
+      priceChart.applyOptions({ width: priceWidth });
+      volumeChart.applyOptions({ width: volumeWidth });
+      rsiChart.applyOptions({ width: rsiWidth });
     };
+
+    const resizeObserver = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(() => {
+          handleResize();
+        })
+      : null;
+
+    resizeObserver?.observe(priceContainerRef.current);
+    resizeObserver?.observe(volumeContainerRef.current);
+    resizeObserver?.observe(rsiContainerRef.current);
+
+    requestAnimationFrame(() => {
+      handleResize();
+    });
 
     priceContainerRef.current.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove);
@@ -967,6 +1020,7 @@ export default function AdvancedChart({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("resize", handleResize);
+      resizeObserver?.disconnect();
 
       priceChart.unsubscribeCrosshairMove(handleCrosshairMove);
       rsiChart.unsubscribeCrosshairMove(handleRsiCrosshairMove);
@@ -1022,7 +1076,7 @@ export default function AdvancedChart({
       try {
         const dataset = isCrypto
           ? await loadCryptoData(instrumentCode, range, t)
-          : await loadLineData(instrumentCode, rangeDates, t);
+          : await loadLineData(instrumentCode, rangeDates, t, quote);
 
         if (cancelled) {
           return;
@@ -1046,7 +1100,7 @@ export default function AdvancedChart({
           ...dataset.summary,
           rsiDebug,
         });
-        console.debug("[AdvancedChart][RSI]", rsiDebug);
+        syncStructurePriceLines(dataset.summary);
         syncIndicatorSeriesRef.current(dataset);
 
         if (pendingAutoFitRef.current) {
@@ -1065,7 +1119,8 @@ export default function AdvancedChart({
       } catch (fetchError) {
         if (!cancelled) {
           setTechnicalSnapshot(null);
-          setError(extractErrorMessage(fetchError, t("analysis.chart.errors.loadFailed")));
+          clearStructurePriceLines();
+          setError(resolveAdvancedChartErrorMessage(fetchError, t, isCrypto));
         }
       } finally {
         if (!cancelled) {
@@ -1086,9 +1141,13 @@ export default function AdvancedChart({
     instrumentCode,
     isCrypto,
     presetPrice,
+    quote?.instrumentType,
+    quote?.source,
     range,
     rangeDates,
     reloadToken,
+    clearStructurePriceLines,
+    syncStructurePriceLines,
   ]);
 
   useEffect(() => {
@@ -1097,6 +1156,10 @@ export default function AdvancedChart({
     }
     syncIndicatorSeries(latestDatasetRef.current);
   }, [syncIndicatorSeries]);
+
+  useEffect(() => {
+    syncStructurePriceLines(technicalSnapshotRef.current);
+  }, [showStructureLines, syncStructurePriceLines]);
 
   useEffect(() => {
     const handleOutside = (event) => {
@@ -1291,6 +1354,17 @@ export default function AdvancedChart({
                       </button>
                     );
                   })}
+                  <button
+                    type="button"
+                    className={`draw-tool-btn${showStructureLines ? " active" : ""}`}
+                    onClick={() => {
+                      setShowStructureLines((current) => !current);
+                      setToolsOpen(false);
+                    }}
+                  >
+                    <Signal size={14} strokeWidth={2} />
+                    <span>{t("analysis.chart.tools.structure")}</span>
+                  </button>
                 </div>
               ) : null}
             </div>
@@ -1434,7 +1508,7 @@ export default function AdvancedChart({
                   </div>
                 </div>
                 <span className="advanced-chart-rsi-badge">
-                  {technicalSnapshot?.rsiValue != null ? `RSI ${technicalSnapshot.rsiValue.toFixed(2)}` : "RSI -"}
+                  {resolvedTechnicalSnapshot?.rsiValue != null ? `RSI ${resolvedTechnicalSnapshot.rsiValue.toFixed(2)}` : "RSI -"}
                 </span>
               </div>
               <div className="advanced-chart-rsi-guides" aria-hidden="true">
@@ -1482,35 +1556,36 @@ export default function AdvancedChart({
 
           {techTab === "rules" ? (
             <>
+          <TechnicalViewCard view={technicalView} />
           <div className="advanced-tech-panel-head">
             <span>{t("analysis.chart.techPanel.title")}</span>
-            <span className={`advanced-tech-badge advanced-tech-badge--${toneFromSignal(technicalSnapshot?.latestSignalTone)}`}>
-              {technicalSnapshot?.signalKey
-                ? t(`analysis.chart.signal.${technicalSnapshot.signalKey}.short`)
-                : (technicalSnapshot?.rawSignalLabel ?? t("analysis.chart.techPanel.waiting"))}
+            <span className={`advanced-tech-badge advanced-tech-badge--${toneFromSignal(resolvedTechnicalSnapshot?.latestSignalTone)}`}>
+              {resolvedTechnicalSnapshot?.signalKey
+                ? t(`analysis.chart.signal.${resolvedTechnicalSnapshot.signalKey}.short`)
+                : (resolvedTechnicalSnapshot?.rawSignalLabel ?? t("analysis.chart.techPanel.waiting"))}
             </span>
           </div>
 
           <div className="advanced-tech-kpi-stack">
             <KpiCard
               label="RSI 14"
-              value={technicalSnapshot?.rsiValue != null ? technicalSnapshot.rsiValue.toFixed(2) : "-"}
-              tone={toneFromRsi(technicalSnapshot?.rsiValue)}
-              detail={technicalSnapshot?.rsiRegimeKey ? t(`analysis.chart.rsiRegime.${technicalSnapshot.rsiRegimeKey}`) : t("analysis.chart.techPanel.awaitingData")}
+              value={resolvedTechnicalSnapshot?.rsiValue != null ? resolvedTechnicalSnapshot.rsiValue.toFixed(2) : "-"}
+              tone={toneFromRsi(resolvedTechnicalSnapshot?.rsiValue)}
+              detail={resolvedTechnicalSnapshot?.rsiRegimeKey ? t(`analysis.chart.rsiRegime.${resolvedTechnicalSnapshot.rsiRegimeKey}`) : t("analysis.chart.techPanel.awaitingData")}
             />
             <KpiCard
               label={t("analysis.chart.techPanel.trend")}
-              value={technicalSnapshot?.trendKey ? t(`analysis.chart.trend.${technicalSnapshot.trendKey}`) : "-"}
-              tone={toneFromSignal(technicalSnapshot?.trendTone)}
-              detail={technicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${technicalSnapshot.momentumKey}`) : t("analysis.chart.techPanel.awaitingData")}
+              value={resolvedTechnicalSnapshot?.trendKey ? t(`analysis.chart.trend.${resolvedTechnicalSnapshot.trendKey}`) : "-"}
+              tone={toneFromSignal(resolvedTechnicalSnapshot?.trendTone)}
+              detail={resolvedTechnicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${resolvedTechnicalSnapshot.momentumKey}`) : t("analysis.chart.techPanel.awaitingData")}
             />
             <KpiCard
               label={t("analysis.chart.techPanel.latestSignal")}
-              value={technicalSnapshot?.signalKey
-                ? t(`analysis.chart.signal.${technicalSnapshot.signalKey}.short`)
-                : (technicalSnapshot?.rawSignalLabel ?? "-")}
-              tone={toneFromSignal(technicalSnapshot?.latestSignalTone)}
-              detail={technicalSnapshot?.rawSignalText ?? t("analysis.chart.signal.neutral.text")}
+              value={resolvedTechnicalSnapshot?.signalKey
+                ? t(`analysis.chart.signal.${resolvedTechnicalSnapshot.signalKey}.short`)
+                : (resolvedTechnicalSnapshot?.rawSignalLabel ?? "-")}
+              tone={toneFromSignal(resolvedTechnicalSnapshot?.latestSignalTone)}
+              detail={resolvedTechnicalSnapshot?.rawSignalText ?? t("analysis.chart.signal.neutral.text")}
               wrap
             />
           </div>
@@ -1518,33 +1593,33 @@ export default function AdvancedChart({
           <div className="advanced-tech-details-stack">
             <StackedStatCard
               label={t("analysis.chart.techPanel.momentum")}
-              value={technicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${technicalSnapshot.momentumKey}`) : "-"}
-              tone={technicalSnapshot?.momentumTone ?? "neutral"}
-              detail={technicalSnapshot?.momentumValue != null ? `${technicalSnapshot.momentumValue >= 0 ? "+" : ""}${technicalSnapshot.momentumValue.toFixed(2)}%` : t("analysis.chart.techPanel.awaitingData")}
+              value={resolvedTechnicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${resolvedTechnicalSnapshot.momentumKey}`) : "-"}
+              tone={resolvedTechnicalSnapshot?.momentumTone ?? "neutral"}
+              detail={resolvedTechnicalSnapshot?.momentumValue != null ? `${resolvedTechnicalSnapshot.momentumValue >= 0 ? "+" : ""}${resolvedTechnicalSnapshot.momentumValue.toFixed(2)}%` : t("analysis.chart.techPanel.awaitingData")}
             />
             <StackedStatCard
               label={t("analysis.chart.techPanel.support")}
-              value={technicalSnapshot?.supportLevel != null ? formatNumber(technicalSnapshot.supportLevel, 2) : "-"}
+              value={resolvedTechnicalSnapshot?.supportLevel != null ? formatNumber(resolvedTechnicalSnapshot.supportLevel, 2) : "-"}
               tone="neutral"
-              detail={technicalSnapshot?.supportDistancePct != null ? `${technicalSnapshot.supportDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
+              detail={resolvedTechnicalSnapshot?.supportDistancePct != null ? `${resolvedTechnicalSnapshot.supportDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
             />
             <StackedStatCard
               label={t("analysis.chart.techPanel.resistance")}
-              value={technicalSnapshot?.resistanceLevel != null ? formatNumber(technicalSnapshot.resistanceLevel, 2) : "-"}
+              value={resolvedTechnicalSnapshot?.resistanceLevel != null ? formatNumber(resolvedTechnicalSnapshot.resistanceLevel, 2) : "-"}
               tone="neutral"
-              detail={technicalSnapshot?.resistanceDistancePct != null ? `${technicalSnapshot.resistanceDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
+              detail={resolvedTechnicalSnapshot?.resistanceDistancePct != null ? `${resolvedTechnicalSnapshot.resistanceDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
             />
             <StackedStatCard
               label={t("analysis.chart.techPanel.volatility")}
-              value={technicalSnapshot?.volatilityKey ? t(`analysis.chart.volatilityLevel.${technicalSnapshot.volatilityKey}`) : "-"}
-              tone={technicalSnapshot?.volatilityTone ?? "neutral"}
-              detail={technicalSnapshot?.volatilitySummaryKey ? t(`analysis.chart.volatilitySummary.${technicalSnapshot.volatilitySummaryKey}`) : t("analysis.chart.techPanel.awaitingData")}
+              value={resolvedTechnicalSnapshot?.volatilityKey ? t(`analysis.chart.volatilityLevel.${resolvedTechnicalSnapshot.volatilityKey}`) : "-"}
+              tone={resolvedTechnicalSnapshot?.volatilityTone ?? "neutral"}
+              detail={resolvedTechnicalSnapshot?.volatilitySummaryKey ? t(`analysis.chart.volatilitySummary.${resolvedTechnicalSnapshot.volatilitySummaryKey}`) : t("analysis.chart.techPanel.awaitingData")}
             />
             <StackedStatCard
               label={t("analysis.chart.techPanel.maAlignment")}
-              value={technicalSnapshot?.maAlignmentKey ? t(`analysis.chart.maAlign.${technicalSnapshot.maAlignmentKey}`) : "-"}
-              tone={technicalSnapshot?.maAlignmentTone ?? "neutral"}
-              detail={technicalSnapshot?.lastClose != null ? `${t("analysis.chart.techPanel.lastClose")}: ${formatNumber(technicalSnapshot.lastClose, 2)}` : t("analysis.chart.techPanel.awaitingData")}
+              value={resolvedTechnicalSnapshot?.maAlignmentKey ? t(`analysis.chart.maAlign.${resolvedTechnicalSnapshot.maAlignmentKey}`) : "-"}
+              tone={resolvedTechnicalSnapshot?.maAlignmentTone ?? "neutral"}
+              detail={resolvedTechnicalSnapshot?.lastClose != null ? `${t("analysis.chart.techPanel.lastClose")}: ${formatNumber(resolvedTechnicalSnapshot.lastClose, 2)}` : t("analysis.chart.techPanel.awaitingData")}
             />
           </div>
             </>
@@ -1632,6 +1707,26 @@ const KpiCard = memo(function KpiCard({ label, value, tone, detail, wrap = false
   );
 });
 
+const TechnicalViewCard = memo(function TechnicalViewCard({ view }) {
+  if (!view) {
+    return null;
+  }
+
+  return (
+    <section className={`advanced-tech-view advanced-tech-view--${view.tone}`}>
+      <div className="advanced-tech-view-head">
+        <span>{view.title}</span>
+        <strong>{view.label}</strong>
+      </div>
+      <div className="advanced-tech-view-reasons">
+        {view.reasons.map((reason) => (
+          <span key={reason} className="advanced-tech-view-reason">{reason}</span>
+        ))}
+      </div>
+    </section>
+  );
+});
+
 const StackedStatCard = memo(function StackedStatCard({ label, value, tone, detail }) {
   return (
     <div className={`advanced-tech-stack-card advanced-tech-stack-card--${tone}`}>
@@ -1656,9 +1751,17 @@ const CrosshairTooltip = memo(function CrosshairTooltip({ model }) {
       <>
         <strong>{model.dateLabel}</strong>
         <div className="advanced-crosshair-grid advanced-crosshair-grid--compact">
-          <TooltipMetric label="RSI" value={model.rsiValue} digits={2} />
+          <div className="advanced-crosshair-row advanced-crosshair-row--single">
+            <strong>{`RSI: ${formatNumber(model.rsiValue, 2)} — ${model.zoneLabel}`}</strong>
+          </div>
         </div>
       </>
+    );
+  } else if (model.kind === "price-line") {
+    content = (
+      <div className="advanced-crosshair-zone">
+        <strong>{`${model.label}: ${formatNumber(model.value, 2)}`}</strong>
+      </div>
     );
   } else if (model.kind === "rsi-zone") {
     content = (
@@ -1763,15 +1866,35 @@ async function loadCryptoData(symbol, range, t) {
   };
 }
 
-async function loadLineData(symbol, rangeDates, t) {
-  const analysis = await getAdvancedTechnical(symbol, {
-    from: rangeDates.from,
-    to: rangeDates.to,
-    indicators: DEFAULT_INDICATORS,
-  });
+async function loadLineData(symbol, rangeDates, t, quote) {
+  let analysis = null;
+  let analysisError = null;
 
-  const points = normalizeLinePoints(Array.isArray(analysis?.points) ? analysis.points : []);
+  try {
+    analysis = await getAdvancedTechnical(symbol, {
+      from: rangeDates.from,
+      to: rangeDates.to,
+      indicators: DEFAULT_INDICATORS,
+    });
+  } catch (error) {
+    analysisError = error;
+  }
+
+  let points = normalizeLinePoints(Array.isArray(analysis?.points) ? analysis.points : []);
   if (!points.length) {
+    const history = await getMarketHistory(symbol, {
+      from: rangeDates.from,
+      to: rangeDates.to,
+      source: quote?.source,
+      type: quote?.instrumentType,
+    });
+    points = normalizeHistoryPoints(history);
+  }
+
+  if (!points.length) {
+    if (analysisError) {
+      throw analysisError;
+    }
     throw new Error(t("analysis.chart.errors.noData"));
   }
 
@@ -1841,9 +1964,9 @@ function normalizeCandles(candles) {
       low,
       close,
       volume,
-      sma7: toFiniteNumber(candle?.sma7),
-      sma20: toFiniteNumber(candle?.sma20),
-      sma50: toFiniteNumber(candle?.sma50),
+      sma7: toPositiveOverlayNumber(candle?.sma7),
+      sma20: toPositiveOverlayNumber(candle?.sma20),
+      sma50: toPositiveOverlayNumber(candle?.sma50),
       rsi14,
       changePct: previousClose ? ((close - previousClose) / previousClose) * 100 : null,
     });
@@ -1871,13 +1994,44 @@ function normalizeLinePoints(points) {
         low: null,
         close: Number(point.close),
         volume: null,
-        sma7: toFiniteNumber(point.sma7),
-        sma20: toFiniteNumber(point.sma20),
-        sma50: toFiniteNumber(point.sma50),
+        sma7: toPositiveOverlayNumber(point.sma7),
+        sma20: toPositiveOverlayNumber(point.sma20),
+        sma50: toPositiveOverlayNumber(point.sma50),
         rsi14: toFiniteNumber(point.rsi14),
         changePct: previousClose ? ((Number(point.close) - previousClose) / previousClose) * 100 : null,
       };
     });
+}
+
+function normalizeHistoryPoints(history) {
+  return (Array.isArray(history) ? history : [])
+    .map((point, index, source) => {
+      const rawDate = point?.priceTimestamp ? String(point.priceTimestamp) : null;
+      const close = toFiniteNumber(point?.closePrice);
+      if (!rawDate || close == null) {
+        return null;
+      }
+
+      const formattedDate = rawDate.slice(0, 10);
+      const time = toEpochSeconds(formattedDate);
+      const previousClose = index > 0 ? toFiniteNumber(source[index - 1]?.closePrice) : null;
+
+      return {
+        time,
+        dateLabel: formattedDate,
+        open: null,
+        high: null,
+        low: null,
+        close,
+        volume: null,
+        sma7: null,
+        sma20: null,
+        sma50: null,
+        rsi14: null,
+        changePct: previousClose ? ((close - previousClose) / previousClose) * 100 : null,
+      };
+    })
+    .filter(Boolean);
 }
 
 function buildOverlayData(rows, closes, volumes) {
@@ -1993,7 +2147,6 @@ function buildTechnicalSummary({
   latestRow,
   previousRow,
   trendDirection,
-  overlayData,
   latestSignal,
   mode,
   volumeVisible,
@@ -2029,6 +2182,8 @@ function buildTechnicalSummary({
     momentumKey: momentum.key,
     momentumTone: momentum.tone,
     momentumValue: momentum.value,
+    sma20: latestRow?.sma20 ?? null,
+    sma50: latestRow?.sma50 ?? null,
     supportLevel: supportResistance.support,
     supportDistancePct: supportResistance.supportDistancePct,
     resistanceLevel: supportResistance.resistance,
@@ -2162,6 +2317,26 @@ function deriveVolatility(latestRow, previousRow) {
   return { key: "low", tone: "positive", summaryKey: "low" };
 }
 
+function mergeTechnicalSnapshot(snapshot, technicalAnalysis) {
+  const baseSnapshot = snapshot ?? null;
+  const backendRsi = extractIndicatorValue(technicalAnalysis, "RSI14");
+  const backendTrendDirection = normalizeTrendDirection(technicalAnalysis?.trendDirection);
+  const backendSignal = normalizeSignalDescriptor(Array.isArray(technicalAnalysis?.signals) ? technicalAnalysis.signals[0] : null);
+  const resolvedRsi = backendRsi ?? baseSnapshot?.rsiValue ?? null;
+
+  return {
+    ...(baseSnapshot ?? {}),
+    rsiValue: resolvedRsi,
+    rsiRegimeKey: resolvedRsi == null ? (baseSnapshot?.rsiRegimeKey ?? null) : resolveRsiZoneKey(resolvedRsi),
+    trendKey: backendTrendDirection ? backendTrendDirection.toLowerCase() : (baseSnapshot?.trendKey ?? null),
+    trendTone: backendTrendDirection ? trendTone(backendTrendDirection) : (baseSnapshot?.trendTone ?? "neutral"),
+    signalKey: backendSignal ? null : (baseSnapshot?.signalKey ?? null),
+    rawSignalLabel: backendSignal?.shortLabel ?? baseSnapshot?.rawSignalLabel ?? null,
+    rawSignalText: backendSignal?.text ?? baseSnapshot?.rawSignalText ?? null,
+    latestSignalTone: backendSignal?.tone ?? baseSnapshot?.latestSignalTone ?? "neutral",
+  };
+}
+
 function deriveLatestSignal({ latestRow, trendDirection, maAlignment, volatility }) {
   if (latestRow?.rsi14 != null && latestRow.rsi14 <= 30) {
     return { key: "oversoldRisk", tone: "positive" };
@@ -2228,6 +2403,167 @@ function toneFromRsi(rsi) {
   return "neutral";
 }
 
+function resolveTooltipPosition(rect, pointX, pointY, kind) {
+  const { width, height } = tooltipDimensions(kind);
+  let left = rect.left + pointX + TOOLTIP_OFFSET;
+  let top = rect.top + pointY - TOOLTIP_OFFSET;
+
+  if (left + width > window.innerWidth - TOOLTIP_VIEWPORT_MARGIN) {
+    left = rect.left + pointX - width - TOOLTIP_OFFSET;
+  }
+  if (left < TOOLTIP_VIEWPORT_MARGIN) {
+    left = TOOLTIP_VIEWPORT_MARGIN;
+  }
+
+  if (top + height > window.innerHeight - TOOLTIP_VIEWPORT_MARGIN) {
+    top = window.innerHeight - height - TOOLTIP_VIEWPORT_MARGIN;
+  }
+  if (top < TOOLTIP_VIEWPORT_MARGIN) {
+    top = TOOLTIP_VIEWPORT_MARGIN;
+  }
+
+  return { left, top };
+}
+
+function tooltipDimensions(kind) {
+  switch (kind) {
+    case "rsi-point":
+      return { width: 220, height: 76 };
+    case "price-line":
+      return { width: 180, height: 54 };
+    case "rsi-zone":
+      return { width: 180, height: 64 };
+    default:
+      return { width: TOOLTIP_WIDTH, height: TOOLTIP_HEIGHT };
+  }
+}
+
+function resolveRsiZoneKey(rsiValue) {
+  if (rsiValue >= 70) {
+    return "overbought";
+  }
+  if (rsiValue <= 30) {
+    return "oversold";
+  }
+  return "neutral";
+}
+
+function resolveHoveredStructureLine({ priceSeries, pointY, snapshot }) {
+  if (!priceSeries || !snapshot) {
+    return null;
+  }
+
+  const candidates = [
+    { key: "support", value: snapshot.supportLevel },
+    { key: "resistance", value: snapshot.resistanceLevel },
+  ].filter((item) => item.value != null);
+
+  for (const candidate of candidates) {
+    const coordinate = priceSeries.priceToCoordinate(candidate.value);
+    if (coordinate != null && Number.isFinite(coordinate) && Math.abs(coordinate - pointY) <= STRUCTURE_LINE_HOVER_THRESHOLD) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function buildTechnicalView(snapshot, t) {
+  if (!snapshot) {
+    return null;
+  }
+
+  let score = 0;
+  if (snapshot.trendKey === "uptrend") score += 2;
+  if (snapshot.trendKey === "downtrend") score -= 2;
+  if (snapshot.maAlignmentKey === "bullish") score += 2;
+  if (snapshot.maAlignmentKey === "bearish") score -= 2;
+  if (snapshot.momentumKey === "positive") score += 1;
+  if (snapshot.momentumKey === "negative") score -= 1;
+  if (snapshot.latestSignalTone === "positive") score += 1;
+  if (snapshot.latestSignalTone === "negative") score -= 1;
+  if (snapshot.rsiValue != null) {
+    if (snapshot.rsiValue >= 70) score -= 1;
+    else if (snapshot.rsiValue <= 30) score += 1;
+    else if (snapshot.rsiValue >= 55) score += 1;
+    else if (snapshot.rsiValue <= 45) score -= 1;
+  }
+
+  let stateKey = "neutral";
+  let tone = "neutral";
+  if (score >= 5) {
+    stateKey = "strongBullish";
+    tone = "positive";
+  } else if (score >= 2) {
+    stateKey = "weakBullish";
+    tone = "positive";
+  } else if (score <= -5) {
+    stateKey = "strongBearish";
+    tone = "negative";
+  } else if (score <= -2) {
+    stateKey = "weakBearish";
+    tone = "negative";
+  }
+
+  const reasons = [];
+
+  if (snapshot.rsiValue != null) {
+    reasons.push(t(`analysis.chart.techView.reason.rsi.${resolveRsiZoneKey(snapshot.rsiValue)}`));
+  }
+
+  if (snapshot.lastClose != null && snapshot.sma20 != null) {
+    const distancePct = Math.abs(((snapshot.lastClose - snapshot.sma20) / snapshot.lastClose) * 100);
+    if (distancePct <= 0.35) {
+      reasons.push(t("analysis.chart.techView.reason.priceNearMa20"));
+    } else if (snapshot.lastClose > snapshot.sma20) {
+      reasons.push(t("analysis.chart.techView.reason.priceAboveMa20"));
+    } else {
+      reasons.push(t("analysis.chart.techView.reason.priceBelowMa20"));
+    }
+  }
+
+  if (snapshot.maAlignmentKey === "bullish") {
+    reasons.push(t("analysis.chart.techView.reason.maBullish"));
+  } else if (snapshot.maAlignmentKey === "bearish") {
+    reasons.push(t("analysis.chart.techView.reason.maBearish"));
+  }
+
+  if (snapshot.momentumKey === "positive") {
+    reasons.push(t("analysis.chart.techView.reason.momentumPositive"));
+  } else if (snapshot.momentumKey === "negative") {
+    reasons.push(t("analysis.chart.techView.reason.momentumNegative"));
+  } else if (snapshot.momentumKey === "neutral") {
+    reasons.push(t("analysis.chart.techView.reason.momentumNeutral"));
+  }
+
+  if (snapshot.resistanceDistancePct != null && snapshot.resistanceDistancePct <= 1.5) {
+    reasons.push(t("analysis.chart.techView.reason.nearResistance", { value: snapshot.resistanceDistancePct.toFixed(2) }));
+  } else if (snapshot.supportDistancePct != null && snapshot.supportDistancePct <= 1.5) {
+    reasons.push(t("analysis.chart.techView.reason.nearSupport", { value: snapshot.supportDistancePct.toFixed(2) }));
+  }
+
+  if (snapshot.latestSignalTone === "positive") {
+    reasons.push(t("analysis.chart.techView.reason.signalPositive"));
+  } else if (snapshot.latestSignalTone === "negative") {
+    reasons.push(t("analysis.chart.techView.reason.signalNegative"));
+  }
+
+  return {
+    title: t("analysis.chart.techView.title"),
+    label: t(`analysis.chart.techView.state.${stateKey}`),
+    tone,
+    reasons: reasons.filter(Boolean).slice(0, 4),
+  };
+}
+
+function resolveAdvancedChartErrorMessage(error, t, isCrypto) {
+  const status = Number(error?.response?.status);
+  if ([400, 404, 422, 500].includes(status)) {
+    return isCrypto ? t("analysis.chart.errors.noCandles") : t("analysis.rangeUnavailable");
+  }
+  return extractErrorMessage(error, t("analysis.chart.errors.loadFailed"));
+}
+
 function toneFromSignal(tone) {
   return tone ?? "neutral";
 }
@@ -2272,6 +2608,19 @@ function formatCompactPrice(value) {
 function toFiniteNumber(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function extractIndicatorValue(technicalAnalysis, indicatorName) {
+  const normalizedName = String(indicatorName || "").trim().toUpperCase();
+  const match = technicalAnalysis?.indicatorValues
+    ?.find?.((item) => String(item?.indicator || "").trim().toUpperCase() === normalizedName);
+  const numeric = Number(match?.value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function toPositiveOverlayNumber(value) {
+  const numeric = toFiniteNumber(value);
+  return numeric != null && numeric > 0 ? numeric : null;
 }
 
 function normalizeChartTime(time) {
@@ -2372,7 +2721,7 @@ function mapInitialTool(value) {
   return "cursor";
 }
 
-function AiTechPanel({ instrumentCode, isAuthenticated, isPremium, aiData, aiLoading, aiError, onRetry, onLogin, t }) {
+function AiTechPanel({ isAuthenticated, isPremium, aiData, aiLoading, aiError, onRetry, onLogin, t }) {
   if (!isAuthenticated) {
     return (
       <div className="tech-ai-gate">

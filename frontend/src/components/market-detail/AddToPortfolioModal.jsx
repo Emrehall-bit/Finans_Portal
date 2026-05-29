@@ -7,7 +7,7 @@ import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 
-export default function AddToPortfolioModal({ isOpen, onClose, symbol, currentPrice, userId, onSuccess }) {
+export default function AddToPortfolioModal({ isOpen, onClose, symbol, displaySymbol, currentPrice, userId, onSuccess }) {
   const { t } = useTranslation();
   const [portfolios, setPortfolios] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -96,7 +96,7 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, currentPr
         <div className="instrument-action-modal-head">
           <div>
             <p className="eyebrow">{t("marketDetail.addToPortfolio.eyebrow")}</p>
-            <h3>{symbol}</h3>
+            <h3>{displaySymbol || symbol}</h3>
           </div>
           <button type="button" className="secondary-button" onClick={onClose}>
             {t("common.close")}

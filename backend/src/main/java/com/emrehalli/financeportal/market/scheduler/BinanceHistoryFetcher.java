@@ -6,6 +6,7 @@ import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.domain.enums.IntervalType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
+import com.emrehalli.financeportal.market.persistence.LastHistoryDateProjection;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
 import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
 import com.emrehalli.financeportal.market.support.BinancePairMapper;
@@ -19,13 +20,17 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -40,32 +45,68 @@ public class BinanceHistoryFetcher {
     private final ExecutorService executor = Executors.newFixedThreadPool(5);
 
     @Scheduled(initialDelay = 2 * 60 * 1000, fixedDelay = Long.MAX_VALUE)
-    @Transactional
     public void initialLoad() {
         if (!pairMapper.isReady()) {
-            log.warn("[BinanceHistoryFetcher] PairMapper hazÄ±r deÄŸil, initialLoad atlanÄ±yor.");
+            log.warn("[BinanceHistoryFetcher] PairMapper hazır değil, initialLoad atlanıyor.");
             return;
         }
 
         List<String> symbols = pairMapper.getAllSymbols();
-        log.info("[BinanceHistoryFetcher] Ä°lk yÃ¼kleme baÅŸlÄ±yor (90 gÃ¼n). Sembol sayÄ±sÄ±: {}", symbols.size());
-
         if (symbols.isEmpty()) {
-            log.warn("[BinanceHistoryFetcher] getAllSymbols() boÅŸ dÃ¶ndÃ¼, iÅŸlem yapÄ±lmÄ±yor.");
+            log.warn("[BinanceHistoryFetcher] getAllSymbols() boş döndü, işlem yapılmıyor.");
             return;
         }
 
-        for (String binanceSymbol : symbols) {
-            String coin = pairMapper.toDisplayCode(binanceSymbol);
-            log.info("[BinanceHistoryFetcher] Ä°ÅŸleniyor: binanceSymbol={}, coin={}", binanceSymbol, coin);
+        Map<String, LocalDate> lastDateByCode = preloadLastDates();
+        log.info("[BinanceHistoryFetcher] Binance history last-date preload completed. symbolCount={}", lastDateByCode.size());
+        log.info("[BinanceHistoryFetcher] Startup catch-up başlıyor. Sembol sayısı: {}", symbols.size());
+
+        List<Future<Integer>> futures = symbols.stream()
+                .map(binanceSymbol -> executor.submit(() -> {
+                    String coin = pairMapper.toDisplayCode(binanceSymbol);
+                    try {
+                        int gapDays = resolveGapDays(lastDateByCode.get(coin));
+                        if (gapDays == 0) {
+                            log.debug("[BinanceHistoryFetcher] Zaten güncel, atlanıyor. coin={}", coin);
+                            return 0;
+                        }
+                        log.info("[BinanceHistoryFetcher] Gap tespit edildi. coin={} gapDays={}", coin, gapDays);
+                        return fetchAndSavePage(coin, binanceSymbol, gapDays, null);
+                    } catch (Exception e) {
+                        log.warn("[BinanceHistoryFetcher] initialLoad coin işlenemedi. coin={} symbol={}", coin, binanceSymbol, e);
+                        return 0;
+                    }
+                }))
+                .toList();
+
+        int total = 0;
+        for (Future<Integer> future : futures) {
             try {
-                fetchAndSavePage(coin, binanceSymbol, 90, null);
-            } catch (Exception exception) {
-                log.warn("[BinanceHistoryFetcher] initialLoad coin iÅŸlenemedi. coin={}, symbol={}", coin, binanceSymbol, exception);
+                total += future.get();
+            } catch (Exception e) {
+                log.warn("[BinanceHistoryFetcher] Future hatası", e);
             }
         }
 
-        log.info("[BinanceHistoryFetcher] Ä°lk yÃ¼kleme tamamlandÄ±.");
+        log.info("[BinanceHistoryFetcher] Startup catch-up tamamlandı. Toplam kaydedilen: {}", total);
+    }
+
+    private Map<String, LocalDate> preloadLastDates() {
+        return historyRepository
+                .findLastDatePerInstrument(InstrumentType.CRYPTO, SourceName.BINANCE, IntervalType.ONE_DAY)
+                .stream()
+                .filter(p -> p.getCode() != null && p.getLastTimestamp() != null)
+                .collect(Collectors.toMap(
+                        p -> p.getCode().trim().toUpperCase(),
+                        p -> p.getLastTimestamp().atZone(ZoneOffset.UTC).toLocalDate()
+                ));
+    }
+
+    private int resolveGapDays(LocalDate lastDate) {
+        if (lastDate == null) return 90;
+        LocalDate yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(1);
+        if (!lastDate.isBefore(yesterday)) return 0;
+        return (int) Math.min(ChronoUnit.DAYS.between(lastDate, yesterday) + 2, 90);
     }
 
     @Scheduled(cron = "0 30 0 * * *", zone = "UTC")

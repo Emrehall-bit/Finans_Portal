@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.technicalanalysis.service;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisNotFoundException;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisValidationException;
 import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonResult;
 import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisPoint;
@@ -50,8 +51,6 @@ public class TechnicalAnalysisService {
         this.appMessageSource = appMessageSource;
     }
 
-    @Cacheable(value = "technicalAnalysis",
-            key = "#symbol.toUpperCase() + ':' + #from + ':' + #to + ':' + (#indicators != null ? #indicators : '')")
     public TechnicalAnalysisResult analyze(String symbol, LocalDate from, LocalDate to, String indicators) {
         logger.info("Technical analysis started: symbol={}, from={}, to={}, indicators={}", symbol, from, to, indicators);
         validateSymbol(symbol);
@@ -59,6 +58,9 @@ public class TechnicalAnalysisService {
 
         Set<IndicatorType> requestedIndicators = resolveIndicators(indicators);
         List<HistoricalPricePoint> history = filterIncompleteCloses(historicalPriceReader.read(symbol, from, to));
+        if (history.isEmpty()) {
+            throw new TechnicalAnalysisNotFoundException("Historical price data not found for symbol: " + symbol);
+        }
         int requiredPointCount = REQUIRED_HISTORY_POINT_COUNT;
         if (history.size() < requiredPointCount) {
             logger.warn("Technical analysis has insufficient history: symbol={}, from={}, to={}, pointCount={}, requiredPointCount={}",

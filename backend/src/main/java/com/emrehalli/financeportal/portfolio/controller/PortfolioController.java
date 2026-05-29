@@ -92,12 +92,12 @@ public class PortfolioController {
     @GetMapping("/{portfolioId}")
     public ApiResponse<PortfolioResponseDto> getPortfolioById(@PathVariable Long portfolioId) {
         Portfolio portfolio = portfolioService.getPortfolioEntityById(portfolioId);
-        PortfolioResponseDto data = PortfolioResponseDto.builder()
-                .portfolioId(portfolio.getId())
-                .portfolioName(portfolio.getPortfolioName())
-                .createdAt(portfolio.getCreatedAt())
-                .userId(portfolio.getUser() != null ? portfolio.getUser().getId() : null)
-                .build();
+        PortfolioResponseDto data = new PortfolioResponseDto(
+                portfolio.getId(),
+                portfolio.getPortfolioName(),
+                portfolio.getCreatedAt(),
+                portfolio.getUser() != null ? portfolio.getUser().getId() : null
+        );
         return ApiResponse.<PortfolioResponseDto>builder()
                 .success(true)
                 .data(data)

@@ -22,9 +22,10 @@ export default function AnalysisComparisonPanel({ loading, error, comparison, mo
   const { chartTheme } = useTheme();
   const series = comparison?.series ?? [];
   const chartData = useMemo(() => buildComparisonData(series, mode), [series, mode]);
+  const compactEmpty = !loading && !error && series.length < 2;
 
   return (
-    <section className="panel-surface analysis-lab-panel">
+    <section className={`panel-surface analysis-lab-panel analysis-comparison-section${compactEmpty ? " analysis-lab-panel--compact-empty" : ""}`}>
       <div className="panel-head">
         <div>
           <p className="eyebrow">{t("analysis.comparison.eyebrow")}</p>

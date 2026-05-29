@@ -80,12 +80,12 @@ public class PortfolioService {
     }
 
     private PortfolioResponseDto toResponseDto(Portfolio portfolio) {
-        return PortfolioResponseDto.builder()
-                .portfolioId(portfolio.getId())
-                .portfolioName(portfolio.getPortfolioName())
-                .createdAt(portfolio.getCreatedAt())
-                .userId(portfolio.getUser() != null ? portfolio.getUser().getId() : null)
-                .build();
+        return new PortfolioResponseDto(
+                portfolio.getId(),
+                portfolio.getPortfolioName(),
+                portfolio.getCreatedAt(),
+                portfolio.getUser() != null ? portfolio.getUser().getId() : null
+        );
     }
 }
 

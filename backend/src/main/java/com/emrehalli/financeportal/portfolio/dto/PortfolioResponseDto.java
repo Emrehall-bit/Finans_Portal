@@ -1,17 +1,22 @@
 package com.emrehalli.financeportal.portfolio.dto;
 
-import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
 
 @Getter
-@Builder
 public class PortfolioResponseDto {
-    private Long portfolioId;
-    private String portfolioName;
-    private LocalDateTime createdAt;
-    private Long userId;
+    private final Long portfolioId;
+    private final String portfolioName;
+    private final LocalDateTime createdAt;
+    private final Long userId;
+
+    public PortfolioResponseDto(Long portfolioId, String portfolioName, LocalDateTime createdAt, Long userId) {
+        this.portfolioId = portfolioId;
+        this.portfolioName = portfolioName;
+        this.createdAt = createdAt;
+        this.userId = userId;
+    }
 }
 
 

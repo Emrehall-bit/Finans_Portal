@@ -4,7 +4,7 @@ import { createAlert } from "../../api/alertApi";
 import { extractErrorMessage } from "../../api/responseUtils";
 import ErrorMessage from "../common/ErrorMessage";
 
-export default function CreateAlertModal({ isOpen, onClose, symbol, currentPrice, userId, onSuccess }) {
+export default function CreateAlertModal({ isOpen, onClose, symbol, displaySymbol, currentPrice, userId, onSuccess }) {
   const { t } = useTranslation();
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -53,7 +53,7 @@ export default function CreateAlertModal({ isOpen, onClose, symbol, currentPrice
         <div className="instrument-action-modal-head">
           <div>
             <p className="eyebrow">{t("marketDetail.createAlert.eyebrow")}</p>
-            <h3>{symbol}</h3>
+            <h3>{displaySymbol || symbol}</h3>
           </div>
           <button type="button" className="secondary-button" onClick={onClose}>
             {t("common.close")}

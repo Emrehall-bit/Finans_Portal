@@ -12,6 +12,38 @@ export const RANGE_PRESETS = [
 
 export const DEFAULT_INDICATORS = ["SMA7", "SMA20", "SMA50", "RSI14"];
 
+export function resolveInstrumentSymbols(symbol, instrumentType) {
+  const rawSymbol = String(symbol || "").trim();
+  const normalizedType = String(instrumentType || "").trim().toUpperCase();
+
+  if (!rawSymbol) {
+    return {
+      displaySymbol: "",
+      apiSymbol: "",
+    };
+  }
+
+  if (normalizedType !== "FX") {
+    return {
+      displaySymbol: rawSymbol,
+      apiSymbol: rawSymbol,
+    };
+  }
+
+  const upperSymbol = rawSymbol.toUpperCase();
+  if (upperSymbol.startsWith("TCMB:")) {
+    return {
+      displaySymbol: upperSymbol.split(":")[1] || rawSymbol,
+      apiSymbol: upperSymbol,
+    };
+  }
+
+  return {
+    displaySymbol: upperSymbol,
+    apiSymbol: `TCMB:${upperSymbol}:SELL`,
+  };
+}
+
 export function buildPresetRange(days) {
   const to = new Date();
   const from = new Date(to);
