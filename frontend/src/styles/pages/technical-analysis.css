@@ -542,7 +542,7 @@ html[data-theme] .analysis-chart-shell {
 
 .advanced-chart-layout {
   display: grid;
-  grid-template-columns: minmax(0, 3.75fr) minmax(200px, 0.65fr);
+  grid-template-columns: minmax(0, 3.35fr) minmax(260px, 0.9fr);
 }
 
 /* ── Drawing tools dropdown ─────────────────────────────────────────────── */
@@ -556,24 +556,28 @@ html[data-theme] .analysis-chart-shell {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 22px;
-  border-radius: 4px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: transparent;
+  gap: 7px;
+  min-width: 118px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.94);
   color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .draw-tools-toggle:hover {
-  background: rgba(100, 116, 139, 0.08);
+  background: rgba(248, 250, 252, 0.98);
   color: #334155;
 }
 
 .draw-tools-toggle.is-active {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.45);
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(96, 165, 250, 0.42);
   color: #2563eb;
 }
 
@@ -581,31 +585,31 @@ html[data-theme] .analysis-chart-shell {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 152px;
-  padding: 5px;
-  border-radius: 9px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  width: 220px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
   background: rgba(255, 255, 255, 0.99);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .draw-tools-menu .draw-tool-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   height: auto;
-  padding: 6px 9px;
-  border-radius: 6px;
+  padding: 9px 10px;
+  border-radius: 8px;
   border: none;
   background: transparent;
   color: #475569;
-  font-size: 11.5px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   text-align: left;
   justify-content: flex-start;
@@ -754,6 +758,7 @@ html[data-theme] .analysis-chart-shell {
 
 [data-theme="dark"] .draw-tools-toggle {
   border-color: rgba(71, 85, 105, 0.4);
+  background: rgba(15, 23, 42, 0.92);
   color: #64748b;
 }
 
@@ -800,58 +805,66 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .advanced-chart-toolbar {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.advanced-chart-toolbar-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 6px 12px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-  background: rgba(248, 250, 252, 0.74);
+  gap: 12px;
+  min-width: 0;
   flex-wrap: wrap;
 }
 
-.advanced-chart-toolbar-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.advanced-chart-price {
-  font-size: 0.95rem;
-  line-height: 1;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.advanced-chart-change {
-  font-size: 0.74rem;
-  line-height: 1;
-  font-weight: 700;
-}
-
-.advanced-chart-change.positive {
-  color: #15803d;
-}
-
-.advanced-chart-change.negative {
-  color: #dc2626;
-}
-
-.advanced-chart-toolbar-controls {
+.advanced-chart-toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   min-width: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
-.advanced-chart-tools {
+.advanced-chart-active-indicators {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 28px;
+}
+
+.advanced-chart-indicator-chip {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  flex-wrap: wrap;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.advanced-chart-indicator-chip:hover {
+  background: rgba(248, 250, 252, 0.98);
+  border-color: rgba(148, 163, 184, 0.45);
+  color: #0f172a;
+}
+
+.advanced-chart-indicator-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--indicator-color, #94a3b8);
 }
 
 .advanced-chart-stack {
@@ -886,7 +899,7 @@ html[data-theme] .analysis-chart-shell {
 
 .advanced-chart-canvas-shell--rsi {
   min-height: 0;
-  grid-template-rows: auto 112px;
+  grid-template-rows: auto 170px;
 }
 
 .advanced-chart-canvas--price {
@@ -898,7 +911,7 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .advanced-chart-canvas--rsi {
-  height: 112px;
+  height: 170px;
 }
 
 .advanced-chart-canvas.is-hidden {
@@ -909,7 +922,7 @@ html[data-theme] .analysis-chart-shell {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 3px 8px 1px;
+  padding: 5px 10px 4px;
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -917,23 +930,114 @@ html[data-theme] .analysis-chart-shell {
   text-transform: uppercase;
 }
 
-.advanced-chart-rsi-band {
+.advanced-chart-subpanel-head--rsi {
+  padding-bottom: 6px;
+}
+
+.advanced-chart-rsi-head-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.advanced-chart-rsi-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.advanced-chart-rsi-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  cursor: help;
+}
+
+.advanced-chart-rsi-legend-dot--overbought {
+  background: #ef4444;
+}
+
+.advanced-chart-rsi-legend-dot--neutral {
+  background: #94a3b8;
+}
+
+.advanced-chart-rsi-legend-dot--oversold {
+  background: #22c55e;
+}
+
+.advanced-chart-rsi-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(248, 250, 252, 0.98);
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.advanced-chart-rsi-guides {
+  position: absolute;
+  inset: 32px 26px 0 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.advanced-chart-rsi-guide {
   position: absolute;
   left: 0;
   right: 0;
   pointer-events: none;
 }
 
-.advanced-chart-rsi-band--overbought {
-  top: 0;
-  height: 30%;
-  background: linear-gradient(180deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0));
+.advanced-chart-rsi-guide::before {
+  content: none;
 }
 
-.advanced-chart-rsi-band--oversold {
-  bottom: 0;
+.advanced-chart-rsi-guide--overbought {
+  top: 0 !important;
   height: 30%;
-  background: linear-gradient(0deg, rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0));
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.advanced-chart-rsi-guide--neutral {
+  top: 30% !important;
+  height: 40%;
+  background: transparent;
+}
+
+.advanced-chart-rsi-guide--oversold {
+  top: 70% !important;
+  height: 30%;
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.advanced-chart-rsi-axis {
+  position: absolute;
+  top: 32px;
+  right: 6px;
+  bottom: 0;
+  width: 22px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.advanced-chart-rsi-axis-label {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  color: #94a3b8;
+  letter-spacing: 0;
 }
 
 .chart-toolbar-sep {
@@ -1096,6 +1200,10 @@ html[data-theme] .analysis-chart-shell {
 .advanced-crosshair-grid {
   display: grid;
   gap: 6px;
+}
+
+.advanced-crosshair-grid--compact {
+  min-width: 120px;
 }
 
 .advanced-crosshair-row {
@@ -1272,6 +1380,72 @@ html[data-theme] .analysis-chart-shell {
 [data-theme="dark"] .advanced-chart-toolbar,
 [data-theme="dark"] .advanced-chart-stack {
   background: #020617;
+}
+
+[data-theme="dark"] .advanced-chart-indicator-chip {
+  border-color: rgba(51, 65, 85, 0.72);
+  background: rgba(15, 23, 42, 0.88);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .advanced-chart-indicator-chip:hover {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(15, 23, 42, 0.96);
+  color: #f8fafc;
+}
+
+.advanced-crosshair-zone {
+  display: grid;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.advanced-crosshair-zone > span {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.advanced-legend-tooltip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 180px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  pointer-events: none;
+}
+
+.advanced-legend-tooltip > span {
+  display: block;
+}
+
+.advanced-legend-tooltip-arrow {
+  position: absolute;
+  top: -5px;
+  left: 14px;
+  width: 10px;
+  height: 10px;
+  background: rgba(15, 23, 42, 0.92);
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+[data-theme="dark"] .advanced-chart-rsi-guide--overbought {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+[data-theme="dark"] .advanced-chart-rsi-guide--oversold {
+  background: rgba(34, 197, 94, 0.05);
+}
+
+[data-theme="dark"] .advanced-chart-rsi-axis-label {
+  color: #64748b;
 }
 
 [data-theme="dark"] .advanced-chart-indicators,
@@ -1820,22 +1994,23 @@ html[data-theme] .analysis-chart-shell {
 
 .chart-timeframes {
   display: inline-flex;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 8px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 999px;
   overflow: hidden;
   gap: 0;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .chart-tf-btn {
-  height: 26px;
-  padding: 0 10px;
+  height: 36px;
+  min-width: 54px;
+  padding: 0 16px;
   border: none;
-  border-right: 1px solid rgba(148, 163, 184, 0.14);
+  border-right: 1px solid rgba(226, 232, 240, 0.95);
   border-radius: 0;
   background: transparent;
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
@@ -1847,7 +2022,7 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .chart-tf-btn:hover {
-  background: rgba(100, 116, 139, 0.07);
+  background: rgba(248, 250, 252, 0.98);
   color: #334155;
 }
 
@@ -1867,14 +2042,15 @@ html[data-theme] .analysis-chart-shell {
 .indicators-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 26px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.76);
+  gap: 7px;
+  height: 36px;
+  min-width: 132px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.94);
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -1883,7 +2059,7 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .indicators-trigger:hover {
-  background: rgba(100, 116, 139, 0.08);
+  background: rgba(248, 250, 252, 0.98);
   color: #334155;
 }
 
@@ -1897,38 +2073,40 @@ html[data-theme] .analysis-chart-shell {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 15px;
-  height: 15px;
+  min-width: 16px;
+  height: 16px;
   border-radius: 999px;
   background: #2563eb;
   color: #fff;
   font-size: 9px;
   font-weight: 700;
   padding: 0 3px;
+  margin-left: auto;
 }
 
 .indicators-menu {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
-  min-width: 158px;
-  padding: 5px;
-  border-radius: 9px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  right: 0;
+  left: auto;
+  width: 220px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
   background: rgba(255, 255, 255, 0.99);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .indicators-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.1s;
   user-select: none;
@@ -1956,8 +2134,8 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .indicators-item-label {
-  font-size: 11.5px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   color: #334155;
   flex: 1;
 }
@@ -1967,6 +2145,7 @@ html[data-theme] .analysis-chart-shell {
 
 [data-theme="dark"] .chart-timeframes {
   border-color: rgba(71, 85, 105, 0.4);
+  background: rgba(15, 23, 42, 0.92);
 }
 
 [data-theme="dark"] .chart-tf-btn {
@@ -1986,6 +2165,7 @@ html[data-theme] .analysis-chart-shell {
 
 [data-theme="dark"] .indicators-trigger {
   border-color: rgba(71, 85, 105, 0.4);
+  background: rgba(15, 23, 42, 0.92);
   color: #64748b;
 }
 
@@ -2053,6 +2233,7 @@ html[data-theme] .analysis-chart-shell {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .analysis-hero-symbol-row h1 {
@@ -2113,18 +2294,11 @@ html[data-theme] .analysis-chart-shell {
   font-weight: 500;
 }
 
-.analysis-hero-meta-sep {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #94a3b8;
-}
-
 .analysis-hero-controls {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -2137,16 +2311,16 @@ html[data-theme] .analysis-chart-shell {
 
 .analysis-switcher-field select {
   width: 100%;
-  height: 38px;
-  padding: 0 38px 0 13px;
+  height: 36px;
+  padding: 0 36px 0 12px;
   border-radius: 10px;
-  border: 1px solid rgba(221, 230, 244, 0.95);
-  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.96);
   color: #16315c;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   font-weight: 600;
   appearance: none;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  box-shadow: none;
 }
 
 .analysis-switcher-field svg {
@@ -2161,22 +2335,22 @@ html[data-theme] .analysis-chart-shell {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 3px;
+  padding: 2px;
   border-radius: 999px;
-  border: 1px solid rgba(221, 230, 244, 0.95);
-  background: rgba(244, 247, 252, 0.96);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(248, 250, 252, 0.96);
+  box-shadow: none;
 }
 
 .analysis-mode-btn,
 .currency-toggle.analysis-currency-toggle .currency-toggle-btn {
-  height: 34px;
-  padding: 0 14px;
+  height: 32px;
+  padding: 0 13px;
   border: none;
   border-radius: 999px;
   background: transparent;
   color: #64748b;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
@@ -2192,15 +2366,15 @@ html[data-theme] .analysis-chart-shell {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 38px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 13px;
   border-radius: 10px;
-  border: 1px solid rgba(221, 230, 244, 0.95);
-  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.96);
   color: #16315c;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  box-shadow: none;
 }
 
 .analysis-header-compare-btn.active {

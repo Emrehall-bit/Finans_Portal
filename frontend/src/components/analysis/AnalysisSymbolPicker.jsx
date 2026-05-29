@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Info, Plus, Search, Star, X } from "lucide-react";
+import { ChevronDown, Plus, Search, Star, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../utils/formatters";
 import { formatInstrumentCode, getFxCodeLabel } from "../../utils/instrumentUtils";
@@ -68,7 +68,7 @@ export default function AnalysisSymbolPicker({
         <div className="analysis-hero-context">
           <div className="analysis-hero-symbol-row">
             <h1>{primaryContext?.symbolLine || "-"}</h1>
-            {chartMode === "advanced" && advancedHeaderPrice != null ? (
+            {advancedHeaderPrice != null ? (
               <div className="analysis-hero-price-block">
                 <strong>{formatNumber(advancedHeaderPrice, 2)}</strong>
                 {advancedHeaderChange != null ? (
@@ -83,12 +83,7 @@ export default function AnalysisSymbolPicker({
               <Star size={19} strokeWidth={2} />
             </button>
           </div>
-          <div className="analysis-hero-meta">
-            <span>{primaryContext?.title || "-"}</span>
-            <span className="analysis-hero-meta-sep" aria-hidden="true" />
-            <span>{primaryContext?.metaLine || "-"}</span>
-            <Info size={15} strokeWidth={2} />
-          </div>
+          {primaryContext?.title ? <div className="analysis-hero-meta"><span>{primaryContext.title}</span></div> : null}
         </div>
 
         <div className="analysis-hero-controls">

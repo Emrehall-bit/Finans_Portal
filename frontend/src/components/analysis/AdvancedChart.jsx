@@ -61,11 +61,12 @@ const MAX_VISIBLE_CANDLE_BARS = 180;
 const MAX_VISIBLE_LINE_BARS = 260;
 const PRICE_CHART_HEIGHT = 680;
 const VOLUME_CHART_HEIGHT = 48;
-const RSI_CHART_HEIGHT = 112;
+const RSI_CHART_HEIGHT = 170;
 const TOOLTIP_WIDTH = 230;
 const TOOLTIP_HEIGHT = 196;
 const TOOLTIP_OFFSET = 18;
 const TOOLTIP_VIEWPORT_MARGIN = 12;
+const RSI_TOOLTIP_LINE_THRESHOLD = 10;
 const DEFAULT_DRAWINGS = {
   stopLoss: null,
   takeProfit: null,
@@ -129,6 +130,7 @@ export default function AdvancedChart({
   const [trendStart, setTrendStart] = useState(null);
   const [creatingAlertKey, setCreatingAlertKey] = useState(null);
   const [tooltipModel, setTooltipModel] = useState(null);
+  const [legendTooltipModel, setLegendTooltipModel] = useState(null);
   const [technicalSnapshot, setTechnicalSnapshot] = useState(null);
   const [selectedDrawingKey, setSelectedDrawingKey] = useState(null);
   const [hoveredDrawingKey, setHoveredDrawingKey] = useState(null);
@@ -138,6 +140,10 @@ export default function AdvancedChart({
   const [aiData, setAiData] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(null);
+  const activeIndicatorItems = useMemo(
+    () => INDICATOR_REGISTRY.filter((indicator) => activeIndicators.has(indicator.key)),
+    [activeIndicators],
+  );
 
   activeToolRef.current = activeTool;
   drawingsRef.current = drawings;
@@ -146,8 +152,6 @@ export default function AdvancedChart({
   hoveredDrawingKeyRef.current = hoveredDrawingKey;
 
   const isCrypto = String(quote?.instrumentType || "").toUpperCase() === "CRYPTO";
-  const changeRate = quote?.changeRate;
-  const isPositive = changeRate != null && changeRate >= 0;
   const hasDrawings = Boolean(
     drawings.stopLoss ||
     drawings.takeProfit ||
@@ -300,11 +304,113 @@ export default function AdvancedChart({
     }
 
     setTooltipModel({
+      kind: "price",
       left,
       top,
       dateLabel: formatTooltipDate(time),
       row,
     });
+  }, []);
+
+  const updateRsiTooltip = useCallback((param) => {
+    const dataset = latestDatasetRef.current;
+    const rsiContainer = rsiContainerRef.current;
+    const rsiSeries = rsiSeriesRef.current;
+    if (!dataset || !param?.point || !rsiContainer || !rsiSeries) {
+      setTooltipModel(null);
+      return;
+    }
+
+    const pointX = param.point.x;
+    const pointY = param.point.y;
+    if (
+      pointX < 0 ||
+      pointY < 0 ||
+      pointX > rsiContainer.clientWidth ||
+      pointY > RSI_CHART_HEIGHT
+    ) {
+      setTooltipModel(null);
+      return;
+    }
+
+    const rect = rsiContainer.getBoundingClientRect();
+    let left = rect.left + pointX + TOOLTIP_OFFSET;
+    let top = rect.top + pointY - TOOLTIP_OFFSET;
+
+    if (left + TOOLTIP_WIDTH > window.innerWidth - TOOLTIP_VIEWPORT_MARGIN) {
+      left = rect.left + pointX - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
+    }
+    if (left < TOOLTIP_VIEWPORT_MARGIN) {
+      left = TOOLTIP_VIEWPORT_MARGIN;
+    }
+
+    if (top + TOOLTIP_HEIGHT > window.innerHeight - TOOLTIP_VIEWPORT_MARGIN) {
+      top = window.innerHeight - TOOLTIP_HEIGHT - TOOLTIP_VIEWPORT_MARGIN;
+    }
+    if (top < TOOLTIP_VIEWPORT_MARGIN) {
+      top = TOOLTIP_VIEWPORT_MARGIN;
+    }
+
+    const hoveredRsi = rsiSeries.coordinateToPrice(pointY);
+    const time = param.time != null ? normalizeChartTime(param.time) : null;
+    const row = time != null ? dataset.infoByTime.get(time) : null;
+    const lineRsi = row?.rsi14 ?? null;
+    const lineY = lineRsi != null ? rsiSeries.priceToCoordinate(lineRsi) : null;
+
+    if (
+      time != null &&
+      lineRsi != null &&
+      lineY != null &&
+      Number.isFinite(lineY) &&
+      Math.abs(lineY - pointY) <= RSI_TOOLTIP_LINE_THRESHOLD
+    ) {
+      setTooltipModel({
+        kind: "rsi-point",
+        left,
+        top,
+        dateLabel: formatTooltipDate(time),
+        rsiValue: lineRsi,
+      });
+      return;
+    }
+
+    if (hoveredRsi == null) {
+      setTooltipModel(null);
+      return;
+    }
+
+    setTooltipModel(null);
+  }, []);
+
+  const showLegendTooltip = useCallback((event, text) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const tooltipWidth = 180;
+    const tooltipHeight = 44;
+    let left = rect.left + rect.width + 10;
+    let top = rect.bottom + 8;
+
+    if (left + tooltipWidth > window.innerWidth - TOOLTIP_VIEWPORT_MARGIN) {
+      left = rect.right - tooltipWidth;
+    }
+    if (left < TOOLTIP_VIEWPORT_MARGIN) {
+      left = TOOLTIP_VIEWPORT_MARGIN;
+    }
+    if (top + tooltipHeight > window.innerHeight - TOOLTIP_VIEWPORT_MARGIN) {
+      top = rect.top - tooltipHeight - 10;
+    }
+    if (top < TOOLTIP_VIEWPORT_MARGIN) {
+      top = TOOLTIP_VIEWPORT_MARGIN;
+    }
+
+    setLegendTooltipModel({
+      left,
+      top,
+      text,
+    });
+  }, []);
+
+  const hideLegendTooltip = useCallback(() => {
+    setLegendTooltipModel(null);
   }, []);
 
   const ensureCoreSeries = useCallback((mode) => {
@@ -356,7 +462,7 @@ export default function AdvancedChart({
         color: "#a855f7",
         lineWidth: 2,
         priceLineVisible: false,
-        lastValueVisible: true,
+        lastValueVisible: false,
         autoscaleInfoProvider: () => ({
           priceRange: {
             minValue: 0,
@@ -369,15 +475,23 @@ export default function AdvancedChart({
         color: "rgba(239, 68, 68, 0.55)",
         lineWidth: 1,
         lineStyle: 2,
-        axisLabelVisible: true,
+        axisLabelVisible: false,
         title: "70",
+      });
+      rsiSeriesRef.current.createPriceLine({
+        price: 50,
+        color: "rgba(100, 116, 139, 0.5)",
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: false,
+        title: "50",
       });
       rsiSeriesRef.current.createPriceLine({
         price: 30,
         color: "rgba(34, 197, 94, 0.55)",
         lineWidth: 1,
         lineStyle: 2,
-        axisLabelVisible: true,
+        axisLabelVisible: false,
         title: "30",
       });
     }
@@ -436,6 +550,7 @@ export default function AdvancedChart({
 
     if (rsiChartRef.current) {
       rsiChartRef.current.priceScale("right").applyOptions({
+        visible: false,
         autoScale: true,
       });
     }
@@ -668,6 +783,7 @@ export default function AdvancedChart({
       applyThemeOptions();
 
       rsiChart.priceScale("right").applyOptions({
+        visible: false,
         autoScale: true,
         scaleMargins: { top: 0.08, bottom: 0.08 },
       });
@@ -696,6 +812,12 @@ export default function AdvancedChart({
     };
 
     priceChart.subscribeCrosshairMove(handleCrosshairMove);
+
+    const handleRsiCrosshairMove = (param) => {
+      updateRsiTooltip(param);
+    };
+
+    rsiChart.subscribeCrosshairMove(handleRsiCrosshairMove);
 
     const handleChartClick = (param) => {
       const tool = activeToolRef.current;
@@ -847,6 +969,7 @@ export default function AdvancedChart({
       window.removeEventListener("resize", handleResize);
 
       priceChart.unsubscribeCrosshairMove(handleCrosshairMove);
+      rsiChart.unsubscribeCrosshairMove(handleRsiCrosshairMove);
       priceChart.unsubscribeClick(handleChartClick);
       priceChart.timeScale().unsubscribeVisibleLogicalRangeChange(priceRangeHandler);
       volumeChart.timeScale().unsubscribeVisibleLogicalRangeChange(volumeRangeHandler);
@@ -871,6 +994,7 @@ export default function AdvancedChart({
     syncVisibleRangeAcrossCharts,
     updateHorizontalDrawingPrice,
     updateTooltip,
+    updateRsiTooltip,
   ]);
 
   useEffect(() => {
@@ -1091,22 +1215,12 @@ export default function AdvancedChart({
         </div>
       ) : null}
 
-        <div className="advanced-chart-toolbar">
-          <div className="advanced-chart-toolbar-primary">
-            {quote?.price != null ? (
-              <span className="advanced-chart-price">{formatNumber(quote.sellRate ?? quote.price, 2)}</span>
-            ) : null}
-            {changeRate != null ? (
-              <span className={`advanced-chart-change ${isPositive ? "positive" : "negative"}`}>
-                {isPositive ? "+" : ""}{Number(changeRate).toFixed(2)}%
-              </span>
-          ) : null}
-        </div>
-
-        <div className="advanced-chart-toolbar-controls">
-          <div className="chart-timeframes">
+      <div className="advanced-chart-toolbar">
+        <div className="advanced-chart-toolbar-row">
+          <div className="chart-timeframes" role="group" aria-label="Range">
             {rangeOptions.map((option) => (
               <button
+                type="button"
                 key={option.value}
                 className={`chart-tf-btn${range === option.value ? " active" : ""}`}
                 onClick={() => setRange(option.value)}
@@ -1116,68 +1230,89 @@ export default function AdvancedChart({
             ))}
           </div>
 
-          <span className="chart-toolbar-sep" aria-hidden="true" />
-
-          <div className="indicators-dropdown" ref={indicatorsRef}>
-            <button
-              className={`indicators-trigger${activeIndicators.size > 0 ? " has-active" : ""}`}
-              onClick={() => setIndicatorsOpen((o) => !o)}
-            >
-              <span>{t("analysis.chart.indicators.label")}</span>
-              {activeIndicators.size > 0 ? (
-                <span className="indicators-count">{activeIndicators.size}</span>
+          <div className="advanced-chart-toolbar-actions">
+            <div className="indicators-dropdown" ref={indicatorsRef}>
+              <button
+                type="button"
+                className={`indicators-trigger${activeIndicators.size > 0 ? " has-active" : ""}`}
+                onClick={() => setIndicatorsOpen((o) => !o)}
+              >
+                <Activity size={14} strokeWidth={2} />
+                <span>{t("analysis.chart.indicators.label")}</span>
+                {activeIndicators.size > 0 ? (
+                  <span className="indicators-count">{activeIndicators.size}</span>
+                ) : null}
+                <ChevronDown size={11} strokeWidth={2.4} />
+              </button>
+              {indicatorsOpen ? (
+                <div className="indicators-menu">
+                  {INDICATOR_REGISTRY.map((indicator) => (
+                    <label key={indicator.key} className="indicators-item">
+                      <input
+                        type="checkbox"
+                        checked={activeIndicators.has(indicator.key)}
+                        onChange={() => toggleIndicator(indicator.key)}
+                      />
+                      <span className="indicators-item-dot" style={{ "--indicator-color": indicator.color }} />
+                      <span className="indicators-item-label">{indicator.label}</span>
+                    </label>
+                  ))}
+                </div>
               ) : null}
-              <ChevronDown size={10} strokeWidth={2.5} />
-            </button>
-            {indicatorsOpen ? (
-              <div className="indicators-menu">
-                {INDICATOR_REGISTRY.map((indicator) => (
-                  <label key={indicator.key} className="indicators-item">
-                    <input
-                      type="checkbox"
-                      checked={activeIndicators.has(indicator.key)}
-                      onChange={() => toggleIndicator(indicator.key)}
-                    />
-                    <span className="indicators-item-dot" style={{ "--indicator-color": indicator.color }} />
-                    <span className="indicators-item-label">{indicator.label}</span>
-                  </label>
-                ))}
-              </div>
-            ) : null}
-          </div>
+            </div>
 
-          <span className="chart-toolbar-sep" aria-hidden="true" />
-
-          <div className="draw-tools-dropdown" ref={toolsDropdownRef}>
-            <button
-              className={`draw-tools-toggle${activeTool !== "cursor" ? " is-active" : ""}`}
-              onClick={() => setToolsOpen((o) => !o)}
-            >
-              <Pen size={13} strokeWidth={2} />
-            </button>
-            {toolsOpen ? (
-              <div className="draw-tools-menu">
-                {drawTools.map((tool) => {
-                  const Icon = tool.icon;
-                  return (
-                    <button
-                      key={tool.key}
-                      className={`draw-tool-btn${activeTool === tool.key ? " active" : ""}`}
-                      onClick={() => {
-                        setActiveTool(tool.key);
-                        if (tool.key !== "trend") setTrendStart(null);
-                        setToolsOpen(false);
-                      }}
-                    >
-                      <Icon size={14} strokeWidth={2} />
-                      <span>{tool.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
+            <div className="draw-tools-dropdown" ref={toolsDropdownRef}>
+              <button
+                type="button"
+                className={`draw-tools-toggle${activeTool !== "cursor" ? " is-active" : ""}`}
+                onClick={() => setToolsOpen((o) => !o)}
+              >
+                <Pen size={14} strokeWidth={2} />
+                <span>{t("analysis.chart.tools.label")}</span>
+                <ChevronDown size={11} strokeWidth={2.4} />
+              </button>
+              {toolsOpen ? (
+                <div className="draw-tools-menu">
+                  {drawTools.map((tool) => {
+                    const Icon = tool.icon;
+                    return (
+                      <button
+                        type="button"
+                        key={tool.key}
+                        className={`draw-tool-btn${activeTool === tool.key ? " active" : ""}`}
+                        onClick={() => {
+                          setActiveTool(tool.key);
+                          if (tool.key !== "trend") setTrendStart(null);
+                          setToolsOpen(false);
+                        }}
+                      >
+                        <Icon size={14} strokeWidth={2} />
+                        <span>{tool.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
+
+        {activeIndicatorItems.length > 0 ? (
+          <div className="advanced-chart-active-indicators">
+            {activeIndicatorItems.map((indicator) => (
+              <button
+                key={indicator.key}
+                type="button"
+                className="advanced-chart-indicator-chip"
+                onClick={() => toggleIndicator(indicator.key)}
+              >
+                <span className="advanced-chart-indicator-chip-dot" style={{ "--indicator-color": indicator.color }} />
+                <span>{indicator.label}</span>
+                <X size={11} strokeWidth={2.4} />
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {trendStart ? (
@@ -1277,11 +1412,51 @@ export default function AdvancedChart({
             )}
 
             <div className="advanced-chart-canvas-shell advanced-chart-canvas-shell--rsi">
-              <div className="advanced-chart-rsi-band advanced-chart-rsi-band--overbought" aria-hidden="true" />
-              <div className="advanced-chart-rsi-band advanced-chart-rsi-band--oversold" aria-hidden="true" />
-              <div className="advanced-chart-subpanel-head">
-                <span>RSI 14</span>
-                <span>{technicalSnapshot?.rsiValue != null ? technicalSnapshot.rsiValue.toFixed(2) : "-"}</span>
+              <div className="advanced-chart-subpanel-head advanced-chart-subpanel-head--rsi">
+                <div className="advanced-chart-rsi-head-left">
+                  <span>RSI (14)</span>
+                  <div className="advanced-chart-rsi-legend" aria-label="RSI legend">
+                    <span
+                      className="advanced-chart-rsi-legend-dot advanced-chart-rsi-legend-dot--overbought"
+                      onMouseEnter={(event) => showLegendTooltip(event, "Aşırı alım bölgesi — RSI 70 üzeri")}
+                      onMouseLeave={hideLegendTooltip}
+                    />
+                    <span
+                      className="advanced-chart-rsi-legend-dot advanced-chart-rsi-legend-dot--neutral"
+                      onMouseEnter={(event) => showLegendTooltip(event, "Nötr bölge — RSI 30-70 arası")}
+                      onMouseLeave={hideLegendTooltip}
+                    />
+                    <span
+                      className="advanced-chart-rsi-legend-dot advanced-chart-rsi-legend-dot--oversold"
+                      onMouseEnter={(event) => showLegendTooltip(event, "Aşırı satım bölgesi — RSI 30 altı")}
+                      onMouseLeave={hideLegendTooltip}
+                    />
+                  </div>
+                </div>
+                <span className="advanced-chart-rsi-badge">
+                  {technicalSnapshot?.rsiValue != null ? `RSI ${technicalSnapshot.rsiValue.toFixed(2)}` : "RSI -"}
+                </span>
+              </div>
+              <div className="advanced-chart-rsi-guides" aria-hidden="true">
+                <div
+                  className="advanced-chart-rsi-guide advanced-chart-rsi-guide--overbought"
+                  style={{ top: "30%" }}
+                />
+                <div
+                  className="advanced-chart-rsi-guide advanced-chart-rsi-guide--neutral"
+                  style={{ top: "50%" }}
+                />
+                <div
+                  className="advanced-chart-rsi-guide advanced-chart-rsi-guide--oversold"
+                  style={{ top: "70%" }}
+                />
+              </div>
+              <div className="advanced-chart-rsi-axis" aria-hidden="true">
+                <span className="advanced-chart-rsi-axis-label" style={{ top: "0%" }}>100</span>
+                <span className="advanced-chart-rsi-axis-label" style={{ top: "30%" }}>70</span>
+                <span className="advanced-chart-rsi-axis-label" style={{ top: "50%" }}>50</span>
+                <span className="advanced-chart-rsi-axis-label" style={{ top: "70%" }}>30</span>
+                <span className="advanced-chart-rsi-axis-label" style={{ top: "100%" }}>0</span>
               </div>
               <div ref={rsiContainerRef} className="advanced-chart-canvas advanced-chart-canvas--rsi" />
             </div>
@@ -1390,6 +1565,7 @@ export default function AdvancedChart({
       </div>
 
       {tooltipModel ? <CrosshairTooltip model={tooltipModel} /> : null}
+      {legendTooltipModel ? <LegendTooltip model={legendTooltipModel} /> : null}
     </section>
   );
 }
@@ -1470,22 +1646,47 @@ const StackedStatCard = memo(function StackedStatCard({ label, value, tone, deta
 
 const CrosshairTooltip = memo(function CrosshairTooltip({ model }) {
   const { t } = useTranslation();
-  const row = model.row;
   if (typeof document === "undefined") {
     return null;
   }
 
+  let content = null;
+  if (model.kind === "rsi-point") {
+    content = (
+      <>
+        <strong>{model.dateLabel}</strong>
+        <div className="advanced-crosshair-grid advanced-crosshair-grid--compact">
+          <TooltipMetric label="RSI" value={model.rsiValue} digits={2} />
+        </div>
+      </>
+    );
+  } else if (model.kind === "rsi-zone") {
+    content = (
+      <div className="advanced-crosshair-zone">
+        <strong>{model.title}</strong>
+        {model.subtitle ? <span>{model.subtitle}</span> : null}
+      </div>
+    );
+  } else {
+    const row = model.row;
+    content = (
+      <>
+        <strong>{model.dateLabel}</strong>
+        <div className="advanced-crosshair-grid">
+          <TooltipMetric label={t("analysis.chart.tooltip.open")} value={row.open} />
+          <TooltipMetric label={t("analysis.chart.tooltip.high")} value={row.high} />
+          <TooltipMetric label={t("analysis.chart.tooltip.low")} value={row.low} />
+          <TooltipMetric label={t("analysis.chart.tooltip.close")} value={row.close} />
+          <TooltipMetric label={t("analysis.chart.tooltip.volume")} value={row.volume} digits={0} />
+          <TooltipMetric label={t("analysis.chart.tooltip.change")} value={row.changePct} suffix="%" digits={2} />
+        </div>
+      </>
+    );
+  }
+
   return createPortal(
     <div className="advanced-crosshair-tooltip" style={{ left: model.left, top: model.top }}>
-      <strong>{model.dateLabel}</strong>
-      <div className="advanced-crosshair-grid">
-        <TooltipMetric label={t("analysis.chart.tooltip.open")} value={row.open} />
-        <TooltipMetric label={t("analysis.chart.tooltip.high")} value={row.high} />
-        <TooltipMetric label={t("analysis.chart.tooltip.low")} value={row.low} />
-        <TooltipMetric label={t("analysis.chart.tooltip.close")} value={row.close} />
-        <TooltipMetric label={t("analysis.chart.tooltip.volume")} value={row.volume} digits={0} />
-        <TooltipMetric label={t("analysis.chart.tooltip.change")} value={row.changePct} suffix="%" digits={2} />
-      </div>
+      {content}
     </div>,
     document.body,
   );
@@ -1497,6 +1698,20 @@ const TooltipMetric = memo(function TooltipMetric({ label, value, digits = 2, su
       <span>{label}</span>
       <strong>{value == null ? "-" : `${formatNumber(value, digits)}${suffix}`}</strong>
     </div>
+  );
+});
+
+const LegendTooltip = memo(function LegendTooltip({ model }) {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
+    <div className="advanced-legend-tooltip" style={{ left: model.left, top: model.top }}>
+      <span>{model.text}</span>
+      <i className="advanced-legend-tooltip-arrow" aria-hidden="true" />
+    </div>,
+    document.body,
   );
 });
 

@@ -582,6 +582,7 @@
       },
       "range": { "1m": "1A", "3m": "3A", "6m": "6A", "1y": "1Y", "max": "MAX" },
       "tools": {
+        "label": "Araçlar",
         "cursor": "İmleç",
         "horizontal": "Yatay Çizgi",
         "trend": "Trend Çizgisi",

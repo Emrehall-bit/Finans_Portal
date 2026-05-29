@@ -589,6 +589,7 @@
       },
       "range": { "1m": "1M", "3m": "3M", "6m": "6M", "1y": "1Y", "max": "MAX" },
       "tools": {
+        "label": "Tools",
         "cursor": "Cursor",
         "horizontal": "Horizontal Line",
         "trend": "Trend Line",

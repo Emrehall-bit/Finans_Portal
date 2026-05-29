@@ -108,7 +108,9 @@
       "PowerShell($env:PGPASSWORD=\"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -c \"SELECT instrument_type FROM market_instruments WHERE instrument_code = 'THYAO';\" 2>&1)",
       "PowerShell($env:PGPASSWORD=\"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -c \"SELECT instrument_code, instrument_type FROM market_instruments WHERE instrument_code IN \\('THYAO','AUD'\\) LIMIT 5;\" 2>&1)",
       "PowerShell($env:PGPASSWORD=\"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -c \"SELECT close_price FROM market_price_history WHERE instrument_id = 392 AND interval_type = 'ONE_DAY' ORDER BY price_timestamp DESC LIMIT 1;\" 2>&1)",
-      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8080/api/v1/analysis/fundamental/THYAO\" -Headers @{\"Accept\"=\"application/json\"} -TimeoutSec 5; $r.Content | ConvertFrom-Json | ConvertTo-Json -Depth 3 } catch { \"Backend erişilemiyor: $_\" })"
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8080/api/v1/analysis/fundamental/THYAO\" -Headers @{\"Accept\"=\"application/json\"} -TimeoutSec 5; $r.Content | ConvertFrom-Json | ConvertTo-Json -Depth 3 } catch { \"Backend erişilemiyor: $_\" })",
+      "Bash(xargs grep -l \"analysis\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Directory -Depth 2)"
     ]
   }
 }
