@@ -19,7 +19,6 @@ import { useTheme } from "../../theme/ThemeContext";
 import { formatNumber } from "../../utils/formatters";
 import { useCurrency } from "../../currency/CurrencyContext";
 import { formatAxisNumber, formatSignalLabel, formatTrendLabel, resolveTrendDirection } from "./analysisUtils";
-import { formatInstrumentCode } from "../../utils/instrumentUtils";
 
 export default function SimpleAnalysisChart({
   activeRange,
@@ -32,10 +31,6 @@ export default function SimpleAnalysisChart({
   analysis,
   primaryContext,
   onOpenAdvanced,
-  quotes = [],
-  primarySymbol = "",
-  selectedSymbols = [],
-  onToggleComparisonSymbol,
 }) {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
@@ -59,11 +54,12 @@ export default function SimpleAnalysisChart({
     analysis?.points?.at?.(-1)?.volume,
   );
   const summary = useMemo(
-    () => buildSimpleSummary({ analysis, chartData, quote, trendDirection, latestRsi }),
+    () => buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRsi }),
     [analysis, chartData, quote, trendDirection, latestRsi],
   );
   const sparklineData = useMemo(() => buildSparklineData(chartData), [chartData]);
-  const suggestions = useMemo(() => deriveComparisonSuggestions(quotes, primarySymbol), [quotes, primarySymbol]);
+  const latestMa50 = useMemo(() => resolveLatestIndicator(analysis, chartData, "sma50", "SMA50"), [analysis, chartData]);
+  const latestMa200 = useMemo(() => resolveLatestIndicator(analysis, chartData, "sma200", "SMA200"), [analysis, chartData]);
   const axisLabel = currency === "USD" ? "$" : "\u20ba";
 
   const metrics = [
@@ -136,7 +132,7 @@ export default function SimpleAnalysisChart({
               <h3>{primaryContext?.symbolLine || "-"}</h3>
             </div>
             <ResponsiveContainer width="100%" height={580}>
-              <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 32, left: 28 }} padding={{ left: 14, right: 4 }}>
+              <LineChart data={chartData} margin={{ top: 12, right: 18, bottom: 26, left: 10 }}>
                 <defs>
                   <linearGradient id="simple-analysis-fill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.22} />
@@ -156,9 +152,9 @@ export default function SimpleAnalysisChart({
                   stroke={chartTheme.axis}
                   tickLine={false}
                   axisLine={false}
-                  width={72}
+                  width={78}
                   tick={{ fontSize: 12 }}
-                  tickMargin={10}
+                  tickMargin={12}
                   tickFormatter={(value) => `${axisLabel}${formatAxisNumber(value)}`}
                 />
                 <Tooltip content={<SimpleTooltip chartTheme={chartTheme} axisLabel={axisLabel} />} />
@@ -194,31 +190,13 @@ export default function SimpleAnalysisChart({
               <SummaryRow label={t("analysis.chart.techPanel.trend")} value={trendDirection ? formatTrendLabel(trendDirection) : "-"} tone={summary.scoreTone} />
               <SummaryRow
                 label={t("analysis.chart.techPanel.latestSignal")}
-                value={summary.latestSignal ? formatSignalLabel(summary.latestSignal) : t("analysis.chart.signal.neutral.short")}
+                value={summary.latestSignal ? formatSignalLabel(summary.latestSignal) : "-"}
                 tone={summary.signalTone}
               />
               <SummaryRow label={t("analysis.chart.techPanel.momentum")} value={summary.momentumLabel} tone={summary.momentumTone} />
               <SummaryRow label={t("analysis.chart.techPanel.volatility")} value={summary.volatilityLabel} tone={summary.volatilityTone} />
-              <SummaryRow label="50 MA / 200 MA" value={summary.maPairLabel} tone={summary.maTone} />
+              <SummaryRow label="50 MA / 200 MA" value={formatMovingAveragePair(latestMa50, latestMa200)} tone={summary.maTone} />
             </div>
-
-            {suggestions.length > 0 ? (
-              <div className="simple-panel-compare">
-                <span className="simple-panel-compare-label">{t("analysis.comparison.eyebrow")}</span>
-                <div className="simple-panel-chips">
-                  {suggestions.map((symbol) => (
-                    <button
-                      key={symbol}
-                      type="button"
-                      className={`simple-panel-chip${selectedSymbols.includes(symbol) ? " active" : ""}`}
-                      onClick={() => onToggleComparisonSymbol?.(symbol)}
-                    >
-                      {resolveChipLabel(symbol, quotes)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
             <button type="button" className="simple-tech-summary-cta" onClick={onOpenAdvanced}>
               <Gauge size={16} strokeWidth={2.2} />
@@ -290,9 +268,8 @@ function buildSparklineData(chartData) {
 
 function buildSimpleSummary({ analysis, chartData, quote, trendDirection, latestRsi }) {
   const closes = chartData.map((point) => Number(point?.close)).filter(Number.isFinite);
-  const latestClose = closes.at(-1) ?? firstFinite(quote?.sellRate, quote?.price, analysis?.latestPrice);
-  const ma50 = movingAverage(closes, 50);
-  const ma200 = movingAverage(closes, 200);
+  const ma50 = resolveLatestIndicator(analysis, chartData, "sma50", "SMA50");
+  const ma200 = resolveLatestIndicator(analysis, chartData, "sma200", "SMA200");
   const momentumPct = closes.length >= 6 ? derivePercentChange(closes.at(-6), closes.at(-1)) : null;
   const volatilityPct = closes.length >= 2 ? Math.abs(derivePercentChange(closes.at(-2), closes.at(-1)) ?? 0) : null;
   const latestSignal = resolveLatestSignal(analysis?.signals?.[0]);
@@ -384,6 +361,68 @@ function resolveLatestRsi(analysis, chartData) {
     ?.value;
 
   return firstFinite(lastPointRsi, analysisRsi);
+}
+
+function resolveLatestIndicator(analysis, chartData, pointKey, indicatorKey) {
+  const lastPointValue = chartData
+    .map((point) => point?.[pointKey])
+    .findLast((value) => value !== null && value !== undefined && value !== "");
+
+  const analysisValue = analysis?.indicatorValues
+    ?.find?.((item) => String(item?.indicator || "").trim().toUpperCase() === String(indicatorKey || "").trim().toUpperCase())
+    ?.value;
+
+  return firstFinite(lastPointValue, analysisValue);
+}
+
+function formatMovingAveragePair(ma50Value, ma200Value) {
+  if (ma50Value == null && ma200Value == null) {
+    return "-";
+  }
+  return `${ma50Value != null ? formatNumber(ma50Value, 2) : "-"} / ${ma200Value != null ? formatNumber(ma200Value, 2) : "-"}`;
+}
+
+function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRsi }) {
+  const closes = chartData.map((point) => Number(point?.close)).filter(Number.isFinite);
+  const ma50 = resolveLatestIndicator(analysis, chartData, "sma50", "SMA50");
+  const ma200 = resolveLatestIndicator(analysis, chartData, "sma200", "SMA200");
+  const momentumPct = closes.length >= 6 ? derivePercentChange(closes.at(-6), closes.at(-1)) : null;
+  const volatilityPct = closes.length >= 2 ? Math.abs(derivePercentChange(closes.at(-2), closes.at(-1)) ?? 0) : null;
+  const latestSignal = resolveLatestSignal(analysis?.signals?.[0]);
+
+  let score = 50;
+  if (trendDirection === "UPTREND") score += 18;
+  if (trendDirection === "DOWNTREND") score -= 18;
+  if (momentumPct != null) score += Math.max(-14, Math.min(14, momentumPct * 2.4));
+  if (latestRsi != null) score += latestRsi >= 60 ? 10 : latestRsi <= 40 ? -10 : 0;
+  if (ma50 != null && ma200 != null) score += ma50 > ma200 ? 12 : -12;
+
+  const scorePercent = Math.max(0, Math.min(100, score));
+
+  return {
+    scorePercent,
+    scoreTone: scorePercent >= 72 ? "positive" : scorePercent >= 55 ? "info" : scorePercent <= 35 ? "negative" : "neutral",
+    scoreLabel: scorePercent >= 78
+      ? "Guclu yukselis"
+      : scorePercent >= 58
+        ? "Zayif yukselis"
+        : scorePercent <= 28
+          ? "Zayif dusus"
+          : "Notr",
+    latestSignal,
+    signalTone: inferSignalTone(latestSignal),
+    momentumLabel: momentumPct == null ? "-" : momentumPct >= 1.4 ? "Pozitif" : momentumPct <= -1.4 ? "Negatif" : "Notr",
+    momentumTone: momentumPct == null ? "neutral" : momentumPct >= 1.4 ? "positive" : momentumPct <= -1.4 ? "negative" : "neutral",
+    volatilityLabel: volatilityPct == null ? "-" : volatilityPct >= 4 ? "Yuksek" : volatilityPct >= 2 ? "Orta" : "Dusuk",
+    volatilityTone: volatilityPct == null ? "neutral" : volatilityPct >= 4 ? "warning" : volatilityPct >= 2 ? "neutral" : "positive",
+    maTone: ma50 == null || ma200 == null
+      ? "neutral"
+      : ma50 > ma200
+        ? "positive"
+        : ma50 < ma200
+          ? "negative"
+          : "neutral",
+  };
 }
 
 function resolveLatestSignal(raw) {

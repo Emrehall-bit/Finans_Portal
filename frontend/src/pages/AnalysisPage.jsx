@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useComparisonAnalysis, useMarketHistory, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
@@ -207,10 +207,6 @@ export default function AnalysisPage() {
                           analysis={analysis}
                           primaryContext={primaryContext}
                           onOpenAdvanced={() => setChartMode("advanced")}
-                          quotes={quotes}
-                          primarySymbol={primarySymbol}
-                          selectedSymbols={selectedSymbols}
-                          onToggleComparisonSymbol={handleToggleComparisonSymbol}
                         />
                     ) : (
                       <AdvancedChart
@@ -308,15 +304,11 @@ function SimpleComparisonStrip({ quotes, primarySymbol, selectedSymbols, onToggl
   return (
     <section className="simple-compare-strip">
       <div className="simple-compare-strip-head">
-        <div>
-          <strong>{t("analysis.comparison.eyebrow")}</strong>
-          <p>{t("analysis.comparison.simpleStripHint")}</p>
-        </div>
+        <strong>{t("analysis.comparison.eyebrow")}</strong>
         {comparisonSymbols.length > 0 ? (
-          <button type="button" className="simple-compare-strip-link">
-            <span>{t("analysis.comparison.activeCount", { count: comparisonSymbols.length })}</span>
-            <ArrowRight size={15} strokeWidth={2.2} />
-          </button>
+          <span className="simple-summary-chip">
+            {t("analysis.comparison.activeCount", { count: comparisonSymbols.length })}
+          </span>
         ) : null}
       </div>
 

@@ -482,7 +482,7 @@ html[data-theme] .analysis-chart-shell {
 
 .advanced-chart-layout {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 3fr) minmax(332px, 1.04fr);
   align-items: stretch;
 }
 
@@ -1204,18 +1204,19 @@ html[data-theme] .analysis-chart-shell {
   display: grid;
   align-content: start;
   grid-template-rows: auto auto 1fr;
-  gap: 12px;
-  padding: 8px 16px 0 16px;
+  gap: 8px;
+  padding: 8px 14px 0 16px;
   border-left: 1px solid rgba(226, 232, 240, 0.9);
   background: transparent;
   overflow-y: auto;
   overflow-x: hidden;
+  min-width: 332px;
 }
 
 .advanced-tech-view {
   display: grid;
-  gap: 8px;
-  padding: 0 0 10px;
+  gap: 6px;
+  padding: 0 0 8px;
   border-radius: 0;
   border: none;
   background: transparent;
@@ -1237,20 +1238,24 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .advanced-tech-view-head strong {
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.2;
   color: #0f172a;
 }
 
 .advanced-tech-view-reasons {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .advanced-tech-view-reason {
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: 11px;
+  line-height: 1.3;
   color: #475569;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .advanced-tech-view-reason::before {
@@ -1278,9 +1283,9 @@ html[data-theme] .analysis-chart-shell {
   justify-content: space-between;
   align-items: center;
   gap: 6px;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.72);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: #0f172a;
 }
@@ -1290,30 +1295,42 @@ html[data-theme] .analysis-chart-shell {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  padding: 2px 7px;
-  font-size: 9px;
+  padding: 2px 6px;
+  font-size: 8.5px;
   font-weight: 700;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .advanced-tech-kpi-stack {
   display: grid;
-  gap: 6px;
+  gap: 0;
 }
 
 /* ── KPI cards: terminal flat style ─────────────────────────────────────── */
 
 .advanced-tech-kpi {
   display: grid;
-  gap: 5px;
-  padding: 13px 0;
+  gap: 3px;
+  min-height: 46px;
+  padding: 8px 0;
   border-radius: 0;
   border: none;
   border-bottom: 1px solid rgba(226, 232, 240, 0.66);
   background: transparent;
 }
 
+.advanced-tech-kpi-head {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.42fr) minmax(0, 0.58fr);
+  align-items: center;
+  gap: 8px;
+}
+
 .advanced-tech-kpi-label {
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 600;
   color: #94a3b8;
   text-transform: uppercase;
@@ -1321,21 +1338,28 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .advanced-tech-kpi-value {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
   color: #1e293b;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .advanced-tech-kpi-value.is-wrap {
-  font-size: 12px;
-  line-height: 1.3;
+  font-size: 11px;
+  line-height: 1.25;
 }
 
 .advanced-tech-kpi-detail {
-  font-size: 10px;
-  line-height: 1.4;
+  padding-left: calc(42% + 8px);
+  font-size: 9.5px;
+  line-height: 1.3;
   color: #94a3b8;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .advanced-tech-details-stack {
@@ -1347,24 +1371,24 @@ html[data-theme] .analysis-chart-shell {
 .advanced-tech-stack-card {
   display: grid;
   gap: 3px;
-  padding: 10px 0;
+  min-height: 46px;
+  padding: 8px 0;
   border-radius: 0;
   border-bottom: 1px solid rgba(226, 232, 240, 0.66);
-  background: transparent;
-  border-radius: 6px;
-  border: 1px solid rgba(226, 232, 240, 0.65);
+  border: none;
   background: transparent;
 }
 
 .advanced-tech-stack-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(86px, 0.44fr) minmax(0, 0.56fr);
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
 .advanced-tech-stack-head span {
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 600;
   color: #94a3b8;
   text-transform: uppercase;
@@ -1377,13 +1401,19 @@ html[data-theme] .analysis-chart-shell {
   line-height: 1.2;
   color: #1e293b;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .advanced-tech-stack-card p {
   margin: 0;
-  font-size: 10px;
-  line-height: 1.4;
+  padding-left: calc(44% + 8px);
+  font-size: 9.5px;
+  line-height: 1.3;
   color: #94a3b8;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 /* ── Badge: small colored pill (signal indicator only) ───────────────────── */
@@ -2465,8 +2495,8 @@ html[data-theme] .analysis-chart-shell {
 
 .simple-analysis-panel {
   display: grid;
-  gap: 10px;
-  padding: 6px 0 0;
+  gap: 8px;
+  padding: 4px 0 0;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -2507,19 +2537,19 @@ html[data-theme] .analysis-chart-shell {
 .simple-analysis-summary {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .simple-analysis-metric {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  gap: 3px;
   align-items: center;
-  min-height: 44px;
-  padding: 4px 7px;
+  min-height: 40px;
+  padding: 3px 6px;
   border-radius: 6px;
-  border: 1px solid rgba(226, 232, 240, 0.4);
-  background: rgba(248, 250, 252, 0.25);
+  border: 1px solid rgba(226, 232, 240, 0.32);
+  background: rgba(248, 250, 252, 0.18);
   box-shadow: none;
 }
 
@@ -2529,7 +2559,7 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .simple-analysis-metric span {
-  font-size: 10px;
+  font-size: 9px;
   color: #94a3b8;
   font-weight: 600;
   text-transform: none;
@@ -2537,8 +2567,8 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .simple-analysis-metric strong {
-  font-size: 0.98rem;
-  line-height: 1.15;
+  font-size: 0.9rem;
+  line-height: 1.05;
   color: #0f172a;
   font-weight: 700;
 }
@@ -2553,7 +2583,7 @@ html[data-theme] .analysis-chart-shell {
   display: grid;
   align-items: center;
   min-width: 0;
-  opacity: 0.34;
+  opacity: 0.26;
 }
 
 .simple-analysis-spark .recharts-surface {
@@ -2569,7 +2599,7 @@ html[data-theme] .analysis-chart-shell {
 
 .simple-analysis-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(320px, 26vw, 380px);
+  grid-template-columns: minmax(0, 2.75fr) minmax(280px, 1fr);
   gap: 0;
   align-items: start;
 }
@@ -2586,7 +2616,7 @@ html[data-theme] .analysis-chart-shell {
 .simple-analysis-chart-card {
   min-width: 0;
   width: 100%;
-  padding: 0 12px 0 0;
+  padding: 0 10px 0 0;
 }
 
 .simple-analysis-chart-header {
@@ -2598,7 +2628,7 @@ html[data-theme] .analysis-chart-shell {
 
 .simple-analysis-chart-header h3 {
   margin: 0 0 6px;
-  padding-left: 100px;
+  padding-left: 84px;
   font-size: 12px;
   color: #94a3b8;
   font-weight: 600;
@@ -2608,8 +2638,8 @@ html[data-theme] .analysis-chart-shell {
 .simple-tech-summary-card {
   display: grid;
   grid-template-rows: auto auto 1fr auto;
-  gap: 14px;
-  padding: 10px 16px 0 20px;
+  gap: 10px;
+  padding: 8px 14px 0 18px;
   border-left: 1px solid rgba(226, 232, 240, 0.9);
   min-width: 0;
 }
@@ -2629,7 +2659,7 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .simple-tech-summary-signal {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #1e293b;
 }
@@ -2674,13 +2704,13 @@ html[data-theme] .analysis-chart-shell {
 .simple-score-kpi {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 0;
+  gap: 5px;
+  padding: 8px 0 9px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
 }
 
 .simple-score-kpi-value {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1;
   color: #1e293b;
@@ -2728,8 +2758,8 @@ html[data-theme] .analysis-chart-shell {
   grid-template-columns: minmax(110px, 0.42fr) minmax(0, 0.58fr);
   align-items: center;
   gap: 6px;
-  padding: 11px 0;
-  min-height: 48px;
+  padding: 9px 0;
+  min-height: 40px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
 }
 
@@ -2738,12 +2768,12 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .simple-tech-summary-row span {
-  font-size: 12px;
+  font-size: 11px;
   color: #64748b;
 }
 
 .simple-tech-summary-row strong {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   overflow-wrap: anywhere;
   line-height: 1.25;
@@ -2769,93 +2799,29 @@ html[data-theme] .analysis-chart-shell {
   align-items: center;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   background: rgba(148, 163, 184, 0.08);
 }
 
-.simple-panel-compare {
-  display: grid;
-  gap: 6px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.simple-panel-compare-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.simple-panel-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-.simple-panel-chip {
-  display: inline-flex;
-  align-items: center;
-  height: 26px;
-  padding: 0 9px;
-  border-radius: 8px;
-  border: 1px solid rgba(226, 232, 240, 0.85);
-  background: rgba(248, 250, 252, 0.9);
-  color: #334155;
-  font-size: 0.72rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-
-.simple-panel-chip:hover {
-  background: rgba(241, 245, 249, 1);
-}
-
-.simple-panel-chip.active {
-  border-color: rgba(59, 130, 246, 0.28);
-  background: rgba(239, 244, 255, 0.96);
-  color: #1d4ed8;
-}
-
 .simple-compare-strip {
   display: grid;
-  gap: 8px;
-  margin-top: 4px;
-  padding: 12px 0 4px;
-  border-top: 1px solid rgba(226, 232, 240, 0.7);
+  gap: 6px;
+  margin-top: 2px;
+  padding: 8px 0 2px;
+  border-top: 1px solid rgba(226, 232, 240, 0.55);
 }
 
 .simple-compare-strip-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .simple-compare-strip-head strong {
-  display: block;
-  margin-bottom: 2px;
-  color: #0f1f4d;
-  font-size: 0.88rem;
-}
-
-.simple-compare-strip-head p {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.78rem;
-}
-
-.simple-compare-strip-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: none;
-  background: transparent;
-  color: #2563eb;
-  font-size: 0.9rem;
+  color: #334155;
+  font-size: 0.77rem;
   font-weight: 700;
 }
 
@@ -2870,14 +2836,14 @@ html[data-theme] .analysis-chart-shell {
 .analysis-compare-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 12px 0 8px;
-  border-radius: 12px;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px 0 7px;
+  border-radius: 10px;
   border: 1px solid rgba(226, 232, 240, 0.95);
   background: rgba(248, 250, 252, 0.92);
   color: #0f1f4d;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 700;
   box-shadow: none;
 }
@@ -2966,15 +2932,8 @@ html[data-theme] .analysis-chart-shell {
 [data-theme="dark"] .simple-tech-summary-label { color: #475569; }
 [data-theme="dark"] .simple-score-bar { background: rgba(51, 65, 85, 0.4); }
 [data-theme="dark"] .simple-summary-chip { background: rgba(51, 65, 85, 0.3); }
-[data-theme="dark"] .simple-panel-chip {
-  border-color: rgba(51, 65, 85, 0.5);
-  background: rgba(15, 23, 42, 0.6);
-  color: #94a3b8;
-}
-[data-theme="dark"] .simple-panel-chip.active { color: #93c5fd; }
 
 [data-theme="dark"] .analysis-hero-meta,
-[data-theme="dark"] .simple-compare-strip-head p,
 [data-theme="dark"] .simple-analysis-metric span,
 [data-theme="dark"] .simple-tech-summary-row span,
 [data-theme="dark"] .simple-score-gauge-labels {

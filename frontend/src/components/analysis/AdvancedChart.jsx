@@ -27,6 +27,7 @@ import { useAuth } from "../../auth/AuthContext";
 import useToast from "../../hooks/useToast";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatNumber } from "../../utils/formatters";
+import { formatSignalLabel } from "./analysisUtils";
 
 const RANGE_VALUES = ["1m", "3m", "6m", "1y", "max"];
 
@@ -34,6 +35,8 @@ const DRAW_TOOL_DEFS = [
   { key: "cursor", icon: MousePointer2 },
   { key: "horizontal", icon: Minus },
   { key: "trend", icon: TrendingUp },
+  { key: "support", icon: Minus },
+  { key: "resistance", icon: Minus },
   { key: "stopLoss", icon: CircleAlert },
   { key: "takeProfit", icon: Target },
 ];
@@ -94,7 +97,7 @@ export default function AdvancedChart({
     [t],
   );
   const drawTools = useMemo(
-    () => DRAW_TOOL_DEFS.map((def) => ({ ...def, label: t(`analysis.chart.tools.${def.key}`) })),
+    () => DRAW_TOOL_DEFS.map((def) => ({ ...def, label: resolveDrawToolLabel(def.key, t) })),
     [t],
   );
 
@@ -154,7 +157,19 @@ export default function AdvancedChart({
     () => mergeTechnicalSnapshot(technicalSnapshot, technicalAnalysis),
     [technicalSnapshot, technicalAnalysis],
   );
-  const technicalView = useMemo(() => buildTechnicalView(resolvedTechnicalSnapshot, t), [resolvedTechnicalSnapshot, t]);
+  const manualSupportLine = useMemo(
+    () => drawings.horizontalLines.find((line) => line.kind === "support") ?? null,
+    [drawings.horizontalLines],
+  );
+  const manualResistanceLine = useMemo(
+    () => drawings.horizontalLines.find((line) => line.kind === "resistance") ?? null,
+    [drawings.horizontalLines],
+  );
+  const effectiveTechnicalSnapshot = useMemo(
+    () => mergeManualStructureLevels(resolvedTechnicalSnapshot, manualSupportLine, manualResistanceLine),
+    [resolvedTechnicalSnapshot, manualSupportLine, manualResistanceLine],
+  );
+  const technicalView = useMemo(() => buildTechnicalView(effectiveTechnicalSnapshot, t), [effectiveTechnicalSnapshot, t]);
 
   activeToolRef.current = activeTool;
   drawingsRef.current = drawings;
@@ -257,7 +272,7 @@ export default function AdvancedChart({
         lineWidth: 1,
         lineStyle: 0,
         axisLabelVisible: false,
-        title: "",
+        title: "Auto Support",
       });
     }
 
@@ -268,7 +283,7 @@ export default function AdvancedChart({
         lineWidth: 1,
         lineStyle: 0,
         axisLabelVisible: false,
-        title: "",
+        title: "Auto Resistance",
       });
     }
   }, [clearStructurePriceLines, showStructureLines]);
@@ -357,7 +372,7 @@ export default function AdvancedChart({
         kind: "price-line",
         left,
         top,
-        label: t(`analysis.chart.techPanel.${hoveredStructureLine.key}`),
+        label: resolveStructureHoverLabel(hoveredStructureLine.key, t),
         value: hoveredStructureLine.value,
       });
       return;
@@ -678,6 +693,49 @@ export default function AdvancedChart({
     setSelectedDrawingKey(id);
   }, []);
 
+  const addHorizontalDrawing = useCallback((tool, price) => {
+    const priceSeries = priceSeriesRef.current;
+    if (!priceSeries) {
+      return;
+    }
+
+    const config = resolveHorizontalToolConfig(tool, t);
+    if (!config) {
+      return;
+    }
+
+    const existing = drawingsRef.current.horizontalLines.find((line) => line.kind === tool);
+    if (existing?.priceLine) {
+      try { priceSeries.removePriceLine(existing.priceLine); } catch { /* noop */ }
+    }
+
+    const id = `${tool}-${Date.now()}`;
+    const priceLine = priceSeries.createPriceLine({
+      price,
+      color: config.color,
+      lineWidth: 1,
+      lineStyle: config.lineStyle,
+      axisLabelVisible: true,
+      title: `${config.label}: ${formatCompactPrice(price)}`,
+    });
+
+    setDrawings((current) => ({
+      ...current,
+      horizontalLines: [
+        ...current.horizontalLines.filter((line) => line.kind !== tool),
+        {
+          id,
+          kind: tool,
+          label: config.label,
+          color: config.color,
+          price,
+          priceLine,
+        },
+      ],
+    }));
+    setSelectedDrawingKey(id);
+  }, [t]);
+
   const updateHorizontalDrawingPrice = useCallback((drawingKey, nextPrice) => {
     const normalizedPrice = Number(nextPrice);
     if (!Number.isFinite(normalizedPrice) || normalizedPrice <= 0) {
@@ -706,7 +764,7 @@ export default function AdvancedChart({
         }
         line.priceLine.applyOptions({
           price: normalizedPrice,
-          title: `${t("analysis.chart.drawing.horizontal")} ${formatCompactPrice(normalizedPrice)}`,
+          title: `${line.label}: ${formatCompactPrice(normalizedPrice)}`,
         });
         return { ...line, price: normalizedPrice };
       });
@@ -873,28 +931,8 @@ export default function AdvancedChart({
         return;
       }
 
-      if (tool === "horizontal") {
-        const id = `hline-${Date.now()}`;
-        const priceLine = priceSeries.createPriceLine({
-          price,
-          color: "#64748b",
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: true,
-          title: `${t("analysis.chart.drawing.horizontal")} ${formatCompactPrice(price)}`,
-        });
-        setDrawings((current) => ({
-          ...current,
-          horizontalLines: [...current.horizontalLines, {
-            id,
-            kind: "horizontal",
-            label: t("analysis.chart.drawing.horizontal"),
-            color: "#64748b",
-            price,
-            priceLine,
-          }],
-        }));
-        setSelectedDrawingKey(id);
+      if (tool === "horizontal" || tool === "support" || tool === "resistance") {
+        addHorizontalDrawing(tool, price);
         return;
       }
 
@@ -1135,6 +1173,7 @@ export default function AdvancedChart({
     };
   }, [
     addPriceLine,
+    addHorizontalDrawing,
     clearAllDrawings,
     ensureCoreSeries,
     initialHighlightTool,
@@ -1363,7 +1402,7 @@ export default function AdvancedChart({
                     }}
                   >
                     <Signal size={14} strokeWidth={2} />
-                    <span>{t("analysis.chart.tools.structure")}</span>
+                    <span>{resolveDrawToolLabel("autoStructure", t)}</span>
                   </button>
                 </div>
               ) : null}
@@ -1508,7 +1547,7 @@ export default function AdvancedChart({
                   </div>
                 </div>
                 <span className="advanced-chart-rsi-badge">
-                  {resolvedTechnicalSnapshot?.rsiValue != null ? `RSI ${resolvedTechnicalSnapshot.rsiValue.toFixed(2)}` : "RSI -"}
+                  {effectiveTechnicalSnapshot?.rsiValue != null ? `RSI ${effectiveTechnicalSnapshot.rsiValue.toFixed(2)}` : "RSI -"}
                 </span>
               </div>
               <div className="advanced-chart-rsi-guides" aria-hidden="true">
@@ -1569,23 +1608,23 @@ export default function AdvancedChart({
           <div className="advanced-tech-kpi-stack">
             <KpiCard
               label="RSI 14"
-              value={resolvedTechnicalSnapshot?.rsiValue != null ? resolvedTechnicalSnapshot.rsiValue.toFixed(2) : "-"}
-              tone={toneFromRsi(resolvedTechnicalSnapshot?.rsiValue)}
-              detail={resolvedTechnicalSnapshot?.rsiRegimeKey ? t(`analysis.chart.rsiRegime.${resolvedTechnicalSnapshot.rsiRegimeKey}`) : t("analysis.chart.techPanel.awaitingData")}
+              value={effectiveTechnicalSnapshot?.rsiValue != null ? effectiveTechnicalSnapshot.rsiValue.toFixed(2) : "-"}
+              tone={toneFromRsi(effectiveTechnicalSnapshot?.rsiValue)}
+              detail={effectiveTechnicalSnapshot?.rsiRegimeKey ? t(`analysis.chart.rsiRegime.${effectiveTechnicalSnapshot.rsiRegimeKey}`) : t("analysis.chart.techPanel.awaitingData")}
             />
             <KpiCard
               label={t("analysis.chart.techPanel.trend")}
-              value={resolvedTechnicalSnapshot?.trendKey ? t(`analysis.chart.trend.${resolvedTechnicalSnapshot.trendKey}`) : "-"}
-              tone={toneFromSignal(resolvedTechnicalSnapshot?.trendTone)}
-              detail={resolvedTechnicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${resolvedTechnicalSnapshot.momentumKey}`) : t("analysis.chart.techPanel.awaitingData")}
+              value={effectiveTechnicalSnapshot?.trendKey ? t(`analysis.chart.trend.${effectiveTechnicalSnapshot.trendKey}`) : "-"}
+              tone={toneFromSignal(effectiveTechnicalSnapshot?.trendTone)}
+              detail={effectiveTechnicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${effectiveTechnicalSnapshot.momentumKey}`) : t("analysis.chart.techPanel.awaitingData")}
             />
             <KpiCard
               label={t("analysis.chart.techPanel.latestSignal")}
-              value={resolvedTechnicalSnapshot?.signalKey
-                ? t(`analysis.chart.signal.${resolvedTechnicalSnapshot.signalKey}.short`)
-                : (resolvedTechnicalSnapshot?.rawSignalLabel ?? "-")}
-              tone={toneFromSignal(resolvedTechnicalSnapshot?.latestSignalTone)}
-              detail={resolvedTechnicalSnapshot?.rawSignalText ?? t("analysis.chart.signal.neutral.text")}
+              value={effectiveTechnicalSnapshot?.signalKey
+                ? t(`analysis.chart.signal.${effectiveTechnicalSnapshot.signalKey}.short`)
+                : (effectiveTechnicalSnapshot?.rawSignalLabel ?? "-")}
+              tone={toneFromSignal(effectiveTechnicalSnapshot?.latestSignalTone)}
+              detail={effectiveTechnicalSnapshot?.rawSignalText ?? t("analysis.chart.signal.neutral.text")}
               wrap
             />
           </div>
@@ -1593,33 +1632,33 @@ export default function AdvancedChart({
           <div className="advanced-tech-details-stack">
             <StackedStatCard
               label={t("analysis.chart.techPanel.momentum")}
-              value={resolvedTechnicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${resolvedTechnicalSnapshot.momentumKey}`) : "-"}
-              tone={resolvedTechnicalSnapshot?.momentumTone ?? "neutral"}
-              detail={resolvedTechnicalSnapshot?.momentumValue != null ? `${resolvedTechnicalSnapshot.momentumValue >= 0 ? "+" : ""}${resolvedTechnicalSnapshot.momentumValue.toFixed(2)}%` : t("analysis.chart.techPanel.awaitingData")}
+              value={effectiveTechnicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${effectiveTechnicalSnapshot.momentumKey}`) : "-"}
+              tone={effectiveTechnicalSnapshot?.momentumTone ?? "neutral"}
+              detail={effectiveTechnicalSnapshot?.momentumValue != null ? `${effectiveTechnicalSnapshot.momentumValue >= 0 ? "+" : ""}${effectiveTechnicalSnapshot.momentumValue.toFixed(2)}%` : t("analysis.chart.techPanel.awaitingData")}
             />
             <StackedStatCard
               label={t("analysis.chart.techPanel.support")}
-              value={resolvedTechnicalSnapshot?.supportLevel != null ? formatNumber(resolvedTechnicalSnapshot.supportLevel, 2) : "-"}
+              value={effectiveTechnicalSnapshot?.supportLevel != null ? formatNumber(effectiveTechnicalSnapshot.supportLevel, 2) : "-"}
               tone="neutral"
-              detail={resolvedTechnicalSnapshot?.supportDistancePct != null ? `${resolvedTechnicalSnapshot.supportDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
+              detail={effectiveTechnicalSnapshot?.supportDistancePct != null ? `${effectiveTechnicalSnapshot.supportDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
             />
             <StackedStatCard
               label={t("analysis.chart.techPanel.resistance")}
-              value={resolvedTechnicalSnapshot?.resistanceLevel != null ? formatNumber(resolvedTechnicalSnapshot.resistanceLevel, 2) : "-"}
+              value={effectiveTechnicalSnapshot?.resistanceLevel != null ? formatNumber(effectiveTechnicalSnapshot.resistanceLevel, 2) : "-"}
               tone="neutral"
-              detail={resolvedTechnicalSnapshot?.resistanceDistancePct != null ? `${resolvedTechnicalSnapshot.resistanceDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
+              detail={effectiveTechnicalSnapshot?.resistanceDistancePct != null ? `${effectiveTechnicalSnapshot.resistanceDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
             />
             <StackedStatCard
               label={t("analysis.chart.techPanel.volatility")}
-              value={resolvedTechnicalSnapshot?.volatilityKey ? t(`analysis.chart.volatilityLevel.${resolvedTechnicalSnapshot.volatilityKey}`) : "-"}
-              tone={resolvedTechnicalSnapshot?.volatilityTone ?? "neutral"}
-              detail={resolvedTechnicalSnapshot?.volatilitySummaryKey ? t(`analysis.chart.volatilitySummary.${resolvedTechnicalSnapshot.volatilitySummaryKey}`) : t("analysis.chart.techPanel.awaitingData")}
+              value={effectiveTechnicalSnapshot?.volatilityKey ? t(`analysis.chart.volatilityLevel.${effectiveTechnicalSnapshot.volatilityKey}`) : "-"}
+              tone={effectiveTechnicalSnapshot?.volatilityTone ?? "neutral"}
+              detail={effectiveTechnicalSnapshot?.volatilitySummaryKey ? t(`analysis.chart.volatilitySummary.${effectiveTechnicalSnapshot.volatilitySummaryKey}`) : t("analysis.chart.techPanel.awaitingData")}
             />
             <StackedStatCard
               label={t("analysis.chart.techPanel.maAlignment")}
-              value={resolvedTechnicalSnapshot?.maAlignmentKey ? t(`analysis.chart.maAlign.${resolvedTechnicalSnapshot.maAlignmentKey}`) : "-"}
-              tone={resolvedTechnicalSnapshot?.maAlignmentTone ?? "neutral"}
-              detail={resolvedTechnicalSnapshot?.lastClose != null ? `${t("analysis.chart.techPanel.lastClose")}: ${formatNumber(resolvedTechnicalSnapshot.lastClose, 2)}` : t("analysis.chart.techPanel.awaitingData")}
+              value={effectiveTechnicalSnapshot?.maAlignmentKey ? t(`analysis.chart.maAlign.${effectiveTechnicalSnapshot.maAlignmentKey}`) : "-"}
+              tone={effectiveTechnicalSnapshot?.maAlignmentTone ?? "neutral"}
+              detail={effectiveTechnicalSnapshot?.lastClose != null ? `${t("analysis.chart.techPanel.lastClose")}: ${formatNumber(effectiveTechnicalSnapshot.lastClose, 2)}` : t("analysis.chart.techPanel.awaitingData")}
             />
           </div>
             </>
@@ -1700,8 +1739,10 @@ const DrawingChip = memo(function DrawingChip({
 const KpiCard = memo(function KpiCard({ label, value, tone, detail, wrap = false }) {
   return (
     <div className={`advanced-tech-kpi advanced-tech-kpi--${tone}`}>
-      <span className="advanced-tech-kpi-label">{label}</span>
-      <strong className={`advanced-tech-kpi-value${wrap ? " is-wrap" : ""}`}>{value}</strong>
+      <div className="advanced-tech-kpi-head">
+        <span className="advanced-tech-kpi-label">{label}</span>
+        <strong className={`advanced-tech-kpi-value${wrap ? " is-wrap" : ""}`}>{value}</strong>
+      </div>
       <span className="advanced-tech-kpi-detail">{detail}</span>
     </div>
   );
@@ -2364,9 +2405,89 @@ function chipTone(kind) {
       return "tp";
     case "trend":
       return "trend";
+    case "support":
+      return "tp";
+    case "resistance":
+      return "sl";
     default:
       return "hline";
   }
+}
+
+function resolveDrawToolLabel(key, t) {
+  switch (key) {
+    case "support":
+      return "Destek Çiz";
+    case "resistance":
+      return "Direnç Çiz";
+    case "autoStructure":
+      return "Otomatik Destek/Direnç";
+    default:
+      return t(`analysis.chart.tools.${key}`);
+  }
+}
+
+function resolveStructureHoverLabel(key, t) {
+  switch (key) {
+    case "autoSupport":
+      return "Otomatik Destek";
+    case "autoResistance":
+      return "Otomatik Direnç";
+    case "support":
+      return "Destek";
+    case "resistance":
+      return "Direnç";
+    default:
+      return t("analysis.chart.techPanel.awaitingData");
+  }
+}
+
+function resolveHorizontalToolConfig(tool, t) {
+  switch (tool) {
+    case "horizontal":
+      return {
+        label: t("analysis.chart.drawing.horizontal"),
+        color: "#64748b",
+        lineStyle: 2,
+      };
+    case "support":
+      return {
+        label: "Destek",
+        color: "rgba(34, 197, 94, 0.66)",
+        lineStyle: 2,
+      };
+    case "resistance":
+      return {
+        label: "Direnç",
+        color: "rgba(239, 68, 68, 0.66)",
+        lineStyle: 2,
+      };
+    default:
+      return null;
+  }
+}
+
+function mergeManualStructureLevels(snapshot, manualSupportLine, manualResistanceLine) {
+  const baseSnapshot = snapshot ?? null;
+  if (!baseSnapshot) {
+    return null;
+  }
+
+  const lastClose = toFiniteNumber(baseSnapshot.lastClose);
+  const support = toFiniteNumber(manualSupportLine?.price) ?? toFiniteNumber(baseSnapshot.supportLevel);
+  const resistance = toFiniteNumber(manualResistanceLine?.price) ?? toFiniteNumber(baseSnapshot.resistanceLevel);
+
+  return {
+    ...baseSnapshot,
+    supportLevel: support,
+    supportDistancePct: support != null && lastClose != null && lastClose !== 0
+      ? Math.abs(((lastClose - support) / lastClose) * 100)
+      : null,
+    resistanceLevel: resistance,
+    resistanceDistancePct: resistance != null && lastClose != null && lastClose !== 0
+      ? Math.abs(((resistance - lastClose) / lastClose) * 100)
+      : null,
+  };
 }
 
 function seriesColor(key) {
@@ -2454,8 +2575,8 @@ function resolveHoveredStructureLine({ priceSeries, pointY, snapshot }) {
   }
 
   const candidates = [
-    { key: "support", value: snapshot.supportLevel },
-    { key: "resistance", value: snapshot.resistanceLevel },
+    { key: "autoSupport", value: snapshot.supportLevel },
+    { key: "autoResistance", value: snapshot.resistanceLevel },
   ].filter((item) => item.value != null);
 
   for (const candidate of candidates) {
@@ -2579,9 +2700,10 @@ function normalizeSignalDescriptor(value) {
   if (!label) {
     return null;
   }
+  const formattedLabel = formatSignalLabel(label);
   return {
-    shortLabel: label,
-    text: label,
+    shortLabel: formattedLabel,
+    text: formattedLabel,
     tone: /buy|bull|up|long/i.test(label)
       ? "positive"
       : /sell|bear|down|short/i.test(label)
