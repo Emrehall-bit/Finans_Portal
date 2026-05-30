@@ -28,12 +28,17 @@ export default function AnalysisSymbolPicker({
 
   const filteredQuotes = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return quotes
-      .filter((item) => item.symbol !== primarySymbol)
-      .filter((item) => {
-        if (!query) return true;
-        return item.symbol?.toLowerCase().includes(query) || item.displayName?.toLowerCase().includes(query);
-      })
+    const pool = quotes.filter((item) => item.symbol !== primarySymbol);
+
+    if (!query) {
+      // İlk açılışta tek tip (FX) yerine türler arası dengeli öneri göster
+      return buildBalancedSuggestions(pool, 10);
+    }
+
+    // Arama yapıldığında tüm enstrüman havuzunda ara (mevcut davranış)
+    return pool
+      .filter((item) =>
+        item.symbol?.toLowerCase().includes(query) || item.displayName?.toLowerCase().includes(query))
       .slice(0, 10);
   }, [quotes, search, primarySymbol]);
 
@@ -96,18 +101,15 @@ export default function AnalysisSymbolPicker({
         </div>
 
         <div className="analysis-hero-controls">
-          <label className="analysis-switcher-field">
-            <span className="sr-only">{t("analysis.symbolPicker.selectInstrument")}</span>
-            <select value={primarySymbol} onChange={(event) => onPrimaryChange(event.target.value)}>
-              <option value="">{t("analysis.symbolPicker.selectInstrument")}</option>
-              {quotes.map((item) => (
-              <option key={`${item.symbol}-${item.source}`} value={item.symbol}>
-                  {formatInstrumentLabel(item)} {resolveOptionTitle(item, i18n.resolvedLanguage)}
-              </option>
-              ))}
-            </select>
-            <ChevronDown size={15} strokeWidth={2.2} />
-          </label>
+          <PrimaryInstrumentPicker
+            quotes={quotes}
+            primarySymbol={primarySymbol}
+            primaryContext={primaryContext}
+            primaryQuote={primaryQuote}
+            onPrimaryChange={onPrimaryChange}
+            t={t}
+            locale={i18n.resolvedLanguage}
+          />
 
           {currencyToggle ? <div className="analysis-hero-segment-slot">{currencyToggle}</div> : null}
 
@@ -201,13 +203,204 @@ export default function AnalysisSymbolPicker({
   );
 }
 
+const SUGGESTION_TYPE_ORDER = ["FX", "CRYPTO", "STOCK", "FUND"];
+
+// Boş aramada türler arası dengeli (round-robin) öneri listesi üretir.
+// Veri olmayan türler sessizce atlanır.
+function buildBalancedSuggestions(pool, limit) {
+  const byType = new Map();
+  for (const item of pool) {
+    const type = String(item?.instrumentType || "").trim().toUpperCase() || "OTHER";
+    if (!byType.has(type)) {
+      byType.set(type, []);
+    }
+    byType.get(type).push(item);
+  }
+
+  const orderedTypes = [
+    ...SUGGESTION_TYPE_ORDER.filter((type) => byType.has(type)),
+    ...[...byType.keys()].filter((type) => !SUGGESTION_TYPE_ORDER.includes(type)),
+  ];
+
+  const result = [];
+  let round = 0;
+  let added = true;
+  while (result.length < limit && added) {
+    added = false;
+    for (const type of orderedTypes) {
+      const bucket = byType.get(type);
+      if (bucket && round < bucket.length) {
+        result.push(bucket[round]);
+        added = true;
+        if (result.length >= limit) {
+          break;
+        }
+      }
+    }
+    round += 1;
+  }
+
+  return result;
+}
+
 function formatInstrumentLabel(item) {
   return item?.code || formatInstrumentCode(item?.symbol) || "-";
 }
 
-function resolveOptionTitle(item, locale) {
-  const title = resolveInstrumentTitle(item, locale);
-  return title ? `- ${title}` : "";
+const INSTRUMENT_CATEGORIES = [
+  { key: "ALL", labelKey: "analysis.symbolPicker.categories.all" },
+  { key: "FX", labelKey: "analysis.symbolPicker.categories.fx" },
+  { key: "CRYPTO", labelKey: "analysis.symbolPicker.categories.crypto" },
+  { key: "STOCK", labelKey: "analysis.symbolPicker.categories.stock" },
+  { key: "FUND", labelKey: "analysis.symbolPicker.categories.fund" },
+];
+
+const CATEGORY_LABEL_KEYS = {
+  FX: "analysis.symbolPicker.categories.fx",
+  CRYPTO: "analysis.symbolPicker.categories.crypto",
+  STOCK: "analysis.symbolPicker.categories.stock",
+  BIST: "analysis.symbolPicker.categories.stock",
+  FUND: "analysis.symbolPicker.categories.fund",
+};
+
+function PrimaryInstrumentPicker({ quotes, primarySymbol, primaryContext, primaryQuote, onPrimaryChange, t, locale }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("ALL");
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    function handleOutside(event) {
+      if (rootRef.current && !rootRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("mousedown", handleOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const results = useMemo(
+    () => resolveInstrumentResults(quotes, search, category),
+    [quotes, search, category],
+  );
+
+  const triggerLabel = primaryContext?.symbolLine
+    || formatInstrumentLabel(primaryQuote)
+    || (primarySymbol ? formatInstrumentCode(primarySymbol) : t("analysis.symbolPicker.selectInstrument"));
+
+  function handleSelect(symbol) {
+    onPrimaryChange(symbol);
+    setOpen(false);
+    setSearch("");
+    setCategory("ALL");
+  }
+
+  return (
+    <div className="analysis-primary-picker" ref={rootRef}>
+      <button
+        type="button"
+        className={`analysis-primary-trigger${open ? " active" : ""}`}
+        onClick={() => setOpen((current) => !current)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="analysis-primary-trigger-label">{triggerLabel}</span>
+        <ChevronDown size={15} strokeWidth={2.2} />
+      </button>
+
+      {open ? (
+        <div className="analysis-instrument-popover" role="dialog" aria-label={t("analysis.symbolPicker.searchInstrument")}>
+          <label className="analysis-compare-search">
+            <Search size={14} strokeWidth={2} />
+            <input
+              autoFocus
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("analysis.symbolPicker.searchPlaceholder")}
+            />
+          </label>
+
+          <div className="analysis-instrument-categories" role="group" aria-label={t("analysis.symbolPicker.searchInstrument")}>
+            {INSTRUMENT_CATEGORIES.map((cat) => (
+              <button
+                key={cat.key}
+                type="button"
+                className={`analysis-instrument-cat${category === cat.key ? " active" : ""}`}
+                onClick={() => setCategory(cat.key)}
+              >
+                {t(cat.labelKey)}
+              </button>
+            ))}
+          </div>
+
+          <div className="analysis-compare-results">
+            {results.length === 0 ? (
+              <div className="analysis-compare-empty">{t("analysis.symbolPicker.noResults")}</div>
+            ) : results.map((item) => {
+              const selected = item.symbol === primarySymbol;
+              return (
+                <button
+                  key={`${item.symbol}-${item.source}`}
+                  type="button"
+                  className={`analysis-compare-option analysis-instrument-option${selected ? " active" : ""}`}
+                  onClick={() => handleSelect(item.symbol)}
+                >
+                  <span className="analysis-instrument-option-top">
+                    <strong>{formatInstrumentLabel(item)}</strong>
+                    <span className="analysis-instrument-option-type">{resolveTypeLabel(item, t)}</span>
+                  </span>
+                  <span className="analysis-instrument-option-name">{resolveInstrumentTitle(item, locale)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function resolveInstrumentResults(quotes, search, category) {
+  const query = search.trim().toLowerCase();
+  const pool = category === "ALL"
+    ? quotes
+    : quotes.filter((item) => normalizeInstrumentType(item) === category);
+
+  if (query) {
+    return pool
+      .filter((item) =>
+        item.symbol?.toLowerCase().includes(query)
+        || item.code?.toLowerCase().includes(query)
+        || item.displayName?.toLowerCase().includes(query))
+      .slice(0, 20);
+  }
+
+  if (category === "ALL") {
+    return buildBalancedSuggestions(pool, 12);
+  }
+
+  return pool.slice(0, 12);
+}
+
+function normalizeInstrumentType(item) {
+  return String(item?.instrumentType || "").trim().toUpperCase();
+}
+
+function resolveTypeLabel(item, t) {
+  const type = normalizeInstrumentType(item);
+  const labelKey = CATEGORY_LABEL_KEYS[type];
+  return labelKey ? t(labelKey) : (type || "-");
 }
 
 function resolveInstrumentTitle(item, locale) {

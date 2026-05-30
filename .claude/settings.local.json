@@ -113,7 +113,16 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Directory -Depth 2)",
       "Bash(awk '/^\\\\./ {selector=$1; if \\(selectors[selector]\\) print \"DUPLICATE: \" selector \" at line \" NR \" \\(first at line \" selectors[selector] \"\\)\"; else selectors[selector]=NR}' technical-analysis.css)",
       "Bash(awk '/^\\\\./ && !seen[$0]++ {line=$0; linenum=NR} /^\\\\./ && seen[$0] && line == $0 {print \"Line \" linenum \": \" line \" is followed by conflicting rule at line \" NR}' technical-analysis.css)",
-      "Bash(awk ' *)"
+      "Bash(awk ' *)",
+      "Bash(awk NR>=3160 && NR<=3221 {printf \"%d: %s\\\\n\", NR, $0} *)",
+      "Bash(sed -i '3160,3220d' technical-analysis.css)",
+      "Bash(awk 'NR>=3150 && NR<=3165 {printf \"%d: %s\\\\n\", NR, $0}' technical-analysis.css)",
+      "Bash(node -e \"const c=require\\('fs'\\).readFileSync\\('src/styles/pages/technical-analysis.css','utf8'\\);const o=\\(c.match\\(/{/g\\)||[]\\).length,cl=\\(c.match\\(/}/g\\)||[]\\).length;console.log\\('open',o,'close',cl, o===cl?'BALANCED':'UNBALANCED'\\);\")",
+      "Bash(node -e \"try{JSON.parse\\(require\\('fs'\\).readFileSync\\('locales/tr.json','utf8'\\)\\);console.log\\('tr.json VALID'\\)}catch\\(e\\){console.log\\('tr.json INVALID:',e.message\\)}\")",
+      "Bash(node -e \"try{JSON.parse\\(require\\('fs'\\).readFileSync\\('locales/en.json','utf8'\\)\\);console.log\\('en.json VALID'\\)}catch\\(e\\){console.log\\('en.json INVALID:',e.message\\)}\")",
+      "Bash(node *)",
+      "Bash(awk 'NR>=216 && NR<=230 {printf \"%d| %s\\\\n\", NR, $0}' components/analysis/AnalysisSymbolPicker.jsx)",
+      "Bash(echo \"ESLINT_EXIT=$?\")"
     ]
   }
 }

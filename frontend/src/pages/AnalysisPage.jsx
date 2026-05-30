@@ -119,6 +119,14 @@ export default function AnalysisPage() {
     { enabled: !!(primaryApiSymbol && dateRange.from && dateRange.to) },
   );
 
+  const comparisonSuggestions = useMemo(
+    () => deriveComparisonSuggestions(quotes, primarySymbol).map((symbol) => ({
+      symbol,
+      label: resolveChipLabel(symbol, quotes),
+    })),
+    [quotes, primarySymbol],
+  );
+
   const comparisonParams = useMemo(
     () =>
       chartMode === "advanced" && selectedSymbols.length >= 2 && dateRange.from && dateRange.to
@@ -247,7 +255,7 @@ export default function AnalysisPage() {
                     currencyToggle={<CurrencyToggle className="analysis-currency-toggle" />}
                     chartMode={chartMode}
                     showComparison
-                    showInlineComparisonChips={chartMode === "advanced"}
+                    showInlineComparisonChips={false}
                     onChartModeChange={setChartMode}
                     onPrimaryChange={handlePrimaryChange}
                     onToggleComparisonSymbol={handleToggleComparisonSymbol}
@@ -318,6 +326,11 @@ export default function AnalysisPage() {
                 comparison={comparison}
                 mode={comparisonMode}
                 onModeChange={setComparisonMode}
+                suggestions={comparisonSuggestions}
+                selectedSymbols={selectedSymbols}
+                primarySymbol={primarySymbol}
+                quotes={quotes}
+                onToggleSymbol={handleToggleComparisonSymbol}
               />
             ) : null}
           </div>

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Check, Plus, X } from "lucide-react";
 import {
   CartesianGrid,
   Legend,
@@ -17,20 +18,41 @@ import { buildComparisonData, formatAxisNumber } from "./analysisUtils";
 
 const COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2"];
 
-export default function AnalysisComparisonPanel({ loading, error, comparison, mode = "normalized", onModeChange }) {
+export default function AnalysisComparisonPanel({
+  loading,
+  error,
+  comparison,
+  mode = "normalized",
+  onModeChange,
+  suggestions = [],
+  selectedSymbols = [],
+  primarySymbol = "",
+  quotes = [],
+  onToggleSymbol,
+}) {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
   const series = comparison?.series ?? [];
   const chartData = useMemo(() => buildComparisonData(series, mode), [series, mode]);
+  const isActive = !loading && !error && series.length >= 2;
   const compactEmpty = !loading && !error && series.length < 2;
+  const activeComparisonSymbols = useMemo(
+    () => selectedSymbols.filter((symbol) => symbol && symbol !== primarySymbol),
+    [selectedSymbols, primarySymbol],
+  );
 
   return (
-    <section className={`panel-surface analysis-lab-panel analysis-comparison-section${compactEmpty ? " analysis-lab-panel--compact-empty" : ""}`}>
+    <section
+      className={`panel-surface analysis-lab-panel analysis-comparison-section${compactEmpty ? " analysis-lab-panel--compact-empty" : ""}${isActive ? " is-active" : ""}`}
+    >
       <div className="panel-head">
         <div>
           <p className="eyebrow">{t("analysis.comparison.eyebrow")}</p>
           <h3>{mode === "price" ? t("analysis.comparison.priceTitle") : t("analysis.comparison.title")}</h3>
         </div>
+        {isActive ? (
+          <span className="analysis-comparison-live-badge">{t("analysis.comparison.activeCount", { count: series.length })}</span>
+        ) : null}
         <div className="market-segmented-tabs" role="tablist" aria-label={t("analysis.comparison.modeLabel")}>
           <button
             type="button"
@@ -53,9 +75,32 @@ export default function AnalysisComparisonPanel({ loading, error, comparison, mo
         </div>
       </div>
 
+      {activeComparisonSymbols.length > 0 ? (
+        <div className="analysis-comparison-active-row">
+          {activeComparisonSymbols.map((symbol) => (
+            <button
+              key={symbol}
+              type="button"
+              className="analysis-comparison-active-chip"
+              onClick={() => onToggleSymbol?.(symbol)}
+              title={t("common.remove")}
+            >
+              <span>{formatSelectedComparisonSymbol(symbol, quotes)}</span>
+              <X size={12} strokeWidth={2.4} />
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {loading ? <LoadingSpinner label={t("analysis.comparison.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
-      {!loading && !error && series.length < 2 ? <ComparisonEmptyState /> : null}
+      {!loading && !error && series.length < 2 ? (
+        <ComparisonEmptyState
+          suggestions={suggestions}
+          selectedSymbols={selectedSymbols}
+          onToggleSymbol={onToggleSymbol}
+        />
+      ) : null}
 
       {!loading && !error && series.length >= 2 ? (
         <div className="analysis-chart-shell terminal-chart-shell market-detail-chart">
@@ -91,6 +136,11 @@ function formatComparisonSymbol(symbol) {
   return tcmbMatch?.[1] || rawSymbol || "-";
 }
 
+function formatSelectedComparisonSymbol(symbol, quotes) {
+  const match = quotes.find((item) => item.symbol === symbol || item.code === symbol);
+  return match?.code || formatComparisonSymbol(symbol);
+}
+
 function ComparisonTooltip({ active, payload, label, chartTheme }) {
   if (!active || !payload?.length) {
     return null;
@@ -113,18 +163,41 @@ function formatComparisonValue(value) {
   return formatAxisNumber(value);
 }
 
-function ComparisonEmptyState() {
+function ComparisonEmptyState({ suggestions = [], selectedSymbols = [], onToggleSymbol }) {
   const { t } = useTranslation();
-  const suggestions = ["BTC", "ETH", "XAUUSD", "THYAO"];
+  const interactive = typeof onToggleSymbol === "function" && suggestions.length > 0;
+  const items = suggestions.length > 0
+    ? suggestions
+    : ["BTC", "ETH", "XAUUSD", "THYAO"].map((symbol) => ({ symbol, label: symbol }));
 
   return (
     <div className="comparison-empty-compact">
       <p>{t("analysis.comparisonEmpty.description")}</p>
-      <div className="analysis-comparison-suggestion-row">
-        {suggestions.map((symbol) => (
-          <span key={symbol} className="analysis-comparison-suggestion-chip">{symbol}</span>
-        ))}
+      <div
+        className="analysis-comparison-suggestion-row"
+        role={interactive ? "group" : undefined}
+        aria-label={interactive ? t("analysis.comparisonEmpty.ariaLabel") : undefined}
+      >
+        {items.map(({ symbol, label }) => {
+          const active = selectedSymbols.includes(symbol);
+          if (!interactive) {
+            return <span key={symbol} className="analysis-comparison-suggestion-chip">{label}</span>;
+          }
+          return (
+            <button
+              key={symbol}
+              type="button"
+              className={`analysis-comparison-suggestion-chip is-interactive${active ? " active" : ""}`}
+              onClick={() => onToggleSymbol(symbol)}
+              aria-pressed={active}
+            >
+              {active ? <Check size={13} strokeWidth={2.4} /> : <Plus size={13} strokeWidth={2.4} />}
+              <span>{label}</span>
+            </button>
+          );
+        })}
       </div>
+      {interactive ? <span className="comparison-empty-hint">{t("analysis.comparisonEmpty.suggestionHint")}</span> : null}
     </div>
   );
 }

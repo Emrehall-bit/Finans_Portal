@@ -556,14 +556,24 @@
       "selectInstrument": "Enstrüman seç",
       "searchComparison": "Karşılaştırma ara",
       "searchPlaceholder": "BTCUSDT, THYAO, USDTRY...",
-      "emptySelection": "Karşılaştırma için en az bir enstrüman seç."
+      "emptySelection": "Karşılaştırma için en az bir enstrüman seç.",
+      "searchInstrument": "Enstrüman ara",
+      "noResults": "Sonuç bulunamadı",
+      "categories": {
+        "all": "Tümü",
+        "fx": "Döviz",
+        "crypto": "Kripto",
+        "stock": "Hisse",
+        "fund": "Fon"
+      }
     },
     "simpleChart": "Basit Grafik",
     "advancedChart": "Gelişmiş Grafik",
     "comparisonEmpty": {
       "title": "Karşılaştırma için ikinci bir enstrüman ekleyin",
-      "description": "Toolbar üzerindeki + Karşılaştır ile ikinci bir sembol seçin.",
-      "ariaLabel": "Hızlı karşılaştırma önerileri"
+      "description": "Aşağıdaki önerilerden birine dokunarak ya da toolbar'daki + Karşılaştır ile sembol ekleyin.",
+      "ariaLabel": "Hızlı karşılaştırma önerileri",
+      "suggestionHint": "Hızlı eklemek için bir öneriye dokunun"
     },
     "chart": {
       "indicators": {
@@ -623,6 +633,10 @@
       },
       "techPanel": {
         "title": "Teknik Özet",
+        "metricsTitle": "Metrikler",
+        "groupMomentum": "Momentum",
+        "groupLevels": "Seviyeler",
+        "groupTrend": "Trend Yapısı",
         "waiting": "Bekleniyor",
         "trend": "Trend",
         "maAlignment": "MA Dizilimi",
@@ -719,7 +733,7 @@
         "oversoldTooltip": "Aşırı satım bölgesi — RSI < 30"
       },
       "techView": {
-        "title": "Teknik Görünüm",
+        "title": "Genel Teknik Görünüm",
         "state": {
           "strongBullish": "Güçlü yükseliş",
           "weakBullish": "Zayıf yükseliş",

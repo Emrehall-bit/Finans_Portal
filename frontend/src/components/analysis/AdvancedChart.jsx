@@ -516,8 +516,8 @@ export default function AdvancedChart({
             lastValueVisible: true,
           })
         : priceChart.addSeries(LineSeries, {
-            color: "#4c7fff",
-            lineWidth: 2,
+            color: "#2f6bff",
+            lineWidth: 3,
             priceLineVisible: false,
             lastValueVisible: true,
           });
@@ -556,7 +556,8 @@ export default function AdvancedChart({
   }, [clearAllDrawings, clearOverlaySeries, clearStructurePriceLines]);
 
   const applyThemeOptions = useCallback(() => {
-    const softenedGrid = withAlpha(chartTheme.grid, 0.52);
+    const horzGrid = withAlpha(chartTheme.grid, 0.24);
+    const vertGrid = withAlpha(chartTheme.grid, 0.12);
     const commonTimeScale = {
       borderColor: withAlpha(chartTheme.grid, 0.72),
       rightOffset: DEFAULT_RIGHT_OFFSET,
@@ -587,8 +588,8 @@ export default function AdvancedChart({
           textColor: chartTheme.axis,
         },
         grid: {
-          vertLines: { color: softenedGrid },
-          horzLines: { color: softenedGrid },
+          vertLines: { color: vertGrid },
+          horzLines: { color: horzGrid },
         },
         crosshair: {
           mode: 1,
@@ -1588,70 +1589,57 @@ export default function AdvancedChart({
           {techTab === "rules" ? (
             <>
           <TechnicalViewCard view={technicalView} />
-          <div className="advanced-tech-panel-head">
-            <span>{t("analysis.chart.techPanel.title")}</span>
-            <span className={`advanced-tech-badge advanced-tech-badge--${toneFromSignal(resolvedTechnicalSnapshot?.latestSignalTone)}`}>
-              {resolvedTechnicalSnapshot?.signalKey
-                ? t(`analysis.chart.signal.${resolvedTechnicalSnapshot.signalKey}.short`)
-                : (resolvedTechnicalSnapshot?.rawSignalLabel ?? t("analysis.chart.techPanel.waiting"))}
-            </span>
-          </div>
+          <div className="advanced-tech-metrics">
+            <MetricGroup title={t("analysis.chart.techPanel.groupMomentum")}>
+              <MetricRow
+                label="RSI 14"
+                value={effectiveTechnicalSnapshot?.rsiValue != null ? effectiveTechnicalSnapshot.rsiValue.toFixed(2) : "-"}
+                tone={toneFromRsi(effectiveTechnicalSnapshot?.rsiValue)}
+              />
+              <MetricRow
+                label={t("analysis.chart.techPanel.momentum")}
+                value={effectiveTechnicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${effectiveTechnicalSnapshot.momentumKey}`) : "-"}
+                tone={effectiveTechnicalSnapshot?.momentumTone ?? "neutral"}
+              />
+              <MetricRow
+                label={t("analysis.chart.techPanel.latestSignal")}
+                value={effectiveTechnicalSnapshot?.signalKey
+                  ? t(`analysis.chart.signal.${effectiveTechnicalSnapshot.signalKey}.short`)
+                  : (effectiveTechnicalSnapshot?.rawSignalLabel ?? "-")}
+                tone={toneFromSignal(effectiveTechnicalSnapshot?.latestSignalTone)}
+              />
+            </MetricGroup>
 
-          <div className="advanced-tech-kpi-stack">
-            <KpiCard
-              label="RSI 14"
-              value={effectiveTechnicalSnapshot?.rsiValue != null ? effectiveTechnicalSnapshot.rsiValue.toFixed(2) : "-"}
-              tone={toneFromRsi(effectiveTechnicalSnapshot?.rsiValue)}
-              detail={effectiveTechnicalSnapshot?.rsiRegimeKey ? t(`analysis.chart.rsiRegime.${effectiveTechnicalSnapshot.rsiRegimeKey}`) : t("analysis.chart.techPanel.awaitingData")}
-            />
-            <KpiCard
-              label={t("analysis.chart.techPanel.trend")}
-              value={effectiveTechnicalSnapshot?.trendKey ? t(`analysis.chart.trend.${effectiveTechnicalSnapshot.trendKey}`) : "-"}
-              tone={toneFromSignal(effectiveTechnicalSnapshot?.trendTone)}
-              detail={effectiveTechnicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${effectiveTechnicalSnapshot.momentumKey}`) : t("analysis.chart.techPanel.awaitingData")}
-            />
-            <KpiCard
-              label={t("analysis.chart.techPanel.latestSignal")}
-              value={effectiveTechnicalSnapshot?.signalKey
-                ? t(`analysis.chart.signal.${effectiveTechnicalSnapshot.signalKey}.short`)
-                : (effectiveTechnicalSnapshot?.rawSignalLabel ?? "-")}
-              tone={toneFromSignal(effectiveTechnicalSnapshot?.latestSignalTone)}
-              detail={effectiveTechnicalSnapshot?.rawSignalText ?? t("analysis.chart.signal.neutral.text")}
-              wrap
-            />
-          </div>
+            <MetricGroup title={t("analysis.chart.techPanel.groupLevels")}>
+              <MetricRow
+                label={t("analysis.chart.techPanel.support")}
+                value={effectiveTechnicalSnapshot?.supportLevel != null ? formatNumber(effectiveTechnicalSnapshot.supportLevel, 2) : "-"}
+                detail={effectiveTechnicalSnapshot?.supportDistancePct != null ? `${effectiveTechnicalSnapshot.supportDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : null}
+              />
+              <MetricRow
+                label={t("analysis.chart.techPanel.resistance")}
+                value={effectiveTechnicalSnapshot?.resistanceLevel != null ? formatNumber(effectiveTechnicalSnapshot.resistanceLevel, 2) : "-"}
+                detail={effectiveTechnicalSnapshot?.resistanceDistancePct != null ? `${effectiveTechnicalSnapshot.resistanceDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : null}
+              />
+            </MetricGroup>
 
-          <div className="advanced-tech-details-stack">
-            <StackedStatCard
-              label={t("analysis.chart.techPanel.momentum")}
-              value={effectiveTechnicalSnapshot?.momentumKey ? t(`analysis.chart.techPanel.momentumState.${effectiveTechnicalSnapshot.momentumKey}`) : "-"}
-              tone={effectiveTechnicalSnapshot?.momentumTone ?? "neutral"}
-              detail={effectiveTechnicalSnapshot?.momentumValue != null ? `${effectiveTechnicalSnapshot.momentumValue >= 0 ? "+" : ""}${effectiveTechnicalSnapshot.momentumValue.toFixed(2)}%` : t("analysis.chart.techPanel.awaitingData")}
-            />
-            <StackedStatCard
-              label={t("analysis.chart.techPanel.support")}
-              value={effectiveTechnicalSnapshot?.supportLevel != null ? formatNumber(effectiveTechnicalSnapshot.supportLevel, 2) : "-"}
-              tone="neutral"
-              detail={effectiveTechnicalSnapshot?.supportDistancePct != null ? `${effectiveTechnicalSnapshot.supportDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
-            />
-            <StackedStatCard
-              label={t("analysis.chart.techPanel.resistance")}
-              value={effectiveTechnicalSnapshot?.resistanceLevel != null ? formatNumber(effectiveTechnicalSnapshot.resistanceLevel, 2) : "-"}
-              tone="neutral"
-              detail={effectiveTechnicalSnapshot?.resistanceDistancePct != null ? `${effectiveTechnicalSnapshot.resistanceDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : t("analysis.chart.techPanel.awaitingData")}
-            />
-            <StackedStatCard
-              label={t("analysis.chart.techPanel.volatility")}
-              value={effectiveTechnicalSnapshot?.volatilityKey ? t(`analysis.chart.volatilityLevel.${effectiveTechnicalSnapshot.volatilityKey}`) : "-"}
-              tone={effectiveTechnicalSnapshot?.volatilityTone ?? "neutral"}
-              detail={effectiveTechnicalSnapshot?.volatilitySummaryKey ? t(`analysis.chart.volatilitySummary.${effectiveTechnicalSnapshot.volatilitySummaryKey}`) : t("analysis.chart.techPanel.awaitingData")}
-            />
-            <StackedStatCard
-              label={t("analysis.chart.techPanel.maAlignment")}
-              value={effectiveTechnicalSnapshot?.maAlignmentKey ? t(`analysis.chart.maAlign.${effectiveTechnicalSnapshot.maAlignmentKey}`) : "-"}
-              tone={effectiveTechnicalSnapshot?.maAlignmentTone ?? "neutral"}
-              detail={effectiveTechnicalSnapshot?.lastClose != null ? `${t("analysis.chart.techPanel.lastClose")}: ${formatNumber(effectiveTechnicalSnapshot.lastClose, 2)}` : t("analysis.chart.techPanel.awaitingData")}
-            />
+            <MetricGroup title={t("analysis.chart.techPanel.groupTrend")}>
+              <MetricRow
+                label={t("analysis.chart.techPanel.trend")}
+                value={effectiveTechnicalSnapshot?.trendKey ? t(`analysis.chart.trend.${effectiveTechnicalSnapshot.trendKey}`) : "-"}
+                tone={toneFromSignal(effectiveTechnicalSnapshot?.trendTone)}
+              />
+              <MetricRow
+                label={t("analysis.chart.techPanel.volatility")}
+                value={effectiveTechnicalSnapshot?.volatilityKey ? t(`analysis.chart.volatilityLevel.${effectiveTechnicalSnapshot.volatilityKey}`) : "-"}
+                tone={effectiveTechnicalSnapshot?.volatilityTone ?? "neutral"}
+              />
+              <MetricRow
+                label={t("analysis.chart.techPanel.maAlignment")}
+                value={effectiveTechnicalSnapshot?.maAlignmentKey ? t(`analysis.chart.maAlign.${effectiveTechnicalSnapshot.maAlignmentKey}`) : "-"}
+                tone={effectiveTechnicalSnapshot?.maAlignmentTone ?? "neutral"}
+              />
+            </MetricGroup>
           </div>
             </>
           ) : (
@@ -1728,17 +1716,33 @@ const DrawingChip = memo(function DrawingChip({
   );
 });
 
-const KpiCard = memo(function KpiCard({ label, value, tone, detail, wrap = false }) {
+const MetricGroup = memo(function MetricGroup({ title, children }) {
   return (
-    <div className={`advanced-tech-kpi advanced-tech-kpi--${tone}`}>
-      <div className="advanced-tech-kpi-head">
-        <span className="advanced-tech-kpi-label">{label}</span>
-        <strong className={`advanced-tech-kpi-value${wrap ? " is-wrap" : ""}`}>{value}</strong>
-      </div>
-      <span className="advanced-tech-kpi-detail">{detail}</span>
+    <div className="adv-metric-group">
+      <span className="adv-metric-group-title">{title}</span>
+      <div className="adv-metric-group-body">{children}</div>
     </div>
   );
 });
+
+const MetricRow = memo(function MetricRow({ label, value, tone = "neutral", detail = null }) {
+  return (
+    <div className="adv-metric-row">
+      <span className="adv-metric-row-label">
+        {tone && tone !== "neutral" ? <i className={`adv-metric-dot adv-metric-dot--${tone}`} aria-hidden="true" /> : null}
+        {label}
+      </span>
+      <span className="adv-metric-row-value">{value}</span>
+      {detail ? <span className="adv-metric-row-detail">{detail}</span> : null}
+    </div>
+  );
+});
+
+const TECH_CHECK_ICONS = {
+  positive: Check,
+  warning: CircleAlert,
+  negative: X,
+};
 
 const TechnicalViewCard = memo(function TechnicalViewCard({ view }) {
   if (!view) {
@@ -1749,26 +1753,20 @@ const TechnicalViewCard = memo(function TechnicalViewCard({ view }) {
     <section className={`advanced-tech-view advanced-tech-view--${view.tone}`}>
       <div className="advanced-tech-view-head">
         <span>{view.title}</span>
-        <strong>{view.label}</strong>
+        <strong className="advanced-tech-view-verdict">{view.label}</strong>
       </div>
-      <div className="advanced-tech-view-reasons">
-        {view.reasons.map((reason) => (
-          <span key={reason} className="advanced-tech-view-reason">{reason}</span>
-        ))}
-      </div>
+      <ul className="advanced-tech-view-checklist">
+        {view.reasons.map((reason) => {
+          const Icon = TECH_CHECK_ICONS[reason.tone] ?? Minus;
+          return (
+            <li key={reason.text} className={`advanced-tech-check advanced-tech-check--${reason.tone}`}>
+              <Icon size={13} strokeWidth={2.6} className="advanced-tech-check-icon" />
+              <span>{reason.text}</span>
+            </li>
+          );
+        })}
+      </ul>
     </section>
-  );
-});
-
-const StackedStatCard = memo(function StackedStatCard({ label, value, tone, detail }) {
-  return (
-    <div className={`advanced-tech-stack-card advanced-tech-stack-card--${tone}`}>
-      <div className="advanced-tech-stack-head">
-        <span>{label}</span>
-        <strong>{value}</strong>
-      </div>
-      <p>{detail}</p>
-    </div>
   );
 });
 
@@ -2535,6 +2533,14 @@ function resolveTooltipPosition(rect, pointX, pointY, kind) {
     top = TOOLTIP_VIEWPORT_MARGIN;
   }
 
+  // Tooltip'i tetikleyen panelin (fiyat/RSI) dikey sınırları içinde tut; böylece
+  // fiyat tooltip'i alttaki RSI bölgesiyle çakışmaz.
+  const paneTopLimit = rect.top + TOOLTIP_VIEWPORT_MARGIN;
+  const paneBottomLimit = rect.bottom - height - TOOLTIP_VIEWPORT_MARGIN;
+  if (paneBottomLimit >= paneTopLimit) {
+    top = Math.min(Math.max(top, paneTopLimit), paneBottomLimit);
+  }
+
   return { left, top };
 }
 
@@ -2621,51 +2627,55 @@ function buildTechnicalView(snapshot, t) {
   const reasons = [];
 
   if (snapshot.rsiValue != null) {
-    reasons.push(t(`analysis.chart.techView.reason.rsi.${resolveRsiZoneKey(snapshot.rsiValue)}`));
+    const rsiZone = resolveRsiZoneKey(snapshot.rsiValue);
+    reasons.push({
+      text: t(`analysis.chart.techView.reason.rsi.${rsiZone}`),
+      tone: rsiZone === "neutral" ? "positive" : "warning",
+    });
   }
 
   if (snapshot.lastClose != null && snapshot.sma20 != null) {
     const distancePct = Math.abs(((snapshot.lastClose - snapshot.sma20) / snapshot.lastClose) * 100);
     if (distancePct <= 0.35) {
-      reasons.push(t("analysis.chart.techView.reason.priceNearMa20"));
+      reasons.push({ text: t("analysis.chart.techView.reason.priceNearMa20"), tone: "warning" });
     } else if (snapshot.lastClose > snapshot.sma20) {
-      reasons.push(t("analysis.chart.techView.reason.priceAboveMa20"));
+      reasons.push({ text: t("analysis.chart.techView.reason.priceAboveMa20"), tone: "positive" });
     } else {
-      reasons.push(t("analysis.chart.techView.reason.priceBelowMa20"));
+      reasons.push({ text: t("analysis.chart.techView.reason.priceBelowMa20"), tone: "negative" });
     }
   }
 
   if (snapshot.maAlignmentKey === "bullish") {
-    reasons.push(t("analysis.chart.techView.reason.maBullish"));
+    reasons.push({ text: t("analysis.chart.techView.reason.maBullish"), tone: "positive" });
   } else if (snapshot.maAlignmentKey === "bearish") {
-    reasons.push(t("analysis.chart.techView.reason.maBearish"));
+    reasons.push({ text: t("analysis.chart.techView.reason.maBearish"), tone: "negative" });
   }
 
   if (snapshot.momentumKey === "positive") {
-    reasons.push(t("analysis.chart.techView.reason.momentumPositive"));
+    reasons.push({ text: t("analysis.chart.techView.reason.momentumPositive"), tone: "positive" });
   } else if (snapshot.momentumKey === "negative") {
-    reasons.push(t("analysis.chart.techView.reason.momentumNegative"));
+    reasons.push({ text: t("analysis.chart.techView.reason.momentumNegative"), tone: "negative" });
   } else if (snapshot.momentumKey === "neutral") {
-    reasons.push(t("analysis.chart.techView.reason.momentumNeutral"));
+    reasons.push({ text: t("analysis.chart.techView.reason.momentumNeutral"), tone: "warning" });
   }
 
   if (snapshot.resistanceDistancePct != null && snapshot.resistanceDistancePct <= 1.5) {
-    reasons.push(t("analysis.chart.techView.reason.nearResistance", { value: snapshot.resistanceDistancePct.toFixed(2) }));
+    reasons.push({ text: t("analysis.chart.techView.reason.nearResistance", { value: snapshot.resistanceDistancePct.toFixed(2) }), tone: "warning" });
   } else if (snapshot.supportDistancePct != null && snapshot.supportDistancePct <= 1.5) {
-    reasons.push(t("analysis.chart.techView.reason.nearSupport", { value: snapshot.supportDistancePct.toFixed(2) }));
+    reasons.push({ text: t("analysis.chart.techView.reason.nearSupport", { value: snapshot.supportDistancePct.toFixed(2) }), tone: "warning" });
   }
 
   if (snapshot.latestSignalTone === "positive") {
-    reasons.push(t("analysis.chart.techView.reason.signalPositive"));
+    reasons.push({ text: t("analysis.chart.techView.reason.signalPositive"), tone: "positive" });
   } else if (snapshot.latestSignalTone === "negative") {
-    reasons.push(t("analysis.chart.techView.reason.signalNegative"));
+    reasons.push({ text: t("analysis.chart.techView.reason.signalNegative"), tone: "negative" });
   }
 
   return {
     title: t("analysis.chart.techView.title"),
     label: t(`analysis.chart.techView.state.${stateKey}`),
     tone,
-    reasons: reasons.filter(Boolean).slice(0, 4),
+    reasons: reasons.filter((reason) => reason.text).slice(0, 5),
   };
 }
 

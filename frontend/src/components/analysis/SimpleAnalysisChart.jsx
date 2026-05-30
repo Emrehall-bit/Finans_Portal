@@ -65,6 +65,7 @@ export default function SimpleAnalysisChart({
     [lastPrice, latestMa20, latestMa50, latestRsi],
   );
   const supportResistance = useMemo(() => buildSupportResistance(chartData), [chartData]);
+  const yDomain = useMemo(() => buildPriceDomain(chartData), [chartData]);
   const axisLabel = currency === "USD" ? "$" : "\u20ba";
 
   const metrics = [
@@ -155,6 +156,8 @@ export default function SimpleAnalysisChart({
                 />
                 <YAxis
                   stroke={chartTheme.axis}
+                  domain={yDomain}
+                  allowDataOverflow
                   tickLine={false}
                   axisLine={false}
                   width={78}
@@ -330,6 +333,27 @@ function buildTechChecklist({ lastPrice, ma20, ma50, latestRsi }) {
   }
 
   return items;
+}
+
+function buildPriceDomain(chartData) {
+  const values = chartData
+    .map((point) => Number(point?.close))
+    .filter(Number.isFinite);
+  if (values.length === 0) {
+    return ["auto", "auto"];
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (min === max) {
+    const pad = Math.abs(min) * 0.02 || 1;
+    return [min - pad, max + pad];
+  }
+
+  // Eksen 0'dan değil, veri aralığının biraz altından/üstünden başlasın
+  // (ör. 30-33 verisi 0-36 yerine ~29.7-33.3 aralığında görünür).
+  const pad = (max - min) * 0.08;
+  return [min - pad, max + pad];
 }
 
 function buildSupportResistance(chartData) {

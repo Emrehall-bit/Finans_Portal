@@ -569,8 +569,9 @@
     "advancedChart": "Advanced Chart",
     "comparisonEmpty": {
       "title": "Add a second instrument for comparison",
-      "description": "Use + Compare in the toolbar to add a second symbol.",
-      "ariaLabel": "Quick comparison suggestions"
+      "description": "Tap one of the suggestions below, or use + Compare in the toolbar to add a symbol.",
+      "ariaLabel": "Quick comparison suggestions",
+      "suggestionHint": "Tap a suggestion to add it instantly"
     },
     "chart": {
       "indicators": {
@@ -630,6 +631,10 @@
       },
       "techPanel": {
         "title": "Technical Summary",
+        "metricsTitle": "Metrics",
+        "groupMomentum": "Momentum",
+        "groupLevels": "Levels",
+        "groupTrend": "Trend Structure",
         "waiting": "Waiting",
         "trend": "Trend",
         "maAlignment": "MA Alignment",
@@ -726,7 +731,7 @@
         "oversoldTooltip": "Oversold zone ? RSI < 30"
       },
       "techView": {
-        "title": "Technical View",
+        "title": "Overall Technical View",
         "state": {
           "strongBullish": "Strong bullish",
           "weakBullish": "Weak bullish",
