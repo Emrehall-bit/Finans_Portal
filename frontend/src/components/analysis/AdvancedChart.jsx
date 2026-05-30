@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { CandlestickSeries, createChart, HistogramSeries, LineSeries } from "lightweight-charts";
 import {
@@ -7,7 +6,6 @@ import {
   Check,
   ChevronDown,
   CircleAlert,
-  Lock,
   Minus,
   MousePointer2,
   Pen,
@@ -27,7 +25,31 @@ import { useAuth } from "../../auth/AuthContext";
 import useToast from "../../hooks/useToast";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatNumber } from "../../utils/formatters";
-import { formatSignalLabel } from "./analysisUtils";
+import {
+  AiTechPanel,
+  CrosshairTooltip,
+  LegendTooltip,
+  MetricGroup,
+  MetricRow,
+  TechnicalViewCard,
+} from "./advanced-chart/AdvancedChartParts";
+import {
+  computeBollingerSeries,
+  computeEmaSeries,
+  computeSimpleMovingAverageSeries,
+  formatCompactPrice,
+  formatTooltipDate,
+  normalizeCandles,
+  normalizeChartTime,
+  normalizeHistoryPoints,
+  normalizeLinePoints,
+  normalizeSignalDescriptor,
+  normalizeTrendDirection,
+  toFiniteNumber,
+  toneFromRsi,
+  toneFromSignal,
+  trendTone,
+} from "./advancedChartUtils";
 
 const RANGE_VALUES = ["1m", "3m", "6m", "1y", "max"];
 
@@ -1716,139 +1738,6 @@ const DrawingChip = memo(function DrawingChip({
   );
 });
 
-const MetricGroup = memo(function MetricGroup({ title, children }) {
-  return (
-    <div className="adv-metric-group">
-      <span className="adv-metric-group-title">{title}</span>
-      <div className="adv-metric-group-body">{children}</div>
-    </div>
-  );
-});
-
-const MetricRow = memo(function MetricRow({ label, value, tone = "neutral", detail = null }) {
-  return (
-    <div className="adv-metric-row">
-      <span className="adv-metric-row-label">
-        {tone && tone !== "neutral" ? <i className={`adv-metric-dot adv-metric-dot--${tone}`} aria-hidden="true" /> : null}
-        {label}
-      </span>
-      <span className="adv-metric-row-value">{value}</span>
-      {detail ? <span className="adv-metric-row-detail">{detail}</span> : null}
-    </div>
-  );
-});
-
-const TECH_CHECK_ICONS = {
-  positive: Check,
-  warning: CircleAlert,
-  negative: X,
-};
-
-const TechnicalViewCard = memo(function TechnicalViewCard({ view }) {
-  if (!view) {
-    return null;
-  }
-
-  return (
-    <section className={`advanced-tech-view advanced-tech-view--${view.tone}`}>
-      <div className="advanced-tech-view-head">
-        <span>{view.title}</span>
-        <strong className="advanced-tech-view-verdict">{view.label}</strong>
-      </div>
-      <ul className="advanced-tech-view-checklist">
-        {view.reasons.map((reason) => {
-          const Icon = TECH_CHECK_ICONS[reason.tone] ?? Minus;
-          return (
-            <li key={reason.text} className={`advanced-tech-check advanced-tech-check--${reason.tone}`}>
-              <Icon size={13} strokeWidth={2.6} className="advanced-tech-check-icon" />
-              <span>{reason.text}</span>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-});
-
-const CrosshairTooltip = memo(function CrosshairTooltip({ model }) {
-  const { t } = useTranslation();
-  if (typeof document === "undefined") {
-    return null;
-  }
-
-  let content = null;
-  if (model.kind === "rsi-point") {
-    content = (
-      <>
-        <strong>{model.dateLabel}</strong>
-        <div className="advanced-crosshair-grid advanced-crosshair-grid--compact">
-          <div className="advanced-crosshair-row advanced-crosshair-row--single">
-            <strong>{`RSI: ${formatNumber(model.rsiValue, 2)} — ${model.zoneLabel}`}</strong>
-          </div>
-        </div>
-      </>
-    );
-  } else if (model.kind === "price-line") {
-    content = (
-      <div className="advanced-crosshair-zone">
-        <strong>{`${model.label}: ${formatNumber(model.value, 2)}`}</strong>
-      </div>
-    );
-  } else if (model.kind === "rsi-zone") {
-    content = (
-      <div className="advanced-crosshair-zone">
-        <strong>{model.title}</strong>
-        {model.subtitle ? <span>{model.subtitle}</span> : null}
-      </div>
-    );
-  } else {
-    const row = model.row;
-    content = (
-      <>
-        <strong>{model.dateLabel}</strong>
-        <div className="advanced-crosshair-grid">
-          <TooltipMetric label={t("analysis.chart.tooltip.open")} value={row.open} />
-          <TooltipMetric label={t("analysis.chart.tooltip.high")} value={row.high} />
-          <TooltipMetric label={t("analysis.chart.tooltip.low")} value={row.low} />
-          <TooltipMetric label={t("analysis.chart.tooltip.close")} value={row.close} />
-          <TooltipMetric label={t("analysis.chart.tooltip.volume")} value={row.volume} digits={0} />
-          <TooltipMetric label={t("analysis.chart.tooltip.change")} value={row.changePct} suffix="%" digits={2} />
-        </div>
-      </>
-    );
-  }
-
-  return createPortal(
-    <div className="advanced-crosshair-tooltip" style={{ left: model.left, top: model.top }}>
-      {content}
-    </div>,
-    document.body,
-  );
-});
-
-const TooltipMetric = memo(function TooltipMetric({ label, value, digits = 2, suffix = "" }) {
-  return (
-    <div className="advanced-crosshair-row">
-      <span>{label}</span>
-      <strong>{value == null ? "-" : `${formatNumber(value, digits)}${suffix}`}</strong>
-    </div>
-  );
-});
-
-const LegendTooltip = memo(function LegendTooltip({ model }) {
-  if (typeof document === "undefined") {
-    return null;
-  }
-
-  return createPortal(
-    <div className="advanced-legend-tooltip" style={{ left: model.left, top: model.top }}>
-      <span>{model.text}</span>
-      <i className="advanced-legend-tooltip-arrow" aria-hidden="true" />
-    </div>,
-    document.body,
-  );
-});
-
 async function loadCryptoData(symbol, range, t) {
   const candles = normalizeCandles(await getTechnicalCandles(symbol, { range, interval: "1d" }));
   if (!candles.length) {
@@ -1962,109 +1851,6 @@ async function loadLineData(symbol, rangeDates, t, quote) {
   };
 }
 
-function normalizeCandles(candles) {
-  if (!Array.isArray(candles)) {
-    return [];
-  }
-
-  const deduped = new Map();
-
-  candles.forEach((candle) => {
-    const time = Number(candle?.timestamp);
-    const open = toFiniteNumber(candle?.open);
-    const high = toFiniteNumber(candle?.high);
-    const low = toFiniteNumber(candle?.low);
-    const close = toFiniteNumber(candle?.close);
-    const volume = toFiniteNumber(candle?.volume);
-    const rsi14 = toFiniteNumber(candle?.rsi14);
-    const prev = deduped.get(time);
-    const previousClose = prev?.close ?? null;
-
-    if (!Number.isInteger(time) || time <= 0) {
-      return;
-    }
-    if ([open, high, low, close].some((value) => value == null)) {
-      return;
-    }
-
-    deduped.set(time, {
-      time,
-      dateLabel: formatTooltipDate(time),
-      open,
-      high,
-      low,
-      close,
-      volume,
-      sma7: toPositiveOverlayNumber(candle?.sma7),
-      sma20: toPositiveOverlayNumber(candle?.sma20),
-      sma50: toPositiveOverlayNumber(candle?.sma50),
-      rsi14,
-      changePct: previousClose ? ((close - previousClose) / previousClose) * 100 : null,
-    });
-  });
-
-  const sorted = Array.from(deduped.values()).sort((left, right) => left.time - right.time);
-  return sorted.map((row, index) => ({
-    ...row,
-    changePct: index > 0 ? ((row.close - sorted[index - 1].close) / sorted[index - 1].close) * 100 : row.changePct,
-  }));
-}
-
-function normalizeLinePoints(points) {
-  return points
-    .filter((point) => point?.date && point?.close != null)
-    .map((point, index, source) => {
-      const time = toEpochSeconds(point.date);
-      const previous = index > 0 ? source[index - 1] : null;
-      const previousClose = previous?.close != null ? Number(previous.close) : null;
-      return {
-        time,
-        dateLabel: point.date,
-        open: null,
-        high: null,
-        low: null,
-        close: Number(point.close),
-        volume: null,
-        sma7: toPositiveOverlayNumber(point.sma7),
-        sma20: toPositiveOverlayNumber(point.sma20),
-        sma50: toPositiveOverlayNumber(point.sma50),
-        rsi14: toFiniteNumber(point.rsi14),
-        changePct: previousClose ? ((Number(point.close) - previousClose) / previousClose) * 100 : null,
-      };
-    });
-}
-
-function normalizeHistoryPoints(history) {
-  return (Array.isArray(history) ? history : [])
-    .map((point, index, source) => {
-      const rawDate = point?.priceTimestamp ? String(point.priceTimestamp) : null;
-      const close = toFiniteNumber(point?.closePrice);
-      if (!rawDate || close == null) {
-        return null;
-      }
-
-      const formattedDate = rawDate.slice(0, 10);
-      const time = toEpochSeconds(formattedDate);
-      const previousClose = index > 0 ? toFiniteNumber(source[index - 1]?.closePrice) : null;
-
-      return {
-        time,
-        dateLabel: formattedDate,
-        open: null,
-        high: null,
-        low: null,
-        close,
-        volume: null,
-        sma7: null,
-        sma20: null,
-        sma50: null,
-        rsi14: null,
-        changePct: previousClose ? ((close - previousClose) / previousClose) * 100 : null,
-      };
-    })
-    .filter(Boolean);
-}
-
 function buildOverlayData(rows, closes, volumes) {
   const timeRows = rows.map((row) => row.time);
   const ema20 = computeEmaSeries(closes, 20);
@@ -2097,80 +1883,6 @@ function mapSeriesFromValues(times, values) {
 
 function buildInfoByTime(rows) {
   return new Map(rows.map((row) => [row.time, row]));
-}
-
-function computeEmaSeries(values, period) {
-  const normalized = values.map((value) => toFiniteNumber(value));
-  if (!normalized.length) {
-    return [];
-  }
-
-  const multiplier = 2 / (period + 1);
-  let previousEma = null;
-
-  return normalized.map((value, index) => {
-    if (value == null) {
-      return null;
-    }
-    if (index < period - 1) {
-      return null;
-    }
-    if (index === period - 1) {
-      const seed = normalized.slice(0, period);
-      if (seed.some((item) => item == null)) {
-        return null;
-      }
-      previousEma = seed.reduce((sum, item) => sum + item, 0) / period;
-      return previousEma;
-    }
-
-    previousEma = ((value - previousEma) * multiplier) + previousEma;
-    return previousEma;
-  });
-}
-
-function computeSimpleMovingAverageSeries(values, period) {
-  const normalized = values.map((v) => toFiniteNumber(v));
-  const result = new Array(normalized.length).fill(null);
-  let windowSum = 0;
-  let validCount = 0;
-
-  for (let i = 0; i < normalized.length; i++) {
-    const val = normalized[i];
-    if (val != null) { windowSum += val; validCount++; }
-    if (i >= period) {
-      const dropping = normalized[i - period];
-      if (dropping != null) { windowSum -= dropping; validCount--; }
-    }
-    if (i >= period - 1 && validCount === period) {
-      result[i] = windowSum / period;
-    }
-  }
-  return result;
-}
-
-function computeBollingerSeries(values, period, multiplier) {
-  const normalized = values.map((v) => toFiniteNumber(v));
-  const middle = computeSimpleMovingAverageSeries(normalized, period);
-  const upper = new Array(normalized.length).fill(null);
-  const lower = new Array(normalized.length).fill(null);
-  let sumSq = 0;
-  let validCount = 0;
-
-  for (let i = 0; i < normalized.length; i++) {
-    const val = normalized[i];
-    if (val != null) { sumSq += val * val; validCount++; }
-    if (i >= period) {
-      const dropping = normalized[i - period];
-      if (dropping != null) { sumSq -= dropping * dropping; validCount--; }
-    }
-    if (i >= period - 1 && validCount === period && middle[i] != null) {
-      const sd = Math.sqrt(Math.max(0, sumSq / period - middle[i] * middle[i])) * multiplier;
-      upper[i] = middle[i] + sd;
-      lower[i] = middle[i] - sd;
-    }
-  }
-  return { upper, middle, lower };
 }
 
 function buildTechnicalSummary({
@@ -2309,11 +2021,6 @@ function deriveTrendDirection(rows) {
     return "DOWNTREND";
   }
   return "SIDEWAYS";
-}
-
-function normalizeTrendDirection(value) {
-  const normalized = String(value || "").trim().toUpperCase();
-  return normalized || null;
 }
 
 function deriveMaAlignment(latestRow) {
@@ -2501,19 +2208,6 @@ function seriesColor(key) {
   }
 }
 
-function toneFromRsi(rsi) {
-  if (rsi == null) {
-    return "neutral";
-  }
-  if (rsi >= 70) {
-    return "warning";
-  }
-  if (rsi <= 30) {
-    return "positive";
-  }
-  return "neutral";
-}
-
 function resolveTooltipPosition(rect, pointX, pointY, kind) {
   const { width, height } = tooltipDimensions(kind);
   let left = rect.left + pointX + TOOLTIP_OFFSET;
@@ -2687,74 +2381,12 @@ function resolveAdvancedChartErrorMessage(error, t, isCrypto) {
   return extractErrorMessage(error, t("analysis.chart.errors.loadFailed"));
 }
 
-function toneFromSignal(tone) {
-  return tone ?? "neutral";
-}
-
-function normalizeSignalDescriptor(value) {
-  if (!value) {
-    return null;
-  }
-  if (typeof value === "object" && value.shortLabel && value.text) {
-    return value;
-  }
-  const label = String(value).trim();
-  if (!label) {
-    return null;
-  }
-  const formattedLabel = formatSignalLabel(label);
-  return {
-    shortLabel: formattedLabel,
-    text: formattedLabel,
-    tone: /buy|bull|up|long/i.test(label)
-      ? "positive"
-      : /sell|bear|down|short/i.test(label)
-        ? "negative"
-        : "neutral",
-  };
-}
-
-function trendTone(direction) {
-  switch (direction) {
-    case "UPTREND":
-      return "positive";
-    case "DOWNTREND":
-      return "negative";
-    default:
-      return "neutral";
-  }
-}
-
-function formatCompactPrice(value) {
-  return Number(value).toFixed(Math.abs(value) >= 100 ? 2 : 4);
-}
-
-function toFiniteNumber(value) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
 function extractIndicatorValue(technicalAnalysis, indicatorName) {
   const normalizedName = String(indicatorName || "").trim().toUpperCase();
   const match = technicalAnalysis?.indicatorValues
     ?.find?.((item) => String(item?.indicator || "").trim().toUpperCase() === normalizedName);
   const numeric = Number(match?.value);
   return Number.isFinite(numeric) ? numeric : null;
-}
-
-function toPositiveOverlayNumber(value) {
-  const numeric = toFiniteNumber(value);
-  return numeric != null && numeric > 0 ? numeric : null;
-}
-
-function normalizeChartTime(time) {
-  if (typeof time === "number") {
-    return time;
-  }
-  if (time && typeof time === "object" && "year" in time) {
-    return Math.floor(Date.UTC(time.year, time.month - 1, time.day) / 1000);
-  }
-  return null;
 }
 
 function buildDateRange(range) {
@@ -2792,19 +2424,6 @@ function buildDateRange(range) {
 
 function toIsoDate(value) {
   return value.toISOString().slice(0, 10);
-}
-
-function toEpochSeconds(date) {
-  return Math.floor(new Date(`${date}T00:00:00Z`).getTime() / 1000);
-}
-
-function formatTooltipDate(epochSeconds) {
-  const date = new Date(epochSeconds * 1000);
-  return date.toLocaleDateString("tr-TR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function withAlpha(color, alpha) {
@@ -2845,136 +2464,3 @@ function mapInitialTool(value) {
   return "cursor";
 }
 
-function AiTechPanel({ isAuthenticated, isPremium, aiData, aiLoading, aiError, onRetry, onLogin, t }) {
-  if (!isAuthenticated) {
-    return (
-      <div className="tech-ai-gate">
-        <div className="tech-ai-gate-icon"><Lock size={22} strokeWidth={1.5} /></div>
-          <p className="tech-ai-gate-title">{t("analysis.chart.aiPanel.premiumTitle")}</p>
-          <p className="tech-ai-gate-desc">{t("analysis.chart.aiPanel.authDesc")}</p>
-        <button className="tech-ai-gate-btn" onClick={onLogin}>
-            {t("analysis.chart.aiPanel.loginCta")}
-        </button>
-      </div>
-    );
-  }
-
-  if (!isPremium) {
-    return (
-      <div className="tech-ai-gate tech-ai-gate--premium">
-        <div className="tech-ai-gate-icon tech-ai-gate-icon--premium"><Sparkles size={20} strokeWidth={1.5} /></div>
-          <p className="tech-ai-gate-title">{t("analysis.chart.aiPanel.premiumTitle")}</p>
-          <p className="tech-ai-gate-desc">{t("analysis.chart.aiPanel.premiumDesc")}</p>
-        <a href="/profile" className="tech-ai-gate-btn tech-ai-gate-btn--premium">
-            {t("analysis.chart.aiPanel.premiumCta")}
-        </a>
-        <div className="tech-ai-blur-preview" aria-hidden="true">
-          <div className="tech-ai-blur-line" />
-          <div className="tech-ai-blur-line tech-ai-blur-line--short" />
-          <div className="tech-ai-blur-line" />
-          <div className="tech-ai-blur-line tech-ai-blur-line--short" />
-        </div>
-      </div>
-    );
-  }
-
-  if (aiLoading) {
-    return (
-      <div className="tech-ai-skeleton">
-        <div className="tech-ai-skel-badge" />
-        <div className="tech-ai-skel-line" />
-        <div className="tech-ai-skel-line tech-ai-skel-line--short" />
-        <div className="tech-ai-skel-sep" />
-        <div className="tech-ai-skel-line" />
-        <div className="tech-ai-skel-line tech-ai-skel-line--short" />
-        <div className="tech-ai-skel-line" />
-      </div>
-    );
-  }
-
-  if (aiError) {
-    return (
-      <div className="tech-ai-error">
-        <p>{aiError}</p>
-        <button className="tech-ai-retry-btn" onClick={onRetry}>
-              {t("analysis.chart.aiPanel.retry")}
-        </button>
-      </div>
-    );
-  }
-
-  if (!aiData) {
-    return null;
-  }
-
-  const signalTone = aiSignalTone(aiData.signal);
-  const riskTone = aiRiskTone(aiData.riskLevel);
-
-  return (
-    <div className="tech-ai-content">
-      <div className="tech-ai-badges">
-        {aiData.signal ? (
-          <span className={`tech-ai-badge tech-ai-badge--${signalTone}`}>
-            {aiData.signal}
-          </span>
-        ) : null}
-        {aiData.riskLevel ? (
-          <span className={`tech-ai-badge tech-ai-badge--${riskTone}`}>
-            {aiData.riskLevel} Risk
-          </span>
-        ) : null}
-      </div>
-
-      {aiData.summary ? (
-        <div className="tech-ai-section">
-            <div className="tech-ai-section-label">{t("analysis.chart.aiPanel.summary")}</div>
-          <p className="tech-ai-section-text">{aiData.summary}</p>
-        </div>
-      ) : null}
-
-      {aiData.trendComment ? (
-        <div className="tech-ai-section">
-            <div className="tech-ai-section-label">{t("analysis.chart.aiPanel.trendComment")}</div>
-          <p className="tech-ai-section-text">{aiData.trendComment}</p>
-        </div>
-      ) : null}
-
-      {aiData.momentumComment ? (
-        <div className="tech-ai-section">
-            <div className="tech-ai-section-label">{t("analysis.chart.aiPanel.momentumComment")}</div>
-          <p className="tech-ai-section-text">{aiData.momentumComment}</p>
-        </div>
-      ) : null}
-
-      {aiData.disclaimer ? (
-        <p className="tech-ai-disclaimer">{aiData.disclaimer}</p>
-      ) : (
-          <p className="tech-ai-disclaimer">{t("analysis.chart.aiPanel.defaultDisclaimer")}</p>
-      )}
-
-      {aiData.metadata?.provider ? (
-        <div className="tech-ai-meta">
-          {aiData.metadata.cacheHit ? "⚡ " : "🤖 "}{aiData.metadata.provider}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function aiSignalTone(signal) {
-  switch (String(signal || "").toUpperCase()) {
-    case "POSITIVE": return "positive";
-    case "NEGATIVE": return "negative";
-    case "RISKY": return "warning";
-    default: return "neutral";
-  }
-}
-
-function aiRiskTone(level) {
-  switch (String(level || "").toUpperCase()) {
-    case "LOW": return "positive";
-    case "HIGH": return "negative";
-    case "MEDIUM": return "warning";
-    default: return "neutral";
-  }
-}
