@@ -137,7 +137,7 @@ html[data-theme="dark"] .currency-toggle {
 
 .toast-notify {
   position: fixed;
-  top: 22px;
+  top: 82px;
   right: 22px;
   z-index: 9999;
   display: flex;
@@ -155,7 +155,7 @@ html[data-theme="dark"] .currency-toggle {
   pointer-events: none;
   min-width: 210px;
   max-width: 320px;
-  animation: toast-slide 2.8s ease forwards;
+  animation: toast-slide 2s ease forwards;
 }
 
 .toast-notify.error {

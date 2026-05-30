@@ -529,6 +529,7 @@
     "description": "Manage single-instrument analysis and multi-symbol comparison in an isolated workspace.",
     "quotesLoading": "Loading instrument list...",
     "quotesError": "Failed to load instrument list.",
+    "loginRequired": "Please sign in to add to favorites.",
     "analysisError": "Technical analysis data could not be found.",
     "comparisonError": "Comparison data could not be found.",
     "emptyTitle": "No technical analysis data",

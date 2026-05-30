@@ -522,6 +522,7 @@
     "description": "Tek enstrüman analizi ve çoklu karşılaştırma akışını bağımsız bir çalışma alanında yönet.",
     "quotesLoading": "Enstrüman listesi yükleniyor...",
     "quotesError": "Enstrüman listesi yüklenemedi.",
+    "loginRequired": "Favorilere eklemek için giriş yapınız.",
     "analysisError": "Teknik analiz verisi bulunamadı.",
     "comparisonError": "Karşılaştırma verisi bulunamadı.",
     "emptyTitle": "Teknik analiz verisi bulunamadı",

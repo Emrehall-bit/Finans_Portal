@@ -17,6 +17,9 @@ export default function AnalysisSymbolPicker({
   onPrimaryChange,
   onToggleComparisonSymbol,
   showInlineComparisonChips = false,
+  isFavorite = false,
+  favoriteBusy = false,
+  onFavoriteToggle,
 }) {
   const { t, i18n } = useTranslation();
   const [search, setSearch] = useState("");
@@ -79,8 +82,14 @@ export default function AnalysisSymbolPicker({
                 ) : null}
               </div>
             ) : null}
-            <button type="button" className="analysis-favorite-btn" aria-label="Favorite">
-              <Star size={19} strokeWidth={2} />
+            <button
+              type="button"
+              className={`analysis-favorite-btn${isFavorite ? " is-active" : ""}`}
+              aria-label={isFavorite ? "Favorilerden çıkar" : "Favorilere ekle"}
+              disabled={favoriteBusy}
+              onClick={onFavoriteToggle}
+            >
+              <Star size={19} strokeWidth={2} fill={isFavorite ? "#c3a45d" : "none"} color="#c3a45d" />
             </button>
           </div>
           {primaryContext?.title ? <div className="analysis-hero-meta"><span>{primaryContext.title}</span></div> : null}

@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
+import { useAuth } from "../auth/AuthContext";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { extractErrorMessage } from "../api/responseUtils";
+import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../api/watchlistApi";
 import { useComparisonAnalysis, useMarketHistory, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
+import useToast from "../hooks/useToast";
 import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPanel";
 import AnalysisSymbolPicker from "../components/analysis/AnalysisSymbolPicker";
 import { ANALYSIS_RANGE_PRESETS, buildChartData, buildPresetRange, DEFAULT_INDICATORS } from "../components/analysis/analysisUtils";
@@ -19,6 +22,8 @@ import { formatInstrumentCode, getFxCodeLabel } from "../utils/instrumentUtils";
 export default function AnalysisPage() {
   const { t, i18n } = useTranslation();
   const { convertAmount, currency } = useCurrency();
+  const { userId } = useAuth();
+  const { toast, showToast } = useToast();
   const [searchParams] = useSearchParams();
   const routeInstrumentType = String(searchParams.get("type") || "").trim().toUpperCase();
   const [primarySymbol, setPrimarySymbol] = useState(() => searchParams.get("symbol") || "");
@@ -32,6 +37,8 @@ export default function AnalysisPage() {
   const [comparisonMode, setComparisonMode] = useState("normalized");
   const [chartMode, setChartMode] = useState(() => (searchParams.get("tool") ? "advanced" : "simple"));
   const [fundamentalsOpen, setFundamentalsOpen] = useState(false);
+  const [watchlistItems, setWatchlistItems] = useState([]);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
   const initialHighlightTool = searchParams.get("tool") || null;
   const presetPrice = searchParams.get("preset") ? Number(searchParams.get("preset")) : null;
 
@@ -50,6 +57,30 @@ export default function AnalysisPage() {
     [primarySymbol, primaryQuote, i18n.resolvedLanguage],
   );
   const quotesError = quotesQueryError ? extractErrorMessage(quotesQueryError, t("analysis.quotesError")) : "";
+
+  const favoriteCandidates = useMemo(() => {
+    const candidates = new Set();
+    [primaryApiSymbol, primarySymbol, primaryQuote?.symbol, primaryQuote?.code]
+      .map((value) => normalizeWatchlistCode(value))
+      .filter(Boolean)
+      .forEach((value) => candidates.add(value));
+    return candidates;
+  }, [primaryApiSymbol, primarySymbol, primaryQuote]);
+  const favoriteItem = useMemo(
+    () => watchlistItems.find((item) => favoriteCandidates.has(normalizeWatchlistCode(item.instrumentCode))),
+    [watchlistItems, favoriteCandidates],
+  );
+  const isFavorite = !!favoriteItem;
+  const favoriteItemId = favoriteItem?.id;
+
+  useEffect(() => {
+    if (!userId || !primaryApiSymbol) return undefined;
+    let active = true;
+    getUserWatchlist(userId)
+      .then((rows) => { if (active) setWatchlistItems(rows); })
+      .catch(() => { if (active) setWatchlistItems([]); });
+    return () => { active = false; };
+  }, [userId, primaryApiSymbol]);
 
   useEffect(() => {
     if (quotes.length > 0 && !primarySymbol) {
@@ -133,10 +164,7 @@ export default function AnalysisPage() {
 
   function handlePrimaryChange(symbol) {
     setPrimarySymbol(symbol);
-    setSelectedSymbols((current) => {
-      const next = current.filter((item) => item !== symbol);
-      return symbol ? [symbol, ...next].slice(0, 5) : next;
-    });
+    setSelectedSymbols(symbol ? [symbol] : []);
   }
 
   function handleToggleComparisonSymbol(symbol) {
@@ -157,6 +185,29 @@ export default function AnalysisPage() {
     });
   }
 
+  async function handleFavoriteToggle() {
+    if (!primaryApiSymbol || favoriteBusy) return;
+    if (!userId) {
+      showToast("error", t("analysis.loginRequired"));
+      return;
+    }
+    try {
+      setFavoriteBusy(true);
+      if (isFavorite && favoriteItemId) {
+        await removeWatchlistItem(favoriteItemId);
+        showToast("success", t("instrumentDetail.favoriteRemoved"));
+      } else {
+        await addWatchlistItem(userId, { instrumentCode: primaryApiSymbol });
+        showToast("success", t("instrumentDetail.favoriteAdded"));
+      }
+      setWatchlistItems(await getUserWatchlist(userId));
+    } catch (err) {
+      showToast("error", extractErrorMessage(err, t("instrumentDetail.favoriteError")));
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
+
   function handleRangeChange(preset) {
     setActiveRange(preset.key);
     setDateRange(buildPresetRange(preset.days));
@@ -164,6 +215,14 @@ export default function AnalysisPage() {
 
   return (
     <div className="dashboard-stack analysis-lab-shell">
+      {toast ? (
+        <div key={toast.id} className={`toast-notify ${toast.type}`}>
+          {toast.type === "success"
+            ? <Check size={15} strokeWidth={2.5} className="toast-notify-icon" />
+            : <X size={15} strokeWidth={2.5} className="toast-notify-icon" />}
+          <span>{toast.message}</span>
+        </div>
+      ) : null}
       {quotesLoading ? <LoadingSpinner label={t("analysis.quotesLoading")} /> : null}
       {quotesError ? <ErrorMessage message={quotesError} /> : null}
 
@@ -192,6 +251,9 @@ export default function AnalysisPage() {
                     onChartModeChange={setChartMode}
                     onPrimaryChange={handlePrimaryChange}
                     onToggleComparisonSymbol={handleToggleComparisonSymbol}
+                    isFavorite={isFavorite}
+                    favoriteBusy={favoriteBusy}
+                    onFavoriteToggle={handleFavoriteToggle}
                   />
 
                   <div className="analysis-terminal-body">
@@ -399,4 +461,12 @@ function resolveApiSymbol(symbol, quote, fallbackInstrumentType = "") {
   }
 
   return rawSymbol;
+}
+
+// Backend WatchlistService.normalizeSymbol ile birebir aynı olmalı:
+// instrumentCode kaydedilirken tüm noktalama silinip uppercase yapılıyor
+// (örn. "TCMB:AUD:SELL" -> "TCMBAUDSELL"). Eşleşme için aynı dönüşüm uygulanır.
+function normalizeWatchlistCode(value) {
+  if (value == null) return "";
+  return String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }

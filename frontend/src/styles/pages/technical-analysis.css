@@ -2332,6 +2332,18 @@ html[data-theme] .analysis-chart-shell {
   background: rgba(255, 255, 255, 0.92);
   color: #c3a45d;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.analysis-favorite-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.analysis-favorite-btn.is-active {
+  border-color: rgba(195, 164, 93, 0.45);
+  background: rgba(195, 164, 93, 0.08);
 }
 
 .analysis-hero-meta {
