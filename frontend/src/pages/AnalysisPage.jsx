@@ -102,7 +102,7 @@ export default function AnalysisPage() {
   const { data: analysis = null, isLoading: analysisLoading, error: analysisQueryError } = useTechnicalAnalysis(
     primaryApiSymbol,
     analysisParams,
-    { enabled: !!(primaryApiSymbol && dateRange.from && dateRange.to) },
+    { enabled: chartMode !== "advanced" && !!(primaryApiSymbol && dateRange.from && dateRange.to) },
   );
   const analysisError = analysisQueryError ? resolveAnalysisErrorMessage(analysisQueryError, t) : "";
   const historyParams = useMemo(
@@ -285,7 +285,7 @@ export default function AnalysisPage() {
                         initialHighlightTool={initialHighlightTool}
                         presetPrice={presetPrice}
                         quote={primaryQuote}
-                        technicalAnalysis={analysis}
+                        technicalAnalysis={null}
                       />
                     )}
                   </div>
