@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { getMarketQuotes, getMarketTapeConfig } from "../../api/marketApi";
+import { getMarketTapeConfig, getMarketTapeQuotes } from "../../api/marketApi";
 import { getUserWatchlist } from "../../api/watchlistApi";
 import { getUserAlerts } from "../../api/alertApi";
 import { getUserPortfolios, getPortfolioHoldings } from "../../api/portfolioApi";
@@ -271,7 +271,7 @@ export default function AppLayout() {
     async function loadTickerState() {
       try {
         const [marketResult, tapeResult] = await Promise.allSettled([
-          getMarketQuotes(),
+          getMarketTapeQuotes(),
           getMarketTapeConfig(),
         ]);
 

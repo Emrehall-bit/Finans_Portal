@@ -121,6 +121,11 @@ export async function getMarketQuotes() {
   return mergeUniqueMarketQuotes(aggregateQuotes, indexQuotes, commodityQuotes);
 }
 
+export async function getMarketTapeQuotes() {
+  const { data } = await axiosClient.get("/api/v1/markets/tape/quotes");
+  return normalizeArrayPayload(data).map(mapMarketTapeQuote);
+}
+
 export async function getMarketTapeConfig() {
   const { data } = await axiosClient.get("/api/v1/markets/tape/config");
   return normalizeObjectPayload(data)?.symbols ?? [];
@@ -459,6 +464,40 @@ function mapCommodityQuote(item) {
     sellRate: null,
     code: item.symbol,
   };
+}
+
+function mapMarketTapeQuote(item) {
+  const symbol = item.symbol ?? item.code;
+  const displayCode = buildTapeDisplayCode(item, symbol);
+
+  return {
+    symbol,
+    displayName: item.displayName ?? item.name ?? symbol,
+    price: item.price,
+    changeRate: item.changeRate ?? item.changePercent ?? null,
+    source: item.source,
+    instrumentType: item.instrumentType,
+    dataTimestamp: item.fetchedAt ?? item.dataTimestamp ?? item.updatedAt,
+    buyRate: null,
+    sellRate: null,
+    code: displayCode,
+  };
+}
+
+function buildTapeDisplayCode(item, symbol) {
+  const type = normalizeInstrumentType(item.instrumentType);
+  const value = String(symbol ?? "").toUpperCase();
+
+  if (type === "FX" && value.includes(":")) {
+    const parts = value.split(":");
+    return parts.length >= 2 ? `${parts[1]}TRY` : value;
+  }
+
+  if (type === "COMMODITY" && value === "GRAM_ALTIN") {
+    return "XAUTRY";
+  }
+
+  return value;
 }
 
 
