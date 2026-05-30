@@ -80,7 +80,7 @@ class TechnicalAnalysisServiceTest {
         HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
         when(historicalPriceReader.read(org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
-                .thenReturn(List.of());
+                .thenAnswer(invocation -> validHistory(invocation.getArgument(0)));
 
         TechnicalAnalysisService service = buildService(historicalPriceReader);
         LocalDate from = LocalDate.of(2026, 1, 1);
@@ -102,6 +102,14 @@ class TechnicalAnalysisServiceTest {
                 mock(InstrumentComparisonService.class),
                 appMessageSource
         );
+    }
+
+    private static List<HistoricalPricePoint> validHistory(String symbol) {
+        return List.of(new HistoricalPricePoint(
+                symbol,
+                LocalDate.of(2026, 1, 1),
+                BigDecimal.valueOf(100)
+        ));
     }
 }
 

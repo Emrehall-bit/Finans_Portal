@@ -51,9 +51,23 @@ public class AiDisclaimerCleaner {
 
     boolean isDisclaimer(String sentence) {
         String lower = sentence.toLowerCase(Locale.ROOT);
-        return lower.contains("yatÄ±rÄ±m tavsiyesi")
-                || lower.contains("tavsiye niteliÄŸinde deÄŸil")
-                || lower.contains("bilgilendirme amaÃ§lÄ±")
+        String ascii = lower
+                .replace('\u0131', 'i')
+                .replace('\u011f', 'g')
+                .replace('\u00fc', 'u')
+                .replace('\u015f', 's')
+                .replace('\u00f6', 'o')
+                .replace('\u00e7', 'c');
+        return (lower.contains("tavsiye") && (lower.contains("yat") || lower.contains("niteli") || lower.contains("bilgilendirme")))
+                || lower.contains("yatÃ„Â±rÃ„Â±m tavsiyesi")
+                || lower.contains("yat\u0131r\u0131m tavsiyesi")
+                || ascii.contains("yatirim tavsiyesi")
+                || lower.contains("tavsiye niteliÃ„Å¸inde deÃ„Å¸il")
+                || lower.contains("tavsiye niteli\u011finde de\u011fil")
+                || ascii.contains("tavsiye niteliginde degil")
+                || lower.contains("bilgilendirme amaÃƒÂ§lÃ„Â±")
+                || lower.contains("bilgilendirme ama\u00e7l\u0131")
+                || ascii.contains("bilgilendirme amacli")
                 || lower.contains("otomatik analiz");
     }
 
@@ -73,7 +87,3 @@ public class AiDisclaimerCleaner {
         return String.join(" ", sentences).trim();
     }
 }
-
-
-
-

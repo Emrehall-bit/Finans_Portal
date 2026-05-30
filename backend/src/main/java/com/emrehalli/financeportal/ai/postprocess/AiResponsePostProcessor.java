@@ -38,6 +38,7 @@ public class AiResponsePostProcessor {
         result = textCleaner.reduceRoboticPhrases(result);
         result = textCleaner.deduplicateSentences(result);
         result = textCleaner.truncateAtSentenceBoundary(result);
+        result = applyDisclaimerPolicy(result, taskType);
         return result.trim();
     }
 

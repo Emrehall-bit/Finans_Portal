@@ -1,5 +1,8 @@
 package com.emrehalli.financeportal.technicalanalysis.fundamental.service;
 
+import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FinancialDataResponse;
+import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FundamentalHistoryPoint;
+import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FundamentalRatiosResponse;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.entity.CompanyFinancials;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.entity.FundamentalHistory;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.entity.FundamentalRatios;
@@ -53,17 +56,80 @@ public class FundamentalAnalysisService {
         this.companyProfileRepository = companyProfileRepository;
     }
 
+    @Transactional(readOnly = true)
+    public FundamentalRatiosResponse getLatestRatios(String instrumentCode, boolean premium) {
+        MarketInstrument instrument = resolveInstrument(instrumentCode);
+        FundamentalRatios ratios = fundamentalRatiosRepository
+                .findTopByInstrumentIdOrderByCalculatedAtDesc(instrument.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Temel analiz verisi bulunamadı: " + instrumentCode));
+
+        return toRatiosResponse(ratios, premium);
+    }
+
+    @Transactional(readOnly = true)
+    public List<FundamentalHistoryPoint> getHistory(String instrumentCode) {
+        MarketInstrument instrument = resolveInstrument(instrumentCode);
+        return fundamentalHistoryRepository
+                .findTop8ByInstrumentIdOrderByPeriodDesc(instrument.getId())
+                .stream()
+                .map(h -> FundamentalHistoryPoint.builder()
+                        .period(h.getPeriod())
+                        .revenue(h.getRevenue())
+                        .netIncome(h.getNetIncome())
+                        .grossMargin(h.getGrossMargin())
+                        .netMargin(h.getNetMargin())
+                        .roe(h.getRoe())
+                        .peRatio(h.getPeRatio())
+                        .build())
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<FinancialDataResponse> getFinancialData(String instrumentCode, String periodType) {
+        MarketInstrument instrument = resolveInstrument(instrumentCode);
+        return companyFinancialsRepository
+                .findByInstrumentIdAndPeriodTypeOrderByPeriodDesc(instrument.getId(), periodType.toUpperCase())
+                .stream()
+                .map(f -> FinancialDataResponse.builder()
+                        .id(f.getId())
+                        .period(f.getPeriod())
+                        .periodType(f.getPeriodType())
+                        .revenue(f.getRevenue())
+                        .grossProfit(f.getGrossProfit())
+                        .netIncome(f.getNetIncome())
+                        .totalAssets(f.getTotalAssets())
+                        .totalEquity(f.getTotalEquity())
+                        .totalLiabilities(f.getTotalLiabilities())
+                        .currentAssets(f.getCurrentAssets())
+                        .currentLiabilities(f.getCurrentLiabilities())
+                        .operatingCashFlow(f.getOperatingCashFlow())
+                        .build())
+                .toList();
+    }
+
+    @Transactional
+    public FundamentalRatiosResponse calculateLatestAnnualRatios(String instrumentCode) {
+        MarketInstrument instrument = resolveInstrument(instrumentCode);
+        CompanyFinancials latest = companyFinancialsRepository
+                .findTopByInstrumentIdAndPeriodTypeOrderByPeriodDesc(instrument.getId(), "ANNUAL")
+                .orElseThrow(() -> new ResourceNotFoundException("ANNUAL finansal veri bulunamadı: " + instrumentCode));
+
+        FundamentalRatios ratios = calculateRatios(instrument.getId(), latest.getPeriod());
+        return toRatiosResponse(ratios, true);
+    }
+
     @Transactional
     public FundamentalRatios calculateRatios(Long instrumentId, String period) {
-        logger.info("Temel analiz oranlarÄ± hesaplanÄ±yor: instrumentId={}, period={}", instrumentId, period);
+        logger.info("Temel analiz oranları hesaplanıyor: instrumentId={}, period={}", instrumentId, period);
 
         MarketInstrument instrument = marketInstrumentRepository.findById(instrumentId)
-                .orElseThrow(() -> new ResourceNotFoundException("EnstrÃ¼man bulunamadÄ±: id=" + instrumentId));
+                .orElseThrow(() -> new ResourceNotFoundException("Enstrüman bulunamadı: id=" + instrumentId));
 
         CompanyFinancials financials = companyFinancialsRepository
                 .findTopByInstrumentIdAndPeriodTypeOrderByPeriodDesc(instrumentId, "ANNUAL")
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Finansal veri bulunamadÄ±: instrumentId=" + instrumentId + ", period=" + period));
+                        "Finansal veri bulunamadı: instrumentId=" + instrumentId + ", period=" + period));
 
         BigDecimal currentPrice = resolveCurrentPrice(instrument);
         Optional<CompanyProfile> profileOpt = companyProfileRepository
@@ -85,7 +151,7 @@ public class FundamentalAnalysisService {
         ratios.setDebtToEquity(ratio(financials.getTotalLiabilities(), financials.getTotalEquity()));
         ratios.setCurrentRatio(ratio(financials.getCurrentAssets(), financials.getCurrentLiabilities()));
 
-        // DeÄŸerleme oranlarÄ±
+        // Değerleme oranları
         if (sharesOutstanding != null && sharesOutstanding.compareTo(BigDecimal.ZERO) > 0
                 && financials.getNetIncome() != null) {
             BigDecimal eps = financials.getNetIncome().divide(sharesOutstanding, SCALE, RoundingMode.HALF_UP);
@@ -99,7 +165,7 @@ public class FundamentalAnalysisService {
                 BigDecimal marketCap = currentPrice.multiply(sharesOutstanding);
                 ratios.setPbRatio(marketCap.divide(financials.getTotalEquity(), SCALE, RoundingMode.HALF_UP));
 
-                // Graham SayÄ±sÄ± = sqrt(22.5 Ã— EPS Ã— BVPS)
+                // Graham Sayısı = sqrt(22.5 × EPS × BVPS)
                 BigDecimal grahamSquared = BigDecimal.valueOf(22.5)
                         .multiply(eps.max(BigDecimal.ZERO))
                         .multiply(bookValuePerShare.max(BigDecimal.ZERO));
@@ -114,7 +180,7 @@ public class FundamentalAnalysisService {
                     BigDecimal totalAssets = financials.getTotalAssets();
                     BigDecimal workingCapital = safeSubtract(financials.getCurrentAssets(), financials.getCurrentLiabilities());
                     BigDecimal x1 = workingCapital != null ? workingCapital.divide(totalAssets, SCALE, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-                    // X2 (retained earnings) â€” mevcut ÅŸemada yok, 0 olarak alÄ±nÄ±yor
+                    // X2 (retained earnings) — mevcut şemada yok, 0 olarak alınıyor
                     BigDecimal x2 = BigDecimal.ZERO;
                     BigDecimal x3 = financials.getNetIncome().divide(totalAssets, SCALE, RoundingMode.HALF_UP);
                     BigDecimal marketCapValue = currentPrice.multiply(sharesOutstanding);
@@ -135,7 +201,7 @@ public class FundamentalAnalysisService {
             }
         }
 
-        // YoY bÃ¼yÃ¼me â€” Ã¶nceki yÄ±l verisi
+        // YoY büyüme — önceki yıl verisi
         List<CompanyFinancials> history = companyFinancialsRepository
                 .findByInstrumentIdAndPeriodTypeOrderByPeriodDesc(instrumentId, "ANNUAL");
         if (history.size() >= 2) {
@@ -151,7 +217,7 @@ public class FundamentalAnalysisService {
         FundamentalRatios saved = fundamentalRatiosRepository.save(ratios);
         syncFundamentalHistory(instrument, financials, saved);
 
-        logger.info("Temel analiz oranlarÄ± kaydedildi: instrumentId={}, period={}, signal={}",
+        logger.info("Temel analiz oranları kaydedildi: instrumentId={}, period={}, signal={}",
                 instrumentId, period, saved.getOverallSignal());
         return saved;
     }
@@ -162,27 +228,27 @@ public class FundamentalAnalysisService {
         if (isPositive(current.getNetIncome()) && isPositive(current.getTotalAssets())) score++;
         // F2: Operating Cash Flow > 0
         if (isPositive(current.getOperatingCashFlow())) score++;
-        // F3: ROA arttÄ±
+        // F3: ROA arttı
         double roa = safeRatio(current.getNetIncome(), current.getTotalAssets());
         double prevRoa = safeRatio(prev.getNetIncome(), prev.getTotalAssets());
         if (roa > prevRoa) score++;
         // F4: Cash Flow > Net Income (Accrual)
         if (current.getOperatingCashFlow() != null && current.getNetIncome() != null
                 && current.getOperatingCashFlow().compareTo(current.getNetIncome()) > 0) score++;
-        // F5: Uzun vadeli borÃ§ azaldÄ± (Total Liabilities proxy)
+        // F5: Uzun vadeli borç azaldı (Total Liabilities proxy)
         if (current.getTotalLiabilities() != null && prev.getTotalLiabilities() != null
                 && current.getTotalLiabilities().compareTo(prev.getTotalLiabilities()) < 0) score++;
-        // F6: Current Ratio arttÄ±
+        // F6: Current Ratio arttı
         double cr = safeRatio(current.getCurrentAssets(), current.getCurrentLiabilities());
         double prevCr = safeRatio(prev.getCurrentAssets(), prev.getCurrentLiabilities());
         if (cr > prevCr) score++;
-        // F7: Yeni hisse ihracÄ± yok â€” ÅŸemada bilgi yok, default 1 puan
+        // F7: Yeni hisse ihracı yok — şemada bilgi yok, default 1 puan
         score++;
-        // F8: Gross Margin arttÄ±
+        // F8: Gross Margin arttı
         double gm = safeRatio(current.getGrossProfit(), current.getRevenue());
         double prevGm = safeRatio(prev.getGrossProfit(), prev.getRevenue());
         if (gm > prevGm) score++;
-        // F9: Asset Turnover arttÄ±
+        // F9: Asset Turnover arttı
         double at = safeRatio(current.getRevenue(), current.getTotalAssets());
         double prevAt = safeRatio(prev.getRevenue(), prev.getTotalAssets());
         if (at > prevAt) score++;
@@ -210,6 +276,36 @@ public class FundamentalAnalysisService {
                 .peRatio(ratios.getPeRatio())
                 .build();
         fundamentalHistoryRepository.save(history);
+    }
+
+    private MarketInstrument resolveInstrument(String instrumentCode) {
+        return marketInstrumentRepository
+                .findByInstrumentCodeIgnoreCase(instrumentCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Enstrüman bulunamadı: " + instrumentCode));
+    }
+
+    private FundamentalRatiosResponse toRatiosResponse(FundamentalRatios ratios, boolean premium) {
+        return FundamentalRatiosResponse.builder()
+                .period(ratios.getPeriod())
+                .calculationPrice(ratios.getCalculationPrice())
+                .peRatio(ratios.getPeRatio())
+                .pbRatio(ratios.getPbRatio())
+                .grossMargin(ratios.getGrossMargin())
+                .netMargin(ratios.getNetMargin())
+                .roe(ratios.getRoe())
+                .roa(ratios.getRoa())
+                .revenueGrowthYoy(ratios.getRevenueGrowthYoy())
+                .netIncomeGrowthYoy(ratios.getNetIncomeGrowthYoy())
+                .assetGrowthYoy(ratios.getAssetGrowthYoy())
+                .debtToEquity(ratios.getDebtToEquity())
+                .currentRatio(ratios.getCurrentRatio())
+                .overallSignal(ratios.getOverallSignal())
+                .grahamNumber(premium ? ratios.getGrahamNumber() : null)
+                .piotroskiScore(premium ? ratios.getPiotroskiScore() : null)
+                .altmanZScore(premium ? ratios.getAltmanZScore() : null)
+                .premiumRequired(!premium)
+                .calculatedAt(ratios.getCalculatedAt())
+                .build();
     }
 
     private BigDecimal resolveCurrentPrice(MarketInstrument instrument) {
@@ -248,4 +344,3 @@ public class FundamentalAnalysisService {
         return a.subtract(b);
     }
 }
-

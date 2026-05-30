@@ -1,31 +1,31 @@
 package com.emrehalli.financeportal.technicalanalysis.controller;
 
-import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingRequest;
-import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingResponse;
-import com.emrehalli.financeportal.technicalanalysis.drawing.dto.LinkAlertRequest;
-import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FinancialDataResponse;
-import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FundamentalHistoryPoint;
-import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FundamentalRatiosResponse;
-import com.emrehalli.financeportal.technicalanalysis.fundamental.entity.CompanyFinancials;
-import com.emrehalli.financeportal.technicalanalysis.fundamental.entity.FundamentalRatios;
-import com.emrehalli.financeportal.technicalanalysis.exception.PremiumRequiredException;
-import com.emrehalli.financeportal.technicalanalysis.fundamental.repository.CompanyFinancialsRepository;
-import com.emrehalli.financeportal.technicalanalysis.fundamental.repository.FundamentalHistoryRepository;
-import com.emrehalli.financeportal.technicalanalysis.fundamental.repository.FundamentalRatiosRepository;
-import com.emrehalli.financeportal.technicalanalysis.drawing.service.ChartDrawingService;
-import com.emrehalli.financeportal.technicalanalysis.fundamental.service.FundamentalAnalysisService;
-import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.config.security.CurrentUser;
 import com.emrehalli.financeportal.config.security.CurrentUserResolver;
 import com.emrehalli.financeportal.config.security.RequiresPremium;
-import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
-import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
+import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingRequest;
+import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingResponse;
+import com.emrehalli.financeportal.technicalanalysis.drawing.dto.LinkAlertRequest;
+import com.emrehalli.financeportal.technicalanalysis.drawing.service.ChartDrawingService;
+import com.emrehalli.financeportal.technicalanalysis.exception.PremiumRequiredException;
+import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FinancialDataResponse;
+import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FundamentalHistoryPoint;
+import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FundamentalRatiosResponse;
+import com.emrehalli.financeportal.technicalanalysis.fundamental.service.FundamentalAnalysisService;
 import com.emrehalli.financeportal.user.entity.UserRole;
 import jakarta.validation.Valid;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -34,31 +34,18 @@ import java.util.List;
 public class AnalysisController {
 
     private static final Logger logger = LogManager.getLogger(AnalysisController.class);
+
     private final ChartDrawingService chartDrawingService;
     private final FundamentalAnalysisService fundamentalAnalysisService;
-    private final FundamentalRatiosRepository fundamentalRatiosRepository;
-    private final FundamentalHistoryRepository fundamentalHistoryRepository;
-    private final CompanyFinancialsRepository companyFinancialsRepository;
-    private final MarketInstrumentRepository marketInstrumentRepository;
     private final CurrentUserResolver currentUserResolver;
 
     public AnalysisController(ChartDrawingService chartDrawingService,
                               FundamentalAnalysisService fundamentalAnalysisService,
-                              FundamentalRatiosRepository fundamentalRatiosRepository,
-                              FundamentalHistoryRepository fundamentalHistoryRepository,
-                              CompanyFinancialsRepository companyFinancialsRepository,
-                              MarketInstrumentRepository marketInstrumentRepository,
                               CurrentUserResolver currentUserResolver) {
         this.chartDrawingService = chartDrawingService;
         this.fundamentalAnalysisService = fundamentalAnalysisService;
-        this.fundamentalRatiosRepository = fundamentalRatiosRepository;
-        this.fundamentalHistoryRepository = fundamentalHistoryRepository;
-        this.companyFinancialsRepository = companyFinancialsRepository;
-        this.marketInstrumentRepository = marketInstrumentRepository;
         this.currentUserResolver = currentUserResolver;
     }
-
-    // â”€â”€ Teknik Analiz â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @GetMapping("/drawings/{instrumentCode}")
     public ApiResponse<List<DrawingResponse>> getDrawings(
@@ -134,46 +121,13 @@ public class AnalysisController {
                 .build();
     }
 
-    // â”€â”€ Temel Analiz â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
     @GetMapping("/fundamental/{instrumentCode}")
     public ApiResponse<FundamentalRatiosResponse> getFundamentalRatios(@PathVariable String instrumentCode) {
         CurrentUser currentUser = currentUserResolver.resolve();
         logger.info("Temel analiz oranlarÄ± getiriliyor: instrument={}, role={}", instrumentCode, currentUser.role());
 
-        MarketInstrument instrument = marketInstrumentRepository
-                .findByInstrumentCodeIgnoreCase(instrumentCode)
-                .orElseThrow(() -> new ResourceNotFoundException("EnstrÃ¼man bulunamadÄ±: " + instrumentCode));
-
-        FundamentalRatios ratios = fundamentalRatiosRepository
-                .findTopByInstrumentIdOrderByCalculatedAtDesc(instrument.getId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Temel analiz verisi bulunamadÄ±: " + instrumentCode));
-
         boolean isPremium = currentUser.role() == UserRole.USER_PREMIUM || currentUser.role() == UserRole.ADMIN;
-
-        FundamentalRatiosResponse response = FundamentalRatiosResponse.builder()
-                .period(ratios.getPeriod())
-                .calculationPrice(ratios.getCalculationPrice())
-                .peRatio(ratios.getPeRatio())
-                .pbRatio(ratios.getPbRatio())
-                .grossMargin(ratios.getGrossMargin())
-                .netMargin(ratios.getNetMargin())
-                .roe(ratios.getRoe())
-                .roa(ratios.getRoa())
-                .revenueGrowthYoy(ratios.getRevenueGrowthYoy())
-                .netIncomeGrowthYoy(ratios.getNetIncomeGrowthYoy())
-                .assetGrowthYoy(ratios.getAssetGrowthYoy())
-                .debtToEquity(ratios.getDebtToEquity())
-                .currentRatio(ratios.getCurrentRatio())
-                .overallSignal(ratios.getOverallSignal())
-                // Premium alanlar: null dÃ¶ner, frontend blur gÃ¶sterir
-                .grahamNumber(isPremium ? ratios.getGrahamNumber() : null)
-                .piotroskiScore(isPremium ? ratios.getPiotroskiScore() : null)
-                .altmanZScore(isPremium ? ratios.getAltmanZScore() : null)
-                .premiumRequired(!isPremium)
-                .calculatedAt(ratios.getCalculatedAt())
-                .build();
+        FundamentalRatiosResponse response = fundamentalAnalysisService.getLatestRatios(instrumentCode, isPremium);
 
         return ApiResponse.<FundamentalRatiosResponse>builder()
                 .success(true)
@@ -187,23 +141,7 @@ public class AnalysisController {
     public ApiResponse<List<FundamentalHistoryPoint>> getFundamentalHistory(@PathVariable String instrumentCode) {
         logger.info("Temel analiz geÃ§miÅŸi getiriliyor: instrument={}", instrumentCode);
 
-        MarketInstrument instrument = marketInstrumentRepository
-                .findByInstrumentCodeIgnoreCase(instrumentCode)
-                .orElseThrow(() -> new ResourceNotFoundException("EnstrÃ¼man bulunamadÄ±: " + instrumentCode));
-
-        List<FundamentalHistoryPoint> history = fundamentalHistoryRepository
-                .findTop8ByInstrumentIdOrderByPeriodDesc(instrument.getId())
-                .stream()
-                .map(h -> FundamentalHistoryPoint.builder()
-                        .period(h.getPeriod())
-                        .revenue(h.getRevenue())
-                        .netIncome(h.getNetIncome())
-                        .grossMargin(h.getGrossMargin())
-                        .netMargin(h.getNetMargin())
-                        .roe(h.getRoe())
-                        .peRatio(h.getPeRatio())
-                        .build())
-                .toList();
+        List<FundamentalHistoryPoint> history = fundamentalAnalysisService.getHistory(instrumentCode);
 
         return ApiResponse.<List<FundamentalHistoryPoint>>builder()
                 .success(true)
@@ -218,28 +156,7 @@ public class AnalysisController {
             @RequestParam(defaultValue = "ANNUAL") String periodType) {
         logger.info("Ham finansal veriler getiriliyor: instrument={}, periodType={}", instrumentCode, periodType);
 
-        MarketInstrument instrument = marketInstrumentRepository
-                .findByInstrumentCodeIgnoreCase(instrumentCode)
-                .orElseThrow(() -> new ResourceNotFoundException("EnstrÃ¼man bulunamadÄ±: " + instrumentCode));
-
-        List<FinancialDataResponse> financials = companyFinancialsRepository
-                .findByInstrumentIdAndPeriodTypeOrderByPeriodDesc(instrument.getId(), periodType.toUpperCase())
-                .stream()
-                .map(f -> FinancialDataResponse.builder()
-                        .id(f.getId())
-                        .period(f.getPeriod())
-                        .periodType(f.getPeriodType())
-                        .revenue(f.getRevenue())
-                        .grossProfit(f.getGrossProfit())
-                        .netIncome(f.getNetIncome())
-                        .totalAssets(f.getTotalAssets())
-                        .totalEquity(f.getTotalEquity())
-                        .totalLiabilities(f.getTotalLiabilities())
-                        .currentAssets(f.getCurrentAssets())
-                        .currentLiabilities(f.getCurrentLiabilities())
-                        .operatingCashFlow(f.getOperatingCashFlow())
-                        .build())
-                .toList();
+        List<FinancialDataResponse> financials = fundamentalAnalysisService.getFinancialData(instrumentCode, periodType);
 
         return ApiResponse.<List<FinancialDataResponse>>builder()
                 .success(true)
@@ -256,37 +173,7 @@ public class AnalysisController {
         }
         logger.info("Temel analiz hesaplama tetikleniyor: instrument={}, by={}", instrumentCode, currentUser.keycloakId());
 
-        MarketInstrument instrument = marketInstrumentRepository
-                .findByInstrumentCodeIgnoreCase(instrumentCode)
-                .orElseThrow(() -> new ResourceNotFoundException("EnstrÃ¼man bulunamadÄ±: " + instrumentCode));
-
-        CompanyFinancials latest = companyFinancialsRepository
-                .findTopByInstrumentIdAndPeriodTypeOrderByPeriodDesc(instrument.getId(), "ANNUAL")
-                .orElseThrow(() -> new ResourceNotFoundException("ANNUAL finansal veri bulunamadÄ±: " + instrumentCode));
-
-        FundamentalRatios ratios = fundamentalAnalysisService.calculateRatios(instrument.getId(), latest.getPeriod());
-
-        FundamentalRatiosResponse response = FundamentalRatiosResponse.builder()
-                .period(ratios.getPeriod())
-                .calculationPrice(ratios.getCalculationPrice())
-                .peRatio(ratios.getPeRatio())
-                .pbRatio(ratios.getPbRatio())
-                .grossMargin(ratios.getGrossMargin())
-                .netMargin(ratios.getNetMargin())
-                .roe(ratios.getRoe())
-                .roa(ratios.getRoa())
-                .revenueGrowthYoy(ratios.getRevenueGrowthYoy())
-                .netIncomeGrowthYoy(ratios.getNetIncomeGrowthYoy())
-                .assetGrowthYoy(ratios.getAssetGrowthYoy())
-                .debtToEquity(ratios.getDebtToEquity())
-                .currentRatio(ratios.getCurrentRatio())
-                .overallSignal(ratios.getOverallSignal())
-                .grahamNumber(ratios.getGrahamNumber())
-                .piotroskiScore(ratios.getPiotroskiScore())
-                .altmanZScore(ratios.getAltmanZScore())
-                .premiumRequired(false)
-                .calculatedAt(ratios.getCalculatedAt())
-                .build();
+        FundamentalRatiosResponse response = fundamentalAnalysisService.calculateLatestAnnualRatios(instrumentCode);
 
         return ApiResponse.<FundamentalRatiosResponse>builder()
                 .success(true)
@@ -294,8 +181,4 @@ public class AnalysisController {
                 .message("Temel analiz hesaplamasÄ± tamamlandÄ±")
                 .build();
     }
-
-    // â”€â”€ YardÄ±mcÄ± metodlar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 }
-

@@ -1,17 +1,11 @@
 package com.emrehalli.financeportal.technicalanalysis.controller;
 
-import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigRequest;
-import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigResponse;
-import com.emrehalli.financeportal.technicalanalysis.config.entity.IndicatorConfig;
-import com.emrehalli.financeportal.technicalanalysis.config.repository.IndicatorConfigRepository;
-import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.config.security.CurrentUser;
 import com.emrehalli.financeportal.config.security.CurrentUserResolver;
-import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
-import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
-import com.emrehalli.financeportal.user.entity.User;
-import com.emrehalli.financeportal.user.repository.UserRepository;
+import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigRequest;
+import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigResponse;
+import com.emrehalli.financeportal.technicalanalysis.config.service.IndicatorConfigService;
 import jakarta.validation.Valid;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -23,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
 import java.util.List;
 
 @RestController
@@ -32,34 +25,23 @@ public class TechnicalIndicatorConfigController {
 
     private static final Logger logger = LogManager.getLogger(TechnicalIndicatorConfigController.class);
 
-    private final IndicatorConfigRepository indicatorConfigRepository;
-    private final MarketInstrumentRepository marketInstrumentRepository;
-    private final UserRepository userRepository;
+    private final IndicatorConfigService indicatorConfigService;
     private final CurrentUserResolver currentUserResolver;
 
-    public TechnicalIndicatorConfigController(IndicatorConfigRepository indicatorConfigRepository,
-                                              MarketInstrumentRepository marketInstrumentRepository,
-                                              UserRepository userRepository,
+    public TechnicalIndicatorConfigController(IndicatorConfigService indicatorConfigService,
                                               CurrentUserResolver currentUserResolver) {
-        this.indicatorConfigRepository = indicatorConfigRepository;
-        this.marketInstrumentRepository = marketInstrumentRepository;
-        this.userRepository = userRepository;
+        this.indicatorConfigService = indicatorConfigService;
         this.currentUserResolver = currentUserResolver;
     }
 
     @GetMapping("/{instrumentCode}/indicators")
     public ApiResponse<List<IndicatorConfigResponse>> getUserIndicators(@PathVariable String instrumentCode) {
         CurrentUser currentUser = currentUserResolver.resolve();
-        logger.info("Gosterge konfigurasyonlari getiriliyor: keycloakId={}, instrument={}", currentUser.keycloakId(), instrumentCode);
+        logger.info("Gosterge konfigurasyonlari getiriliyor: keycloakId={}, instrument={}",
+                currentUser.keycloakId(), instrumentCode);
 
-        User user = resolveUser(currentUser.keycloakId());
-        MarketInstrument instrument = resolveInstrument(instrumentCode);
-
-        List<IndicatorConfigResponse> configs = indicatorConfigRepository
-                .findByUserIdAndInstrumentIdAndIsActiveTrue(user.getId(), instrument.getId())
-                .stream()
-                .map(this::toIndicatorResponse)
-                .toList();
+        List<IndicatorConfigResponse> configs = indicatorConfigService
+                .getActiveIndicators(currentUser.keycloakId(), instrumentCode);
 
         return ApiResponse.<List<IndicatorConfigResponse>>builder()
                 .success(true)
@@ -75,21 +57,12 @@ public class TechnicalIndicatorConfigController {
         logger.info("Gosterge konfigurasyonu kaydediliyor: keycloakId={}, instrument={}, type={}",
                 currentUser.keycloakId(), instrumentCode, req.getIndicatorType());
 
-        User user = resolveUser(currentUser.keycloakId());
-        MarketInstrument instrument = resolveInstrument(instrumentCode);
+        IndicatorConfigResponse saved = indicatorConfigService
+                .saveIndicatorConfig(currentUser.keycloakId(), instrumentCode, req);
 
-        IndicatorConfig config = IndicatorConfig.builder()
-                .user(user)
-                .instrument(instrument)
-                .indicatorType(req.getIndicatorType().toUpperCase())
-                .parameters(req.getParameters() != null ? req.getParameters() : new HashMap<>())
-                .isActive(req.isActive())
-                .build();
-
-        IndicatorConfig saved = indicatorConfigRepository.save(config);
         return ApiResponse.<IndicatorConfigResponse>builder()
                 .success(true)
-                .data(toIndicatorResponse(saved))
+                .data(saved)
                 .message("Gosterge konfigurasyonu kaydedildi")
                 .build();
     }
@@ -97,34 +70,12 @@ public class TechnicalIndicatorConfigController {
     @DeleteMapping("/indicators/{id}")
     public ApiResponse<Void> deleteIndicatorConfig(@PathVariable Long id) {
         CurrentUser currentUser = currentUserResolver.resolve();
-        User user = resolveUser(currentUser.keycloakId());
         logger.info("Gosterge konfigurasyonu siliniyor: keycloakId={}, configId={}", currentUser.keycloakId(), id);
 
-        indicatorConfigRepository.deleteByIdAndUserId(id, user.getId());
+        indicatorConfigService.deleteIndicatorConfig(currentUser.keycloakId(), id);
         return ApiResponse.<Void>builder()
                 .success(true)
                 .message("Gosterge konfigurasyonu silindi")
                 .build();
     }
-
-    private User resolveUser(String keycloakId) {
-        return userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException("Kullanici bulunamadi: keycloakId=" + keycloakId));
-    }
-
-    private MarketInstrument resolveInstrument(String instrumentCode) {
-        return marketInstrumentRepository.findByInstrumentCodeIgnoreCase(instrumentCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Enstruman bulunamadi: " + instrumentCode));
-    }
-
-    private IndicatorConfigResponse toIndicatorResponse(IndicatorConfig config) {
-        return IndicatorConfigResponse.builder()
-                .id(config.getId())
-                .indicatorType(config.getIndicatorType())
-                .parameters(config.getParameters())
-                .isActive(config.isActive())
-                .createdAt(config.getCreatedAt())
-                .build();
-    }
 }
-

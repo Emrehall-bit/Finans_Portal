@@ -36,9 +36,9 @@ public class FundamentalRatiosScheduler {
 
     @Scheduled(cron = "0 0 2 * * *")
     public void recalculateFundamentalRatios() {
-        logger.info("Temel analiz oranlarÄ± gece hesaplama baÅŸladÄ±");
+        logger.info("Temel analiz oranları gece hesaplama başladı");
 
-        // Finansal verisi olan tÃ¼m enstrÃ¼man ID'lerini al
+        // Finansal verisi olan tüm enstrüman ID'lerini al
         List<CompanyFinancials> allFinancials = companyFinancialsRepository.findAll();
         Set<Long> instrumentIds = new HashSet<>();
         for (CompanyFinancials f : allFinancials) {
@@ -54,12 +54,12 @@ public class FundamentalRatiosScheduler {
                 fundamentalAnalysisService.calculateRatios(instrumentId, null);
                 success++;
             } catch (Exception e) {
-                logger.error("Temel analiz hesaplama hatasÄ±: instrumentId={}, hata={}", instrumentId, e.getMessage(), e);
+                logger.error("Temel analiz hesaplama hatası: instrumentId={}, hata={}", instrumentId, e.getMessage(), e);
                 errors++;
             }
         }
 
-        logger.info("Temel analiz oranlarÄ± gÃ¼ncellendi: baÅŸarÄ±lÄ±={}, hata={}, toplam={}", success, errors, instrumentIds.size());
+        logger.info("Temel analiz oranları güncellendi: başarılı={}, hata={}, toplam={}", success, errors, instrumentIds.size());
     }
 
     @Scheduled(fixedDelay = 60_000)
@@ -67,14 +67,14 @@ public class FundamentalRatiosScheduler {
         List<?> linkedDrawings = chartDrawingRepository.findByIsAlertLinkedTrueAndLinkedAlertIdIsNotNull();
         if (linkedDrawings.isEmpty()) return;
 
-        logger.info("Alert baÄŸlÄ± Ã§izimler kontrol ediliyor: adet={}", linkedDrawings.size());
+        logger.info("Alert bağlı çizimler kontrol ediliyor: adet={}", linkedDrawings.size());
 
         linkedDrawings.forEach(d -> {
             try {
                 portfolioAlertIntegrationService.syncDrawingWithAlert(
                         (com.emrehalli.financeportal.technicalanalysis.drawing.entity.ChartDrawing) d);
             } catch (Exception e) {
-                logger.error("Alert senkronizasyon hatasÄ±: hata={}", e.getMessage());
+                logger.error("Alert senkronizasyon hatası: hata={}", e.getMessage());
             }
         });
     }

@@ -53,19 +53,19 @@ public class ChartDrawingService {
 
     @Transactional
     public DrawingResponse saveDrawing(String keycloakId, UserRole userRole, String instrumentCode, DrawingRequest req) {
-        logger.info("Ã‡izim kaydediliyor: keycloakId={}, instrument={}, type={}", keycloakId, instrumentCode, req.getDrawingType());
+        logger.info("Çizim kaydediliyor: keycloakId={}, instrument={}, type={}", keycloakId, instrumentCode, req.getDrawingType());
 
         boolean isPremiumType = PREMIUM_DRAWING_TYPES.contains(req.getDrawingType().toUpperCase());
         if (isPremiumType && userRole != UserRole.USER_PREMIUM && userRole != UserRole.ADMIN) {
-            logger.info("Premium Ã§izim tipi reddedildi: type={}, role={}", req.getDrawingType(), userRole);
-            throw new PremiumRequiredException("Bu Ã§izim tipi Premium Ã¼yelik gerektirir: " + req.getDrawingType());
+            logger.info("Premium çizim tipi reddedildi: type={}, role={}", req.getDrawingType(), userRole);
+            throw new PremiumRequiredException("Bu çizim tipi Premium üyelik gerektirir: " + req.getDrawingType());
         }
 
         User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException("KullanÄ±cÄ± bulunamadÄ±: keycloakId=" + keycloakId));
+                .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı: keycloakId=" + keycloakId));
         MarketInstrument instrument = marketInstrumentRepository
                 .findByInstrumentCodeIgnoreCase(instrumentCode)
-                .orElseThrow(() -> new ResourceNotFoundException("EnstrÃ¼man bulunamadÄ±: " + instrumentCode));
+                .orElseThrow(() -> new ResourceNotFoundException("Enstrüman bulunamadı: " + instrumentCode));
 
         ChartDrawing drawing = ChartDrawing.builder()
                 .user(user)
@@ -80,19 +80,19 @@ public class ChartDrawingService {
                 .build();
 
         ChartDrawing saved = chartDrawingRepository.save(drawing);
-        logger.info("Ã‡izim kaydedildi: id={}, type={}", saved.getId(), saved.getDrawingType());
+        logger.info("Çizim kaydedildi: id={}, type={}", saved.getId(), saved.getDrawingType());
         return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public List<DrawingResponse> getDrawings(String keycloakId, String instrumentCode, String timeframe) {
-        logger.info("Ã‡izimler getiriliyor: keycloakId={}, instrument={}, timeframe={}", keycloakId, instrumentCode, timeframe);
+        logger.info("Çizimler getiriliyor: keycloakId={}, instrument={}, timeframe={}", keycloakId, instrumentCode, timeframe);
 
         User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException("KullanÄ±cÄ± bulunamadÄ±: keycloakId=" + keycloakId));
+                .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı: keycloakId=" + keycloakId));
         MarketInstrument instrument = marketInstrumentRepository
                 .findByInstrumentCodeIgnoreCase(instrumentCode)
-                .orElseThrow(() -> new ResourceNotFoundException("EnstrÃ¼man bulunamadÄ±: " + instrumentCode));
+                .orElseThrow(() -> new ResourceNotFoundException("Enstrüman bulunamadı: " + instrumentCode));
 
         return chartDrawingRepository
                 .findByUserIdAndInstrumentIdAndTimeframe(user.getId(), instrument.getId(), timeframe)
@@ -103,10 +103,10 @@ public class ChartDrawingService {
 
     @Transactional
     public DrawingResponse updateDrawing(String keycloakId, Long drawingId, DrawingRequest req) {
-        logger.info("Ã‡izim gÃ¼ncelleniyor: keycloakId={}, drawingId={}", keycloakId, drawingId);
+        logger.info("Çizim güncelleniyor: keycloakId={}, drawingId={}", keycloakId, drawingId);
 
         User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException("KullanÄ±cÄ± bulunamadÄ±: keycloakId=" + keycloakId));
+                .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı: keycloakId=" + keycloakId));
 
         ChartDrawing drawing = chartDrawingRepository.findByIdAndUserId(drawingId, user.getId())
                 .orElseThrow(() -> new DrawingNotFoundException(drawingId));
@@ -117,41 +117,41 @@ public class ChartDrawingService {
 
         ChartDrawing saved = chartDrawingRepository.save(drawing);
 
-        // Alert baÄŸlÄ±ysa koordinat gÃ¼ncelle
+        // Alert bağlıysa koordinat güncelle
         if (saved.isAlertLinked() && saved.getLinkedAlertId() != null) {
             portfolioAlertIntegrationService.syncDrawingWithAlert(saved);
         }
 
-        logger.info("Ã‡izim gÃ¼ncellendi: id={}", saved.getId());
+        logger.info("Çizim güncellendi: id={}", saved.getId());
         return toResponse(saved);
     }
 
     @Transactional
     public void deleteDrawing(String keycloakId, Long drawingId) {
-        logger.info("Ã‡izim siliniyor: keycloakId={}, drawingId={}", keycloakId, drawingId);
+        logger.info("Çizim siliniyor: keycloakId={}, drawingId={}", keycloakId, drawingId);
 
         User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException("KullanÄ±cÄ± bulunamadÄ±: keycloakId=" + keycloakId));
+                .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı: keycloakId=" + keycloakId));
 
         ChartDrawing drawing = chartDrawingRepository.findByIdAndUserId(drawingId, user.getId())
                 .orElseThrow(() -> new DrawingNotFoundException(drawingId));
 
         chartDrawingRepository.delete(drawing);
-        logger.info("Ã‡izim silindi: id={}", drawingId);
+        logger.info("Çizim silindi: id={}", drawingId);
     }
 
     @Transactional
     public DrawingResponse linkDrawingToAlert(String keycloakId, Long drawingId, Long alertId) {
-        logger.info("Ã‡izim alert'e baÄŸlanÄ±yor: keycloakId={}, drawingId={}, alertId={}", keycloakId, drawingId, alertId);
+        logger.info("Çizim alert'e bağlanıyor: keycloakId={}, drawingId={}, alertId={}", keycloakId, drawingId, alertId);
 
         User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException("KullanÄ±cÄ± bulunamadÄ±: keycloakId=" + keycloakId));
+                .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı: keycloakId=" + keycloakId));
 
         ChartDrawing drawing = chartDrawingRepository.findByIdAndUserId(drawingId, user.getId())
                 .orElseThrow(() -> new DrawingNotFoundException(drawingId));
 
         Alert alert = alertRepository.findByIdAndUserId(alertId, user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Alert bulunamadÄ±: id=" + alertId));
+                .orElseThrow(() -> new ResourceNotFoundException("Alert bulunamadı: id=" + alertId));
 
         drawing.setAlertLinked(true);
         drawing.setLinkedAlertId(alert.getId());
@@ -159,7 +159,7 @@ public class ChartDrawingService {
         ChartDrawing saved = chartDrawingRepository.save(drawing);
         portfolioAlertIntegrationService.syncDrawingWithAlert(saved);
 
-        logger.info("Ã‡izim alert'e baÄŸlandÄ±: drawingId={}, alertId={}", drawingId, alertId);
+        logger.info("Çizim alert'e bağlandı: drawingId={}, alertId={}", drawingId, alertId);
         return toResponse(saved);
     }
 

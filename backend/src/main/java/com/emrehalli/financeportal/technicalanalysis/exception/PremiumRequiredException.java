@@ -7,7 +7,7 @@ public class PremiumRequiredException extends RuntimeException {
     }
 
     public PremiumRequiredException() {
-        super("Bu Ã¶zellik iÃ§in Premium Ã¼yelik gereklidir");
+        super("Bu özellik için Premium üyelik gereklidir");
     }
 }
 

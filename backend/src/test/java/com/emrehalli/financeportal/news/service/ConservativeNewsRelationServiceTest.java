@@ -18,7 +18,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 import com.emrehalli.financeportal.news.service.FinancialImpactClassifier;
 
 class ConservativeNewsRelationServiceTest {
@@ -26,12 +28,14 @@ class ConservativeNewsRelationServiceTest {
     private ConservativeNewsRelationService service;
     private NewsRepository newsRepository;
     private MarketQueryService marketQueryService;
+    private FinancialImpactClassifier classifier;
 
     @BeforeEach
     void setUp() {
         newsRepository = mock(NewsRepository.class);
         marketQueryService = mock(MarketQueryService.class);
-        service = new ConservativeNewsRelationService(newsRepository, marketQueryService, new FinancialImpactClassifier());
+        classifier = spy(new FinancialImpactClassifier());
+        service = new ConservativeNewsRelationService(newsRepository, marketQueryService, classifier);
 
         // Default: no price data unless test overrides
         when(marketQueryService.findBySymbol(anyString(), any())).thenReturn(Optional.empty());
@@ -45,11 +49,12 @@ class ConservativeNewsRelationServiceTest {
         News news = baseNews(1L,
                 "Site aidatlarÄ± bu yÄ±l yÃ¼zde on arttÄ±",
                 "Konut sakinleri artan aidat maliyetlerini tartÄ±ÅŸÄ±yor.",
-                "GENERAL_ECONOMY", "GENERAL_ECONOMY");
+                "LIFESTYLE", "HOUSING");
 
         when(newsRepository.findById(1L)).thenReturn(Optional.of(news));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any()))
                 .thenReturn(List.of());
+        stubNotMarketRelevant(news);
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -59,9 +64,10 @@ class ConservativeNewsRelationServiceTest {
     @Test
     void genericEconomyNewsWithNoMarketSignalProducesNoInstruments() {
         News news = baseNews(2L,
-                "Kuresel buyume gorunumu karisik seyrediyor",
-                "Ekonomistler genel buyume beklentilerini tartisiyor.",
-                "GENERAL_ECONOMY", "GENERAL_ECONOMY");
+                "Kuresel gundem yogun seyrediyor",
+                "Uzmanlar genel beklentileri tartisiyor.",
+                "GENERAL", "GENERAL");
+        stubNotMarketRelevant(news);
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -220,7 +226,8 @@ class ConservativeNewsRelationServiceTest {
         News news = baseNews(61L,
                 "Site aidati finansman ihtiyaci artÄ±yor",
                 "Konut yonetim maliyetleri ve finansman kosullari tartisiliyor.",
-                "GENERAL_ECONOMY", "GENERAL_ECONOMY");
+                "LIFESTYLE", "HOUSING");
+        stubNotMarketRelevant(news);
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -351,6 +358,19 @@ class ConservativeNewsRelationServiceTest {
                 .publishedAt(LocalDateTime.of(2026, 5, 24, 9, 0))
                 .importanceScore(80)
                 .build();
+    }
+
+    private void stubNotMarketRelevant(News news) {
+        doReturn(FinancialImpactResult.notRelevant("test fixture"))
+                .when(classifier)
+                .classify(
+                        org.mockito.ArgumentMatchers.eq(news.getTitle()),
+                        org.mockito.ArgumentMatchers.eq(news.getSummary()),
+                        org.mockito.ArgumentMatchers.isNull(),
+                        org.mockito.ArgumentMatchers.eq(news.getProvider()),
+                        org.mockito.ArgumentMatchers.isNull(),
+                        org.mockito.ArgumentMatchers.eq(news.getCategory()),
+                        org.mockito.ArgumentMatchers.eq(news.getUrl()));
     }
 }
 

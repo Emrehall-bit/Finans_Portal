@@ -18,7 +18,7 @@ class NewsPresentationMapperTest {
                 .id(11L)
                 .externalId("KAP-1")
                 .title("THYAO Ozel Durum Aciklamasi")
-                .summary("Yonetim kurulu karari")
+                .summary("THYAO Yonetim kurulu karari")
                 .source("KAP")
                 .provider("KAP")
                 .language("tr")

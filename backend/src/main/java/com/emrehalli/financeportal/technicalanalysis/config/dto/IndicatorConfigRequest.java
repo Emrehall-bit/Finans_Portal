@@ -12,7 +12,7 @@ import java.util.Map;
 @NoArgsConstructor
 public class IndicatorConfigRequest {
 
-    @NotBlank(message = "GÃ¶sterge tipi boÅŸ olamaz")
+    @NotBlank(message = "Gösterge tipi boş olamaz")
     private String indicatorType;
 
     private Map<String, Object> parameters;

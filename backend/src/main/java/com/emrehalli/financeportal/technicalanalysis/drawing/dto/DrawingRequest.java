@@ -14,13 +14,13 @@ import java.util.Map;
 @NoArgsConstructor
 public class DrawingRequest {
 
-    @NotBlank(message = "Ã‡izim tipi boÅŸ olamaz")
+    @NotBlank(message = "Çizim tipi boş olamaz")
     private String drawingType;
 
-    @NotBlank(message = "Zaman dilimi boÅŸ olamaz")
+    @NotBlank(message = "Zaman dilimi boş olamaz")
     private String timeframe;
 
-    @NotNull(message = "Nokta listesi boÅŸ olamaz")
+    @NotNull(message = "Nokta listesi boş olamaz")
     private List<Map<String, Object>> points;
 
     private Map<String, Object> style;

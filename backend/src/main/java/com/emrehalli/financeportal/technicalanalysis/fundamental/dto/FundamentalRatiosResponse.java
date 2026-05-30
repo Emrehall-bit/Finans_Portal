@@ -15,29 +15,29 @@ public class FundamentalRatiosResponse {
     private String period;
     private BigDecimal calculationPrice;
 
-    // DeÄŸerleme
+    // Değerleme
     private BigDecimal peRatio;
     private BigDecimal pbRatio;
 
-    // KarlÄ±lÄ±k
+    // Karlılık
     private BigDecimal grossMargin;
     private BigDecimal netMargin;
     private BigDecimal roe;
     private BigDecimal roa;
 
-    // BÃ¼yÃ¼me
+    // Büyüme
     private BigDecimal revenueGrowthYoy;
     private BigDecimal netIncomeGrowthYoy;
     private BigDecimal assetGrowthYoy;
 
-    // BorÃ§/Risk
+    // Borç/Risk
     private BigDecimal debtToEquity;
     private BigDecimal currentRatio;
 
     // Genel sinyal
     private String overallSignal;
 
-    // Premium alanlar â€” null gelirse frontend blur gÃ¶sterir
+    // Premium alanlar — null gelirse frontend blur gösterir
     private BigDecimal grahamNumber;
     private Integer piotroskiScore;
     private BigDecimal altmanZScore;

@@ -24,8 +24,8 @@ public class PortfolioAlertIntegrationService {
     }
 
     /**
-     * Ã‡izimin ilk noktasÄ±ndaki fiyatÄ±, baÄŸlÄ± alert'in target_price deÄŸerine yazar.
-     * Ã‡izim sÃ¼rÃ¼klenince alert seviyesi de gÃ¼ncellenir.
+     * Çizimin ilk noktasındaki fiyatı, bağlı alert'in target_price değerine yazar.
+     * Çizim sürüklenince alert seviyesi de güncellenir.
      */
     @Transactional
     public void syncDrawingWithAlert(ChartDrawing drawing) {
@@ -35,12 +35,12 @@ public class PortfolioAlertIntegrationService {
 
         BigDecimal drawingPrice = extractFirstPrice(drawing.getPoints());
         if (drawingPrice == null) {
-            logger.warn("Ã‡izim fiyatÄ± Ã§Ä±karÄ±lamadÄ±: drawingId={}", drawing.getId());
+            logger.warn("Çizim fiyatı çıkarılamadı: drawingId={}", drawing.getId());
             return;
         }
 
         alertRepository.findById(drawing.getLinkedAlertId()).ifPresent(alert -> {
-            logger.info("Alert hedef fiyatÄ± gÃ¼ncelleniyor: alertId={}, eskiFiyat={}, yeniFiyat={}",
+            logger.info("Alert hedef fiyatı güncelleniyor: alertId={}, eskiFiyat={}, yeniFiyat={}",
                     alert.getId(), alert.getTargetPrice(), drawingPrice);
             alert.setTargetPrice(drawingPrice);
             alertRepository.save(alert);
@@ -55,7 +55,7 @@ public class PortfolioAlertIntegrationService {
         try {
             return new BigDecimal(priceObj.toString());
         } catch (NumberFormatException e) {
-            logger.error("Ã‡izim noktasÄ±ndan fiyat ayrÄ±ÅŸtÄ±rÄ±lamadÄ±: value={}", priceObj);
+            logger.error("Çizim noktasından fiyat ayrıştırılamadı: value={}", priceObj);
             return null;
         }
     }

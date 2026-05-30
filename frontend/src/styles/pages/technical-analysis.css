@@ -2508,12 +2508,12 @@ html[data-theme] .analysis-chart-shell {
   grid-template-columns: minmax(0, 1fr) 24px;
   gap: 3px;
   align-items: center;
-  min-height: 40px;
-  padding: 3px 6px;
-  border-radius: 6px;
-  border: 1px solid rgba(226, 232, 240, 0.32);
-  background: rgba(248, 250, 252, 0.18);
-  box-shadow: none;
+  min-height: 44px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .simple-analysis-metric-copy {
@@ -2522,7 +2522,7 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .simple-analysis-metric span {
-  font-size: 9px;
+  font-size: 10px;
   color: #94a3b8;
   font-weight: 600;
   text-transform: none;
@@ -2530,8 +2530,8 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .simple-analysis-metric strong {
-  font-size: 0.9rem;
-  line-height: 1.05;
+  font-size: 0.95rem;
+  line-height: 1.1;
   color: #0f172a;
   font-weight: 700;
 }
@@ -2546,7 +2546,7 @@ html[data-theme] .analysis-chart-shell {
   display: grid;
   align-items: center;
   min-width: 0;
-  opacity: 0.26;
+  opacity: 0.42;
 }
 
 .simple-analysis-spark .recharts-surface {
@@ -2711,36 +2711,105 @@ html[data-theme] .analysis-chart-shell {
 .simple-score-bar-fill--info     { background: #60a5fa; }
 .simple-score-bar-fill--neutral  { background: #94a3b8; }
 
-.simple-tech-summary-list {
+/* ── Teknik görünüm checklist ─────────────────────────────────────────── */
+.simple-tech-checklist {
   display: grid;
-  align-content: start;
-}
-
-.simple-tech-summary-row {
-  display: grid;
-  grid-template-columns: minmax(110px, 0.42fr) minmax(0, 0.58fr);
-  align-items: center;
   gap: 6px;
-  padding: 9px 0;
-  min-height: 40px;
+  padding: 10px 0;
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
 }
 
-.simple-tech-summary-row:last-child {
-  border-bottom: none;
+.simple-tech-check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
 }
 
-.simple-tech-summary-row span {
+.simple-tech-check-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.simple-tech-check-item--positive .simple-tech-check-icon { background: rgba(34, 197, 94, 0.12); color: #16a34a; }
+.simple-tech-check-item--negative .simple-tech-check-icon { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+.simple-tech-check-item--warning .simple-tech-check-icon  { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+.simple-tech-check-item--neutral .simple-tech-check-icon  { background: rgba(148, 163, 184, 0.14); color: #64748b; }
+
+/* ── Kompakt metrik grid ──────────────────────────────────────────────── */
+.simple-tech-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.simple-tech-metric-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  background: rgba(248, 250, 252, 0.6);
+  min-width: 0;
+}
+
+.simple-tech-metric-cell-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.simple-tech-metric-cell-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+/* ── Destek / Direnç mini kart ────────────────────────────────────────── */
+.simple-sr-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+}
+
+.simple-sr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+
+.simple-sr-row span {
   font-size: 11px;
+  font-weight: 600;
   color: #64748b;
 }
 
-.simple-tech-summary-row strong {
-  font-size: 12px;
+.simple-sr-row strong {
+  font-size: 13px;
   font-weight: 700;
-  overflow-wrap: anywhere;
-  line-height: 1.25;
 }
+
+.simple-sr-row--resistance { background: rgba(239, 68, 68, 0.06); border-left-color: #ef4444; }
+.simple-sr-row--resistance strong { color: #dc2626; }
+.simple-sr-row--support { background: rgba(34, 197, 94, 0.06); border-left-color: #22c55e; }
+.simple-sr-row--support strong { color: #16a34a; }
 
 .simple-tech-summary-cta {
   display: inline-flex;
@@ -2755,16 +2824,6 @@ html[data-theme] .analysis-chart-shell {
   color: #1d4ed8;
   font-size: 0.8rem;
   font-weight: 700;
-}
-
-.simple-summary-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  background: rgba(148, 163, 184, 0.08);
 }
 
 .simple-compare-strip {
@@ -2894,11 +2953,16 @@ html[data-theme] .analysis-chart-shell {
 
 [data-theme="dark"] .simple-tech-summary-label { color: #475569; }
 [data-theme="dark"] .simple-score-bar { background: rgba(51, 65, 85, 0.4); }
-[data-theme="dark"] .simple-summary-chip { background: rgba(51, 65, 85, 0.3); }
+
+[data-theme="dark"] .simple-tech-metric-cell {
+  background: rgba(15, 23, 42, 0.5);
+  border-color: rgba(51, 65, 85, 0.5);
+}
+[data-theme="dark"] .simple-tech-metric-cell-value { color: #e2e8f0; }
+[data-theme="dark"] .simple-tech-check-item { color: #94a3b8; }
 
 [data-theme="dark"] .analysis-hero-meta,
 [data-theme="dark"] .simple-analysis-metric span,
-[data-theme="dark"] .simple-tech-summary-row span,
 [data-theme="dark"] .simple-score-gauge-labels {
   color: #94a3b8;
 }

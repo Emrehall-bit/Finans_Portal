@@ -86,6 +86,8 @@ class CompanyRatioServiceTest {
         ));
         when(quarterNormalizer.getQuarterlyValue(1L, FinancialItemKey.NET_DONEM_KARI, 2024, 4))
                 .thenReturn(new BigDecimal("-50000"));
+        when(quarterNormalizer.getTtmValue(1L, FinancialItemKey.NET_DONEM_KARI, 2024, 4))
+                .thenReturn(new BigDecimal("-50000"));
         when(quarterNormalizer.getQuarterlyValue(1L, FinancialItemKey.HASILAT, 2024, 4))
                 .thenReturn(new BigDecimal("1000000"));
 
@@ -110,6 +112,8 @@ class CompanyRatioServiceTest {
                 value(FinancialItemKey.TOPLAM_YUKUMLULUKLER, "300000"),
                 value(FinancialItemKey.ODENMIS_SERMAYE, "100000")
         ));
+        when(quarterNormalizer.getTtmValue(1L, FinancialItemKey.NET_DONEM_KARI, 2024, 4))
+                .thenReturn(BigDecimal.ZERO);
 
         CompanyRatioCalculationResponse result = service.calculateForTicker("TEST");
 

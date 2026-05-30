@@ -1,0 +1,86 @@
+package com.emrehalli.financeportal.technicalanalysis.config.service;
+
+import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
+import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
+import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
+import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigRequest;
+import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigResponse;
+import com.emrehalli.financeportal.technicalanalysis.config.entity.IndicatorConfig;
+import com.emrehalli.financeportal.technicalanalysis.config.repository.IndicatorConfigRepository;
+import com.emrehalli.financeportal.user.entity.User;
+import com.emrehalli.financeportal.user.repository.UserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.List;
+
+@Service
+public class IndicatorConfigService {
+
+    private final IndicatorConfigRepository indicatorConfigRepository;
+    private final MarketInstrumentRepository marketInstrumentRepository;
+    private final UserRepository userRepository;
+
+    public IndicatorConfigService(IndicatorConfigRepository indicatorConfigRepository,
+                                  MarketInstrumentRepository marketInstrumentRepository,
+                                  UserRepository userRepository) {
+        this.indicatorConfigRepository = indicatorConfigRepository;
+        this.marketInstrumentRepository = marketInstrumentRepository;
+        this.userRepository = userRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public List<IndicatorConfigResponse> getActiveIndicators(String keycloakId, String instrumentCode) {
+        User user = resolveUser(keycloakId);
+        MarketInstrument instrument = resolveInstrument(instrumentCode);
+
+        return indicatorConfigRepository
+                .findByUserIdAndInstrumentIdAndIsActiveTrue(user.getId(), instrument.getId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional
+    public IndicatorConfigResponse saveIndicatorConfig(String keycloakId, String instrumentCode, IndicatorConfigRequest request) {
+        User user = resolveUser(keycloakId);
+        MarketInstrument instrument = resolveInstrument(instrumentCode);
+
+        IndicatorConfig config = IndicatorConfig.builder()
+                .user(user)
+                .instrument(instrument)
+                .indicatorType(request.getIndicatorType().toUpperCase())
+                .parameters(request.getParameters() != null ? request.getParameters() : new HashMap<>())
+                .isActive(request.isActive())
+                .build();
+
+        return toResponse(indicatorConfigRepository.save(config));
+    }
+
+    @Transactional
+    public void deleteIndicatorConfig(String keycloakId, Long id) {
+        User user = resolveUser(keycloakId);
+        indicatorConfigRepository.deleteByIdAndUserId(id, user.getId());
+    }
+
+    private User resolveUser(String keycloakId) {
+        return userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new ResourceNotFoundException("Kullanici bulunamadi: keycloakId=" + keycloakId));
+    }
+
+    private MarketInstrument resolveInstrument(String instrumentCode) {
+        return marketInstrumentRepository.findByInstrumentCodeIgnoreCase(instrumentCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Enstruman bulunamadi: " + instrumentCode));
+    }
+
+    private IndicatorConfigResponse toResponse(IndicatorConfig config) {
+        return IndicatorConfigResponse.builder()
+                .id(config.getId())
+                .indicatorType(config.getIndicatorType())
+                .parameters(config.getParameters())
+                .isActive(config.isActive())
+                .createdAt(config.getCreatedAt())
+                .build();
+    }
+}

@@ -11,14 +11,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowRight, Gauge, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, Gauge, Minus, TrendingUp } from "lucide-react";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatNumber } from "../../utils/formatters";
 import { useCurrency } from "../../currency/CurrencyContext";
-import { formatAxisNumber, formatSignalLabel, formatTrendLabel, resolveTrendDirection } from "./analysisUtils";
+import { formatAxisNumber, formatTrendLabel, resolveTrendDirection } from "./analysisUtils";
 
 export default function SimpleAnalysisChart({
   activeRange,
@@ -58,8 +58,13 @@ export default function SimpleAnalysisChart({
     [analysis, chartData, quote, trendDirection, latestRsi],
   );
   const sparklineData = useMemo(() => buildSparklineData(chartData), [chartData]);
+  const latestMa20 = useMemo(() => resolveLatestIndicator(analysis, chartData, "sma20", "SMA20"), [analysis, chartData]);
   const latestMa50 = useMemo(() => resolveLatestIndicator(analysis, chartData, "sma50", "SMA50"), [analysis, chartData]);
-  const latestMa200 = useMemo(() => resolveLatestIndicator(analysis, chartData, "sma200", "SMA200"), [analysis, chartData]);
+  const checklist = useMemo(
+    () => buildTechChecklist({ lastPrice, ma20: latestMa20, ma50: latestMa50, latestRsi }),
+    [lastPrice, latestMa20, latestMa50, latestRsi],
+  );
+  const supportResistance = useMemo(() => buildSupportResistance(chartData), [chartData]);
   const axisLabel = currency === "USD" ? "$" : "\u20ba";
 
   const metrics = [
@@ -185,18 +190,45 @@ export default function SimpleAnalysisChart({
               </div>
             </div>
 
-            <div className="simple-tech-summary-list">
-              <SummaryRow label="RSI (14)" value={latestRsi != null ? Number(latestRsi).toFixed(1) : "-"} tone={toneFromRsi(latestRsi)} />
-              <SummaryRow label={t("analysis.chart.techPanel.trend")} value={trendDirection ? formatTrendLabel(trendDirection) : "-"} tone={summary.scoreTone} />
-              <SummaryRow
-                label={t("analysis.chart.techPanel.latestSignal")}
-                value={summary.latestSignal ? formatSignalLabel(summary.latestSignal) : "-"}
-                tone={summary.signalTone}
-              />
-              <SummaryRow label={t("analysis.chart.techPanel.momentum")} value={summary.momentumLabel} tone={summary.momentumTone} />
-              <SummaryRow label={t("analysis.chart.techPanel.volatility")} value={summary.volatilityLabel} tone={summary.volatilityTone} />
-              <SummaryRow label="50 MA / 200 MA" value={formatMovingAveragePair(latestMa50, latestMa200)} tone={summary.maTone} />
+            {checklist.length > 0 ? (
+              <div className="simple-tech-checklist">
+                {checklist.map((item) => (
+                  <div key={item.key} className={`simple-tech-check-item simple-tech-check-item--${item.tone}`}>
+                    <span className="simple-tech-check-icon">
+                      {item.tone === "warning" ? (
+                        <AlertTriangle size={12} strokeWidth={2.4} />
+                      ) : item.tone === "positive" ? (
+                        <Check size={13} strokeWidth={2.6} />
+                      ) : (
+                        <Minus size={13} strokeWidth={2.4} />
+                      )}
+                    </span>
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="simple-tech-metrics-grid">
+              <TechMetricCell label="RSI (14)" value={latestRsi != null ? Number(latestRsi).toFixed(1) : "-"} tone={toneFromRsi(latestRsi)} />
+              <TechMetricCell label={t("analysis.chart.techPanel.trend")} value={trendDirection ? formatTrendLabel(trendDirection) : "-"} tone={summary.scoreTone} />
+              <TechMetricCell label={t("analysis.chart.techPanel.momentum")} value={summary.momentumLabel} tone={summary.momentumTone} />
+              <TechMetricCell label={t("analysis.chart.techPanel.volatility")} value={summary.volatilityLabel} tone={summary.volatilityTone} />
+              <TechMetricCell label={t("analysis.chart.techPanel.maLayout", "MA Dizilimi")} value={summary.maPairLabel} tone={summary.maTone} />
             </div>
+
+            {supportResistance ? (
+              <div className="simple-sr-card">
+                <div className="simple-sr-row simple-sr-row--resistance">
+                  <span>{t("analysis.chart.techPanel.resistance", "Direnç")}</span>
+                  <strong>{axisLabel}{formatNumber(supportResistance.resistance, 2)}</strong>
+                </div>
+                <div className="simple-sr-row simple-sr-row--support">
+                  <span>{t("analysis.chart.techPanel.support", "Destek")}</span>
+                  <strong>{axisLabel}{formatNumber(supportResistance.support, 2)}</strong>
+                </div>
+              </div>
+            ) : null}
 
             <button type="button" className="simple-tech-summary-cta" onClick={onOpenAdvanced}>
               <Gauge size={16} strokeWidth={2.2} />
@@ -231,11 +263,11 @@ function SummaryMetric({ metric, sparklineData }) {
   );
 }
 
-function SummaryRow({ label, value, tone = "neutral" }) {
+function TechMetricCell({ label, value, tone = "neutral" }) {
   return (
-    <div className="simple-tech-summary-row">
-      <span>{label}</span>
-      <span className={`simple-summary-chip simple-tech-summary-value--${tone}`}>{value}</span>
+    <div className="simple-tech-metric-cell">
+      <span className="simple-tech-metric-cell-label">{label}</span>
+      <span className={`simple-tech-metric-cell-value simple-tech-summary-value--${tone}`}>{value}</span>
     </div>
   );
 }
@@ -266,67 +298,52 @@ function buildSparklineData(chartData) {
   }));
 }
 
-function buildSimpleSummary({ analysis, chartData, quote, trendDirection, latestRsi }) {
-  const closes = chartData.map((point) => Number(point?.close)).filter(Number.isFinite);
-  const ma50 = resolveLatestIndicator(analysis, chartData, "sma50", "SMA50");
-  const ma200 = resolveLatestIndicator(analysis, chartData, "sma200", "SMA200");
-  const momentumPct = closes.length >= 6 ? derivePercentChange(closes.at(-6), closes.at(-1)) : null;
-  const volatilityPct = closes.length >= 2 ? Math.abs(derivePercentChange(closes.at(-2), closes.at(-1)) ?? 0) : null;
-  const latestSignal = resolveLatestSignal(analysis?.signals?.[0]);
+function buildTechChecklist({ lastPrice, ma20, ma50, latestRsi }) {
+  const items = [];
 
-  let score = 50;
-  if (trendDirection === "UPTREND") score += 18;
-  if (trendDirection === "DOWNTREND") score -= 18;
-  if (momentumPct != null) score += Math.max(-14, Math.min(14, momentumPct * 2.4));
-  if (latestRsi != null) score += latestRsi >= 60 ? 10 : latestRsi <= 40 ? -10 : 0;
-  if (ma50 != null && ma200 != null) score += ma50 > ma200 ? 12 : -12;
+  if (lastPrice != null && ma20 != null) {
+    const above = lastPrice >= ma20;
+    items.push({
+      key: "price-ma20",
+      tone: above ? "positive" : "negative",
+      label: above ? "Fiyat MA20 üzerinde" : "Fiyat MA20 altında",
+    });
+  }
 
-  const scorePercent = Math.max(0, Math.min(100, score));
-  const scoreTone = scorePercent >= 72 ? "positive" : scorePercent >= 55 ? "info" : scorePercent <= 35 ? "negative" : "neutral";
-  const scoreLabel = scorePercent >= 78
-    ? "Güçlü yükseliş"
-    : scorePercent >= 58
-      ? "Zayıf yükseliş"
-      : scorePercent <= 28
-        ? "Zayıf düşüş"
-        : "Nötr";
+  if (ma20 != null && ma50 != null) {
+    const bullish = ma20 >= ma50;
+    items.push({
+      key: "ma20-ma50",
+      tone: bullish ? "positive" : "negative",
+      label: bullish ? "MA20, MA50 üzerinde" : "MA20, MA50 altında",
+    });
+  }
 
-  return {
-    scorePercent,
-    scoreTone,
-    scoreLabel,
-    latestSignal,
-    signalTone: inferSignalTone(latestSignal),
-    momentumLabel: momentumPct == null ? "-" : momentumPct >= 1.4 ? "Pozitif" : momentumPct <= -1.4 ? "Negatif" : "Nötr",
-    momentumTone: momentumPct == null ? "neutral" : momentumPct >= 1.4 ? "positive" : momentumPct <= -1.4 ? "negative" : "neutral",
-    volatilityLabel: volatilityPct == null ? "-" : volatilityPct >= 4 ? "Yüksek" : volatilityPct >= 2 ? "Orta" : "Düşük",
-    volatilityTone: volatilityPct == null ? "neutral" : volatilityPct >= 4 ? "warning" : volatilityPct >= 2 ? "neutral" : "positive",
-    maPairLabel: ma50 == null || ma200 == null
-      ? "Yetersiz veri"
-      : ma50 > ma200
-        ? "Yukarı kesişim"
-        : ma50 < ma200
-          ? "Aşağı kesişim"
-          : "Denge",
-    maTone: ma50 == null || ma200 == null
-      ? "neutral"
-      : ma50 > ma200
-        ? "positive"
-        : ma50 < ma200
-          ? "negative"
-          : "neutral",
-  };
+  if (latestRsi != null) {
+    const tone = latestRsi >= 70 ? "warning" : latestRsi <= 30 ? "positive" : "neutral";
+    const label = latestRsi >= 70
+      ? "RSI aşırı alım bölgesinde"
+      : latestRsi <= 30
+        ? "RSI aşırı satım bölgesinde"
+        : "RSI nötr bölgede";
+    items.push({ key: "rsi", tone, label });
+  }
+
+  return items;
 }
 
-function movingAverage(values, period) {
-  if (!Array.isArray(values) || values.length < period) {
+function buildSupportResistance(chartData) {
+  const closes = chartData.map((point) => Number(point?.close)).filter(Number.isFinite);
+  if (closes.length < 2) {
     return null;
   }
-  const window = values.slice(-period);
-  if (window.some((value) => !Number.isFinite(value))) {
+  const window = closes.slice(-60);
+  const support = Math.min(...window);
+  const resistance = Math.max(...window);
+  if (!Number.isFinite(support) || !Number.isFinite(resistance) || support === resistance) {
     return null;
   }
-  return window.reduce((sum, value) => sum + value, 0) / period;
+  return { support, resistance };
 }
 
 function derivePercentChange(from, to) {
@@ -375,13 +392,6 @@ function resolveLatestIndicator(analysis, chartData, pointKey, indicatorKey) {
   return firstFinite(lastPointValue, analysisValue);
 }
 
-function formatMovingAveragePair(ma50Value, ma200Value) {
-  if (ma50Value == null && ma200Value == null) {
-    return "-";
-  }
-  return `${ma50Value != null ? formatNumber(ma50Value, 2) : "-"} / ${ma200Value != null ? formatNumber(ma200Value, 2) : "-"}`;
-}
-
 function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRsi }) {
   const closes = chartData.map((point) => Number(point?.close)).filter(Number.isFinite);
   const ma50 = resolveLatestIndicator(analysis, chartData, "sma50", "SMA50");
@@ -403,18 +413,25 @@ function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRs
     scorePercent,
     scoreTone: scorePercent >= 72 ? "positive" : scorePercent >= 55 ? "info" : scorePercent <= 35 ? "negative" : "neutral",
     scoreLabel: scorePercent >= 78
-      ? "Guclu yukselis"
+      ? "Güçlü Yükseliş"
       : scorePercent >= 58
-        ? "Zayif yukselis"
+        ? "Zayıf Yükseliş"
         : scorePercent <= 28
-          ? "Zayif dusus"
-          : "Notr",
+          ? "Zayıf Düşüş"
+          : "Nötr",
     latestSignal,
     signalTone: inferSignalTone(latestSignal),
-    momentumLabel: momentumPct == null ? "-" : momentumPct >= 1.4 ? "Pozitif" : momentumPct <= -1.4 ? "Negatif" : "Notr",
+    momentumLabel: momentumPct == null ? "-" : momentumPct >= 1.4 ? "Pozitif" : momentumPct <= -1.4 ? "Negatif" : "Nötr",
     momentumTone: momentumPct == null ? "neutral" : momentumPct >= 1.4 ? "positive" : momentumPct <= -1.4 ? "negative" : "neutral",
-    volatilityLabel: volatilityPct == null ? "-" : volatilityPct >= 4 ? "Yuksek" : volatilityPct >= 2 ? "Orta" : "Dusuk",
+    volatilityLabel: volatilityPct == null ? "-" : volatilityPct >= 4 ? "Yüksek" : volatilityPct >= 2 ? "Orta" : "Düşük",
     volatilityTone: volatilityPct == null ? "neutral" : volatilityPct >= 4 ? "warning" : volatilityPct >= 2 ? "neutral" : "positive",
+    maPairLabel: ma50 == null || ma200 == null
+      ? "Yetersiz veri"
+      : ma50 > ma200
+        ? "Yukarı dizilim"
+        : ma50 < ma200
+          ? "Aşağı dizilim"
+          : "Yatay",
     maTone: ma50 == null || ma200 == null
       ? "neutral"
       : ma50 > ma200

@@ -10,7 +10,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class LinkAlertRequest {
 
-    @NotNull(message = "Alert ID boÅŸ olamaz")
+    @NotNull(message = "Alert ID boş olamaz")
     private Long alertId;
 }
 
