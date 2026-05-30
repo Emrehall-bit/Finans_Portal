@@ -19,6 +19,8 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { formatInstrumentCode, getFxCodeLabel } from "../utils/instrumentUtils";
 
+const DEFAULT_ANALYSIS_INDICATORS_PARAM = DEFAULT_INDICATORS.join(",");
+
 export default function AnalysisPage() {
   const { t, i18n } = useTranslation();
   const { convertAmount, currency } = useCurrency();
@@ -33,7 +35,6 @@ export default function AnalysisPage() {
   });
   const [activeRange, setActiveRange] = useState("3M");
   const [dateRange, setDateRange] = useState(() => buildPresetRange(90));
-  const [selectedIndicators, setSelectedIndicators] = useState(() => new Set(DEFAULT_INDICATORS));
   const [comparisonMode, setComparisonMode] = useState("normalized");
   const [chartMode, setChartMode] = useState(() => (searchParams.get("tool") ? "advanced" : "simple"));
   const [fundamentalsOpen, setFundamentalsOpen] = useState(false);
@@ -93,9 +94,9 @@ export default function AnalysisPage() {
     () => ({
       from: dateRange.from,
       to: dateRange.to,
-      indicators: Array.from(selectedIndicators).join(","),
+      indicators: DEFAULT_ANALYSIS_INDICATORS_PARAM,
     }),
-    [dateRange, selectedIndicators],
+    [dateRange],
   );
 
   const { data: analysis = null, isLoading: analysisLoading, error: analysisQueryError } = useTechnicalAnalysis(
@@ -364,49 +365,6 @@ function resolveContextTitle(primaryQuote, displayCode, normalizedType, locale) 
   }
 
   return displayCode;
-}
-
-function SimpleComparisonStrip({ quotes, primarySymbol, selectedSymbols, onToggleComparisonSymbol }) {
-  const { t } = useTranslation();
-  const comparisonSymbols = selectedSymbols.filter((symbol) => symbol !== primarySymbol);
-  const suggestions = useMemo(
-    () => deriveComparisonSuggestions(quotes, primarySymbol),
-    [quotes, primarySymbol],
-  );
-
-  if (suggestions.length === 0) return null;
-
-  return (
-    <section className="simple-compare-strip">
-      <div className="simple-compare-strip-head">
-        <strong>{t("analysis.comparison.eyebrow")}</strong>
-        {comparisonSymbols.length > 0 ? (
-          <span className="simple-summary-chip">
-            {t("analysis.comparison.activeCount", { count: comparisonSymbols.length })}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="simple-compare-chip-row">
-        {suggestions.map((symbol) => {
-          const active = selectedSymbols.includes(symbol);
-          return (
-            <button
-              key={symbol}
-              type="button"
-              className={`simple-compare-chip${active ? " active" : ""}`}
-              onClick={() => onToggleComparisonSymbol(symbol)}
-            >
-              <span className={`simple-compare-chip-icon simple-compare-chip-icon--${symbol.toLowerCase()}`}>
-                {symbol.slice(0, 2)}
-              </span>
-              <span>{resolveChipLabel(symbol, quotes)}</span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
 }
 
 function deriveComparisonSuggestions(quotes, primarySymbol, limit = 4) {
