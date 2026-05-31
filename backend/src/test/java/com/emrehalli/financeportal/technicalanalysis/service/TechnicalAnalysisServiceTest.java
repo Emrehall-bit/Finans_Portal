@@ -2,6 +2,8 @@ package com.emrehalli.financeportal.technicalanalysis.service;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
+import com.emrehalli.financeportal.technicalanalysis.enums.TechnicalSignal;
+import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
 import org.junit.jupiter.api.Test;
@@ -130,12 +132,121 @@ class TechnicalAnalysisServiceTest {
         assertThat(last.rsi14()).isNotNull();
     }
 
+    @Test
+    void analyze_should_compute_available_indicators_without_global_sixty_point_threshold() {
+        HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
+        LocalDate start = LocalDate.of(2026, 1, 1);
+        when(historicalPriceReader.read("BTCUSDT", start, start.plusDays(14)))
+                .thenReturn(increasingHistory(start, 15));
+
+        TechnicalAnalysisService service = buildService(historicalPriceReader);
+
+        TechnicalAnalysisResult result = service.analyze("BTCUSDT", start, start.plusDays(14), "SMA7,SMA20,SMA50,RSI14");
+        TechnicalAnalysisResult.Point last = result.points().getLast();
+
+        assertThat(result.analysisStatus()).isEqualTo("AVAILABLE");
+        assertThat(last.sma7()).isNotNull();
+        assertThat(last.rsi14()).isNotNull();
+        assertThat(last.sma20()).isNull();
+        assertThat(last.sma50()).isNull();
+        assertThat(result.indicatorValues()).containsKey(IndicatorType.SMA7);
+        assertThat(result.indicatorValues()).containsKey(IndicatorType.RSI14);
+        assertThat(result.indicatorValues()).doesNotContainKey(IndicatorType.SMA20);
+        assertThat(result.indicatorValues()).doesNotContainKey(IndicatorType.SMA50);
+    }
+
+    @Test
+    void analyze_should_compute_sma50_when_fifty_or_more_points_are_available() {
+        HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
+        LocalDate start = LocalDate.of(2026, 3, 3);
+        when(historicalPriceReader.read("TCMB:AUD:SELL", start, start.plusDays(90)))
+                .thenReturn(increasingHistory("TCMB:AUD:SELL", start, 58));
+
+        TechnicalAnalysisService service = buildService(historicalPriceReader);
+
+        TechnicalAnalysisResult result = service.analyze("TCMB:AUD:SELL", start, start.plusDays(90), "SMA7,SMA20,SMA50,RSI14");
+        TechnicalAnalysisResult.Point last = result.points().getLast();
+
+        assertThat(result.analysisStatus()).isEqualTo("AVAILABLE");
+        assertThat(result.points()).hasSize(58);
+        assertThat(last.sma7()).isNotNull();
+        assertThat(last.sma20()).isNotNull();
+        assertThat(last.sma50()).isNotNull();
+        assertThat(last.rsi14()).isNotNull();
+    }
+
+    @Test
+    void analyze_should_handle_representative_indicator_scenarios() {
+        LocalDate start = LocalDate.of(2026, 1, 1);
+
+        TechnicalAnalysisResult rising = analyzeHistory("RISING", increasingHistory("RISING", start, 61));
+        TechnicalAnalysisResult.Point risingLast = rising.points().getLast();
+        assertThat(risingLast.sma7()).isNotNull();
+        assertThat(risingLast.rsi14()).isBetween(BigDecimal.valueOf(99), BigDecimal.valueOf(100));
+
+        TechnicalAnalysisResult falling = analyzeHistory("FALLING", decreasingHistory("FALLING", start, 61));
+        TechnicalAnalysisResult.Point fallingLast = falling.points().getLast();
+        assertThat(fallingLast.rsi14()).isBetween(BigDecimal.ZERO, BigDecimal.ONE);
+        assertThat(falling.trendDirection()).isEqualTo(TrendDirection.DOWNTREND);
+        assertThat(falling.signals()).contains(TechnicalSignal.PRICE_BELOW_SMA20, TechnicalSignal.SMA7_BELOW_SMA20);
+
+        TechnicalAnalysisResult flat = analyzeHistory("FLAT", flatHistory("FLAT", start, 61));
+        assertThat(flat.points().getLast().rsi14()).isBetween(BigDecimal.valueOf(45), BigDecimal.valueOf(55));
+
+        TechnicalAnalysisResult shortHistory = analyzeHistory("SHORT", increasingHistory("SHORT", start, 6));
+        TechnicalAnalysisResult.Point shortLast = shortHistory.points().getLast();
+        assertThat(shortLast.sma7()).isNull();
+        assertThat(shortLast.rsi14()).isNull();
+
+        TechnicalAnalysisResult medium = analyzeHistory("MEDIUM", increasingHistory("MEDIUM", start, 15));
+        TechnicalAnalysisResult.Point mediumLast = medium.points().getLast();
+        assertThat(mediumLast.sma7()).isNotNull();
+        assertThat(mediumLast.rsi14()).isNotNull();
+        assertThat(mediumLast.sma20()).isNull();
+        assertThat(mediumLast.sma50()).isNull();
+
+        TechnicalAnalysisResult enough = analyzeHistory("ENOUGH", increasingHistory("ENOUGH", start, 58));
+        TechnicalAnalysisResult.Point enoughLast = enough.points().getLast();
+        assertThat(enoughLast.sma7()).isNotNull();
+        assertThat(enoughLast.sma20()).isNotNull();
+        assertThat(enoughLast.sma50()).isNotNull();
+        assertThat(enoughLast.rsi14()).isNotNull();
+    }
+
     private static List<HistoricalPricePoint> increasingHistory(LocalDate start, int count) {
+        return increasingHistory("BTCUSDT", start, count);
+    }
+
+    private static List<HistoricalPricePoint> increasingHistory(String symbol, LocalDate start, int count) {
         List<HistoricalPricePoint> history = new ArrayList<>(count);
         for (int index = 0; index < count; index++) {
-            history.add(new HistoricalPricePoint("BTCUSDT", start.plusDays(index), BigDecimal.valueOf(100 + index)));
+            history.add(new HistoricalPricePoint(symbol, start.plusDays(index), BigDecimal.valueOf(100 + index)));
         }
         return history;
+    }
+
+    private static List<HistoricalPricePoint> decreasingHistory(String symbol, LocalDate start, int count) {
+        List<HistoricalPricePoint> history = new ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            history.add(new HistoricalPricePoint(symbol, start.plusDays(index), BigDecimal.valueOf(200 - index)));
+        }
+        return history;
+    }
+
+    private static List<HistoricalPricePoint> flatHistory(String symbol, LocalDate start, int count) {
+        List<HistoricalPricePoint> history = new ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            history.add(new HistoricalPricePoint(symbol, start.plusDays(index), BigDecimal.valueOf(100)));
+        }
+        return history;
+    }
+
+    private static TechnicalAnalysisResult analyzeHistory(String symbol, List<HistoricalPricePoint> history) {
+        HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
+        LocalDate from = history.getFirst().date();
+        LocalDate to = history.getLast().date();
+        when(historicalPriceReader.read(symbol, from, to)).thenReturn(history);
+        return buildService(historicalPriceReader).analyze(symbol, from, to, "SMA7,SMA20,SMA50,RSI14");
     }
 
     private static TechnicalAnalysisService buildService(HistoricalPriceReader historicalPriceReader) {
@@ -157,4 +268,3 @@ class TechnicalAnalysisServiceTest {
         ));
     }
 }
-

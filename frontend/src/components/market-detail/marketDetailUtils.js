@@ -102,6 +102,23 @@ export function formatChartDate(value) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+export function formatFullChartDate(value) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleDateString(i18n.resolvedLanguage || i18n.language || undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export function formatTrendLabel(value) {
   if (!value) {
     return "-";
@@ -165,6 +182,7 @@ export function buildChartData(points = [], history = []) {
         const historyPoint = historyByDate.get(date);
         return {
           date,
+          fullDate: formatFullChartDate(point?.date),
           open: toNumeric(historyPoint?.openPrice),
           high: toNumeric(historyPoint?.highPrice),
           low: toNumeric(historyPoint?.lowPrice),
@@ -184,6 +202,7 @@ export function buildChartData(points = [], history = []) {
         const rawDate = point?.priceTimestamp ? String(point.priceTimestamp) : null;
         return {
           date: formatChartDate(rawDate),
+          fullDate: formatFullChartDate(rawDate),
           open: toNumeric(point?.openPrice),
           high: toNumeric(point?.highPrice),
           low: toNumeric(point?.lowPrice),

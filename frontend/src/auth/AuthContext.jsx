@@ -88,14 +88,16 @@ export function AuthProvider({ children }) {
         const snapshot = getAuthSnapshot();
         setAuthSnapshot(snapshot);
         setIsAuthenticated(snapshot.authenticated);
+        // Auth durumu belli oldu — render engelini burada kaldır
+        setInitialized(true);
+        setAuthLoading(false);
 
         if (snapshot.authenticated) {
-          try {
-            await loadUserProfile();
-          } catch (error) {
+          // Profil arka planda yüklenir, sayfayı bloklamaz
+          loadUserProfile().catch((error) => {
             setUserProfile(null);
             setAuthError(error?.message || "Authenticated, but the user profile could not be loaded.");
-          }
+          });
         } else {
           setUserProfile(null);
         }
@@ -105,10 +107,10 @@ export function AuthProvider({ children }) {
         setIsAuthenticated(false);
         setUserProfile(null);
         setAuthError(error?.message || "Authentication could not be initialized.");
-        return false;
-      } finally {
         setInitialized(true);
         setAuthLoading(false);
+        return false;
+      } finally {
         bootstrapRef.current = null;
       }
     })();

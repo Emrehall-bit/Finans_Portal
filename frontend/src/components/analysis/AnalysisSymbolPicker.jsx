@@ -256,6 +256,7 @@ const INSTRUMENT_CATEGORIES = [
   { key: "COMMODITY", labelKey: "analysis.symbolPicker.categories.commodity" },
   { key: "FUTURES", labelKey: "analysis.symbolPicker.categories.futures" },
   { key: "BOND", labelKey: "analysis.symbolPicker.categories.bond" },
+  { key: "INDEX", labelKey: "markets.categories.INDEX" },
 ];
 
 const CATEGORY_LABEL_KEYS = {

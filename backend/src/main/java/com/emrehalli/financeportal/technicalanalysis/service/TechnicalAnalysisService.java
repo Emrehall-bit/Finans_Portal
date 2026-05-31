@@ -24,7 +24,6 @@ import java.util.Set;
 public class TechnicalAnalysisService {
 
     private static final Logger logger = LogManager.getLogger(TechnicalAnalysisService.class);
-    private static final int REQUIRED_HISTORY_POINT_COUNT = 60;
 
     private final HistoricalPriceReader historicalPriceReader;
     private final IndicatorSeriesCalculator indicatorSeriesCalculator;
@@ -44,7 +43,6 @@ public class TechnicalAnalysisService {
         this.appMessageSource = appMessageSource;
     }
 
-    @Cacheable(value = "technicalAnalysis", key = "T(com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisInputs).analysisCacheKey(#symbol, #from, #to, #indicators)")
     public TechnicalAnalysisResult analyze(String symbol, LocalDate from, LocalDate to, String indicators) {
         logger.info("Technical analysis started: symbol={}, from={}, to={}, indicators={}", symbol, from, to, indicators);
         TechnicalAnalysisInputs.validateSymbol(symbol);
@@ -54,24 +52,6 @@ public class TechnicalAnalysisService {
         List<HistoricalPricePoint> history = filterIncompleteCloses(historicalPriceReader.read(symbol, from, to));
         if (history.isEmpty()) {
             throw new TechnicalAnalysisException.NotFound("Historical price data not found for symbol: " + symbol);
-        }
-        int requiredPointCount = REQUIRED_HISTORY_POINT_COUNT;
-        if (history.size() < requiredPointCount) {
-            logger.warn("Technical analysis has insufficient history: symbol={}, from={}, to={}, pointCount={}, requiredPointCount={}",
-                    symbol, from, to, history.size(), requiredPointCount);
-            List<TechnicalAnalysisResult.Point> points = buildPoints(history, Map.of());
-            return new TechnicalAnalysisResult(
-                    symbol,
-                    from,
-                    to,
-                    history.isEmpty() ? null : history.getLast().close(),
-                    "INSUFFICIENT_HISTORY",
-                    appMessageSource.get("technical.analysis.insufficientHistory"),
-                    com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection.SIDEWAYS,
-                    List.of(),
-                    Map.of(),
-                    points
-            );
         }
 
         List<BigDecimal> closes = history.stream()
@@ -228,6 +208,4 @@ public class TechnicalAnalysisService {
                 .toList();
     }
 }
-
-
 

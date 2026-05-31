@@ -156,12 +156,17 @@ export default function AnalysisPage() {
   );
   const comparisonError = comparisonQueryError ? resolveComparisonErrorMessage(comparisonQueryError, t) : "";
 
+  const analysisPoints = useMemo(
+    () => (Array.isArray(analysis?.points) ? analysis.points : []),
+    [analysis],
+  );
   const chartData = useMemo(
-    () => buildChartData(Array.isArray(analysis?.points) ? analysis.points : [], history),
-    [analysis, history],
+    () => buildChartData(analysisPoints, history),
+    [analysisPoints, history],
   );
   const hasChartData = chartData.length > 0;
-  const simpleChartLoading = analysisLoading || historyLoading;
+  const hasAnalysisPoints = analysisPoints.length > 0;
+  const simpleChartLoading = analysisLoading || (!hasAnalysisPoints && historyLoading);
   const simpleChartError = !hasChartData ? analysisError : "";
   const displayChartData = useMemo(() => {
     if (currency === "TRY") return chartData;
@@ -199,6 +204,9 @@ export default function AnalysisPage() {
       }
       return next;
     });
+    if (!selectedSymbols.includes(symbol)) {
+      showToast("success", t("analysis.comparisonAdded", { defaultValue: "Enstrüman karşılaştırmaya eklendi" }));
+    }
   }
 
   async function handleFavoriteToggle() {

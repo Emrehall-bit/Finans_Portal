@@ -105,15 +105,15 @@ export default function SimpleAnalysisChart({
   return (
     <section className="simple-analysis-panel">
       <div className="simple-analysis-range-row">
-        <div className="simple-analysis-ranges">
+        <div className="chart-timeframes" role="group" aria-label="Range">
           {presets.map((preset) => (
             <button
               key={preset.key}
               type="button"
-              className={`simple-range-chip ${activeRange === preset.key ? "active" : ""}`}
+              className={`chart-tf-btn${activeRange === preset.key ? " active" : ""}`}
               onClick={() => onRangeChange(preset)}
             >
-              {preset.key}
+              {t(`analysis.chart.range.${String(preset.key).toLowerCase()}`, { defaultValue: preset.key })}
             </button>
           ))}
         </div>
@@ -281,6 +281,7 @@ function SimpleTooltip({ active, payload, label, chartTheme, axisLabel }) {
     return null;
   }
 
+  const tooltipDate = payload[0]?.payload?.fullDate || label;
   const rows = Object.values(payload.reduce((acc, item) => {
     const key = item.dataKey || item.name;
     const existing = acc[key];
@@ -292,7 +293,7 @@ function SimpleTooltip({ active, payload, label, chartTheme, axisLabel }) {
 
   return (
     <div className="chart-tooltip terminal-tooltip" style={{ backgroundColor: chartTheme.tooltipBg, borderColor: chartTheme.tooltipBorder, color: chartTheme.tooltipText }}>
-      <strong>{label}</strong>
+      <strong>{tooltipDate}</strong>
       {rows.map((item) => (
         <div key={item.dataKey} className="chart-tooltip-row">
           <span>{item.name}</span>
@@ -455,8 +456,12 @@ function resolveLatestIndicator(analysis, chartData, pointKey, indicatorKey) {
 
 function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRsi }) {
   const closes = chartData.map((point) => Number(point?.close)).filter(Number.isFinite);
+  const ma7 = resolveLatestIndicator(analysis, chartData, "sma7", "SMA7");
+  const ma20 = resolveLatestIndicator(analysis, chartData, "sma20", "SMA20");
   const ma50 = resolveLatestIndicator(analysis, chartData, "sma50", "SMA50");
-  const ma200 = resolveLatestIndicator(analysis, chartData, "sma200", "SMA200");
+  const hasMaLayout = ma7 != null && ma20 != null && ma50 != null;
+  const bullishMaLayout = hasMaLayout && ma7 > ma20 && ma20 > ma50;
+  const bearishMaLayout = hasMaLayout && ma7 < ma20 && ma20 < ma50;
   const momentumPct = closes.length >= 6 ? derivePercentChange(closes.at(-6), closes.at(-1)) : null;
   const volatilityPct = closes.length >= 2 ? Math.abs(derivePercentChange(closes.at(-2), closes.at(-1)) ?? 0) : null;
   const latestSignal = resolveLatestSignal(analysis?.signals?.[0]);
@@ -466,7 +471,6 @@ function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRs
   if (trendDirection === "DOWNTREND") score -= 18;
   if (momentumPct != null) score += Math.max(-14, Math.min(14, momentumPct * 2.4));
   if (latestRsi != null) score += latestRsi >= 60 ? 10 : latestRsi <= 40 ? -10 : 0;
-  if (ma50 != null && ma200 != null) score += ma50 > ma200 ? 12 : -12;
 
   const scorePercent = Math.max(0, Math.min(100, score));
 
@@ -486,18 +490,18 @@ function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRs
     momentumTone: momentumPct == null ? "neutral" : momentumPct >= 1.4 ? "positive" : momentumPct <= -1.4 ? "negative" : "neutral",
     volatilityLabel: volatilityPct == null ? "-" : volatilityPct >= 4 ? "Yüksek" : volatilityPct >= 2 ? "Orta" : "Düşük",
     volatilityTone: volatilityPct == null ? "neutral" : volatilityPct >= 4 ? "warning" : volatilityPct >= 2 ? "neutral" : "positive",
-    maPairLabel: ma50 == null || ma200 == null
+    maPairLabel: !hasMaLayout
       ? "Yetersiz veri"
-      : ma50 > ma200
+      : bullishMaLayout
         ? "Yukarı dizilim"
-        : ma50 < ma200
+        : bearishMaLayout
           ? "Aşağı dizilim"
           : "Yatay",
-    maTone: ma50 == null || ma200 == null
+    maTone: !hasMaLayout
       ? "neutral"
-      : ma50 > ma200
+      : bullishMaLayout
         ? "positive"
-        : ma50 < ma200
+        : bearishMaLayout
           ? "negative"
           : "neutral",
   };

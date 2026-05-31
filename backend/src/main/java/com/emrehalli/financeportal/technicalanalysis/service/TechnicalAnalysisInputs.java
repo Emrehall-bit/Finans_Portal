@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  * Daha önce {@code TechnicalAnalysisService} ve {@code TechnicalCandleService} içinde birebir
  * tekrarlanan normalize/validation mantığı burada tek noktada toplanmıştır.
  */
-final class TechnicalAnalysisInputs {
+public final class TechnicalAnalysisInputs {
 
     private static final int MAX_SYMBOL_LENGTH = 30;
     private static final Pattern SYMBOL_PATTERN = Pattern.compile("^[A-Za-z0-9._\\-:]+$");
@@ -57,15 +57,11 @@ final class TechnicalAnalysisInputs {
         return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
     }
 
-    static String analysisCacheKey(String symbol, LocalDate from, LocalDate to, String indicators) {
-        return normalizeToken(symbol) + ':' + from + ':' + to + ':' + canonicalCsv(indicators, "DEFAULT");
-    }
-
-    static String comparisonCacheKey(String symbols, LocalDate from, LocalDate to) {
+    public static String comparisonCacheKey(String symbols, LocalDate from, LocalDate to) {
         return canonicalCsv(symbols, "") + ':' + from + ':' + to;
     }
 
-    static String candleCacheKey(String symbol, String range, String interval) {
+    public static String candleCacheKey(String symbol, String range, String interval) {
         return normalizeToken(symbol) + ':'
                 + normalizeToken(isBlank(range) ? "6m" : range) + ':'
                 + normalizeToken(isBlank(interval) ? "1d" : interval);

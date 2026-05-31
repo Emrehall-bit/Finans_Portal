@@ -24,12 +24,8 @@ const queryClient = new QueryClient({
 
 const root = createRoot(document.getElementById("root"));
 
-async function bootstrapApplication() {
-  try {
-    await initKeycloak();
-  } catch (error) {
-    console.error("Keycloak bootstrap failed.", error);
-  }
+function bootstrapApplication() {
+  initKeycloak();
 
   root.render(
     <StrictMode>

@@ -145,7 +145,9 @@
       "Bash(rmdir __TRACKED_VAR__/service/model)",
       "Bash([ -d \"$B/service/model\" ])",
       "PowerShell(Set-Location *)",
-      "Bash(awk 'NR>=53 && NR<=170' src/main/resources/application.yml)"
+      "Bash(awk 'NR>=53 && NR<=170' src/main/resources/application.yml)",
+      "Bash(awk 'NR>=1841 && NR<=1960' components/analysis/AdvancedChart.jsx)",
+      "Bash(awk 'NR>=40 && NR<=120' market/persistence/JpaMarketQueryService.java)"
     ]
   }
 }

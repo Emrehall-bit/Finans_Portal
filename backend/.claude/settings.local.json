@@ -10,7 +10,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\" -Recurse -Directory)",
       "Bash(Select-Object FullName)",
       "Bash(xargs grep -l \"ticker\\\\|tape\\\\|marquee\\\\|band\")",
-      "Bash(xargs grep -l \"MarketTape\\\\|market.tape\\\\|markettape\")"
+      "Bash(xargs grep -l \"MarketTape\\\\|market.tape\\\\|markettape\")",
+      "Bash(dir ../frontend/src/styles/)",
+      "Bash(awk '{print $5, $9}')"
     ]
   }
 }
