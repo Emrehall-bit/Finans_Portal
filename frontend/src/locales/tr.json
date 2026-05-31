@@ -564,7 +564,10 @@
         "fx": "Döviz",
         "crypto": "Kripto",
         "stock": "Hisse",
-        "fund": "Fon"
+        "fund": "Fon",
+        "commodity": "Emtia",
+        "futures": "Vadeli",
+        "bond": "Tahvil/Bono"
       }
     },
     "simpleChart": "Basit Grafik",
@@ -818,9 +821,9 @@
       "totalAssets": "Toplam Varlıklar"
     },
     "signal": {
-      "BULLISH": "YÃœKSELÄ°ÅÃ‡Ä°",
+      "BULLISH": "YÜKSELİŞÇİ",
       "NEUTRAL": "NÖTR",
-      "BEARISH": "DÃœÅÃœÅÃ‡Ãœ"
+      "BEARISH": "DÜŞÜŞÇÜ"
     },
     "piotroski": {
       "strong": "Güçlü",
@@ -1636,7 +1639,7 @@
         "currentPortfolioValue": "Mevcut portföy değeri",
         "totalReturn": "Toplam getiri",
         "percentChange": "Yüzde değişim",
-        "profitLoss": "KÃ¢r / Zarar",
+        "profitLoss": "Kâr / Zarar",
         "selectedAsset": "Seçilen varlık"
       },
       "meta": {
@@ -1807,7 +1810,7 @@
     "chartEmptyTitle": "Bu sembol için tarihsel veri bulunamadı",
     "chartEmptyDescription": "Seçili aralıkta fiyat serisi dönmedi.",
     "price": "Fiyat",
-    "momentÃ¼m": "Momentüm",
+    "momentum": "Momentüm",
     "ranges": {
       "1D": "1G",
       "1W": "1H",

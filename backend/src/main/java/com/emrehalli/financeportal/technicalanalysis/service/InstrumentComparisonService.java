@@ -1,7 +1,6 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
-import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisNotFoundException;
-import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisValidationException;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
 import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonPoint;
 import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonSeries;
 import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonResult;
@@ -31,7 +30,7 @@ public class InstrumentComparisonService {
         logger.info("Technical comparison started: symbolCount={}, from={}, to={}", symbols == null ? 0 : symbols.size(), from, to);
 
         if (symbols == null || symbols.isEmpty()) {
-            throw new TechnicalAnalysisValidationException("At least 2 symbols are required for comparison");
+            throw new TechnicalAnalysisException.Validation("At least 2 symbols are required for comparison");
         }
 
         List<ComparisonSeries> series = symbols.stream()
@@ -46,12 +45,12 @@ public class InstrumentComparisonService {
         List<HistoricalPricePoint> history = historicalPriceReader.read(symbol, from, to);
         if (history.isEmpty()) {
             logger.warn("Technical comparison has no history: symbol={}, from={}, to={}", symbol, from, to);
-            throw new TechnicalAnalysisNotFoundException("Historical price data not found for symbol: " + symbol);
+            throw new TechnicalAnalysisException.NotFound("Historical price data not found for symbol: " + symbol);
         }
 
         BigDecimal basePrice = history.getFirst().close();
         if (basePrice == null || BigDecimal.ZERO.compareTo(basePrice) == 0) {
-            throw new TechnicalAnalysisValidationException("Cannot normalize comparison series for symbol: " + symbol);
+            throw new TechnicalAnalysisException.Validation("Cannot normalize comparison series for symbol: " + symbol);
         }
 
         List<ComparisonPoint> points = history.stream()

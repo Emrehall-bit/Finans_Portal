@@ -71,7 +71,7 @@ export const CrosshairTooltip = memo(function CrosshairTooltip({ model }) {
         <strong>{model.dateLabel}</strong>
         <div className="advanced-crosshair-grid advanced-crosshair-grid--compact">
           <div className="advanced-crosshair-row advanced-crosshair-row--single">
-            <strong>{`RSI: ${formatNumber(model.rsiValue, 2)} â€” ${model.zoneLabel}`}</strong>
+            <strong>{`RSI: ${formatNumber(model.rsiValue, 2)} - ${model.zoneLabel}`}</strong>
           </div>
         </div>
       </>
@@ -246,7 +246,7 @@ export function AiTechPanel({ isAuthenticated, isPremium, aiData, aiLoading, aiE
 
       {aiData.metadata?.provider ? (
         <div className="tech-ai-meta">
-          {aiData.metadata.cacheHit ? "âš¡ " : "ğŸ¤– "}{aiData.metadata.provider}
+          {aiData.metadata.cacheHit ? "⚡ " : "🤖 "}{aiData.metadata.provider}
         </div>
       ) : null}
     </div>

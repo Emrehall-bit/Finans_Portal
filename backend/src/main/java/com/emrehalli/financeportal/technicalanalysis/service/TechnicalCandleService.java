@@ -9,17 +9,19 @@ import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository
 import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
 import com.emrehalli.financeportal.market.support.BinancePairMapper;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalCandleDto;
-import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisNotFoundException;
-import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisValidationException;
+import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -32,68 +34,85 @@ import java.util.stream.IntStream;
 public class TechnicalCandleService {
 
     private static final String SUPPORTED_INTERVAL = "1d";
+    /** En uzun gösterge periyodu (SMA50). Warm-up miktarını bu belirler. */
+    private static final int MAX_INDICATOR_PERIOD = 50;
+    /**
+     * Gösterge warm-up penceresi (gün). Günlük (1d) kripto serisi kesintisiz olduğundan
+     * bar sayısı ~ gün sayısıdır; olası boşluklara karşı pay bırakılır.
+     */
+    private static final long WARMUP_DAYS = MAX_INDICATOR_PERIOD + 15L;
     private static final Logger logger = LogManager.getLogger(TechnicalCandleService.class);
 
     private final MarketInstrumentRepository marketInstrumentRepository;
     private final MarketPriceHistoryRepository marketPriceHistoryRepository;
-    private final MovingAverageService movingAverageService;
-    private final RsiService rsiService;
+    private final IndicatorSeriesCalculator indicatorSeriesCalculator;
     private final BinancePairMapper binancePairMapper;
+    private final Clock clock;
 
     public TechnicalCandleService(MarketInstrumentRepository marketInstrumentRepository,
                                   MarketPriceHistoryRepository marketPriceHistoryRepository,
-                                  MovingAverageService movingAverageService,
-                                  RsiService rsiService,
-                                  BinancePairMapper binancePairMapper) {
+                                  IndicatorSeriesCalculator indicatorSeriesCalculator,
+                                  BinancePairMapper binancePairMapper,
+                                  Clock clock) {
         this.marketInstrumentRepository = marketInstrumentRepository;
         this.marketPriceHistoryRepository = marketPriceHistoryRepository;
-        this.movingAverageService = movingAverageService;
-        this.rsiService = rsiService;
+        this.indicatorSeriesCalculator = indicatorSeriesCalculator;
         this.binancePairMapper = binancePairMapper;
+        this.clock = clock;
     }
 
+    @Cacheable(value = "technicalAnalysis", key = "T(com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisInputs).candleCacheKey(#symbol, #range, #interval)")
     public List<TechnicalCandleDto> getCandles(String symbol, String range, String interval) {
-        validateSymbol(symbol);
+        // Candle servisi geçmiş davranışını korur: uzunluk/karakter kontrolü trim edilmiş sembol
+        // üzerinde yapılır (blank/null kontrolü için trim önemsizdir, ortak metot zaten ele alır).
+        TechnicalAnalysisInputs.validateSymbol(symbol == null ? null : symbol.trim());
         validateInterval(interval);
 
         String normalizedSymbol = normalizeSymbol(symbol);
         MarketInstrument instrument = resolveInstrument(normalizedSymbol);
 
         if (instrument.getInstrumentType() != InstrumentType.CRYPTO || instrument.getSourceName() != SourceName.BINANCE) {
-            throw new TechnicalAnalysisValidationException("Candlestick data not available for symbol " + normalizedSymbol);
+            throw new TechnicalAnalysisException.Validation("Candlestick data not available for symbol " + normalizedSymbol);
         }
 
         String normalizedRange = normalizeRange(range);
-        Instant from = resolveStartTimestamp(instrument, normalizedRange);
-        Instant to = Instant.now();
+        Instant displayStart = resolveStartTimestamp(instrument, normalizedRange);
+        Instant fetchStart = resolveWarmupStart(normalizedRange, displayStart);
+        Instant to = Instant.now(clock);
 
         List<MarketPriceHistory> rawHistory = marketPriceHistoryRepository
                 .findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
                         instrument,
                         IntervalType.ONE_DAY,
                         SourceName.BINANCE,
-                        from,
+                        fetchStart,
                         to
                 );
 
         List<MarketPriceHistory> history = sanitizeHistory(rawHistory);
 
-        logResolvedHistory(normalizedSymbol, normalizedRange, instrument, from, to, rawHistory, history);
+        logResolvedHistory(normalizedSymbol, normalizedRange, instrument, fetchStart, to, rawHistory, history);
 
         if (history.isEmpty()) {
-            throw new TechnicalAnalysisNotFoundException("Candlestick data not available for symbol " + normalizedSymbol);
+            throw new TechnicalAnalysisException.NotFound("Candlestick data not available for symbol " + normalizedSymbol);
         }
 
         List<BigDecimal> closes = history.stream()
                 .map(MarketPriceHistory::getClosePrice)
                 .toList();
 
-        List<BigDecimal> sma7 = movingAverageService.calculateSimpleMovingAverage(closes, 7);
-        List<BigDecimal> sma20 = movingAverageService.calculateSimpleMovingAverage(closes, 20);
-        List<BigDecimal> sma50 = movingAverageService.calculateSimpleMovingAverage(closes, 50);
-        List<BigDecimal> rsi14 = rsiService.calculateRsi(closes, 14);
+        // Göstergeler warm-up barları dahil tüm seri üzerinde hesaplanır; böylece seçilen aralığın
+        // ilk günlerinde de MA50/RSI gibi uzun periyotlu göstergeler dolu gelir. Candle endpoint'i
+        // seçim parametresi almadığından tüm göstergeler hesaplanır.
+        Map<IndicatorType, List<BigDecimal>> series = indicatorSeriesCalculator.calculate(closes, IndicatorType.defaultIndicators());
+        List<BigDecimal> sma7 = series.get(IndicatorType.SMA7);
+        List<BigDecimal> sma20 = series.get(IndicatorType.SMA20);
+        List<BigDecimal> sma50 = series.get(IndicatorType.SMA50);
+        List<BigDecimal> rsi14 = series.get(IndicatorType.RSI14);
 
+        // Response yalnızca seçilen aralık içindeki noktaları döner; warm-up barları gizli kalır.
         return IntStream.range(0, history.size())
+                .filter(index -> !history.get(index).getPriceTimestamp().isBefore(displayStart))
                 .mapToObj(index -> {
                     MarketPriceHistory point = history.get(index);
                     return new TechnicalCandleDto(
@@ -112,12 +131,6 @@ public class TechnicalCandleService {
                 .toList();
     }
 
-    private void validateSymbol(String symbol) {
-        if (symbol == null || symbol.isBlank()) {
-            throw new TechnicalAnalysisValidationException("symbol cannot be blank");
-        }
-    }
-
     private MarketInstrument resolveInstrument(String symbol) {
         List<String> candidates = buildInstrumentCandidates(symbol);
         logger.info("Candles symbol resolve requested: input={}, candidates={}", symbol, candidates);
@@ -130,7 +143,7 @@ public class TechnicalCandleService {
                         .flatMap(java.util.Optional::stream)
                         .findFirst()
                 )
-                .orElseThrow(() -> new TechnicalAnalysisNotFoundException(
+                .orElseThrow(() -> new TechnicalAnalysisException.NotFound(
                         "Candlestick data not available for symbol " + symbol
                 ));
     }
@@ -158,11 +171,11 @@ public class TechnicalCandleService {
 
     private void validateInterval(String interval) {
         if (interval == null || interval.isBlank()) {
-            throw new TechnicalAnalysisValidationException("interval parameter is required");
+            throw new TechnicalAnalysisException.Validation("interval parameter is required");
         }
 
         if (!SUPPORTED_INTERVAL.equalsIgnoreCase(interval.trim())) {
-            throw new TechnicalAnalysisValidationException("Only interval=1d is supported");
+            throw new TechnicalAnalysisException.Validation("Only interval=1d is supported");
         }
     }
 
@@ -174,13 +187,25 @@ public class TechnicalCandleService {
         String normalized = range.trim().toLowerCase(Locale.ROOT);
         return switch (normalized) {
             case "1m", "3m", "6m", "1y", "max" -> normalized;
-            default -> throw new TechnicalAnalysisValidationException("Unsupported range: " + range);
+            default -> throw new TechnicalAnalysisException.Validation("Unsupported range: " + range);
         };
     }
 
+    /**
+     * Gösterge warm-up'ı için veri çekme başlangıcını, görüntülenecek aralığın başından
+     * {@link #WARMUP_DAYS} gün öncesine çeker. "max" aralığında zaten en eski kayıttan
+     * başlanır; daha geriye gidilecek veri olmadığından warm-up uygulanmaz.
+     */
+    private Instant resolveWarmupStart(String range, Instant displayStart) {
+        if ("max".equals(range)) {
+            return displayStart;
+        }
+        return displayStart.minus(Duration.ofDays(WARMUP_DAYS));
+    }
+
     private Instant resolveStartTimestamp(MarketInstrument instrument, String range) {
-        Instant now = Instant.now();
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        Instant now = Instant.now(clock);
+        LocalDate today = LocalDate.now(clock);
 
         return switch (range) {
             case "1m" -> today.minusMonths(1).atStartOfDay().toInstant(ZoneOffset.UTC);
@@ -221,6 +246,8 @@ public class TechnicalCandleService {
             return List.of();
         }
 
+        // TreeMap, anahtar (priceTimestamp) üzerinden zaten artan sıralı tutar; ayrıca timestamp'e
+        // göre tekrar sıralamaya gerek yoktur. Aynı timestamp'te son kayıt önceki(ler)ini ezer.
         Map<Instant, MarketPriceHistory> dedupedByTimestamp = new TreeMap<>();
         for (MarketPriceHistory point : history) {
             if (!hasCompleteOhlc(point)) {
@@ -229,9 +256,7 @@ public class TechnicalCandleService {
             dedupedByTimestamp.put(point.getPriceTimestamp(), point);
         }
 
-        return dedupedByTimestamp.values().stream()
-                .sorted(Comparator.comparing(MarketPriceHistory::getPriceTimestamp))
-                .toList();
+        return List.copyOf(dedupedByTimestamp.values());
     }
 
     private void logResolvedHistory(String symbol,

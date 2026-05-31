@@ -7,6 +7,8 @@ import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigR
 import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigResponse;
 import com.emrehalli.financeportal.technicalanalysis.config.entity.IndicatorConfig;
 import com.emrehalli.financeportal.technicalanalysis.config.repository.IndicatorConfigRepository;
+import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -50,7 +52,7 @@ public class IndicatorConfigService {
         IndicatorConfig config = IndicatorConfig.builder()
                 .user(user)
                 .instrument(instrument)
-                .indicatorType(request.getIndicatorType().toUpperCase())
+                .indicatorType(resolveIndicatorType(request.getIndicatorType()).name())
                 .parameters(request.getParameters() != null ? request.getParameters() : new HashMap<>())
                 .isActive(request.isActive())
                 .build();
@@ -72,6 +74,11 @@ public class IndicatorConfigService {
     private MarketInstrument resolveInstrument(String instrumentCode) {
         return marketInstrumentRepository.findByInstrumentCodeIgnoreCase(instrumentCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Enstruman bulunamadi: " + instrumentCode));
+    }
+
+    private IndicatorType resolveIndicatorType(String value) {
+        return IndicatorType.fromValue(value)
+                .orElseThrow(() -> new TechnicalAnalysisException.Validation("Unsupported indicator: " + value));
     }
 
     private IndicatorConfigResponse toResponse(IndicatorConfig config) {

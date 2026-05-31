@@ -8,15 +8,15 @@ import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingRequest;
 import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingResponse;
 import com.emrehalli.financeportal.technicalanalysis.drawing.dto.LinkAlertRequest;
 import com.emrehalli.financeportal.technicalanalysis.drawing.service.ChartDrawingService;
-import com.emrehalli.financeportal.technicalanalysis.exception.PremiumRequiredException;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FinancialDataResponse;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FundamentalHistoryPoint;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FundamentalRatiosResponse;
+import com.emrehalli.financeportal.technicalanalysis.fundamental.service.FundamentalAccessPolicy;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.service.FundamentalAnalysisService;
-import com.emrehalli.financeportal.user.entity.UserRole;
 import jakarta.validation.Valid;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/analysis")
 public class AnalysisController {
@@ -37,13 +38,16 @@ public class AnalysisController {
 
     private final ChartDrawingService chartDrawingService;
     private final FundamentalAnalysisService fundamentalAnalysisService;
+    private final FundamentalAccessPolicy fundamentalAccessPolicy;
     private final CurrentUserResolver currentUserResolver;
 
     public AnalysisController(ChartDrawingService chartDrawingService,
                               FundamentalAnalysisService fundamentalAnalysisService,
+                              FundamentalAccessPolicy fundamentalAccessPolicy,
                               CurrentUserResolver currentUserResolver) {
         this.chartDrawingService = chartDrawingService;
         this.fundamentalAnalysisService = fundamentalAnalysisService;
+        this.fundamentalAccessPolicy = fundamentalAccessPolicy;
         this.currentUserResolver = currentUserResolver;
     }
 
@@ -52,13 +56,11 @@ public class AnalysisController {
             @PathVariable String instrumentCode,
             @RequestParam(defaultValue = "1d") String timeframe) {
         CurrentUser currentUser = currentUserResolver.resolve();
-        logger.info("Ã‡izimler getiriliyor: keycloakId={}, instrument={}", currentUser.keycloakId(), instrumentCode);
-
         List<DrawingResponse> drawings = chartDrawingService.getDrawings(currentUser.keycloakId(), instrumentCode, timeframe);
         return ApiResponse.<List<DrawingResponse>>builder()
                 .success(true)
                 .data(drawings)
-                .message("Ã‡izimler getirildi")
+                .message("Cizimler getirildi")
                 .build();
     }
 
@@ -73,7 +75,7 @@ public class AnalysisController {
         return ApiResponse.<DrawingResponse>builder()
                 .success(true)
                 .data(drawing)
-                .message("Ã‡izim kaydedildi")
+                .message("Cizim kaydedildi")
                 .build();
     }
 
@@ -87,7 +89,7 @@ public class AnalysisController {
         return ApiResponse.<DrawingResponse>builder()
                 .success(true)
                 .data(drawing)
-                .message("Ã‡izim gÃ¼ncellendi")
+                .message("Cizim guncellendi")
                 .build();
     }
 
@@ -98,7 +100,7 @@ public class AnalysisController {
 
         return ApiResponse.<Void>builder()
                 .success(true)
-                .message("Ã‡izim silindi")
+                .message("Cizim silindi")
                 .build();
     }
 
@@ -108,7 +110,7 @@ public class AnalysisController {
             @PathVariable Long id,
             @Valid @RequestBody LinkAlertRequest req) {
         CurrentUser currentUser = currentUserResolver.resolve();
-        logger.info("Ã‡izim alert'e baÄŸlanÄ±yor: keycloakId={}, drawingId={}, alertId={}",
+        logger.info("Cizim alert'e baglaniyor: keycloakId={}, drawingId={}, alertId={}",
                 currentUser.keycloakId(), id, req.getAlertId());
 
         DrawingResponse drawing = chartDrawingService.linkDrawingToAlert(
@@ -117,36 +119,36 @@ public class AnalysisController {
         return ApiResponse.<DrawingResponse>builder()
                 .success(true)
                 .data(drawing)
-                .message("Ã‡izim alert'e baÄŸlandÄ±")
+                .message("Cizim alert'e baglandi")
                 .build();
     }
 
     @GetMapping("/fundamental/{instrumentCode}")
     public ApiResponse<FundamentalRatiosResponse> getFundamentalRatios(@PathVariable String instrumentCode) {
         CurrentUser currentUser = currentUserResolver.resolve();
-        logger.info("Temel analiz oranlarÄ± getiriliyor: instrument={}, role={}", instrumentCode, currentUser.role());
+        logger.info("Temel analiz oranlari getiriliyor: instrument={}, role={}", instrumentCode, currentUser.role());
 
-        boolean isPremium = currentUser.role() == UserRole.USER_PREMIUM || currentUser.role() == UserRole.ADMIN;
+        boolean isPremium = fundamentalAccessPolicy.canAccessPremiumContent(currentUser.role());
         FundamentalRatiosResponse response = fundamentalAnalysisService.getLatestRatios(instrumentCode, isPremium);
 
         return ApiResponse.<FundamentalRatiosResponse>builder()
                 .success(true)
                 .data(response)
-                .message("Temel analiz oranlarÄ± getirildi")
+                .message("Temel analiz oranlari getirildi")
                 .build();
     }
 
     @GetMapping("/fundamental/{instrumentCode}/history")
     @RequiresPremium
     public ApiResponse<List<FundamentalHistoryPoint>> getFundamentalHistory(@PathVariable String instrumentCode) {
-        logger.info("Temel analiz geÃ§miÅŸi getiriliyor: instrument={}", instrumentCode);
+        logger.info("Temel analiz gecmisi getiriliyor: instrument={}", instrumentCode);
 
         List<FundamentalHistoryPoint> history = fundamentalAnalysisService.getHistory(instrumentCode);
 
         return ApiResponse.<List<FundamentalHistoryPoint>>builder()
                 .success(true)
                 .data(history)
-                .message("Temel analiz geÃ§miÅŸi getirildi")
+                .message("Temel analiz gecmisi getirildi")
                 .build();
     }
 
@@ -168,9 +170,7 @@ public class AnalysisController {
     @PostMapping("/fundamental/{instrumentCode}/calculate")
     public ApiResponse<FundamentalRatiosResponse> triggerCalculation(@PathVariable String instrumentCode) {
         CurrentUser currentUser = currentUserResolver.resolve();
-        if (currentUser.role() != UserRole.ADMIN) {
-            throw new PremiumRequiredException("Bu iÅŸlem sadece admin kullanÄ±cÄ±lara aÃ§Ä±ktÄ±r");
-        }
+        fundamentalAccessPolicy.requireAdmin(currentUser.role());
         logger.info("Temel analiz hesaplama tetikleniyor: instrument={}, by={}", instrumentCode, currentUser.keycloakId());
 
         FundamentalRatiosResponse response = fundamentalAnalysisService.calculateLatestAnnualRatios(instrumentCode);
@@ -178,7 +178,7 @@ public class AnalysisController {
         return ApiResponse.<FundamentalRatiosResponse>builder()
                 .success(true)
                 .data(response)
-                .message("Temel analiz hesaplamasÄ± tamamlandÄ±")
+                .message("Temel analiz hesaplamasi tamamlandi")
                 .build();
     }
 }

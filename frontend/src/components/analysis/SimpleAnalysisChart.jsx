@@ -222,12 +222,12 @@ export default function SimpleAnalysisChart({
 
             {supportResistance ? (
               <div className="simple-sr-card">
-                <div className="simple-sr-row simple-sr-row--resistance">
-                  <span>{t("analysis.chart.techPanel.resistance", "Direnç")}</span>
+                <div className={`simple-sr-row ${supportResistance.levelMode === "closeBand" ? "simple-sr-row--band" : "simple-sr-row--resistance"}`}>
+                  <span>{supportResistance.levelMode === "closeBand" ? "Seçili Aralık En Yüksek" : t("analysis.chart.techPanel.resistance", "Direnç")}</span>
                   <strong>{axisLabel}{formatNumber(supportResistance.resistance, 2)}</strong>
                 </div>
-                <div className="simple-sr-row simple-sr-row--support">
-                  <span>{t("analysis.chart.techPanel.support", "Destek")}</span>
+                <div className={`simple-sr-row ${supportResistance.levelMode === "closeBand" ? "simple-sr-row--band" : "simple-sr-row--support"}`}>
+                  <span>{supportResistance.levelMode === "closeBand" ? "Seçili Aralık En Düşük" : t("analysis.chart.techPanel.support", "Destek")}</span>
                   <strong>{axisLabel}{formatNumber(supportResistance.support, 2)}</strong>
                 </div>
               </div>
@@ -281,10 +281,19 @@ function SimpleTooltip({ active, payload, label, chartTheme, axisLabel }) {
     return null;
   }
 
+  const rows = Object.values(payload.reduce((acc, item) => {
+    const key = item.dataKey || item.name;
+    const existing = acc[key];
+    if (!existing || existing.name === existing.dataKey) {
+      acc[key] = item;
+    }
+    return acc;
+  }, {}));
+
   return (
     <div className="chart-tooltip terminal-tooltip" style={{ backgroundColor: chartTheme.tooltipBg, borderColor: chartTheme.tooltipBorder, color: chartTheme.tooltipText }}>
       <strong>{label}</strong>
-      {payload.map((item) => (
+      {rows.map((item) => (
         <div key={item.dataKey} className="chart-tooltip-row">
           <span>{item.name}</span>
           <strong>{axisLabel}{formatAxisNumber(item.value)}</strong>
@@ -357,17 +366,45 @@ function buildPriceDomain(chartData) {
 }
 
 function buildSupportResistance(chartData) {
-  const closes = chartData.map((point) => Number(point?.close)).filter(Number.isFinite);
-  if (closes.length < 2) {
+  const rows = (Array.isArray(chartData) ? chartData : []).filter((point) => positiveNumber(point?.close) != null);
+  if (rows.length < 2) {
     return null;
   }
-  const window = closes.slice(-60);
-  const support = Math.min(...window);
-  const resistance = Math.max(...window);
-  if (!Number.isFinite(support) || !Number.isFinite(resistance) || support === resistance) {
+  const latestClose = positiveNumber(rows.at(-1)?.close);
+  const hasOhlc = rows.some((point) => positiveNumber(point?.high) != null && positiveNumber(point?.low) != null);
+  const closes = rows.map((point) => positiveNumber(point.close)).filter((value) => value != null);
+  const support = hasOhlc ? nearestSwingLevel(rows, latestClose, "low") : Math.min(...closes);
+  const resistance = hasOhlc ? nearestSwingLevel(rows, latestClose, "high") : Math.max(...closes);
+  if (positiveNumber(support) == null || positiveNumber(resistance) == null) {
     return null;
   }
-  return { support, resistance };
+  return { support, resistance, levelMode: hasOhlc ? "swing" : "closeBand" };
+}
+
+function nearestSwingLevel(rows, latestClose, key) {
+  const values = rows.map((point) => positiveNumber(point?.[key])).filter((value) => value != null);
+  const swings = [];
+  for (let i = 2; i < rows.length - 2; i++) {
+    const value = positiveNumber(rows[i]?.[key]);
+    if (value == null) continue;
+    const neighbors = [rows[i - 2], rows[i - 1], rows[i + 1], rows[i + 2]].map((point) => positiveNumber(point?.[key]));
+    const isSwing = key === "low"
+      ? neighbors.every((neighbor) => neighbor != null && value <= neighbor)
+      : neighbors.every((neighbor) => neighbor != null && value >= neighbor);
+    if (isSwing) swings.push(value);
+  }
+  const candidates = key === "low"
+    ? swings.filter((value) => value <= latestClose)
+    : swings.filter((value) => value >= latestClose);
+  if (candidates.length) {
+    return candidates.reduce((best, value) => Math.abs(value - latestClose) < Math.abs(best - latestClose) ? value : best);
+  }
+  return key === "low" ? Math.min(...values) : Math.max(...values);
+}
+
+function positiveNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
 }
 
 function derivePercentChange(from, to) {

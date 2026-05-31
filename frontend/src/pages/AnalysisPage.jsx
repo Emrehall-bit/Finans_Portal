@@ -130,7 +130,7 @@ export default function AnalysisPage() {
 
   const comparisonParams = useMemo(
     () =>
-      chartMode === "advanced" && selectedSymbols.length >= 2 && dateRange.from && dateRange.to
+      selectedSymbols.length >= 2 && dateRange.from && dateRange.to
         ? {
             symbols: selectedSymbols
               .map((symbol) => resolveApiSymbol(
@@ -141,9 +141,9 @@ export default function AnalysisPage() {
               .join(","),
             from: dateRange.from,
             to: dateRange.to,
-          }
+        }
         : null,
-    [chartMode, selectedSymbols, dateRange, quotes, primarySymbol, routeInstrumentType],
+    [selectedSymbols, dateRange, quotes, primarySymbol, routeInstrumentType],
   );
 
   const { data: comparison = null, isLoading: comparisonLoading, error: comparisonQueryError } = useComparisonAnalysis(
@@ -163,6 +163,9 @@ export default function AnalysisPage() {
     if (currency === "TRY") return chartData;
     return chartData.map((point) => ({
       ...point,
+      open: point.open != null ? convertAmount(point.open) : null,
+      high: point.high != null ? convertAmount(point.high) : null,
+      low: point.low != null ? convertAmount(point.low) : null,
       close: convertAmount(point.close),
       sma7: point.sma7 != null ? convertAmount(point.sma7) : null,
       sma20: point.sma20 != null ? convertAmount(point.sma20) : null,
@@ -320,7 +323,7 @@ export default function AnalysisPage() {
               </section>
             ) : null}
 
-            {chartMode === "advanced" ? (
+            {primarySymbol ? (
               <AnalysisComparisonPanel
                 loading={comparisonLoading}
                 error={comparisonError}

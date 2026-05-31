@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.core.Ordered;
@@ -91,12 +92,28 @@ public class TechnicalAnalysisExceptionHandler {
         return problemDetail;
     }
 
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolationException(ConstraintViolationException ex) {
+        String message = ex.getConstraintViolations().stream()
+                .findFirst()
+                .map(violation -> violation.getMessage())
+                .orElse(appMessageSource.get("technical.analysis.validation.title"));
+        logger.warn("Technical analysis validation failed: message={}, requestId={}",
+                message, LoggingContext.get(LoggingConstants.REQUEST_ID_KEY));
+
+        ProblemDetail problemDetail = ProblemDetail.forStatus(400);
+        problemDetail.setTitle(appMessageSource.get("technical.analysis.validation.title"));
+        problemDetail.setDetail(message);
+        problemDetail.setProperty("requestId", LoggingContext.get(LoggingConstants.REQUEST_ID_KEY));
+        return problemDetail;
+    }
+
     private String resolveTitle(TechnicalAnalysisException ex) {
-        if (ex instanceof TechnicalAnalysisValidationException) {
+        if (ex instanceof TechnicalAnalysisException.Validation) {
             return appMessageSource.get("technical.analysis.validation.title");
         }
 
-        if (ex instanceof TechnicalAnalysisNotFoundException) {
+        if (ex instanceof TechnicalAnalysisException.NotFound) {
             return appMessageSource.get("technical.analysis.notFound.title");
         }
 

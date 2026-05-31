@@ -1,6 +1,5 @@
 package com.emrehalli.financeportal.technicalanalysis.fundamental.scheduler;
 
-import com.emrehalli.financeportal.technicalanalysis.fundamental.entity.CompanyFinancials;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.repository.CompanyFinancialsRepository;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.service.FundamentalAnalysisService;
 import com.emrehalli.financeportal.technicalanalysis.drawing.service.PortfolioAlertIntegrationService;
@@ -10,9 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Component
 public class FundamentalRatiosScheduler {
@@ -38,14 +35,8 @@ public class FundamentalRatiosScheduler {
     public void recalculateFundamentalRatios() {
         logger.info("Temel analiz oranları gece hesaplama başladı");
 
-        // Finansal verisi olan tüm enstrüman ID'lerini al
-        List<CompanyFinancials> allFinancials = companyFinancialsRepository.findAll();
-        Set<Long> instrumentIds = new HashSet<>();
-        for (CompanyFinancials f : allFinancials) {
-            if (f.getInstrument() != null) {
-                instrumentIds.add(f.getInstrument().getId());
-            }
-        }
+        // Finansal verisi olan benzersiz enstrüman ID'lerini doğrudan DB'den al (entity hydration yok).
+        List<Long> instrumentIds = companyFinancialsRepository.findDistinctInstrumentIds();
 
         int success = 0;
         int errors = 0;

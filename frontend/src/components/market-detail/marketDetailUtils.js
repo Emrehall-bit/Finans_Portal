@@ -153,17 +153,28 @@ export function formatSignalLabel(value) {
 export function buildChartData(points = [], history = []) {
   const analysisPoints = Array.isArray(points) ? points : [];
   const historyPoints = Array.isArray(history) ? history : [];
+  const historyByDate = new Map(historyPoints.map((point) => [
+    formatChartDate(point?.priceTimestamp ? String(point.priceTimestamp) : null),
+    point,
+  ]));
 
   if (analysisPoints.length > 0) {
     return analysisPoints
-      .map((point) => ({
-        date: formatChartDate(point?.date),
-        close: toNumeric(point?.close),
-        sma7: toNumeric(point?.sma7),
-        sma20: toNumeric(point?.sma20),
-        sma50: toNumeric(point?.sma50),
-        rsi14: toNumeric(point?.rsi14),
-      }))
+      .map((point) => {
+        const date = formatChartDate(point?.date);
+        const historyPoint = historyByDate.get(date);
+        return {
+          date,
+          open: toNumeric(historyPoint?.openPrice),
+          high: toNumeric(historyPoint?.highPrice),
+          low: toNumeric(historyPoint?.lowPrice),
+          close: toNumeric(point?.close),
+          sma7: toNumeric(point?.sma7),
+          sma20: toNumeric(point?.sma20),
+          sma50: toNumeric(point?.sma50),
+          rsi14: toNumeric(point?.rsi14),
+        };
+      })
       .filter((point) => point.close !== null);
   }
 
@@ -173,6 +184,9 @@ export function buildChartData(points = [], history = []) {
         const rawDate = point?.priceTimestamp ? String(point.priceTimestamp) : null;
         return {
           date: formatChartDate(rawDate),
+          open: toNumeric(point?.openPrice),
+          high: toNumeric(point?.highPrice),
+          low: toNumeric(point?.lowPrice),
           close: toNumeric(point?.closePrice),
           sma7: null,
           sma20: null,

@@ -1,7 +1,9 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
-import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisValidationException;
+import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
+import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisPoint;
 import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
 import org.junit.jupiter.api.Test;
 
@@ -37,8 +39,7 @@ class TechnicalAnalysisServiceTest {
 
         TechnicalAnalysisService service = new TechnicalAnalysisService(
                 historicalPriceReader,
-                new MovingAverageService(),
-                new RsiService(),
+                new IndicatorSeriesCalculator(new MovingAverageService(), new RsiService()),
                 new TrendAnalysisService(),
                 instrumentComparisonService,
                 appMessageSource
@@ -59,7 +60,7 @@ class TechnicalAnalysisServiceTest {
         LocalDate to = LocalDate.of(2026, 5, 1);
 
         assertThatThrownBy(() -> service.analyze("BTC<USDT>", from, to, null))
-                .isInstanceOf(TechnicalAnalysisValidationException.class)
+                .isInstanceOf(TechnicalAnalysisException.Validation.class)
                 .hasMessageContaining("invalid characters");
     }
 
@@ -71,7 +72,7 @@ class TechnicalAnalysisServiceTest {
         String tooLong = "A".repeat(31);
 
         assertThatThrownBy(() -> service.analyze(tooLong, from, to, null))
-                .isInstanceOf(TechnicalAnalysisValidationException.class)
+                .isInstanceOf(TechnicalAnalysisException.Validation.class)
                 .hasMessageContaining("too long");
     }
 
@@ -92,12 +93,57 @@ class TechnicalAnalysisServiceTest {
         assertThat(service.analyze("USDTRY", from, to, null).symbol()).isEqualTo("USDTRY");
     }
 
+    @Test
+    void analyze_should_not_compute_unselected_indicators() {
+        HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
+        LocalDate start = LocalDate.of(2026, 1, 1);
+        when(historicalPriceReader.read("BTCUSDT", start, start.plusDays(60)))
+                .thenReturn(increasingHistory(start, 61));
+
+        TechnicalAnalysisService service = buildService(historicalPriceReader);
+
+        TechnicalAnalysisResult result = service.analyze("BTCUSDT", start, start.plusDays(60), "SMA7");
+
+        // Yalnızca SMA7 (ve trend/sinyal için zorunlu SMA20) hesaplanır; SMA50 ve RSI14 hiç hesaplanmaz.
+        assertThat(result.points().getLast().sma7()).isNotNull();
+        assertThat(result.points()).allMatch(point -> point.sma50() == null);
+        assertThat(result.points()).allMatch(point -> point.rsi14() == null);
+        assertThat(result.indicatorValues()).containsKey(IndicatorType.SMA7);
+        assertThat(result.indicatorValues()).doesNotContainKey(IndicatorType.SMA50);
+        assertThat(result.indicatorValues()).doesNotContainKey(IndicatorType.RSI14);
+    }
+
+    @Test
+    void analyze_blank_indicators_should_compute_all_four_indicators() {
+        HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
+        LocalDate start = LocalDate.of(2026, 1, 1);
+        when(historicalPriceReader.read("BTCUSDT", start, start.plusDays(60)))
+                .thenReturn(increasingHistory(start, 61));
+
+        TechnicalAnalysisService service = buildService(historicalPriceReader);
+
+        TechnicalAnalysisResult result = service.analyze("BTCUSDT", start, start.plusDays(60), null);
+
+        TechnicalAnalysisPoint last = result.points().getLast();
+        assertThat(last.sma7()).isNotNull();
+        assertThat(last.sma20()).isNotNull();
+        assertThat(last.sma50()).isNotNull();
+        assertThat(last.rsi14()).isNotNull();
+    }
+
+    private static List<HistoricalPricePoint> increasingHistory(LocalDate start, int count) {
+        List<HistoricalPricePoint> history = new ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            history.add(new HistoricalPricePoint("BTCUSDT", start.plusDays(index), BigDecimal.valueOf(100 + index)));
+        }
+        return history;
+    }
+
     private static TechnicalAnalysisService buildService(HistoricalPriceReader historicalPriceReader) {
         AppMessageSource appMessageSource = mock(AppMessageSource.class);
         return new TechnicalAnalysisService(
                 historicalPriceReader,
-                new MovingAverageService(),
-                new RsiService(),
+                new IndicatorSeriesCalculator(new MovingAverageService(), new RsiService()),
                 new TrendAnalysisService(),
                 mock(InstrumentComparisonService.class),
                 appMessageSource

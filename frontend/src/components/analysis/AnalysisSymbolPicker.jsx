@@ -203,7 +203,7 @@ export default function AnalysisSymbolPicker({
   );
 }
 
-const SUGGESTION_TYPE_ORDER = ["FX", "CRYPTO", "STOCK", "FUND"];
+const SUGGESTION_TYPE_ORDER = ["FX", "CRYPTO", "STOCK", "FUND", "COMMODITY", "FUTURES", "BOND", "INDEX"];
 
 // Boş aramada türler arası dengeli (round-robin) öneri listesi üretir.
 // Veri olmayan türler sessizce atlanır.
@@ -253,6 +253,9 @@ const INSTRUMENT_CATEGORIES = [
   { key: "CRYPTO", labelKey: "analysis.symbolPicker.categories.crypto" },
   { key: "STOCK", labelKey: "analysis.symbolPicker.categories.stock" },
   { key: "FUND", labelKey: "analysis.symbolPicker.categories.fund" },
+  { key: "COMMODITY", labelKey: "analysis.symbolPicker.categories.commodity" },
+  { key: "FUTURES", labelKey: "analysis.symbolPicker.categories.futures" },
+  { key: "BOND", labelKey: "analysis.symbolPicker.categories.bond" },
 ];
 
 const CATEGORY_LABEL_KEYS = {
@@ -261,6 +264,10 @@ const CATEGORY_LABEL_KEYS = {
   STOCK: "analysis.symbolPicker.categories.stock",
   BIST: "analysis.symbolPicker.categories.stock",
   FUND: "analysis.symbolPicker.categories.fund",
+  COMMODITY: "analysis.symbolPicker.categories.commodity",
+  FUTURES: "analysis.symbolPicker.categories.futures",
+  BOND: "analysis.symbolPicker.categories.bond",
+  INDEX: "markets.categories.INDEX",
 };
 
 function PrimaryInstrumentPicker({ quotes, primarySymbol, primaryContext, primaryQuote, onPrimaryChange, t, locale }) {
@@ -375,7 +382,7 @@ function resolveInstrumentResults(quotes, search, category) {
   const query = search.trim().toLowerCase();
   const pool = category === "ALL"
     ? quotes
-    : quotes.filter((item) => normalizeInstrumentType(item) === category);
+    : quotes.filter((item) => normalizeInstrumentCategory(item) === category);
 
   if (query) {
     return pool
@@ -397,8 +404,28 @@ function normalizeInstrumentType(item) {
   return String(item?.instrumentType || "").trim().toUpperCase();
 }
 
-function resolveTypeLabel(item, t) {
+function normalizeInstrumentCategory(item) {
   const type = normalizeInstrumentType(item);
+  switch (type) {
+    case "FUTURE":
+    case "FUTURES":
+      return "FUTURES";
+    case "BOND":
+    case "BONDS":
+    case "BILL":
+    case "BILLS":
+    case "BONO":
+      return "BOND";
+    case "COMMODITY":
+    case "COMMODITIES":
+      return "COMMODITY";
+    default:
+      return type;
+  }
+}
+
+function resolveTypeLabel(item, t) {
+  const type = normalizeInstrumentCategory(item);
   const labelKey = CATEGORY_LABEL_KEYS[type];
   return labelKey ? t(labelKey) : (type || "-");
 }

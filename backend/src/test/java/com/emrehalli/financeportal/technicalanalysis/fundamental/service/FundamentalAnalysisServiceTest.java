@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -37,6 +38,9 @@ class FundamentalAnalysisServiceTest {
     @Mock MarketInstrumentRepository marketInstrumentRepository;
     @Mock MarketPriceHistoryRepository marketPriceHistoryRepository;
     @Mock CompanyProfileRepository companyProfileRepository;
+
+    // Gerçek (saf) calculator; @InjectMocks bunu servise enjekte eder, golden değerler korunur.
+    @Spy FundamentalRatioCalculator fundamentalRatioCalculator = new FundamentalRatioCalculator();
 
     @InjectMocks FundamentalAnalysisService service;
 
@@ -155,8 +159,6 @@ class FundamentalAnalysisServiceTest {
                 .build();
 
         when(marketInstrumentRepository.findById(1L)).thenReturn(Optional.of(instrument));
-        when(companyFinancialsRepository.findTopByInstrumentIdAndPeriodTypeOrderByPeriodDesc(1L, "ANNUAL"))
-                .thenReturn(Optional.of(negativeFinancials));
         when(marketPriceHistoryRepository.findTopByInstrumentAndIntervalTypeOrderByPriceTimestampDesc(instrument, IntervalType.ONE_DAY))
                 .thenReturn(Optional.of(latestPrice));
         when(companyProfileRepository.findByTickerCodeIgnoreCase("THYAO")).thenReturn(Optional.of(profile));
@@ -171,10 +173,131 @@ class FundamentalAnalysisServiceTest {
         assertThat(result.getPiotroskiScore()).isLessThanOrEqualTo(4);
     }
 
+    // --- Golden-value kilitleri (refactor öncesi mevcut davranış; SCALE=4 / HALF_UP, scale dahil) ---
+
+    @Test
+    void calculateRatios_locks_golden_values_for_complete_single_year_financials() {
+        setupMocks(List.of(financials));
+
+        FundamentalRatios r = service.calculateRatios(1L, "2024/Y");
+
+        assertThat(r.getGrossMargin()).isEqualTo(new BigDecimal("30.0000"));
+        assertThat(r.getNetMargin()).isEqualTo(new BigDecimal("15.0000"));
+        assertThat(r.getRoe()).isEqualTo(new BigDecimal("15.0000"));
+        assertThat(r.getRoa()).isEqualTo(new BigDecimal("7.5000"));
+        assertThat(r.getDebtToEquity()).isEqualTo(new BigDecimal("1.0000"));
+        assertThat(r.getCurrentRatio()).isEqualTo(new BigDecimal("1.6667"));
+        assertThat(r.getPeRatio()).isEqualTo(new BigDecimal("10.0000"));
+        assertThat(r.getPbRatio()).isEqualTo(new BigDecimal("1.5000"));
+        assertThat(r.getGrahamNumber()).isEqualTo(new BigDecimal("183.7117"));
+        assertThat(r.getAltmanZScore()).isEqualTo(new BigDecimal("1.7675"));
+        assertThat(r.getOverallSignal()).isEqualTo("NEUTRAL");
+        // Tek yıl: önceki yıl olmadığından YoY ve Piotroski hesaplanmaz.
+        assertThat(r.getRevenueGrowthYoy()).isNull();
+        assertThat(r.getNetIncomeGrowthYoy()).isNull();
+        assertThat(r.getAssetGrowthYoy()).isNull();
+        assertThat(r.getPiotroskiScore()).isNull();
+    }
+
+    @Test
+    void calculateRatios_locks_yoy_growth_values_against_previous_year() {
+        CompanyFinancials current = fullFinancials()
+                .revenue(new BigDecimal("120000000"))
+                .netIncome(new BigDecimal("18000000"))
+                .totalAssets(new BigDecimal("220000000"))
+                .build();
+        CompanyFinancials previous = fullFinancials()
+                .period("2023/Y")
+                .revenue(new BigDecimal("100000000"))
+                .netIncome(new BigDecimal("15000000"))
+                .totalAssets(new BigDecimal("200000000"))
+                .build();
+        setupMocks(List.of(current, previous));
+
+        FundamentalRatios r = service.calculateRatios(1L, "2024/Y");
+
+        // YoY = (current - previous) * 100 / |previous|, SCALE=4
+        assertThat(r.getRevenueGrowthYoy()).isEqualTo(new BigDecimal("20.0000"));   // (120-100)/100
+        assertThat(r.getNetIncomeGrowthYoy()).isEqualTo(new BigDecimal("20.0000")); // (18-15)/15
+        assertThat(r.getAssetGrowthYoy()).isEqualTo(new BigDecimal("10.0000"));     // (220-200)/200
+        assertThat(r.getPiotroskiScore()).isNotNull();
+    }
+
+    @Test
+    void calculateRatios_leaves_margins_null_when_revenue_is_missing() {
+        setupMocks(List.of(fullFinancials().revenue(null).build()));
+
+        FundamentalRatios r = service.calculateRatios(1L, "2024/Y");
+
+        assertThat(r.getGrossMargin()).isNull();
+        assertThat(r.getNetMargin()).isNull();
+        // Gelirden bağımsız oranlar yine hesaplanır (response bütünüyle bozulmaz).
+        assertThat(r.getRoe()).isEqualTo(new BigDecimal("15.0000"));
+        assertThat(r.getRoa()).isEqualTo(new BigDecimal("7.5000"));
+    }
+
+    @Test
+    void calculateRatios_skips_equity_based_ratios_when_equity_is_missing() {
+        setupMocks(List.of(fullFinancials().totalEquity(null).build()));
+
+        FundamentalRatios r = service.calculateRatios(1L, "2024/Y");
+
+        assertThat(r.getRoe()).isNull();
+        assertThat(r.getDebtToEquity()).isNull();
+        assertThat(r.getPbRatio()).isNull();
+        assertThat(r.getGrahamNumber()).isNull();
+        assertThat(r.getAltmanZScore()).isNull();
+        // Özkaynaktan bağımsız alanlar korunur.
+        assertThat(r.getNetMargin()).isEqualTo(new BigDecimal("15.0000"));
+        assertThat(r.getRoa()).isEqualTo(new BigDecimal("7.5000"));
+        assertThat(r.getPeRatio()).isEqualTo(new BigDecimal("10.0000"));
+    }
+
+    @Test
+    void calculateRatios_skips_per_share_ratios_when_shares_outstanding_missing() {
+        when(marketInstrumentRepository.findById(1L)).thenReturn(Optional.of(instrument));
+        when(marketPriceHistoryRepository.findTopByInstrumentAndIntervalTypeOrderByPriceTimestampDesc(instrument, IntervalType.ONE_DAY))
+                .thenReturn(Optional.of(latestPrice));
+        when(companyProfileRepository.findByTickerCodeIgnoreCase("THYAO")).thenReturn(Optional.empty());
+        when(companyFinancialsRepository.findByInstrumentIdAndPeriodTypeOrderByPeriodDesc(1L, "ANNUAL"))
+                .thenReturn(List.of(financials));
+        when(fundamentalRatiosRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(fundamentalHistoryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FundamentalRatios r = service.calculateRatios(1L, "2024/Y");
+
+        // sharesOutstanding yoksa hisse-başı tüm türev oranlar atlanır.
+        assertThat(r.getPeRatio()).isNull();
+        assertThat(r.getPbRatio()).isNull();
+        assertThat(r.getGrahamNumber()).isNull();
+        assertThat(r.getAltmanZScore()).isNull();
+        // Hisse adedinden bağımsız oranlar korunur.
+        assertThat(r.getRoe()).isEqualTo(new BigDecimal("15.0000"));
+        assertThat(r.getCurrentRatio()).isEqualTo(new BigDecimal("1.6667"));
+    }
+
+    @Test
+    void calculateRatios_uses_price_one_fallback_when_no_latest_price_exists() {
+        when(marketInstrumentRepository.findById(1L)).thenReturn(Optional.of(instrument));
+        when(marketPriceHistoryRepository.findTopByInstrumentAndIntervalTypeOrderByPriceTimestampDesc(instrument, IntervalType.ONE_DAY))
+                .thenReturn(Optional.empty());
+        when(companyProfileRepository.findByTickerCodeIgnoreCase("THYAO")).thenReturn(Optional.of(profile));
+        when(companyFinancialsRepository.findByInstrumentIdAndPeriodTypeOrderByPeriodDesc(1L, "ANNUAL"))
+                .thenReturn(List.of(financials));
+        when(fundamentalRatiosRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(fundamentalHistoryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FundamentalRatios r = service.calculateRatios(1L, "2024/Y");
+
+        // MEVCUT (sorunlu ama bilinçli korunan) davranış: son fiyat yoksa current price = 1 kullanılır,
+        // bu da yanıltıcı şekilde düşük P/E (1/EPS) ve P/B üretir. Bu test o davranışı belgeler.
+        assertThat(r.getCalculationPrice()).isEqualByComparingTo(BigDecimal.ONE);
+        assertThat(r.getPeRatio()).isEqualTo(new BigDecimal("0.0667"));  // 1 / 15
+        assertThat(r.getPbRatio()).isEqualTo(new BigDecimal("0.0100"));  // (1 * 1.000.000) / 100.000.000
+    }
+
     private void setupMocks(List<CompanyFinancials> financialsList) {
         when(marketInstrumentRepository.findById(1L)).thenReturn(Optional.of(instrument));
-        when(companyFinancialsRepository.findTopByInstrumentIdAndPeriodTypeOrderByPeriodDesc(1L, "ANNUAL"))
-                .thenReturn(Optional.of(financialsList.get(0)));
         when(marketPriceHistoryRepository.findTopByInstrumentAndIntervalTypeOrderByPriceTimestampDesc(instrument, IntervalType.ONE_DAY))
                 .thenReturn(Optional.of(latestPrice));
         when(companyProfileRepository.findByTickerCodeIgnoreCase("THYAO")).thenReturn(Optional.of(profile));
@@ -182,6 +305,24 @@ class FundamentalAnalysisServiceTest {
                 .thenReturn(financialsList);
         when(fundamentalRatiosRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(fundamentalHistoryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    /** setUp'taki {@code financials} ile aynı tam veri setini üreten builder; varyant testler tek alanı ezer. */
+    private CompanyFinancials.CompanyFinancialsBuilder fullFinancials() {
+        return CompanyFinancials.builder()
+                .id(1L)
+                .instrument(instrument)
+                .period("2024/Y")
+                .periodType("ANNUAL")
+                .revenue(new BigDecimal("100000000"))
+                .grossProfit(new BigDecimal("30000000"))
+                .netIncome(new BigDecimal("15000000"))
+                .totalAssets(new BigDecimal("200000000"))
+                .totalEquity(new BigDecimal("100000000"))
+                .totalLiabilities(new BigDecimal("100000000"))
+                .currentAssets(new BigDecimal("50000000"))
+                .currentLiabilities(new BigDecimal("30000000"))
+                .operatingCashFlow(new BigDecimal("20000000"));
     }
 }
 

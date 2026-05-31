@@ -1634,12 +1634,12 @@ export default function AdvancedChart({
 
             <MetricGroup title={t("analysis.chart.techPanel.groupLevels")}>
               <MetricRow
-                label={t("analysis.chart.techPanel.support")}
+                label={effectiveTechnicalSnapshot?.levelMode === "closeBand" ? "Seçili Aralık En Düşük" : t("analysis.chart.techPanel.support")}
                 value={effectiveTechnicalSnapshot?.supportLevel != null ? formatNumber(effectiveTechnicalSnapshot.supportLevel, 2) : "-"}
                 detail={effectiveTechnicalSnapshot?.supportDistancePct != null ? `${effectiveTechnicalSnapshot.supportDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : null}
               />
               <MetricRow
-                label={t("analysis.chart.techPanel.resistance")}
+                label={effectiveTechnicalSnapshot?.levelMode === "closeBand" ? "Seçili Aralık En Yüksek" : t("analysis.chart.techPanel.resistance")}
                 value={effectiveTechnicalSnapshot?.resistanceLevel != null ? formatNumber(effectiveTechnicalSnapshot.resistanceLevel, 2) : "-"}
                 detail={effectiveTechnicalSnapshot?.resistanceDistancePct != null ? `${effectiveTechnicalSnapshot.resistanceDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : null}
               />
@@ -1931,6 +1931,7 @@ function buildTechnicalSummary({
     supportDistancePct: supportResistance.supportDistancePct,
     resistanceLevel: supportResistance.resistance,
     resistanceDistancePct: supportResistance.resistanceDistancePct,
+    levelMode: supportResistance.levelMode,
     volumeVisible,
     volumeDataCount: volumeDataCount ?? 0,
     rsiDebug: {
@@ -1965,28 +1966,53 @@ function deriveMomentum(rows) {
 
 function deriveSupportResistance(rows, latestRow) {
   const normalized = Array.isArray(rows) ? rows : [];
-  const recent = normalized.slice(-20);
-  const latestClose = toFiniteNumber(latestRow?.close);
-  if (!recent.length || latestClose == null || latestClose === 0) {
-    return { support: null, supportDistancePct: null, resistance: null, resistanceDistancePct: null };
+  const latestClose = toPositivePrice(latestRow?.close);
+  if (!normalized.length || latestClose == null) {
+    return { support: null, supportDistancePct: null, resistance: null, resistanceDistancePct: null, levelMode: "none" };
   }
 
-  const lows = recent
-    .map((row) => toFiniteNumber(row?.low ?? row?.close))
-    .filter((value) => value != null);
-  const highs = recent
-    .map((row) => toFiniteNumber(row?.high ?? row?.close))
-    .filter((value) => value != null);
-
-  const support = lows.length ? Math.min(...lows) : null;
-  const resistance = highs.length ? Math.max(...highs) : null;
+  const hasOhlc = normalized.some((row) => toPositivePrice(row?.high) != null && toPositivePrice(row?.low) != null);
+  const closes = normalized.map((row) => toPositivePrice(row?.close)).filter((value) => value != null);
+  const support = hasOhlc
+    ? nearestSwingLevel(normalized, latestClose, "low")
+    : Math.min(...closes);
+  const resistance = hasOhlc
+    ? nearestSwingLevel(normalized, latestClose, "high")
+    : Math.max(...closes);
 
   return {
-    support,
-    supportDistancePct: support != null ? Math.abs(((latestClose - support) / latestClose) * 100) : null,
-    resistance,
-    resistanceDistancePct: resistance != null ? Math.abs(((resistance - latestClose) / latestClose) * 100) : null,
+    support: toPositivePrice(support),
+    supportDistancePct: toPositivePrice(support) != null ? Math.abs(((latestClose - support) / latestClose) * 100) : null,
+    resistance: toPositivePrice(resistance),
+    resistanceDistancePct: toPositivePrice(resistance) != null ? Math.abs(((resistance - latestClose) / latestClose) * 100) : null,
+    levelMode: hasOhlc ? "swing" : "closeBand",
   };
+}
+
+function nearestSwingLevel(rows, latestClose, key) {
+  const values = rows.map((row) => toPositivePrice(row?.[key])).filter((value) => value != null);
+  const swings = [];
+  for (let i = 2; i < rows.length - 2; i++) {
+    const value = toPositivePrice(rows[i]?.[key]);
+    if (value == null) continue;
+    const neighbors = [rows[i - 2], rows[i - 1], rows[i + 1], rows[i + 2]].map((row) => toPositivePrice(row?.[key]));
+    const isSwing = key === "low"
+      ? neighbors.every((neighbor) => neighbor != null && value <= neighbor)
+      : neighbors.every((neighbor) => neighbor != null && value >= neighbor);
+    if (isSwing) swings.push(value);
+  }
+  const candidates = key === "low"
+    ? swings.filter((value) => value <= latestClose)
+    : swings.filter((value) => value >= latestClose);
+  if (candidates.length) {
+    return candidates.reduce((best, value) => Math.abs(value - latestClose) < Math.abs(best - latestClose) ? value : best);
+  }
+  return key === "low" ? Math.min(...values) : Math.max(...values);
+}
+
+function toPositivePrice(value) {
+  const numeric = toFiniteNumber(value);
+  return numeric != null && numeric > 0 ? numeric : null;
 }
 
 function buildRsiStats(rsiData) {
@@ -2184,6 +2210,7 @@ function mergeManualStructureLevels(snapshot, manualSupportLine, manualResistanc
     resistanceDistancePct: resistance != null && lastClose != null && lastClose !== 0
       ? Math.abs(((resistance - lastClose) / lastClose) * 100)
       : null,
+    levelMode: manualSupportLine || manualResistanceLine ? "swing" : (baseSnapshot.levelMode ?? "swing"),
   };
 }
 

@@ -122,7 +122,17 @@
       "Bash(node -e \"try{JSON.parse\\(require\\('fs'\\).readFileSync\\('locales/en.json','utf8'\\)\\);console.log\\('en.json VALID'\\)}catch\\(e\\){console.log\\('en.json INVALID:',e.message\\)}\")",
       "Bash(node *)",
       "Bash(awk 'NR>=216 && NR<=230 {printf \"%d| %s\\\\n\", NR, $0}' components/analysis/AnalysisSymbolPicker.jsx)",
-      "Bash(echo \"ESLINT_EXIT=$?\")"
+      "Bash(echo \"ESLINT_EXIT=$?\")",
+      "Bash(./mvnw -q -o test -Dtest='TechnicalCandleServiceTest,TechnicalAnalysisServiceTest,MovingAverageServiceTest,TrendAnalysisServiceTest')",
+      "Bash(./mvnw -o test -Dtest='TechnicalCandleServiceTest,TechnicalAnalysisServiceTest,MovingAverageServiceTest,TrendAnalysisServiceTest')",
+      "Bash(git rm *)",
+      "Bash(./mvnw -o test -Dtest='com.emrehalli.financeportal.technicalanalysis.**')",
+      "Bash(./mvnw -o test)",
+      "Bash(grep -E \"Tests run: [0-9]+, Fail.*in |BUILD SUCCESS|BUILD FAILURE|Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$\")",
+      "Bash(./mvnw -o test -Dtest='FundamentalAnalysisServiceTest')",
+      "Bash(grep -E \"Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$|BUILD SUCCESS|BUILD FAILURE\")",
+      "Bash(./mvnw -o test -Dtest='FundamentalAnalysisServiceTest,FundamentalRatioCalculatorTest')",
+      "Bash(xargs -n1 basename)"
     ]
   }
 }

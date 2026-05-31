@@ -563,7 +563,19 @@
       "selectInstrument": "Select instrument",
       "searchComparison": "Search comparison",
       "searchPlaceholder": "BTCUSDT, THYAO, USDTRY...",
-      "emptySelection": "Select at least one instrument for comparison."
+      "emptySelection": "Select at least one instrument for comparison.",
+      "searchInstrument": "Search instrument",
+      "noResults": "No results found",
+      "categories": {
+        "all": "All",
+        "fx": "FX",
+        "crypto": "Crypto",
+        "stock": "Stock",
+        "fund": "Fund",
+        "commodity": "Commodity",
+        "futures": "Futures",
+        "bond": "Bond/T-bill"
+      }
     },
     "simpleChart": "Simple Chart",
     "advancedChart": "Advanced Chart",

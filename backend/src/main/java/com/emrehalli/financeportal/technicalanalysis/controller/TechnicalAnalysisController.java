@@ -4,14 +4,16 @@ import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.technicalanalysis.dto.ComparisonResponse;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalCandleDto;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResponse;
-import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisNotFoundException;
-import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisValidationException;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
 import com.emrehalli.financeportal.technicalanalysis.mapper.TechnicalAnalysisMapper;
 import com.emrehalli.financeportal.technicalanalysis.service.TechnicalCandleService;
 import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisService;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,9 +24,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/technical-analysis")
 public class TechnicalAnalysisController {
+
+    private static final String SYMBOL_PATTERN = "^[A-Za-z0-9._\\-:]+$";
 
     private final TechnicalAnalysisService technicalAnalysisService;
     private final TechnicalCandleService technicalCandleService;
@@ -40,7 +45,10 @@ public class TechnicalAnalysisController {
 
     @GetMapping("/{symbol}")
     public TechnicalAnalysisResponse analyze(
-            @PathVariable String symbol,
+            @PathVariable
+            @Size(max = 30, message = "symbol too long: maximum 30 characters allowed")
+            @Pattern(regexp = SYMBOL_PATTERN, message = "symbol contains invalid characters: only letters, digits, '.', '-', '_', ':' are allowed")
+            String symbol,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) String indicators
@@ -62,7 +70,10 @@ public class TechnicalAnalysisController {
     }
 
     @GetMapping("/{symbol}/candles")
-    public ResponseEntity<ApiResponse<List<TechnicalCandleDto>>> getCandles(@PathVariable String symbol,
+    public ResponseEntity<ApiResponse<List<TechnicalCandleDto>>> getCandles(@PathVariable
+                                                                            @Size(max = 30, message = "symbol too long: maximum 30 characters allowed")
+                                                                            @Pattern(regexp = SYMBOL_PATTERN, message = "symbol contains invalid characters: only letters, digits, '.', '-', '_', ':' are allowed")
+                                                                            String symbol,
                                                                             @RequestParam(defaultValue = "6m") String range,
                                                                             @RequestParam(defaultValue = "1d") String interval) {
         try {
@@ -72,9 +83,9 @@ public class TechnicalAnalysisController {
                     .data(candles)
                     .message("Candlestick data loaded")
                     .build());
-        } catch (TechnicalAnalysisNotFoundException ex) {
+        } catch (TechnicalAnalysisException.NotFound ex) {
             return buildCandleError(symbol, HttpStatus.NOT_FOUND);
-        } catch (TechnicalAnalysisValidationException ex) {
+        } catch (TechnicalAnalysisException.Validation ex) {
             if (ex.getMessage() != null && ex.getMessage().startsWith("Candlestick data not available for symbol ")) {
                 return buildCandleError(symbol, HttpStatus.BAD_REQUEST);
             }
