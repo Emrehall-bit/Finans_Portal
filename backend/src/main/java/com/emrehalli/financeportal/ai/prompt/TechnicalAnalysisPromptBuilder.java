@@ -4,7 +4,7 @@ import com.emrehalli.financeportal.ai.insight.FinancialInsight;
 import com.emrehalli.financeportal.ai.insight.TechnicalInsight;
 import com.emrehalli.financeportal.ai.insight.TechnicalInsightGenerator;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
+import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

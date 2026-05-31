@@ -1,7 +1,7 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
 import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
+import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

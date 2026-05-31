@@ -18,7 +18,7 @@ import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.enums.TechnicalSignal;
 import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
 import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisService;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
+import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

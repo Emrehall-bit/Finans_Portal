@@ -3,9 +3,9 @@ package com.emrehalli.financeportal.technicalanalysis.controller;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.config.security.CurrentUser;
 import com.emrehalli.financeportal.config.security.CurrentUserResolver;
-import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigDtos.Request;
-import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigDtos.Response;
-import com.emrehalli.financeportal.technicalanalysis.config.service.IndicatorConfigService;
+import com.emrehalli.financeportal.technicalanalysis.dto.IndicatorConfigDtos.Request;
+import com.emrehalli.financeportal.technicalanalysis.dto.IndicatorConfigDtos.Response;
+import com.emrehalli.financeportal.technicalanalysis.service.IndicatorConfigService;
 import com.emrehalli.financeportal.technicalanalysis.dto.ComparisonResponse;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalCandleDto;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResponse;
@@ -82,9 +82,7 @@ public class TechnicalAnalysisController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
-        return technicalAnalysisMapper.toResponse(
-                technicalAnalysisService.compare(symbols, from, to)
-        );
+        return technicalAnalysisService.compare(symbols, from, to);
     }
 
     @GetMapping("/{symbol}/candles")
@@ -164,6 +162,5 @@ public class TechnicalAnalysisController {
                 .build();
     }
 }
-
 
 

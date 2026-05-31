@@ -3,7 +3,7 @@ package com.emrehalli.financeportal.technicalanalysis.service;
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
+import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

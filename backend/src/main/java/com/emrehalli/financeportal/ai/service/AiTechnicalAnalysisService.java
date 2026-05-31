@@ -12,7 +12,7 @@ import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.enums.TechnicalSignal;
 import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
 import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisService;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
+import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Service;

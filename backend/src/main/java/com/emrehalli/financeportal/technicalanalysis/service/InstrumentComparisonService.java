@@ -1,10 +1,9 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
+import com.emrehalli.financeportal.technicalanalysis.dto.ComparisonResponse;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
-import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonResult;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -24,22 +23,22 @@ public class InstrumentComparisonService {
         this.historicalPriceReader = historicalPriceReader;
     }
 
-    public ComparisonResult compare(List<String> symbols, LocalDate from, LocalDate to) {
+    public ComparisonResponse compare(List<String> symbols, LocalDate from, LocalDate to) {
         logger.info("Technical comparison started: symbolCount={}, from={}, to={}", symbols == null ? 0 : symbols.size(), from, to);
 
         if (symbols == null || symbols.isEmpty()) {
             throw new TechnicalAnalysisException.Validation("At least 2 symbols are required for comparison");
         }
 
-        List<ComparisonResult.Series> series = symbols.stream()
+        List<ComparisonResponse.Series> series = symbols.stream()
                 .map(symbol -> buildSeries(symbol, from, to))
                 .toList();
 
         logger.info("Technical comparison completed: symbolCount={}, from={}, to={}", symbols.size(), from, to);
-        return new ComparisonResult(from, to, series);
+        return new ComparisonResponse(from, to, series);
     }
 
-    private ComparisonResult.Series buildSeries(String symbol, LocalDate from, LocalDate to) {
+    private ComparisonResponse.Series buildSeries(String symbol, LocalDate from, LocalDate to) {
         List<HistoricalPricePoint> history = historicalPriceReader.read(symbol, from, to);
         if (history.isEmpty()) {
             logger.warn("Technical comparison has no history: symbol={}, from={}, to={}", symbol, from, to);
@@ -51,15 +50,15 @@ public class InstrumentComparisonService {
             throw new TechnicalAnalysisException.Validation("Cannot normalize comparison series for symbol: " + symbol);
         }
 
-        List<ComparisonResult.Point> points = history.stream()
-                .map(point -> new ComparisonResult.Point(
+        List<ComparisonResponse.Point> points = history.stream()
+                .map(point -> new ComparisonResponse.Point(
                         point.date(),
                         point.close(),
                         normalize(point.close(), basePrice)
                 ))
                 .toList();
 
-        return new ComparisonResult.Series(history.getFirst().symbol(), points);
+        return new ComparisonResponse.Series(history.getFirst().symbol(), points);
     }
 
     private BigDecimal normalize(BigDecimal close, BigDecimal basePrice) {
@@ -71,7 +70,6 @@ public class InstrumentComparisonService {
                 .divide(basePrice, 8, RoundingMode.HALF_UP);
     }
 }
-
 
 
 

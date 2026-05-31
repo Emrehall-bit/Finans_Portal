@@ -1,10 +1,10 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
+import com.emrehalli.financeportal.technicalanalysis.dto.ComparisonResponse;
+import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
-import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonResult;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.cache.annotation.Cacheable;
@@ -114,7 +114,7 @@ public class TechnicalAnalysisService {
     }
 
     @Cacheable(value = "instrumentComparison", key = "T(com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisInputs).comparisonCacheKey(#symbols, #from, #to)")
-    public ComparisonResult compare(String symbols, LocalDate from, LocalDate to) {
+    public ComparisonResponse compare(String symbols, LocalDate from, LocalDate to) {
         logger.info("Technical comparison request started: symbols={}, from={}, to={}", symbols, from, to);
         validateDateRange(from, to);
 
@@ -228,7 +228,6 @@ public class TechnicalAnalysisService {
                 .toList();
     }
 }
-
 
 
 

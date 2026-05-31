@@ -134,7 +134,18 @@
       "Bash(./mvnw -o test -Dtest='FundamentalAnalysisServiceTest,FundamentalRatioCalculatorTest')",
       "Bash(xargs -n1 basename)",
       "Bash(grep -E \"Tests run: [0-9]+, Fail.* in |Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$|BUILD SUCCESS|BUILD FAILURE|ERROR\\\\]|cannot find symbol\")",
-      "Bash(grep -E \"Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$|BUILD SUCCESS|BUILD FAILURE|ERROR\\\\]|cannot find\")"
+      "Bash(grep -E \"Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$|BUILD SUCCESS|BUILD FAILURE|ERROR\\\\]|cannot find\")",
+      "PowerShell($base=\"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\"; foreach\\($m in @\\(\"alert\",\"admin\",\"market\"\\)\\){ \"==== $m ====\"; Get-ChildItem -Recurse -Directory \"$base\\\\$m\" | ForEach-Object { $_.FullName.Substring\\(\"$base\\\\$m\".Length+1\\) } })",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell($base=\"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\"; foreach\\($m in @\\(\"portfolio\",\"company\",\"watchlist\",\"premium\",\"news\",\"user\"\\)\\){ \"==== $m ====\"; Get-ChildItem -Recurse -Directory \"$base\\\\$m\" | ForEach-Object { $_.FullName.Substring\\(\"$base\\\\$m\".Length+1\\) } })",
+      "Bash(xargs sed -i 's/technicalanalysis\\\\.service\\\\.model/technicalanalysis.model/g')",
+      "Bash(xargs sed -i 's/technicalanalysis\\\\.config\\\\./technicalanalysis.indicatorconfig./g')",
+      "Bash(mkdir -p __TRACKED_VAR__/model)",
+      "Bash(git mv *)",
+      "Bash(rmdir __TRACKED_VAR__/service/model)",
+      "Bash([ -d \"$B/service/model\" ])",
+      "PowerShell(Set-Location *)",
+      "Bash(awk 'NR>=53 && NR<=170' src/main/resources/application.yml)"
     ]
   }
 }
