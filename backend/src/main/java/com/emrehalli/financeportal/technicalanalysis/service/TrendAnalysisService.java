@@ -2,7 +2,7 @@ package com.emrehalli.financeportal.technicalanalysis.service;
 
 import com.emrehalli.financeportal.technicalanalysis.enums.TechnicalSignal;
 import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisPoint;
+import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -19,12 +19,12 @@ public class TrendAnalysisService {
      * Determines trend direction using a 5+5 closing-price window when enough data is available.
      * Falls back to a two-point comparison when fewer than 10 points exist.
      */
-    public TrendDirection determineTrend(List<TechnicalAnalysisPoint> points) {
+    public TrendDirection determineTrend(List<TechnicalAnalysisResult.Point> points) {
         if (points == null || points.size() < 2) {
             return TrendDirection.SIDEWAYS;
         }
 
-        TechnicalAnalysisPoint latestPoint = points.getLast();
+        TechnicalAnalysisResult.Point latestPoint = points.getLast();
 
         if (latestPoint.close() == null || latestPoint.sma20() == null || latestPoint.sma7() == null) {
             return TrendDirection.SIDEWAYS;
@@ -53,7 +53,7 @@ public class TrendAnalysisService {
                 shortTermFalling = changePct.compareTo(TREND_THRESHOLD_PCT.negate()) < 0;
             }
         } else {
-            TechnicalAnalysisPoint previousPoint = points.get(points.size() - 2);
+            TechnicalAnalysisResult.Point previousPoint = points.get(points.size() - 2);
             if (previousPoint.close() == null) {
                 shortTermRising = false;
                 shortTermFalling = false;
@@ -73,7 +73,7 @@ public class TrendAnalysisService {
         return TrendDirection.SIDEWAYS;
     }
 
-    private BigDecimal windowAverage(List<TechnicalAnalysisPoint> points, int fromInclusive, int toExclusive) {
+    private BigDecimal windowAverage(List<TechnicalAnalysisResult.Point> points, int fromInclusive, int toExclusive) {
         BigDecimal sum = BigDecimal.ZERO;
         int count = 0;
         for (int index = fromInclusive; index < toExclusive; index++) {
@@ -86,7 +86,7 @@ public class TrendAnalysisService {
         return count == 0 ? null : sum.divide(BigDecimal.valueOf(count), 8, RoundingMode.HALF_UP);
     }
 
-    public List<TechnicalSignal> determineSignals(TechnicalAnalysisPoint latestPoint) {
+    public List<TechnicalSignal> determineSignals(TechnicalAnalysisResult.Point latestPoint) {
         if (latestPoint == null) {
             return List.of();
         }

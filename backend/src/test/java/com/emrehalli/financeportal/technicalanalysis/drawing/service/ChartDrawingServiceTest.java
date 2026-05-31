@@ -1,9 +1,9 @@
 package com.emrehalli.financeportal.technicalanalysis.drawing.service;
 
-import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingRequest;
+import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingDtos.Request;
 import com.emrehalli.financeportal.technicalanalysis.drawing.entity.ChartDrawing;
-import com.emrehalli.financeportal.technicalanalysis.exception.DrawingNotFoundException;
-import com.emrehalli.financeportal.technicalanalysis.exception.PremiumRequiredException;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException.DrawingNotFoundException;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException.PremiumRequiredException;
 import com.emrehalli.financeportal.technicalanalysis.drawing.repository.ChartDrawingRepository;
 import com.emrehalli.financeportal.alert.entity.Alert;
 import com.emrehalli.financeportal.alert.repository.AlertRepository;
@@ -50,7 +50,7 @@ class ChartDrawingServiceTest {
 
     @Test
     void premium_olmayan_kullanici_fibonacci_cizmeye_calisirsa_exception_firlatmali() {
-        DrawingRequest req = new DrawingRequest();
+        Request req = new Request();
         req.setDrawingType("FIBONACCI_RETRACEMENT");
         req.setTimeframe("1d");
         req.setPoints(List.of(Map.of("time", 1700000000L, "price", 294.50)));
@@ -63,7 +63,7 @@ class ChartDrawingServiceTest {
 
     @Test
     void premium_kullanici_fibonacci_cizebilmeli() {
-        DrawingRequest req = new DrawingRequest();
+        Request req = new Request();
         req.setDrawingType("FIBONACCI_RETRACEMENT");
         req.setTimeframe("1d");
         req.setPoints(List.of(Map.of("time", 1700000000L, "price", 294.50)));

@@ -4,9 +4,9 @@ import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.config.security.CurrentUser;
 import com.emrehalli.financeportal.config.security.CurrentUserResolver;
 import com.emrehalli.financeportal.config.security.RequiresPremium;
-import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingRequest;
-import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingResponse;
-import com.emrehalli.financeportal.technicalanalysis.drawing.dto.LinkAlertRequest;
+import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingDtos.LinkAlertRequest;
+import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingDtos.Request;
+import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingDtos.Response;
 import com.emrehalli.financeportal.technicalanalysis.drawing.service.ChartDrawingService;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FinancialDataResponse;
 import com.emrehalli.financeportal.technicalanalysis.fundamental.dto.FundamentalHistoryPoint;
@@ -52,12 +52,12 @@ public class AnalysisController {
     }
 
     @GetMapping("/drawings/{instrumentCode}")
-    public ApiResponse<List<DrawingResponse>> getDrawings(
+    public ApiResponse<List<Response>> getDrawings(
             @PathVariable String instrumentCode,
             @RequestParam(defaultValue = "1d") String timeframe) {
         CurrentUser currentUser = currentUserResolver.resolve();
-        List<DrawingResponse> drawings = chartDrawingService.getDrawings(currentUser.keycloakId(), instrumentCode, timeframe);
-        return ApiResponse.<List<DrawingResponse>>builder()
+        List<Response> drawings = chartDrawingService.getDrawings(currentUser.keycloakId(), instrumentCode, timeframe);
+        return ApiResponse.<List<Response>>builder()
                 .success(true)
                 .data(drawings)
                 .message("Cizimler getirildi")
@@ -65,14 +65,14 @@ public class AnalysisController {
     }
 
     @PostMapping("/drawings/{instrumentCode}")
-    public ApiResponse<DrawingResponse> saveDrawing(
+    public ApiResponse<Response> saveDrawing(
             @PathVariable String instrumentCode,
-            @Valid @RequestBody DrawingRequest req) {
+            @Valid @RequestBody Request req) {
         CurrentUser currentUser = currentUserResolver.resolve();
-        DrawingResponse drawing = chartDrawingService.saveDrawing(
+        Response drawing = chartDrawingService.saveDrawing(
                 currentUser.keycloakId(), currentUser.role(), instrumentCode, req);
 
-        return ApiResponse.<DrawingResponse>builder()
+        return ApiResponse.<Response>builder()
                 .success(true)
                 .data(drawing)
                 .message("Cizim kaydedildi")
@@ -80,13 +80,13 @@ public class AnalysisController {
     }
 
     @PatchMapping("/drawings/{id}")
-    public ApiResponse<DrawingResponse> updateDrawing(
+    public ApiResponse<Response> updateDrawing(
             @PathVariable Long id,
-            @Valid @RequestBody DrawingRequest req) {
+            @Valid @RequestBody Request req) {
         CurrentUser currentUser = currentUserResolver.resolve();
-        DrawingResponse drawing = chartDrawingService.updateDrawing(currentUser.keycloakId(), id, req);
+        Response drawing = chartDrawingService.updateDrawing(currentUser.keycloakId(), id, req);
 
-        return ApiResponse.<DrawingResponse>builder()
+        return ApiResponse.<Response>builder()
                 .success(true)
                 .data(drawing)
                 .message("Cizim guncellendi")
@@ -106,17 +106,17 @@ public class AnalysisController {
 
     @PostMapping("/drawings/{id}/link-alert")
     @RequiresPremium
-    public ApiResponse<DrawingResponse> linkDrawingToAlert(
+    public ApiResponse<Response> linkDrawingToAlert(
             @PathVariable Long id,
             @Valid @RequestBody LinkAlertRequest req) {
         CurrentUser currentUser = currentUserResolver.resolve();
         logger.info("Cizim alert'e baglaniyor: keycloakId={}, drawingId={}, alertId={}",
                 currentUser.keycloakId(), id, req.getAlertId());
 
-        DrawingResponse drawing = chartDrawingService.linkDrawingToAlert(
+        Response drawing = chartDrawingService.linkDrawingToAlert(
                 currentUser.keycloakId(), id, req.getAlertId());
 
-        return ApiResponse.<DrawingResponse>builder()
+        return ApiResponse.<Response>builder()
                 .success(true)
                 .data(drawing)
                 .message("Cizim alert'e baglandi")

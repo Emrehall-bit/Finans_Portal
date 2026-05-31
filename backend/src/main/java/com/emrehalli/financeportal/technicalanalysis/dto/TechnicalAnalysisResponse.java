@@ -13,11 +13,23 @@ public record TechnicalAnalysisResponse(
         String message,
         String trendDirection,
         List<String> signals,
-        List<IndicatorValueDto> indicatorValues,
-        List<TechnicalAnalysisPointDto> points
+        List<IndicatorValue> indicatorValues,
+        List<Point> points
 ) {
+
+    public record Point(
+            LocalDate date,
+            BigDecimal close,
+            BigDecimal sma7,
+            BigDecimal sma20,
+            BigDecimal sma50,
+            BigDecimal rsi14
+    ) {
+    }
+
+    public record IndicatorValue(
+            String indicator,
+            BigDecimal value
+    ) {
+    }
 }
-
-
-
-

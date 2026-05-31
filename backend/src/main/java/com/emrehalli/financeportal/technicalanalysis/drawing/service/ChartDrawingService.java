@@ -5,13 +5,13 @@ import com.emrehalli.financeportal.alert.repository.AlertRepository;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
-import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingRequest;
-import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingResponse;
+import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingDtos.Request;
+import com.emrehalli.financeportal.technicalanalysis.drawing.dto.DrawingDtos.Response;
 import com.emrehalli.financeportal.technicalanalysis.drawing.entity.ChartDrawing;
 import com.emrehalli.financeportal.technicalanalysis.drawing.repository.ChartDrawingRepository;
-import com.emrehalli.financeportal.technicalanalysis.exception.DrawingNotFoundException;
-import com.emrehalli.financeportal.technicalanalysis.exception.PremiumRequiredException;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException.DrawingNotFoundException;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException.PremiumRequiredException;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.entity.UserRole;
 import com.emrehalli.financeportal.user.repository.UserRepository;
@@ -52,7 +52,7 @@ public class ChartDrawingService {
     }
 
     @Transactional
-    public DrawingResponse saveDrawing(String keycloakId, UserRole userRole, String instrumentCode, DrawingRequest req) {
+    public Response saveDrawing(String keycloakId, UserRole userRole, String instrumentCode, Request req) {
         String drawingType = normalizeDrawingType(req.getDrawingType());
         logger.info("Cizim kaydediliyor: keycloakId={}, instrument={}, type={}", keycloakId, instrumentCode, drawingType);
 
@@ -83,7 +83,7 @@ public class ChartDrawingService {
     }
 
     @Transactional(readOnly = true)
-    public List<DrawingResponse> getDrawings(String keycloakId, String instrumentCode, String timeframe) {
+    public List<Response> getDrawings(String keycloakId, String instrumentCode, String timeframe) {
         User user = resolveUser(keycloakId);
         MarketInstrument instrument = resolveInstrument(instrumentCode);
 
@@ -95,7 +95,7 @@ public class ChartDrawingService {
     }
 
     @Transactional
-    public DrawingResponse updateDrawing(String keycloakId, Long drawingId, DrawingRequest req) {
+    public Response updateDrawing(String keycloakId, Long drawingId, Request req) {
         logger.info("Cizim guncelleniyor: keycloakId={}, drawingId={}", keycloakId, drawingId);
 
         User user = resolveUser(keycloakId);
@@ -128,7 +128,7 @@ public class ChartDrawingService {
     }
 
     @Transactional
-    public DrawingResponse linkDrawingToAlert(String keycloakId, Long drawingId, Long alertId) {
+    public Response linkDrawingToAlert(String keycloakId, Long drawingId, Long alertId) {
         logger.info("Cizim alert'e baglaniyor: keycloakId={}, drawingId={}, alertId={}", keycloakId, drawingId, alertId);
 
         User user = resolveUser(keycloakId);
@@ -170,8 +170,8 @@ public class ChartDrawingService {
         return PREMIUM_DRAWING_TYPES.contains(drawingType);
     }
 
-    private DrawingResponse toResponse(ChartDrawing d) {
-        return DrawingResponse.builder()
+    private Response toResponse(ChartDrawing d) {
+        return Response.builder()
                 .id(d.getId())
                 .instrumentId(d.getInstrument() != null ? d.getInstrument().getId() : null)
                 .timeframe(d.getTimeframe())

@@ -18,7 +18,6 @@ import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.enums.TechnicalSignal;
 import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
 import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisService;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisPoint;
 import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -200,7 +199,7 @@ class ComparisonAnalysisServiceTest {
                         IndicatorType.SMA20, BigDecimal.valueOf(95),
                         IndicatorType.SMA50, BigDecimal.valueOf(90)
                 ),
-                List.of(new TechnicalAnalysisPoint(
+                List.of(new TechnicalAnalysisResult.Point(
                         LocalDate.now(),
                         BigDecimal.valueOf(100),
                         BigDecimal.valueOf(98),

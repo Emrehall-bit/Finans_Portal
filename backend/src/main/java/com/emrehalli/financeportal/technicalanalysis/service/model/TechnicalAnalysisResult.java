@@ -19,10 +19,16 @@ public record TechnicalAnalysisResult(
         TrendDirection trendDirection,
         List<TechnicalSignal> signals,
         Map<IndicatorType, BigDecimal> indicatorValues,
-        List<TechnicalAnalysisPoint> points
+        List<Point> points
 ) {
+
+    public record Point(
+            LocalDate date,
+            BigDecimal close,
+            BigDecimal sma7,
+            BigDecimal sma20,
+            BigDecimal sma50,
+            BigDecimal rsi14
+    ) {
+    }
 }
-
-
-
-

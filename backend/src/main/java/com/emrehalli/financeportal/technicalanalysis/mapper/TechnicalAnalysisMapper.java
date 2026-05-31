@@ -1,19 +1,13 @@
 package com.emrehalli.financeportal.technicalanalysis.mapper;
 
-import com.emrehalli.financeportal.technicalanalysis.dto.ComparisonPointDto;
 import com.emrehalli.financeportal.technicalanalysis.dto.ComparisonResponse;
-import com.emrehalli.financeportal.technicalanalysis.dto.ComparisonSeriesDto;
-import com.emrehalli.financeportal.technicalanalysis.dto.IndicatorValueDto;
-import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisPointDto;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResponse;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
-import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonPoint;
 import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonResult;
-import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonSeries;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisPoint;
 import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -44,15 +38,15 @@ public class TechnicalAnalysisMapper {
         );
     }
 
-    private List<IndicatorValueDto> toIndicatorDtos(Map<IndicatorType, java.math.BigDecimal> indicatorValues) {
+    private List<TechnicalAnalysisResponse.IndicatorValue> toIndicatorDtos(Map<IndicatorType, BigDecimal> indicatorValues) {
         return Arrays.stream(IndicatorType.values())
                 .filter(indicatorValues::containsKey)
-                .map(indicatorType -> new IndicatorValueDto(indicatorType.name(), indicatorValues.get(indicatorType)))
+                .map(indicatorType -> new TechnicalAnalysisResponse.IndicatorValue(indicatorType.name(), indicatorValues.get(indicatorType)))
                 .toList();
     }
 
-    private TechnicalAnalysisPointDto toPointDto(TechnicalAnalysisPoint point) {
-        return new TechnicalAnalysisPointDto(
+    private TechnicalAnalysisResponse.Point toPointDto(TechnicalAnalysisResult.Point point) {
+        return new TechnicalAnalysisResponse.Point(
                 point.date(),
                 point.close(),
                 point.sma7(),
@@ -62,22 +56,18 @@ public class TechnicalAnalysisMapper {
         );
     }
 
-    private ComparisonSeriesDto toSeriesDto(ComparisonSeries series) {
-        return new ComparisonSeriesDto(
+    private ComparisonResponse.Series toSeriesDto(ComparisonResult.Series series) {
+        return new ComparisonResponse.Series(
                 series.symbol(),
                 series.points().stream().map(this::toPointDto).toList()
         );
     }
 
-    private ComparisonPointDto toPointDto(ComparisonPoint point) {
-        return new ComparisonPointDto(
+    private ComparisonResponse.Point toPointDto(ComparisonResult.Point point) {
+        return new ComparisonResponse.Point(
                 point.date(),
                 point.close(),
                 point.normalizedValue()
         );
     }
 }
-
-
-
-

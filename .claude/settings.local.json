@@ -132,7 +132,9 @@
       "Bash(./mvnw -o test -Dtest='FundamentalAnalysisServiceTest')",
       "Bash(grep -E \"Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$|BUILD SUCCESS|BUILD FAILURE\")",
       "Bash(./mvnw -o test -Dtest='FundamentalAnalysisServiceTest,FundamentalRatioCalculatorTest')",
-      "Bash(xargs -n1 basename)"
+      "Bash(xargs -n1 basename)",
+      "Bash(grep -E \"Tests run: [0-9]+, Fail.* in |Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$|BUILD SUCCESS|BUILD FAILURE|ERROR\\\\]|cannot find symbol\")",
+      "Bash(grep -E \"Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$|BUILD SUCCESS|BUILD FAILURE|ERROR\\\\]|cannot find\")"
     ]
   }
 }

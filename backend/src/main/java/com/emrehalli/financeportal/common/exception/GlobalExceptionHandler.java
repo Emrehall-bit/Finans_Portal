@@ -1,7 +1,7 @@
 package com.emrehalli.financeportal.common.exception;
 
-import com.emrehalli.financeportal.technicalanalysis.exception.DrawingNotFoundException;
-import com.emrehalli.financeportal.technicalanalysis.exception.PremiumRequiredException;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException.DrawingNotFoundException;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException.PremiumRequiredException;
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;

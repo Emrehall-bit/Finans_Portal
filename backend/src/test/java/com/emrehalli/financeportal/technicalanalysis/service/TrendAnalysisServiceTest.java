@@ -1,7 +1,7 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
 import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisPoint;
+import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -26,7 +26,7 @@ class TrendAnalysisServiceTest {
     void determineTrend_should_return_uptrend_when_5_5_window_rises_above_threshold() {
         // earlier 5 points avg = 100, recent 5 points avg = 105 (+5%) â†’ rising
         // latest: price > sma20, sma7 > sma20 â†’ UPTREND
-        List<TechnicalAnalysisPoint> points = new ArrayList<>();
+        List<TechnicalAnalysisResult.Point> points = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             points.add(point(100.0 + i, 98.0, 95.0));
         }
@@ -40,7 +40,7 @@ class TrendAnalysisServiceTest {
     void determineTrend_should_return_downtrend_when_5_5_window_falls_below_threshold() {
         // earlier 5 points avg = 100, recent 5 points avg = 92 (-8%) â†’ falling
         // latest: price < sma20, sma7 < sma20 â†’ DOWNTREND
-        List<TechnicalAnalysisPoint> points = new ArrayList<>();
+        List<TechnicalAnalysisResult.Point> points = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             points.add(point(100.0 + i, 102.0, 110.0));
         }
@@ -53,7 +53,7 @@ class TrendAnalysisServiceTest {
     @Test
     void determineTrend_should_return_sideways_when_change_is_below_threshold() {
         // earlier 5 avg = 100, recent 5 avg = 100.05 (0.05%) â€” below 0.1% threshold
-        List<TechnicalAnalysisPoint> points = new ArrayList<>();
+        List<TechnicalAnalysisResult.Point> points = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             points.add(point(100.0, 102.0, 98.0));
         }
@@ -66,7 +66,7 @@ class TrendAnalysisServiceTest {
     @Test
     void determineTrend_should_fall_back_to_two_point_comparison_for_fewer_than_10_points() {
         // 5 points only â†’ fallback; latest >= previous, price > sma20, sma7 > sma20 â†’ UPTREND
-        List<TechnicalAnalysisPoint> points = List.of(
+        List<TechnicalAnalysisResult.Point> points = List.of(
                 point(100.0, 98.0, 95.0),
                 point(101.0, 99.0, 95.0),
                 point(102.0, 100.0, 95.0),
@@ -78,15 +78,15 @@ class TrendAnalysisServiceTest {
 
     @Test
     void determineTrend_should_return_sideways_when_sma_values_are_null() {
-        List<TechnicalAnalysisPoint> points = List.of(
+        List<TechnicalAnalysisResult.Point> points = List.of(
                 point(100, null, null),
                 point(101, null, null)
         );
         assertThat(service.determineTrend(points)).isEqualTo(TrendDirection.SIDEWAYS);
     }
 
-    private static TechnicalAnalysisPoint point(double close, Double sma7, Double sma20) {
-        return new TechnicalAnalysisPoint(
+    private static TechnicalAnalysisResult.Point point(double close, Double sma7, Double sma20) {
+        return new TechnicalAnalysisResult.Point(
                 LocalDate.now(),
                 BigDecimal.valueOf(close),
                 sma7 != null ? BigDecimal.valueOf(sma7) : null,

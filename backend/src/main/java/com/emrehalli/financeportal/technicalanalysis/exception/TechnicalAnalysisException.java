@@ -41,4 +41,22 @@ public class TechnicalAnalysisException extends RuntimeException {
             super(message, HttpStatus.NOT_FOUND);
         }
     }
+
+    public static class DrawingNotFoundException extends RuntimeException {
+
+        public DrawingNotFoundException(Long drawingId) {
+            super("Çizim bulunamadı veya erişim yetkiniz yok: id=" + drawingId);
+        }
+    }
+
+    public static class PremiumRequiredException extends RuntimeException {
+
+        public PremiumRequiredException(String message) {
+            super(message);
+        }
+
+        public PremiumRequiredException() {
+            super("Bu ozellik icin Premium uyelik gereklidir");
+        }
+    }
 }

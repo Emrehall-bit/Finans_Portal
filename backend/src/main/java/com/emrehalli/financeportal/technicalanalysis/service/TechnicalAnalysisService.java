@@ -4,7 +4,6 @@ import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
 import com.emrehalli.financeportal.technicalanalysis.service.model.ComparisonResult;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisPoint;
 import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -60,7 +59,7 @@ public class TechnicalAnalysisService {
         if (history.size() < requiredPointCount) {
             logger.warn("Technical analysis has insufficient history: symbol={}, from={}, to={}, pointCount={}, requiredPointCount={}",
                     symbol, from, to, history.size(), requiredPointCount);
-            List<TechnicalAnalysisPoint> points = buildPoints(history, Map.of());
+            List<TechnicalAnalysisResult.Point> points = buildPoints(history, Map.of());
             return new TechnicalAnalysisResult(
                     symbol,
                     from,
@@ -80,8 +79,8 @@ public class TechnicalAnalysisService {
                 .toList();
 
         Map<IndicatorType, List<BigDecimal>> indicatorSeries = indicatorSeriesCalculator.calculate(closes, requestedIndicators);
-        List<TechnicalAnalysisPoint> points = buildPoints(history, indicatorSeries);
-        TechnicalAnalysisPoint latestPoint = points.getLast();
+        List<TechnicalAnalysisResult.Point> points = buildPoints(history, indicatorSeries);
+        TechnicalAnalysisResult.Point latestPoint = points.getLast();
 
         Map<IndicatorType, BigDecimal> latestIndicatorValues = new EnumMap<>(IndicatorType.class);
         for (IndicatorType indicatorType : requestedIndicators) {
@@ -130,12 +129,12 @@ public class TechnicalAnalysisService {
         return instrumentComparisonService.compare(requestedSymbols, from, to);
     }
 
-    private List<TechnicalAnalysisPoint> buildPoints(List<HistoricalPricePoint> history,
+    private List<TechnicalAnalysisResult.Point> buildPoints(List<HistoricalPricePoint> history,
                                                      Map<IndicatorType, List<BigDecimal>> indicatorSeries) {
-        List<TechnicalAnalysisPoint> points = new ArrayList<>(history.size());
+        List<TechnicalAnalysisResult.Point> points = new ArrayList<>(history.size());
         for (int index = 0; index < history.size(); index++) {
             HistoricalPricePoint point = history.get(index);
-            points.add(new TechnicalAnalysisPoint(
+            points.add(new TechnicalAnalysisResult.Point(
                     point.date(),
                     point.close(),
                     valueAt(indicatorSeries.get(IndicatorType.SMA7), index),
@@ -147,12 +146,12 @@ public class TechnicalAnalysisService {
         return List.copyOf(points);
     }
 
-    private BigDecimal indicatorValue(List<TechnicalAnalysisPoint> points, IndicatorType indicatorType) {
+    private BigDecimal indicatorValue(List<TechnicalAnalysisResult.Point> points, IndicatorType indicatorType) {
         if (points.isEmpty()) {
             return null;
         }
 
-        TechnicalAnalysisPoint latestPoint = points.getLast();
+        TechnicalAnalysisResult.Point latestPoint = points.getLast();
         return switch (indicatorType) {
             case SMA7 -> latestPoint.sma7();
             case SMA20 -> latestPoint.sma20();

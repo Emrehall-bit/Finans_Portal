@@ -3,8 +3,8 @@ package com.emrehalli.financeportal.technicalanalysis.config.service;
 import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
-import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigRequest;
-import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigResponse;
+import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigDtos.Request;
+import com.emrehalli.financeportal.technicalanalysis.config.dto.IndicatorConfigDtos.Response;
 import com.emrehalli.financeportal.technicalanalysis.config.entity.IndicatorConfig;
 import com.emrehalli.financeportal.technicalanalysis.config.repository.IndicatorConfigRepository;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
@@ -33,7 +33,7 @@ public class IndicatorConfigService {
     }
 
     @Transactional(readOnly = true)
-    public List<IndicatorConfigResponse> getActiveIndicators(String keycloakId, String instrumentCode) {
+    public List<Response> getActiveIndicators(String keycloakId, String instrumentCode) {
         User user = resolveUser(keycloakId);
         MarketInstrument instrument = resolveInstrument(instrumentCode);
 
@@ -45,7 +45,7 @@ public class IndicatorConfigService {
     }
 
     @Transactional
-    public IndicatorConfigResponse saveIndicatorConfig(String keycloakId, String instrumentCode, IndicatorConfigRequest request) {
+    public Response saveIndicatorConfig(String keycloakId, String instrumentCode, Request request) {
         User user = resolveUser(keycloakId);
         MarketInstrument instrument = resolveInstrument(instrumentCode);
 
@@ -81,8 +81,8 @@ public class IndicatorConfigService {
                 .orElseThrow(() -> new TechnicalAnalysisException.Validation("Unsupported indicator: " + value));
     }
 
-    private IndicatorConfigResponse toResponse(IndicatorConfig config) {
-        return IndicatorConfigResponse.builder()
+    private Response toResponse(IndicatorConfig config) {
+        return Response.builder()
                 .id(config.getId())
                 .indicatorType(config.getIndicatorType())
                 .parameters(config.getParameters())

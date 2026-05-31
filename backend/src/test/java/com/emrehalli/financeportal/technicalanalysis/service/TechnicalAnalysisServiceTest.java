@@ -3,7 +3,6 @@ package com.emrehalli.financeportal.technicalanalysis.service;
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
 import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException;
-import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisPoint;
 import com.emrehalli.financeportal.technicalanalysis.service.model.TechnicalAnalysisResult;
 import org.junit.jupiter.api.Test;
 
@@ -124,7 +123,7 @@ class TechnicalAnalysisServiceTest {
 
         TechnicalAnalysisResult result = service.analyze("BTCUSDT", start, start.plusDays(60), null);
 
-        TechnicalAnalysisPoint last = result.points().getLast();
+        TechnicalAnalysisResult.Point last = result.points().getLast();
         assertThat(last.sma7()).isNotNull();
         assertThat(last.sma20()).isNotNull();
         assertThat(last.sma50()).isNotNull();

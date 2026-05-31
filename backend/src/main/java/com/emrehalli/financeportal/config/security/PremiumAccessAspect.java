@@ -1,6 +1,6 @@
 package com.emrehalli.financeportal.config.security;
 
-import com.emrehalli.financeportal.technicalanalysis.exception.PremiumRequiredException;
+import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysisException.PremiumRequiredException;
 import com.emrehalli.financeportal.user.entity.UserRole;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
