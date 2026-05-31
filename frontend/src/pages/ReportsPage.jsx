@@ -1,65 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { FileSpreadsheet, FileText } from "lucide-react";
-import { getMarketQuotes } from "../api/marketApi";
-import { getUserPortfolios } from "../api/portfolioApi";
-import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
+import { useMarketQuotes } from "../hooks/useMarketQueries";
+import { useUserPortfolios } from "../hooks/usePortfolioQueries";
 import { formatDateTime, formatNumber } from "../utils/formatters";
 
 export default function ReportsPage() {
   const { t } = useTranslation();
   const { userId } = useAuth();
-  const [quotes, setQuotes] = useState([]);
-  const [portfolios, setPortfolios] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-
-    let active = true;
-
-    async function loadData() {
-      try {
-        setLoading(true);
-        setError("");
-        const [marketQuotes, userPortfolios] = await Promise.all([
-          getMarketQuotes().catch(() => []),
-          getUserPortfolios(userId).catch(() => []),
-        ]);
-
-        if (!active) {
-          return;
-        }
-
-        setQuotes(marketQuotes ?? []);
-        setPortfolios(userPortfolios ?? []);
-      } catch (err) {
-        if (active) {
-          setError(extractErrorMessage(err, t("reports.loadError")));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadData();
-
-    return () => {
-      active = false;
-    };
-  }, [userId]);
+  const { data: quotes = [], isLoading: quotesLoading } = useMarketQuotes({ enabled: !!userId });
+  const { data: portfolios = [], isLoading: portfoliosLoading } = useUserPortfolios(userId);
+  const loading = !!userId && (quotesLoading || portfoliosLoading);
+  const error = "";
 
   const marketSummary = useMemo(() => {
     const positiveCount = quotes.filter((item) => Number(item.changeRate) >= 0).length;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { Check, ChevronDown, X } from "lucide-react";
@@ -11,8 +11,6 @@ import useToast from "../hooks/useToast";
 import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPanel";
 import AnalysisSymbolPicker from "../components/analysis/AnalysisSymbolPicker";
 import { ANALYSIS_RANGE_PRESETS, buildChartData, buildPresetRange, DEFAULT_INDICATORS } from "../components/analysis/analysisUtils";
-import AdvancedChart from "../components/analysis/AdvancedChart";
-import FundamentalAnalysis from "../components/analysis/FundamentalAnalysis";
 import SimpleAnalysisChart from "../components/analysis/SimpleAnalysisChart";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
@@ -20,6 +18,8 @@ import LoadingSpinner from "../components/common/LoadingSpinner";
 import { formatInstrumentCode, getFxCodeLabel } from "../utils/instrumentUtils";
 
 const DEFAULT_ANALYSIS_INDICATORS_PARAM = DEFAULT_INDICATORS.join(",");
+const AdvancedChart = lazy(() => import("../components/analysis/AdvancedChart"));
+const FundamentalAnalysis = lazy(() => import("../components/analysis/FundamentalAnalysis"));
 
 export default function AnalysisPage() {
   const { t, i18n } = useTranslation();
@@ -42,6 +42,7 @@ export default function AnalysisPage() {
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const initialHighlightTool = searchParams.get("tool") || null;
   const presetPrice = searchParams.get("preset") ? Number(searchParams.get("preset")) : null;
+  const isSimpleChartMode = chartMode === "simple";
 
   const { data: rawQuotes = [], isLoading: quotesLoading, error: quotesQueryError } = useMarketQuotes();
   const quotes = useMemo(() => (Array.isArray(rawQuotes) ? rawQuotes : []), [rawQuotes]);
@@ -75,13 +76,16 @@ export default function AnalysisPage() {
   const favoriteItemId = favoriteItem?.id;
 
   useEffect(() => {
-    if (!userId || !primaryApiSymbol) return undefined;
+    if (!userId) {
+      setWatchlistItems([]);
+      return undefined;
+    }
     let active = true;
     getUserWatchlist(userId)
       .then((rows) => { if (active) setWatchlistItems(rows); })
       .catch(() => { if (active) setWatchlistItems([]); });
     return () => { active = false; };
-  }, [userId, primaryApiSymbol]);
+  }, [userId]);
 
   useEffect(() => {
     if (quotes.length > 0 && !primarySymbol) {
@@ -102,7 +106,7 @@ export default function AnalysisPage() {
   const { data: analysis = null, isLoading: analysisLoading, error: analysisQueryError } = useTechnicalAnalysis(
     primaryApiSymbol,
     analysisParams,
-    { enabled: chartMode !== "advanced" && !!(primaryApiSymbol && dateRange.from && dateRange.to) },
+    { enabled: isSimpleChartMode && !!(primaryApiSymbol && dateRange.from && dateRange.to) },
   );
   const analysisError = analysisQueryError ? resolveAnalysisErrorMessage(analysisQueryError, t) : "";
   const historyParams = useMemo(
@@ -117,7 +121,7 @@ export default function AnalysisPage() {
   const { data: history = [], isLoading: historyLoading } = useMarketHistory(
     primaryApiSymbol,
     historyParams,
-    { enabled: !!(primaryApiSymbol && dateRange.from && dateRange.to) },
+    { enabled: isSimpleChartMode && !!(primaryApiSymbol && dateRange.from && dateRange.to) },
   );
 
   const comparisonSuggestions = useMemo(
@@ -269,7 +273,7 @@ export default function AnalysisPage() {
                   />
 
                   <div className="analysis-terminal-body">
-                    {chartMode === "simple" ? (
+                    {isSimpleChartMode ? (
                         <SimpleAnalysisChart
                           activeRange={activeRange}
                           onRangeChange={handleRangeChange}
@@ -283,13 +287,15 @@ export default function AnalysisPage() {
                           onOpenAdvanced={() => setChartMode("advanced")}
                         />
                     ) : (
-                      <AdvancedChart
-                        instrumentCode={primaryApiSymbol}
-                        initialHighlightTool={initialHighlightTool}
-                        presetPrice={presetPrice}
-                        quote={primaryQuote}
-                        technicalAnalysis={null}
-                      />
+                      <Suspense fallback={<LoadingSpinner label={t("analysis.chartLoading")} />}>
+                        <AdvancedChart
+                          instrumentCode={primaryApiSymbol}
+                          initialHighlightTool={initialHighlightTool}
+                          presetPrice={presetPrice}
+                          quote={primaryQuote}
+                          technicalAnalysis={null}
+                        />
+                      </Suspense>
                     )}
                   </div>
                 </div>
@@ -317,7 +323,9 @@ export default function AnalysisPage() {
 
                 {fundamentalsOpen ? (
                   <div className="analysis-fundamentals-collapse is-open">
-                    <FundamentalAnalysis instrumentCode={primarySymbol} />
+                    <Suspense fallback={<LoadingSpinner label={t("fundamental.loading")} />}>
+                      <FundamentalAnalysis instrumentCode={primarySymbol} />
+                    </Suspense>
                   </div>
                 ) : null}
               </section>

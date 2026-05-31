@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cancelAlert, createAlert, getUserAlerts } from "../api/alertApi";
-import { getMarketQuotes } from "../api/marketApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
@@ -9,6 +8,7 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
+import { useMarketQuotes } from "../hooks/useMarketQueries";
 import useToast from "../hooks/useToast";
 import { formatCurrency, formatDateTime, formatNumber } from "../utils/formatters";
 
@@ -16,7 +16,6 @@ export default function AlertsPage() {
   const { t } = useTranslation();
   const { userId } = useAuth();
   const [rows, setRows] = useState([]);
-  const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isModalOpen, setModalOpen] = useState(false);
@@ -28,6 +27,7 @@ export default function AlertsPage() {
     targetPrice: "",
   });
   const { toast, showToast } = useToast();
+  const { data: quotes = [], isLoading: quotesLoading } = useMarketQuotes({ enabled: !!userId });
 
   useEffect(() => {
     if (userId) {
@@ -39,12 +39,8 @@ export default function AlertsPage() {
     try {
       setLoading(true);
       setError("");
-      const [alerts, marketQuotes] = await Promise.all([
-        getUserAlerts(userId),
-        getMarketQuotes().catch(() => []),
-      ]);
+      const alerts = await getUserAlerts(userId);
       setRows(alerts ?? []);
-      setQuotes(marketQuotes ?? []);
     } catch (err) {
       setError(extractErrorMessage(err, t("alerts.loadError")));
     } finally {
@@ -143,9 +139,9 @@ export default function AlertsPage() {
 
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
       {error ? <ErrorMessage message={error} /> : null}
-      {loading ? <LoadingSpinner label={t("alerts.loading")} /> : null}
+      {loading || quotesLoading ? <LoadingSpinner label={t("alerts.loading")} /> : null}
 
-      {!loading ? (
+      {!loading && !quotesLoading ? (
         <>
           <section className="ticker-grid alerts-kpi-grid">
             <SummaryCard title={t("alerts.cards.activeTitle")} value={formatNumber(activeAlerts.length, 0)} subtitle={t("alerts.cards.activeSubtitle")} tone="cool" />

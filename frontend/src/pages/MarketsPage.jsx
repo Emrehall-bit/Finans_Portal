@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
@@ -60,6 +60,7 @@ const STOCK_RANK_SORT_OPTIONS = [
   { value: "price_desc", label: "Fiyat yüksekten" },
   { value: "price_asc", label: "Fiyat düşükten" },
 ];
+const SEARCH_DEBOUNCE_MS = 275;
 
 export default function MarketsPage() {
   const { t } = useTranslation();
@@ -92,7 +93,7 @@ export default function MarketsPage() {
   const [onlyWithFundamentals, setOnlyWithFundamentals] = useState(false);
   const [watchlistItems, setWatchlistItems] = useState([]);
   const [favoriteBusyKey, setFavoriteBusyKey] = useState("");
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
 
   const isFavoritesTab = categoryFilter === "FAVORITES";
   const isStockTab = categoryFilter === "STOCK";
@@ -103,7 +104,7 @@ export default function MarketsPage() {
   const screenParams = useMemo(() => ({
     type: categoryFilter,
     source: sourceFilter || undefined,
-    q: deferredSearch.trim() || undefined,
+    q: debouncedSearch.trim() || undefined,
     minPrice: toFilterNumber(minPrice),
     maxPrice: toFilterNumber(maxPrice),
     minChangePercent: toFilterNumber(minChangePercent),
@@ -126,7 +127,7 @@ export default function MarketsPage() {
   }), [
     categoryFilter,
     sourceFilter,
-    deferredSearch,
+    debouncedSearch,
     minPrice,
     maxPrice,
     minChangePercent,
@@ -198,7 +199,7 @@ export default function MarketsPage() {
   }, [categoryFilter, formatAmount]);
 
   const visibleQuotes = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
+    const query = debouncedSearch.trim().toLowerCase();
 
     if (isFavoritesTab) {
       const codes = new Set(watchlistItems.map((row) => normalizeCode(row.instrumentCode)));
@@ -225,9 +226,10 @@ export default function MarketsPage() {
   }, [
     allQuotes,
     categoryFilter,
-    deferredSearch,
+    debouncedSearch,
     isFavoritesTab,
     screenedQuotes,
+    sourceFilter,
     sortBy,
     watchlistItems,
   ]);
@@ -900,6 +902,22 @@ function formatPercentValue(value) {
 function toSortableNumber(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : -Infinity;
+}
+
+function useDebouncedValue(value, delayMs) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedValue(value);
+    }, delayMs);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [value, delayMs]);
+
+  return debouncedValue;
 }
 
 function toComparableNumber(value) {

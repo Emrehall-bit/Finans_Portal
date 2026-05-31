@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { getMarketQuotes } from "../api/marketApi";
-import { getNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import SummaryCard from "../components/common/SummaryCard";
+import { useMarketQuotes } from "../hooks/useMarketQueries";
+import { useNewsList } from "../hooks/useNewsQueries";
 import { formatNewsDate } from "../utils/dateUtils";
 import { buildNewsPlaceholderLabel, getNewsDateValue, getNewsProviderLabel, getProviderBadgeColor } from "../components/news/newsCardUtils";
 
@@ -17,46 +17,12 @@ function ensureArray(value) {
 
 export default function HomePage() {
   const { t } = useTranslation();
-  const [news, setNews] = useState([]);
-  const [quotes, setQuotes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let active = true;
-
-    async function load() {
-      try {
-        setLoading(true);
-        setError("");
-
-        const [newsData, quoteData] = await Promise.all([getNews({ isKapDisclosure: false }), getMarketQuotes()]);
-
-        if (!active) {
-          return;
-        }
-
-        setNews(ensureArray(newsData?.content).slice(0, 4));
-        setQuotes(ensureArray(quoteData).slice(0, 5));
-      } catch (err) {
-        if (!active) {
-          return;
-        }
-        setError(extractErrorMessage(err, t("home.loadError")));
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    load();
-
-    return () => {
-      active = false;
-    };
-  }, [t]);
-
+  const { data: newsData = null, isLoading: newsLoading, error: newsError } = useNewsList({ isKapDisclosure: false });
+  const { data: quoteData = [], isLoading: quotesLoading, error: quotesError } = useMarketQuotes();
+  const news = useMemo(() => ensureArray(newsData?.content).slice(0, 4), [newsData]);
+  const quotes = useMemo(() => ensureArray(quoteData).slice(0, 5), [quoteData]);
+  const loading = newsLoading || quotesLoading;
+  const error = newsError || quotesError ? extractErrorMessage(newsError || quotesError, t("home.loadError")) : "";
   const featuredNews = ensureArray(news).slice(0, 5);
 
   return (
