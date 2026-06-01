@@ -303,6 +303,53 @@ function resolveRawNewsTags(item) {
   return [];
 }
 
+const KAP_DISCLOSURE_GROUPS = [
+  {
+    key: "menkul-kiymet",
+    label: "Menkul Kıymet",
+    test: (s) =>
+      s.includes("Sermaye Piyasası Aracı") ||
+      s.includes("Varant") ||
+      s.includes("İhraç Tavanı"),
+  },
+  {
+    key: "genel-kurul",
+    label: "Genel Kurul",
+    test: (s) => s.includes("Genel Kurul"),
+  },
+  {
+    key: "derecelendirme",
+    label: "Derecelendirme",
+    test: (s) => s.includes("Derecelendirme") || s.includes("Bağımsız Denetim"),
+  },
+  {
+    key: "kurumsal-eylem",
+    label: "Kurumsal Eylem",
+    test: (s) =>
+      s.includes("Kar Payı") ||
+      s.includes("Geri Alınma") ||
+      s.includes("Sermaye Artırımı") ||
+      s.includes("Kayıtlı Sermaye") ||
+      s.includes("Birleşme"),
+  },
+];
+
+export function resolveKapDisclosureGroup(title) {
+  if (!title || !title.includes(" - ")) {
+    return { key: "diger", label: "Diğer" };
+  }
+  const subtitle = title.substring(title.indexOf(" - ") + 3).trim();
+  for (const group of KAP_DISCLOSURE_GROUPS) {
+    if (group.test(subtitle)) {
+      return { key: group.key, label: group.label };
+    }
+  }
+  return {
+    key: "diger",
+    label: subtitle.length > 38 ? subtitle.substring(0, 38) + "…" : subtitle,
+  };
+}
+
 export function getNewsDisplayTags(item, t, limit = Infinity) {
   const seen = new Set();
   const resolved = [];

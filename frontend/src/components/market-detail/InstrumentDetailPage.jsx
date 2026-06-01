@@ -26,6 +26,7 @@ import InstrumentFundamentalsPanel from "./InstrumentFundamentalsPanel";
 import FundamentalAnalysis from "../analysis/FundamentalAnalysis";
 import InstrumentHeader from "./InstrumentHeader";
 import InstrumentNewsList from "./InstrumentNewsList";
+import InstrumentKapNewsList from "./InstrumentKapNewsList";
 import InstrumentStatsPanel from "./InstrumentStatsPanel";
 import InstrumentTabs from "./InstrumentTabs";
 import { formatInstrumentCode, formatInstrumentLabel } from "../../utils/instrumentUtils";
@@ -78,6 +79,10 @@ export default function InstrumentDetailPage() {
   const [financialReports, setFinancialReports] = useState([]);
   const [financialsLoading, setFinancialsLoading] = useState(false);
   const [financialsError, setFinancialsError] = useState("");
+
+  const [kapItems, setKapItems] = useState([]);
+  const [kapLoading, setKapLoading] = useState(false);
+  const [kapError, setKapError] = useState("");
 
   const isDateRangeInvalid = Boolean(
     dateRange.from && dateRange.to && new Date(dateRange.from).getTime() > new Date(dateRange.to).getTime(),
@@ -328,6 +333,39 @@ export default function InstrumentDetailPage() {
     }
 
     loadFundamentals();
+    return () => {
+      active = false;
+    };
+  }, [activeTab, normalizedSymbol, t]);
+
+  useEffect(() => {
+    if (activeTab !== "kapDisclosures" || !normalizedSymbol) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadKapDisclosures() {
+      try {
+        setKapLoading(true);
+        setKapError("");
+        const page = await getNews({ symbol: normalizedSymbol, isKapDisclosure: true, size: 30 });
+        if (active) {
+          setKapItems(page.content ?? []);
+        }
+      } catch (err) {
+        if (active) {
+          setKapItems([]);
+          setKapError(extractErrorMessage(err, t("instrumentDetail.kapDisclosures.error")));
+        }
+      } finally {
+        if (active) {
+          setKapLoading(false);
+        }
+      }
+    }
+
+    loadKapDisclosures();
     return () => {
       active = false;
     };
@@ -606,6 +644,10 @@ export default function InstrumentDetailPage() {
 
             {activeTab === "news" ? (
               <InstrumentNewsList loading={newsLoading} error={newsError} items={newsItems} />
+            ) : null}
+
+            {activeTab === "kapDisclosures" ? (
+              <InstrumentKapNewsList loading={kapLoading} error={kapError} items={kapItems} />
             ) : null}
 
             {activeTab === "financials" ? (

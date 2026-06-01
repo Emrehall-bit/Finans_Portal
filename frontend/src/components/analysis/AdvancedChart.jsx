@@ -108,6 +108,7 @@ export default function AdvancedChart({
   presetPrice = null,
   quote = null,
   technicalAnalysis = null,
+  dateRange = null,
 }) {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
@@ -214,7 +215,10 @@ export default function AdvancedChart({
     drawings.horizontalLines.length ||
     drawings.trendLines.length,
   );
-  const rangeDates = useMemo(() => buildDateRange(range), [range]);
+  const rangeDates = useMemo(
+    () => dateRange ?? buildDateRange(range),
+    [dateRange, range],
+  );
   const volumeVisible = Boolean(technicalSnapshot?.volumeVisible);
 
   const clearTrendSelection = useCallback(() => {
@@ -1350,18 +1354,20 @@ export default function AdvancedChart({
 
       <div className="advanced-chart-toolbar">
         <div className="advanced-chart-toolbar-row">
-          <div className="chart-timeframes" role="group" aria-label="Range">
-            {rangeOptions.map((option) => (
-              <button
-                type="button"
-                key={option.value}
-                className={`chart-tf-btn${range === option.value ? " active" : ""}`}
-                onClick={() => setRange(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+          {!dateRange ? (
+            <div className="chart-timeframes" role="group" aria-label="Range">
+              {rangeOptions.map((option) => (
+                <button
+                  type="button"
+                  key={option.value}
+                  className={`chart-tf-btn${range === option.value ? " active" : ""}`}
+                  onClick={() => setRange(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           <div className="advanced-chart-toolbar-actions">
             <div className="indicators-dropdown" ref={indicatorsRef}>

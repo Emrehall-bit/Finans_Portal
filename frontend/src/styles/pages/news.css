@@ -1656,6 +1656,48 @@
   line-height: 1;
 }
 
+.kap-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.kap-type-badge.menkul-kiymet {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.22);
+  color: #7c3aed;
+}
+
+.kap-type-badge.genel-kurul {
+  background: rgba(76, 127, 255, 0.1);
+  border-color: rgba(76, 127, 255, 0.22);
+  color: var(--accent);
+}
+
+.kap-type-badge.derecelendirme {
+  background: rgba(244, 180, 78, 0.12);
+  border-color: rgba(244, 180, 78, 0.25);
+  color: #b45309;
+}
+
+.kap-type-badge.kurumsal-eylem {
+  background: rgba(34, 176, 125, 0.1);
+  border-color: rgba(34, 176, 125, 0.22);
+  color: var(--success);
+}
+
+.kap-type-badge.diger {
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.18);
+  color: var(--text-soft);
+}
+
 /* KAP CTA button */
 .news-kap-cta-row {
   padding-top: 4px;

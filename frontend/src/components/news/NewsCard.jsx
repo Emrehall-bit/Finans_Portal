@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import {
   buildNewsPlaceholderLabel,
   formatNewsPublishedAt,
-  getNewsDisclosureTypeLabel,
   getNewsDisplayTags,
   getNewsFallbackLogoUrl,
   getNewsPreviewText,
@@ -11,6 +10,7 @@ import {
   getNewsSourceName,
   getNewsSourceUrl,
   isKapDisclosure,
+  resolveKapDisclosureGroup,
 } from "./newsCardUtils";
 
 function resolveThumbnail(item) {
@@ -53,7 +53,7 @@ function NewsCardContent({ item, onClick, assetKey }) {
   const publishedAtLabel = formatNewsPublishedAt(item);
   const previewText = getNewsPreviewText(item, t("news.previewMissing"));
   const sourceUrl = getNewsSourceUrl(item);
-  const disclosureTypeLabel = getNewsDisclosureTypeLabel(item?.disclosureType);
+  const kapGroup = resolveKapDisclosureGroup(item?.title);
   const displayTags = getNewsDisplayTags(item, t, 2);
 
   const shellClassName = `news-card news-card-shell${kapDisclosure ? " kap" : ""}`;
@@ -64,7 +64,7 @@ function NewsCardContent({ item, onClick, assetKey }) {
         <div className="news-kap-card-inner">
           <div className="news-card-meta">
             <span className="news-card-badge provider">{providerLabel}</span>
-            <span className="news-card-badge neutral">{disclosureTypeLabel}</span>
+            <span className={`kap-type-badge ${kapGroup.key}`}>{kapGroup.label}</span>
           </div>
 
           <h3 className="news-card-title">{item?.title || t("news.titleMissing")}</h3>

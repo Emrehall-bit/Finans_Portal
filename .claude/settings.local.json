@@ -147,7 +147,10 @@
       "PowerShell(Set-Location *)",
       "Bash(awk 'NR>=53 && NR<=170' src/main/resources/application.yml)",
       "Bash(awk 'NR>=1841 && NR<=1960' components/analysis/AdvancedChart.jsx)",
-      "Bash(awk 'NR>=40 && NR<=120' market/persistence/JpaMarketQueryService.java)"
+      "Bash(awk 'NR>=40 && NR<=120' market/persistence/JpaMarketQueryService.java)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Filter \"*kap*\" -ErrorAction SilentlyContinue)",
+      "Bash(grep -E \"\\\\.java$\")",
+      "Bash(grep -E \"entity|\\\\.java$\")"
     ]
   }
 }
