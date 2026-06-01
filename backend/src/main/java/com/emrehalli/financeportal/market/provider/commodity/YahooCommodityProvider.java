@@ -59,9 +59,10 @@ public class YahooCommodityProvider implements MarketDataProvider {
                         item.previousClose(),
                         item.dayHigh(),
                         item.dayLow(),
-                        item.volume(),
-                        SourceName.YAHOO_FINANCE.name(),
-                        now
+                      item.volume(),
+                      SourceName.YAHOO_FINANCE.name(),
+                      now,
+                      null
                 ));
             }
             return result;

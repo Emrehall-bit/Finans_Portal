@@ -190,7 +190,8 @@ public class CryptoService {
                 price.getSourceName().name(),
                 price.getInstrument().getInstrumentType().name(),
                 "TRY",
-                price.getPriceTimestamp()
+                price.getPriceTimestamp(),
+                null
         );
     }
 

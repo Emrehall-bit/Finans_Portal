@@ -460,7 +460,7 @@ export default function MarketsPage() {
           {CURRENCY_CONVERTIBLE_CATEGORIES.has(categoryFilter) ? (
             <div className="market-filter-field market-currency-toggle-wrap">
               <span>Para Birimi</span>
-              <CurrencyToggle />
+              <CurrencyToggle className="analysis-currency-toggle" />
             </div>
           ) : null}
         </div>

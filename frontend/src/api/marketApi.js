@@ -325,6 +325,7 @@ function mapStockQuote(item) {
     buyRate: null,
     sellRate: null,
     code: item.symbol,
+    openPrice: item.openPrice ?? null,
   };
 }
 

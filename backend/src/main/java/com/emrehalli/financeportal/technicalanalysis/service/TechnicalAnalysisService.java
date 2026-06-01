@@ -89,7 +89,8 @@ public class TechnicalAnalysisService {
                 trendAnalysisService.determineTrend(points),
                 trendAnalysisService.determineSignals(latestPoint),
                 latestIndicatorValues.isEmpty() ? Map.of() : Map.copyOf(latestIndicatorValues),
-                points
+                points,
+                trendAnalysisService.buildTrendContext(points, from, to)
         );
     }
 

@@ -248,7 +248,8 @@ public class StockService {
                 null,
                 null,
                 instrument.getSourceName().name(),
-                latestPrice.getPriceTimestamp().toInstant(ZoneOffset.UTC)
+                latestPrice.getPriceTimestamp().toInstant(ZoneOffset.UTC),
+                null
         );
     }
 
@@ -267,7 +268,8 @@ public class StockService {
                 cachedSource != null ? cachedSource.dayLow() : null,
                 cachedSource != null ? cachedSource.volume() : null,
                 instrument.getSourceName().name(),
-                dataTimestamp != null ? dataTimestamp.toInstant(ZoneOffset.UTC) : Instant.now()
+                dataTimestamp != null ? dataTimestamp.toInstant(ZoneOffset.UTC) : Instant.now(),
+                cachedSource != null ? cachedSource.openPrice() : null
         );
     }
 

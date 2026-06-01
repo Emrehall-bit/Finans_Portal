@@ -19,6 +19,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { formatNumber } from "../../utils/formatters";
 import { useCurrency } from "../../currency/CurrencyContext";
 import { formatAxisNumber, formatTrendLabel, resolveTrendDirection } from "./analysisUtils";
+import { detectInsufficientChartIndicators, toneFromRsi } from "./advancedChartUtils";
 
 export default function SimpleAnalysisChart({
   activeRange,
@@ -66,6 +67,7 @@ export default function SimpleAnalysisChart({
   );
   const supportResistance = useMemo(() => buildSupportResistance(chartData), [chartData]);
   const yDomain = useMemo(() => buildPriceDomain(chartData), [chartData]);
+  const insufficientIndicators = useMemo(() => detectInsufficientChartIndicators(chartData), [chartData]);
   const axisLabel = currency === "USD" ? "$" : "\u20ba";
 
   const metrics = [
@@ -91,7 +93,7 @@ export default function SimpleAnalysisChart({
     {
       label: "RSI (14)",
       value: latestRsi != null ? Number(latestRsi).toFixed(2) : "-",
-      tone: latestRsi == null ? "neutral" : latestRsi >= 70 ? "warning" : latestRsi <= 30 ? "positive" : "neutral",
+      tone: toneFromRsi(latestRsi),
       sparkTone: "info",
     },
     {
@@ -220,14 +222,35 @@ export default function SimpleAnalysisChart({
               <TechMetricCell label={t("analysis.chart.techPanel.maLayout", "MA Dizilimi")} value={summary.maPairLabel} tone={summary.maTone} />
             </div>
 
+            {insufficientIndicators.length > 0 ? (
+              <div className="simple-tech-check-item simple-tech-check-item--neutral">
+                <span className="simple-tech-check-icon"><AlertTriangle size={12} strokeWidth={2.4} /></span>
+                <span>{t("analysis.chart.techPanel.insufficientData")}: {insufficientIndicators.join(", ")}</span>
+              </div>
+            ) : null}
+
+            {(activeRange === "MAX" || activeRange === "1Y") && analysis?.trendContext ? (
+              <div className="simple-tech-check-item simple-tech-check-item--neutral">
+                <span className="simple-tech-check-icon"><Minus size={13} strokeWidth={2.4} /></span>
+                <span>
+                  {t("analysis.chart.techPanel.rangeTrend")}:{" "}
+                  <strong>
+                    {analysis.trendContext.insufficientData
+                      ? t("analysis.chart.techPanel.insufficientData")
+                      : formatTrendLabel(analysis.trendContext.selectedRangeTrend)}
+                  </strong>
+                </span>
+              </div>
+            ) : null}
+
             {supportResistance ? (
               <div className="simple-sr-card">
                 <div className={`simple-sr-row ${supportResistance.levelMode === "closeBand" ? "simple-sr-row--band" : "simple-sr-row--resistance"}`}>
-                  <span>{supportResistance.levelMode === "closeBand" ? "Seçili Aralık En Yüksek" : t("analysis.chart.techPanel.resistance", "Direnç")}</span>
+                  <span>{supportResistance.levelMode === "closeBand" ? t("analysis.chart.techPanel.rangeHigh") : t("analysis.chart.techPanel.resistance")}</span>
                   <strong>{axisLabel}{formatNumber(supportResistance.resistance, 2)}</strong>
                 </div>
                 <div className={`simple-sr-row ${supportResistance.levelMode === "closeBand" ? "simple-sr-row--band" : "simple-sr-row--support"}`}>
-                  <span>{supportResistance.levelMode === "closeBand" ? "Seçili Aralık En Düşük" : t("analysis.chart.techPanel.support", "Destek")}</span>
+                  <span>{supportResistance.levelMode === "closeBand" ? t("analysis.chart.techPanel.rangeLow") : t("analysis.chart.techPanel.support")}</span>
                   <strong>{axisLabel}{formatNumber(supportResistance.support, 2)}</strong>
                 </div>
               </div>
@@ -333,13 +356,12 @@ function buildTechChecklist({ lastPrice, ma20, ma50, latestRsi }) {
   }
 
   if (latestRsi != null) {
-    const tone = latestRsi >= 70 ? "warning" : latestRsi <= 30 ? "positive" : "neutral";
     const label = latestRsi >= 70
       ? "RSI aşırı alım bölgesinde"
       : latestRsi <= 30
         ? "RSI aşırı satım bölgesinde"
         : "RSI nötr bölgede";
-    items.push({ key: "rsi", tone, label });
+    items.push({ key: "rsi", tone: toneFromRsi(latestRsi), label });
   }
 
   return items;
@@ -516,15 +538,11 @@ function resolveLatestSignal(raw) {
 function inferSignalTone(signal) {
   const raw = String(signal || "").toUpperCase();
   if (!raw) return "neutral";
-  if (raw.includes("ABOVE") || raw.includes("OVERSOLD") || raw.includes("BUY")) return "positive";
-  if (raw.includes("BELOW") || raw.includes("OVERBOUGHT") || raw.includes("SELL")) return "negative";
-  return "neutral";
-}
-
-function toneFromRsi(rsi) {
-  if (rsi == null) return "neutral";
-  if (rsi >= 70) return "warning";
-  if (rsi <= 30) return "positive";
+  // RSI teknik bölge sinyalleri — yönlendirici renk verilmez
+  if (raw.includes("OVERBOUGHT") || raw.includes("OVERSOLD")) return "warning";
+  // MA pozisyon ve gerçek aksiyon sinyalleri
+  if (raw.includes("ABOVE") || raw.includes("BUY")) return "positive";
+  if (raw.includes("BELOW") || raw.includes("SELL")) return "negative";
   return "neutral";
 }
 

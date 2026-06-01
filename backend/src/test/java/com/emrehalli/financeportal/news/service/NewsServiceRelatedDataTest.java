@@ -45,7 +45,7 @@ class NewsServiceRelatedDataTest {
                 .thenReturn(List.of());
         when(marketQueryService.findBySymbol("USDTRY", InstrumentType.FX))
                 .thenReturn(Optional.of(new MarketQueryService.MarketSnapshot(
-                        "USDTRY", "USD/TRY", BigDecimal.valueOf(39.12), BigDecimal.valueOf(0.84), "TCMB", InstrumentType.FX.name(), "TRY", LocalDateTime.now()
+                        "USDTRY", "USD/TRY", BigDecimal.valueOf(39.12), BigDecimal.valueOf(0.84), "TCMB", InstrumentType.FX.name(), "TRY", LocalDateTime.now(), null
                 )));
 
         NewsRelatedResponseDto response = service.getRelatedData(100L);

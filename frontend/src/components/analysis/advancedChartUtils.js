@@ -189,11 +189,8 @@ export function toneFromRsi(rsi) {
   if (rsi == null) {
     return "neutral";
   }
-  if (rsi >= 70) {
+  if (rsi >= 70 || rsi <= 30) {
     return "warning";
-  }
-  if (rsi <= 30) {
-    return "positive";
   }
   return "neutral";
 }
@@ -271,4 +268,18 @@ export function formatTooltipDate(epochSeconds) {
     month: "short",
     year: "numeric",
   });
+}
+
+const CHART_INDICATOR_LABELS = { sma7: "MA 7", sma20: "MA 20", sma50: "MA 50", rsi14: "RSI 14" };
+
+/**
+ * chartData dizisinde tüm noktaları null olan indikatörlerin display isimlerini döner.
+ * Backend yeterli veri olmadığında o pozisyonları null bırakır; tüm noktalar null ise
+ * seçili aralıkta o indikatör üretilememiş demektir.
+ */
+export function detectInsufficientChartIndicators(chartData) {
+  if (!Array.isArray(chartData) || chartData.length === 0) return [];
+  return Object.entries(CHART_INDICATOR_LABELS)
+    .filter(([field]) => chartData.every((point) => point?.[field] == null))
+    .map(([, label]) => label);
 }

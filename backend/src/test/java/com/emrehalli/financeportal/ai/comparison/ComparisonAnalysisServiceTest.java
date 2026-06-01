@@ -206,7 +206,8 @@ class ComparisonAnalysisServiceTest {
                         BigDecimal.valueOf(95),
                         BigDecimal.valueOf(90),
                         rsi
-                ))
+                )),
+                null
         );
     }
 

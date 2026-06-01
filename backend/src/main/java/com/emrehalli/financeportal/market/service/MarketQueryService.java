@@ -31,7 +31,8 @@ public interface MarketQueryService {
             String source,
             String instrumentType,
             String currency,
-            LocalDateTime fetchedAt
+            LocalDateTime fetchedAt,
+            BigDecimal openPrice
     ) {
     }
 

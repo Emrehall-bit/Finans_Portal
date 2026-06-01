@@ -334,7 +334,7 @@ class CompanyRatioServiceTest {
         when(marketQueryService.findBySymbol("TEST")).thenReturn(Optional.of(
                 new MarketQueryService.MarketSnapshot(
                         "TEST", "Test A.Å.", new BigDecimal(price),
-                        BigDecimal.ZERO, "BIST", "STOCK", "TRY", LocalDateTime.now())));
+                        BigDecimal.ZERO, "BIST", "STOCK", "TRY", LocalDateTime.now(), null)));
     }
 
     private void stubValues(List<CompanyFinancialValue> vals) {

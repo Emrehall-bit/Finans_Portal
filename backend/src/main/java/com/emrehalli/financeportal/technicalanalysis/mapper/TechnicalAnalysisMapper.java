@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.technicalanalysis.mapper;
 
+import com.emrehalli.financeportal.technicalanalysis.dto.TrendContext;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResponse;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
@@ -24,7 +25,22 @@ public class TechnicalAnalysisMapper {
                 result.trendDirection().name(),
                 result.signals().stream().map(Enum::name).toList(),
                 toIndicatorDtos(result.indicatorValues()),
-                result.points().stream().map(this::toPointDto).toList()
+                result.points().stream().map(this::toPointDto).toList(),
+                toTrendContextDto(result.trendContext())
+        );
+    }
+
+    private TechnicalAnalysisResponse.TrendContextResponse toTrendContextDto(TrendContext ctx) {
+        if (ctx == null) {
+            return null;
+        }
+        return new TechnicalAnalysisResponse.TrendContextResponse(
+                ctx.shortTermTrend().name(),
+                ctx.selectedRangeTrend().name(),
+                ctx.maTrend().name(),
+                ctx.rangeLabel(),
+                ctx.dataPoints(),
+                ctx.insufficientData()
         );
     }
 

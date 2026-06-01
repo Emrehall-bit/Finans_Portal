@@ -331,7 +331,7 @@ class ConservativeNewsRelationServiceTest {
                 .thenReturn(Optional.of(new MarketQueryService.MarketSnapshot(
                         "USDTRY", "USD/TRY", BigDecimal.valueOf(40.50),
                         BigDecimal.valueOf(0.55), "TCMB", InstrumentType.FX.name(), "TRY",
-                        LocalDateTime.now())));
+                        LocalDateTime.now(), null)));
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 

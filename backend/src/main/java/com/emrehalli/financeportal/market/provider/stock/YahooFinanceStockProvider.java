@@ -84,7 +84,7 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
                 .queryParam("symbols", yahooSymbols.stream().collect(Collectors.joining(",")))
                 .queryParam(
                         "fields",
-                        "regularMarketPrice,regularMarketChangePercent,regularMarketPreviousClose,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume"
+                        "regularMarketPrice,regularMarketChangePercent,regularMarketPreviousClose,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,regularMarketOpen"
                 )
                 .queryParam("crumb", crumb)
                 .build()
@@ -155,7 +155,8 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
                         decimalValue(item, "regularMarketDayLow"),
                         longValue(item, "regularMarketVolume"),
                         SourceName.YAHOO_FINANCE.name(),
-                        timestamp
+                        timestamp,
+                        decimalValue(item, "regularMarketOpen")
                 ));
             }
 

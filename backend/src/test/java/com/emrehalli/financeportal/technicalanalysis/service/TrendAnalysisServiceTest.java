@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
+import com.emrehalli.financeportal.technicalanalysis.dto.TrendContext;
 import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
 import org.junit.jupiter.api.Test;
@@ -83,6 +84,45 @@ class TrendAnalysisServiceTest {
                 point(101, null, null)
         );
         assertThat(service.determineTrend(points)).isEqualTo(TrendDirection.SIDEWAYS);
+    }
+
+    @Test
+    void buildTrendContext_selectedRangeTrend_should_dampen_spike_at_start_via_window_average() {
+        // Senaryo: İlk kapanış spike (110), sonraki 4 gün = 100, son 5 gün = 102.
+        // Eski tek-nokta yaklaşımı: (102 - 110) / 110 ≈ -7.3% → DOWNTREND
+        // Yeni pencere ortalaması:
+        //   leading  = (110+100+100+100+100)/5 = 102
+        //   trailing = (102×5)/5 = 102
+        //   changePct = 0% → SIDEWAYS: spike aralık bazlı ortalama ile yumuşatıldı.
+        // SMA değerleri maTrend hesabını insufficientData=false yapıyor.
+        List<TechnicalAnalysisResult.Point> points = new ArrayList<>();
+        points.add(point(110.0, 108.0, 105.0));                          // spike
+        for (int i = 0; i < 4; i++) points.add(point(100.0, 98.0, 95.0));
+        for (int i = 0; i < 5; i++) points.add(point(102.0, 100.0, 97.0));
+
+        TrendContext ctx = service.buildTrendContext(points, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
+
+        assertThat(ctx.insufficientData()).isFalse();
+        assertThat(ctx.selectedRangeTrend()).isEqualTo(TrendDirection.SIDEWAYS);
+    }
+
+    @Test
+    void buildTrendContext_selectedRangeTrend_should_degrade_gracefully_when_fewer_than_5_points() {
+        // Senaryo: Sadece 3 geçerli kapanış, pencere boyutundan (5) az.
+        // calculateLeadingAverage ve calculateTrailingAverage her ikisi de mevcut
+        // 3 noktayı kullanır → aynı ortalama → changePct = 0% → SIDEWAYS.
+        // insufficientData = false: veri hesaplanabilir, sadece pencere boyutundan küçük.
+        List<TechnicalAnalysisResult.Point> points = List.of(
+                point(100.0, 98.0, 95.0),
+                point(100.0, 98.0, 95.0),
+                point(115.0, 112.0, 109.0)   // son nokta: sma7 > sma20 → maTrend = UPTREND
+        );
+
+        TrendContext ctx = service.buildTrendContext(points, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 10));
+
+        assertThat(ctx.insufficientData()).isFalse();
+        assertThat(ctx.dataPoints()).isEqualTo(3);
+        assertThat(ctx.selectedRangeTrend()).isEqualTo(TrendDirection.SIDEWAYS);
     }
 
     private static TechnicalAnalysisResult.Point point(double close, Double sma7, Double sma20) {

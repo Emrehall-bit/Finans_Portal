@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
+import com.emrehalli.financeportal.technicalanalysis.dto.TrendContext;
 import com.emrehalli.financeportal.technicalanalysis.enums.TechnicalSignal;
 import com.emrehalli.financeportal.technicalanalysis.enums.TrendDirection;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
@@ -7,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +17,8 @@ import java.util.List;
 public class TrendAnalysisService {
 
     private static final BigDecimal TREND_THRESHOLD_PCT = BigDecimal.valueOf(0.1);
+    private static final BigDecimal RANGE_TREND_THRESHOLD_PCT = BigDecimal.ONE;
+    private static final int RANGE_WINDOW_SIZE = 5;
 
     /**
      * Determines trend direction using a 5+5 closing-price window when enough data is available.
@@ -71,6 +76,96 @@ public class TrendAnalysisService {
             return TrendDirection.DOWNTREND;
         }
         return TrendDirection.SIDEWAYS;
+    }
+
+    public TrendContext buildTrendContext(List<TechnicalAnalysisResult.Point> points, LocalDate from, LocalDate to) {
+        TrendDirection shortTermTrend = determineTrend(points);
+        String rangeLabel = resolveRangeLabel(from, to);
+        int dataPoints = points == null ? 0 : points.size();
+        boolean insufficientData = false;
+
+        TrendDirection selectedRangeTrend;
+        if (points == null || points.size() < 2) {
+            selectedRangeTrend = TrendDirection.SIDEWAYS;
+            insufficientData = true;
+        } else {
+            BigDecimal startAvg = calculateLeadingAverage(points, RANGE_WINDOW_SIZE);
+            BigDecimal endAvg = calculateTrailingAverage(points, RANGE_WINDOW_SIZE);
+            if (startAvg == null || startAvg.signum() <= 0 || endAvg == null || endAvg.signum() <= 0) {
+                selectedRangeTrend = TrendDirection.SIDEWAYS;
+                insufficientData = true;
+            } else {
+                BigDecimal changePct = endAvg.subtract(startAvg)
+                        .divide(startAvg.abs(), 8, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100));
+                selectedRangeTrend = changePct.compareTo(RANGE_TREND_THRESHOLD_PCT) > 0
+                        ? TrendDirection.UPTREND
+                        : changePct.compareTo(RANGE_TREND_THRESHOLD_PCT.negate()) < 0
+                                ? TrendDirection.DOWNTREND
+                                : TrendDirection.SIDEWAYS;
+            }
+        }
+
+        TrendDirection maTrend;
+        if (points == null || points.isEmpty()) {
+            maTrend = TrendDirection.SIDEWAYS;
+            insufficientData = true;
+        } else {
+            TechnicalAnalysisResult.Point latestPoint = points.getLast();
+            BigDecimal sma7 = latestPoint.sma7();
+            BigDecimal sma20 = latestPoint.sma20();
+            if (sma7 == null || sma20 == null) {
+                maTrend = TrendDirection.SIDEWAYS;
+                insufficientData = true;
+            } else {
+                int cmp = sma7.compareTo(sma20);
+                maTrend = cmp > 0 ? TrendDirection.UPTREND : cmp < 0 ? TrendDirection.DOWNTREND : TrendDirection.SIDEWAYS;
+            }
+        }
+
+        return new TrendContext(shortTermTrend, selectedRangeTrend, maTrend, rangeLabel, dataPoints, insufficientData);
+    }
+
+    private static boolean validClose(BigDecimal close) {
+        return close != null && close.signum() > 0;
+    }
+
+    private BigDecimal calculateLeadingAverage(List<TechnicalAnalysisResult.Point> points, int window) {
+        BigDecimal sum = BigDecimal.ZERO;
+        int count = 0;
+        for (TechnicalAnalysisResult.Point point : points) {
+            if (count >= window) break;
+            if (validClose(point.close())) {
+                sum = sum.add(point.close());
+                count++;
+            }
+        }
+        return count == 0 ? null : sum.divide(BigDecimal.valueOf(count), 8, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateTrailingAverage(List<TechnicalAnalysisResult.Point> points, int window) {
+        BigDecimal sum = BigDecimal.ZERO;
+        int count = 0;
+        for (int i = points.size() - 1; i >= 0 && count < window; i--) {
+            if (validClose(points.get(i).close())) {
+                sum = sum.add(points.get(i).close());
+                count++;
+            }
+        }
+        return count == 0 ? null : sum.divide(BigDecimal.valueOf(count), 8, RoundingMode.HALF_UP);
+    }
+
+    private static String resolveRangeLabel(LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            return "MAX";
+        }
+        long days = ChronoUnit.DAYS.between(from, to);
+        if (days <= 10) return "7D";
+        if (days <= 45) return "1M";
+        if (days <= 120) return "3M";
+        if (days <= 220) return "6M";
+        if (days <= 400) return "1Y";
+        return "MAX";
     }
 
     private BigDecimal windowAverage(List<TechnicalAnalysisResult.Point> points, int fromInclusive, int toExclusive) {

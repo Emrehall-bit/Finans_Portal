@@ -104,7 +104,8 @@ public class JpaMarketQueryService implements MarketQueryService {
                         price.getSourceName().name(),
                         instrument.getInstrumentType().name(),
                         null,
-                        price.getPriceTimestamp()
+                        price.getPriceTimestamp(),
+                        null
                 ));
     }
 }

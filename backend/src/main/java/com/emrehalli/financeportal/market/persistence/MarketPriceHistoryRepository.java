@@ -43,7 +43,6 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
             where upper(mi.instrument_code) = upper(:symbol)
               and mi.instrument_type = 'STOCK'
               and mph.interval_type = 'ONE_DAY'
-              and mph.source_name = 'IS_YATIRIM'
             """, nativeQuery = true)
     Optional<LocalDate> findTopDateBySymbolOrderByDateDesc(@Param("symbol") String symbol);
 
@@ -141,7 +140,6 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
             @Param("intervalType")   IntervalType intervalType
     );
 }
-
 
 
 

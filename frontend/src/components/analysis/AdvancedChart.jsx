@@ -192,6 +192,13 @@ export default function AdvancedChart({
     [resolvedTechnicalSnapshot, manualSupportLine, manualResistanceLine],
   );
   const technicalView = useMemo(() => buildTechnicalView(effectiveTechnicalSnapshot, t), [effectiveTechnicalSnapshot, t]);
+  const insufficientOverlays = useMemo(() => {
+    if (!effectiveTechnicalSnapshot) return [];
+    const names = [];
+    if (activeIndicators.has("sma20") && effectiveTechnicalSnapshot.sma20 == null) names.push("MA 20");
+    if (activeIndicators.has("sma50") && effectiveTechnicalSnapshot.sma50 == null) names.push("MA 50");
+    return names;
+  }, [effectiveTechnicalSnapshot, activeIndicators]);
 
   activeToolRef.current = activeTool;
   drawingsRef.current = drawings;
@@ -294,7 +301,7 @@ export default function AdvancedChart({
         lineWidth: 1,
         lineStyle: 0,
         axisLabelVisible: false,
-        title: "Auto Support",
+        title: "",
       });
     }
 
@@ -305,7 +312,7 @@ export default function AdvancedChart({
         lineWidth: 1,
         lineStyle: 0,
         axisLabelVisible: false,
-        title: "Auto Resistance",
+        title: "",
       });
     }
   }, [clearStructurePriceLines, showStructureLines]);
@@ -1634,12 +1641,12 @@ export default function AdvancedChart({
 
             <MetricGroup title={t("analysis.chart.techPanel.groupLevels")}>
               <MetricRow
-                label={effectiveTechnicalSnapshot?.levelMode === "closeBand" ? "Seçili Aralık En Düşük" : t("analysis.chart.techPanel.support")}
+                label={effectiveTechnicalSnapshot?.levelMode === "closeBand" ? t("analysis.chart.techPanel.rangeLow") : t("analysis.chart.techPanel.support")}
                 value={effectiveTechnicalSnapshot?.supportLevel != null ? formatNumber(effectiveTechnicalSnapshot.supportLevel, 2) : "-"}
                 detail={effectiveTechnicalSnapshot?.supportDistancePct != null ? `${effectiveTechnicalSnapshot.supportDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : null}
               />
               <MetricRow
-                label={effectiveTechnicalSnapshot?.levelMode === "closeBand" ? "Seçili Aralık En Yüksek" : t("analysis.chart.techPanel.resistance")}
+                label={effectiveTechnicalSnapshot?.levelMode === "closeBand" ? t("analysis.chart.techPanel.rangeHigh") : t("analysis.chart.techPanel.resistance")}
                 value={effectiveTechnicalSnapshot?.resistanceLevel != null ? formatNumber(effectiveTechnicalSnapshot.resistanceLevel, 2) : "-"}
                 detail={effectiveTechnicalSnapshot?.resistanceDistancePct != null ? `${effectiveTechnicalSnapshot.resistanceDistancePct.toFixed(2)}% ${t("analysis.chart.techPanel.fromPrice")}` : null}
               />
@@ -1662,6 +1669,13 @@ export default function AdvancedChart({
                 tone={effectiveTechnicalSnapshot?.maAlignmentTone ?? "neutral"}
               />
             </MetricGroup>
+            {insufficientOverlays.length > 0 ? (
+              <MetricRow
+                label={t("analysis.chart.techPanel.insufficientData")}
+                value={insufficientOverlays.join(", ")}
+                tone="neutral"
+              />
+            ) : null}
           </div>
             </>
           ) : (
@@ -2103,7 +2117,7 @@ function mergeTechnicalSnapshot(snapshot, technicalAnalysis) {
 
 function deriveLatestSignal({ latestRow, trendDirection, maAlignment, volatility }) {
   if (latestRow?.rsi14 != null && latestRow.rsi14 <= 30) {
-    return { key: "oversoldRisk", tone: "positive" };
+    return { key: "oversoldRisk", tone: "warning" };
   }
   if (latestRow?.rsi14 != null && latestRow.rsi14 >= 70) {
     return { key: "overboughtRisk", tone: "warning" };
@@ -2351,7 +2365,7 @@ function buildTechnicalView(snapshot, t) {
     const rsiZone = resolveRsiZoneKey(snapshot.rsiValue);
     reasons.push({
       text: t(`analysis.chart.techView.reason.rsi.${rsiZone}`),
-      tone: rsiZone === "neutral" ? "positive" : "warning",
+      tone: rsiZone === "neutral" ? "neutral" : "warning",
     });
   }
 
@@ -2381,9 +2395,11 @@ function buildTechnicalView(snapshot, t) {
   }
 
   if (snapshot.resistanceDistancePct != null && snapshot.resistanceDistancePct <= 1.5) {
-    reasons.push({ text: t("analysis.chart.techView.reason.nearResistance", { value: snapshot.resistanceDistancePct.toFixed(2) }), tone: "warning" });
+    const resistanceKey = snapshot.levelMode === "closeBand" ? "nearRangeHigh" : "nearResistance";
+    reasons.push({ text: t(`analysis.chart.techView.reason.${resistanceKey}`, { value: snapshot.resistanceDistancePct.toFixed(2) }), tone: "warning" });
   } else if (snapshot.supportDistancePct != null && snapshot.supportDistancePct <= 1.5) {
-    reasons.push({ text: t("analysis.chart.techView.reason.nearSupport", { value: snapshot.supportDistancePct.toFixed(2) }), tone: "warning" });
+    const supportKey = snapshot.levelMode === "closeBand" ? "nearRangeLow" : "nearSupport";
+    reasons.push({ text: t(`analysis.chart.techView.reason.${supportKey}`, { value: snapshot.supportDistancePct.toFixed(2) }), tone: "warning" });
   }
 
   if (snapshot.latestSignalTone === "positive") {

@@ -16,7 +16,8 @@ public record StockPriceDto(
         BigDecimal dayLow,
         Long volume,
         String sourceName,
-        Instant dataTimestamp
+        Instant dataTimestamp,
+        BigDecimal openPrice
 ) {
 }
 

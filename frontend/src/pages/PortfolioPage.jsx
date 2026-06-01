@@ -849,7 +849,7 @@ export default function PortfolioPage() {
               </p>
             </div>
             <div className="actions-row portfolio-top-actions">
-              <CurrencyToggle />
+              <CurrencyToggle className="analysis-currency-toggle" />
               <button type="button" className="secondary-button portfolio-watchlist-trigger" onClick={openWatchlistDrawer}>
                 <Star size={15} />
                 Watchlist
@@ -2128,7 +2128,6 @@ function buildAssetCategorySummary(holdings, totalValue) {
     weight: totalValue > 0 ? (item.value / totalValue) * 100 : 0,
   }));
 }
-
 
 
 

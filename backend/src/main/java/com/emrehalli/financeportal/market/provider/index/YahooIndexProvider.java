@@ -61,7 +61,8 @@ public class YahooIndexProvider implements MarketDataProvider {
                         item.dayLow(),
                         item.volume(),
                         SourceName.YAHOO_FINANCE.name(),
-                        now
+                        now,
+                        null
                 ));
             }
             return result;

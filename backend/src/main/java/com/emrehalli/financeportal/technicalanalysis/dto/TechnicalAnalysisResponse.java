@@ -14,7 +14,8 @@ public record TechnicalAnalysisResponse(
         String trendDirection,
         List<String> signals,
         List<IndicatorValue> indicatorValues,
-        List<Point> points
+        List<Point> points,
+        TrendContextResponse trendContext
 ) {
 
     public record Point(
@@ -30,6 +31,16 @@ public record TechnicalAnalysisResponse(
     public record IndicatorValue(
             String indicator,
             BigDecimal value
+    ) {
+    }
+
+    public record TrendContextResponse(
+            String shortTermTrend,
+            String selectedRangeTrend,
+            String maTrend,
+            String rangeLabel,
+            int dataPoints,
+            boolean insufficientData
     ) {
     }
 }

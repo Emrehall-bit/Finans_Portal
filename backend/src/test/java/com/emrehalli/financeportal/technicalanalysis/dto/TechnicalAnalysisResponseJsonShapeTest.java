@@ -40,14 +40,17 @@ class TechnicalAnalysisResponseJsonShapeTest {
                         new BigDecimal("98.0"),
                         new BigDecimal("97.0"),
                         new BigDecimal("55.0")
-                ))
+                )),
+                new TechnicalAnalysisResponse.TrendContextResponse(
+                        "UPTREND", "UPTREND", "UPTREND", "3M", 63, false
+                )
         );
 
         JsonNode json = objectMapper.valueToTree(response);
 
         assertThat(fieldNames(json)).containsExactlyInAnyOrder(
                 "symbol", "from", "to", "latestPrice", "analysisStatus", "message",
-                "trendDirection", "signals", "indicatorValues", "points");
+                "trendDirection", "signals", "indicatorValues", "points", "trendContext");
         assertThat(json.get("signals").isArray()).isTrue();
         assertThat(fieldNames(json.get("indicatorValues").get(0)))
                 .containsExactlyInAnyOrder("indicator", "value");

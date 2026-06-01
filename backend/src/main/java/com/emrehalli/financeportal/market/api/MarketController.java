@@ -557,7 +557,8 @@ public class MarketController {
                 rate.getSource(),
                 rate.getType(),
                 "TRY",
-                rate.getPriceTimestamp()
+                rate.getPriceTimestamp(),
+                null
         );
     }
 
@@ -578,7 +579,8 @@ public class MarketController {
                 source,
                 InstrumentType.FUND.name(),
                 "TRY",
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                null
         );
     }
 
@@ -593,7 +595,8 @@ public class MarketController {
                 null,
                 stock.dataTimestamp() != null
                         ? LocalDateTime.ofInstant(stock.dataTimestamp(), java.time.ZoneOffset.UTC)
-                        : null
+                        : null,
+                stock.openPrice()
         );
     }
 

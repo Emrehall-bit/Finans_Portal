@@ -19,7 +19,8 @@ public record TechnicalAnalysisResult(
         TrendDirection trendDirection,
         List<TechnicalSignal> signals,
         Map<IndicatorType, BigDecimal> indicatorValues,
-        List<Point> points
+        List<Point> points,
+        TrendContext trendContext
 ) {
 
     public record Point(
