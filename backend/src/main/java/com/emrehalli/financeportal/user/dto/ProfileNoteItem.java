@@ -18,4 +18,6 @@ public class ProfileNoteItem {
     private String content;
 
     private String createdAt;
+
+    private String updatedAt;
 }

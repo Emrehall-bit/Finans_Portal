@@ -46,9 +46,8 @@
     "portfolio": "Portfolio",
     "analysis": "Analysis",
     "news": "News",
-    "alerts": "Alerts",
+    "alerts": "Alerts / Notes",
     "simulation": "Simulation",
-    "reports": "Reports",
     "profile": "Profile / Settings",
     "admin": "Admin Panel",
     "adminData": "Data Operations",
@@ -651,7 +650,7 @@
         "groupLevels": "Levels",
         "groupTrend": "Trend Structure",
         "waiting": "Waiting",
-        "trend": "Technical Trend",
+        "trend": "Short-Term Trend",
         "rangeTrend": "Range trend",
         "insufficientData": "Insufficient data",
         "maAlignment": "MA Alignment",
@@ -767,6 +766,16 @@
           "bearish": "Bearish",
           "weakBearish": "Weak bearish",
           "strongBearish": "Strong bearish"
+        },
+        "shortTermTitle": "Short-term signals",
+        "rangeReason": {
+          "strongBullish": "Selected range is strongly bullish",
+          "bullish": "Selected range is bullish",
+          "weakBullish": "Selected range is weakly bullish",
+          "neutral": "Selected range is sideways-neutral",
+          "bearish": "Selected range is bearish",
+          "weakBearish": "Selected range is weakly bearish",
+          "strongBearish": "Selected range is strongly bearish"
         },
         "reason": {
           "priceAboveMa20": "Price above MA20",
@@ -902,51 +911,6 @@
       "currentPrice": "Current Price",
       "source": "Source",
       "created": "Created"
-    }
-  },
-  "reports": {
-    "eyebrow": "Reports",
-    "title": "Reports",
-    "description": "An export and analysis hub that summarizes portfolio and market flow in one place.",
-    "rangeLabel": "Report date range",
-    "ranges": {
-      "today": "Today",
-      "week": "7D",
-      "month": "30D",
-      "ytd": "YTD"
-    },
-    "loading": "Loading report data...",
-    "loadError": "Report data could not be loaded.",
-    "portfolioEyebrow": "Portfolio Report",
-    "portfolioTitle": "Portfolio summary outputs",
-    "portfolioCount": "{{count}} portfolios",
-    "portfolioEmptyTitle": "Portfolio report is not ready",
-    "portfolioEmptyDescription": "No portfolios were found for the user.",
-    "marketEyebrow": "Market Monitoring Report",
-    "marketTitle": "Market flow summary",
-    "symbolCount": "{{count}} symbols",
-    "marketEmptyTitle": "Market report is not ready",
-    "marketEmptyDescription": "No reportable data was returned from the market service.",
-    "pdf": "Create PDF Report",
-    "excel": "Export to Excel",
-    "pdfHint": "TODO: backend PDF export endpoint is required",
-    "excelHint": "TODO: backend Excel export endpoint is required",
-    "reportablePortfolios": "Reportable portfolios",
-    "noRecentPortfolio": "No recent portfolio",
-    "historyEmptyTitle": "No recently created reports",
-    "historyEmptyDescription": "PDF or Excel reports will be listed here after you create them.",
-    "cards": {
-      "portfolioCount": "Portfolio count",
-      "portfolioCountSubtitle": "Reportable records",
-      "latestPortfolio": "Most recent portfolio",
-      "totalSymbols": "Total symbols",
-      "totalSymbolsSubtitle": "Observed market records",
-      "positiveSymbols": "Positive movers",
-      "positiveSymbolsSubtitle": "Positive daily move",
-      "negativeSymbols": "Negative movers",
-      "negativeSymbolsSubtitle": "Negative daily move",
-      "reportTime": "Report time",
-      "reportTimeSubtitle": "Instant summary"
     }
   },
   "portfolioDetail": {
@@ -1484,9 +1448,9 @@
     }
   },
   "alerts": {
-    "eyebrow": "Notifications",
-    "title": "Alerts",
-    "description": "Track price levels, manage active rules, and review trigger history.",
+    "eyebrow": "Alerts & Notes",
+    "title": "Alerts / Notes",
+    "description": "Manage price alerts, track trigger history, and save personal notes.",
     "loading": "Loading alerts...",
     "loadError": "Alerts could not be loaded.",
     "create": "Create alert",
@@ -1543,6 +1507,16 @@
     "conditions": {
       "above": "If price goes above",
       "below": "If price goes below"
+    },
+    "notes": {
+      "eyebrow": "My Notes",
+      "title": "Personal Notes",
+      "add": "Add Note",
+      "empty": "No notes yet.",
+      "placeholder": "Review AKBNK balance sheet\nRe-evaluate if USD hits 50\nStocks to keep an eye on...",
+      "saveError": "Note could not be saved",
+      "createdAt": "Created",
+      "updatedAt": "Updated"
     }
   },
   "newsDetail": {

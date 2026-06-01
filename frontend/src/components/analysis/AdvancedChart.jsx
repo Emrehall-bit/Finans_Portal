@@ -2047,11 +2047,11 @@ function buildTechnicalSummary({
   const latestRsi = latestRow?.rsi14 ?? null;
   const maAlignment = deriveMaAlignment(latestRow);
   const volatility = deriveVolatility(rows, rangeKey);
-  const momentum = deriveMomentum(rows, rangeKey, instrumentType);
   const selectedRangePerformance = resolveSelectedRangePerformance(rows, instrumentType, rangeKey);
+  const momentum = deriveMomentum(selectedRangePerformance.totalChangePct, instrumentType);
   const supportResistance = deriveSupportResistance(rows, latestRow);
   const rawSignal = normalizeSignalDescriptor(latestSignal);
-  const derivedSignal = deriveLatestSignal({ latestRow, trendDirection, maAlignment, volatility });
+  const derivedSignal = deriveLatestSignal({ latestRow, trendDirection, maAlignment, volatility, instrumentType });
   const signalTone = rawSignal?.tone ?? derivedSignal.tone;
 
   return {
@@ -2095,18 +2095,11 @@ function buildTechnicalSummary({
   };
 }
 
-function deriveMomentum(rows, rangeKey, instrumentType) {
-  const normalized = Array.isArray(rows) ? rows : [];
-  const lookback = rangeMomentumLookback(rangeKey, normalized.length);
-  if (normalized.length <= lookback) {
+function deriveMomentum(changePct, instrumentType) {
+  const value = toFiniteNumber(changePct);
+  if (value == null) {
     return { key: "awaiting", tone: "neutral", value: null };
   }
-  const latest = toFiniteNumber(normalized.at(-1)?.close);
-  const anchor = toFiniteNumber(normalized.at(-(lookback + 1))?.close);
-  if (latest == null || anchor == null || anchor === 0) {
-    return { key: "awaiting", tone: "neutral", value: null };
-  }
-  const value = ((latest - anchor) / Math.abs(anchor)) * 100;
   const threshold = resolveMomentumThreshold(instrumentType);
   if (value >= threshold) {
     return { key: "positive", tone: "positive", value };
@@ -2115,12 +2108,6 @@ function deriveMomentum(rows, rangeKey, instrumentType) {
     return { key: "negative", tone: "negative", value };
   }
   return { key: "neutral", tone: "neutral", value };
-}
-
-function rangeMomentumLookback(rangeKey, dataLength) {
-  const normalizedRange = String(rangeKey || "").trim().toUpperCase();
-  const base = { "1M": 5, "3M": 15, "6M": 30, "1Y": 60, "MAX": 90 }[normalizedRange] ?? 15;
-  return Math.min(base, Math.max(1, dataLength - 1));
 }
 
 function deriveSupportResistance(rows, latestRow) {
@@ -2260,11 +2247,12 @@ function mergeTechnicalSnapshot(snapshot, technicalAnalysis, instrumentType) {
   };
 }
 
-function deriveLatestSignal({ latestRow, trendDirection, maAlignment, volatility }) {
-  if (latestRow?.rsi14 != null && latestRow.rsi14 <= 30) {
+function deriveLatestSignal({ latestRow, trendDirection, maAlignment, volatility, instrumentType }) {
+  const rsiThresholds = resolveRsiThresholds(instrumentType);
+  if (latestRow?.rsi14 != null && latestRow.rsi14 <= rsiThresholds.oversold) {
     return { key: "oversoldRisk", tone: "warning" };
   }
-  if (latestRow?.rsi14 != null && latestRow.rsi14 >= 70) {
+  if (latestRow?.rsi14 != null && latestRow.rsi14 >= rsiThresholds.overbought) {
     return { key: "overboughtRisk", tone: "warning" };
   }
   if (trendDirection === "UPTREND" && maAlignment.tone === "positive") {
@@ -2476,11 +2464,15 @@ function buildTechnicalView(snapshot, t, instrumentType) {
   const stateKey = snapshot.selectedRangeStateKey ?? "neutral";
   const tone = snapshot.selectedRangeTrendTone ?? "neutral";
 
-  const reasons = [];
+  const reasons = [{
+    text: t(`analysis.chart.techView.rangeReason.${stateKey}`),
+    tone,
+  }];
+  const shortTermReasons = [];
 
   if (snapshot.rsiValue != null) {
     const rsiZone = resolveRsiZoneKey(snapshot.rsiValue, instrumentType);
-    reasons.push({
+    shortTermReasons.push({
       text: t(`analysis.chart.techView.reason.rsi.${rsiZone}`),
       tone: rsiZone === "neutral" ? "neutral" : "warning",
     });
@@ -2489,18 +2481,18 @@ function buildTechnicalView(snapshot, t, instrumentType) {
   if (snapshot.lastClose != null && snapshot.sma20 != null) {
     const distancePct = Math.abs(((snapshot.lastClose - snapshot.sma20) / snapshot.lastClose) * 100);
     if (distancePct <= 0.35) {
-      reasons.push({ text: t("analysis.chart.techView.reason.priceNearMa20"), tone: "warning" });
+      shortTermReasons.push({ text: t("analysis.chart.techView.reason.priceNearMa20"), tone: "warning" });
     } else if (snapshot.lastClose > snapshot.sma20) {
-      reasons.push({ text: t("analysis.chart.techView.reason.priceAboveMa20"), tone: "positive" });
+      shortTermReasons.push({ text: t("analysis.chart.techView.reason.priceAboveMa20"), tone: "positive" });
     } else {
-      reasons.push({ text: t("analysis.chart.techView.reason.priceBelowMa20"), tone: "negative" });
+      shortTermReasons.push({ text: t("analysis.chart.techView.reason.priceBelowMa20"), tone: "negative" });
     }
   }
 
   if (snapshot.maAlignmentKey === "bullish") {
-    reasons.push({ text: t("analysis.chart.techView.reason.maBullish"), tone: "positive" });
+    shortTermReasons.push({ text: t("analysis.chart.techView.reason.maBullish"), tone: "positive" });
   } else if (snapshot.maAlignmentKey === "bearish") {
-    reasons.push({ text: t("analysis.chart.techView.reason.maBearish"), tone: "negative" });
+    shortTermReasons.push({ text: t("analysis.chart.techView.reason.maBearish"), tone: "negative" });
   }
 
   if (snapshot.momentumKey === "positive") {
@@ -2513,23 +2505,25 @@ function buildTechnicalView(snapshot, t, instrumentType) {
 
   if (snapshot.resistanceDistancePct != null && snapshot.resistanceDistancePct <= 1.5) {
     const resistanceKey = snapshot.levelMode === "closeBand" ? "nearRangeHigh" : "nearResistance";
-    reasons.push({ text: t(`analysis.chart.techView.reason.${resistanceKey}`, { value: snapshot.resistanceDistancePct.toFixed(2) }), tone: "warning" });
+    shortTermReasons.push({ text: t(`analysis.chart.techView.reason.${resistanceKey}`, { value: snapshot.resistanceDistancePct.toFixed(2) }), tone: "warning" });
   } else if (snapshot.supportDistancePct != null && snapshot.supportDistancePct <= 1.5) {
     const supportKey = snapshot.levelMode === "closeBand" ? "nearRangeLow" : "nearSupport";
-    reasons.push({ text: t(`analysis.chart.techView.reason.${supportKey}`, { value: snapshot.supportDistancePct.toFixed(2) }), tone: "warning" });
+    shortTermReasons.push({ text: t(`analysis.chart.techView.reason.${supportKey}`, { value: snapshot.supportDistancePct.toFixed(2) }), tone: "warning" });
   }
 
   if (snapshot.latestSignalTone === "positive") {
-    reasons.push({ text: t("analysis.chart.techView.reason.signalPositive"), tone: "positive" });
+    shortTermReasons.push({ text: t("analysis.chart.techView.reason.signalPositive"), tone: "positive" });
   } else if (snapshot.latestSignalTone === "negative") {
-    reasons.push({ text: t("analysis.chart.techView.reason.signalNegative"), tone: "negative" });
+    shortTermReasons.push({ text: t("analysis.chart.techView.reason.signalNegative"), tone: "negative" });
   }
 
   return {
     title: t("analysis.chart.techView.title"),
     label: t(`analysis.chart.techView.state.${stateKey}`),
     tone,
-    reasons: reasons.filter((reason) => reason.text).slice(0, 5),
+    reasons: reasons.filter((reason) => reason.text).slice(0, 2),
+    shortTermTitle: t("analysis.chart.techView.shortTermTitle"),
+    shortTermReasons: shortTermReasons.filter((reason) => reason.text).slice(0, 3),
   };
 }
 

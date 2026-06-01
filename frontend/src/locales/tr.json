@@ -46,9 +46,8 @@
     "portfolio": "Portföy Yönetimi",
     "analysis": "Teknik Analiz",
     "news": "Haberler",
-    "alerts": "Alarmlar",
+    "alerts": "Alarmlar / Notlar",
     "simulation": "Simülasyon",
-    "reports": "Raporlar",
     "profile": "Profil / Ayarlar",
     "admin": "Admin Paneli",
     "adminData": "Veri İşlemleri",
@@ -644,7 +643,7 @@
         "groupLevels": "Seviyeler",
         "groupTrend": "Trend Yapısı",
         "waiting": "Bekleniyor",
-        "trend": "Teknik Eğilim",
+        "trend": "Kısa Vadeli Eğilim",
         "rangeTrend": "Aralık eğilimi",
         "insufficientData": "Yetersiz veri",
         "maAlignment": "MA Dizilimi",
@@ -760,6 +759,16 @@
           "bearish": "Düşüş",
           "weakBearish": "Zayıf düşüş",
           "strongBearish": "Güçlü düşüş"
+        },
+        "shortTermTitle": "Kısa vadeli sinyaller",
+        "rangeReason": {
+          "strongBullish": "Seçili aralık güçlü yükselişte",
+          "bullish": "Seçili aralık yükselişte",
+          "weakBullish": "Seçili aralık zayıf yükselişte",
+          "neutral": "Seçili aralık yatay-nötr",
+          "bearish": "Seçili aralık düşüşte",
+          "weakBearish": "Seçili aralık zayıf düşüşte",
+          "strongBearish": "Seçili aralık güçlü düşüşte"
         },
         "reason": {
           "priceAboveMa20": "Fiyat MA20 üzerinde",
@@ -895,51 +904,6 @@
       "currentPrice": "Güncel Fiyat",
       "source": "Kaynak",
       "created": "Olusturma"
-    }
-  },
-  "reports": {
-    "eyebrow": "Raporlar",
-    "title": "Raporlar",
-    "description": "Portföy ve piyasa akışını tek ekrandan özetleyen export ve analiz merkezi.",
-    "rangeLabel": "Rapor zaman aralığı",
-    "ranges": {
-      "today": "Bugün",
-      "week": "7G",
-      "month": "30G",
-      "ytd": "YTD"
-    },
-    "loading": "Rapor verileri yükleniyor...",
-    "loadError": "Rapor verileri yüklenemedi.",
-    "portfolioEyebrow": "Portföy Raporu",
-    "portfolioTitle": "Portföy özet çıktıları",
-    "portfolioCount": "{{count}} portföy",
-    "portfolioEmptyTitle": "Portföy raporu hazır değil",
-    "portfolioEmptyDescription": "Kullanıcıya ait portföy bulunmuyor.",
-    "marketEyebrow": "Piyasa Takip Raporu",
-    "marketTitle": "Market akış özeti",
-    "symbolCount": "{{count}} sembol",
-    "marketEmptyTitle": "Piyasa raporu hazır değil",
-    "marketEmptyDescription": "Market servisinden raporlanabilir veri gelmedi.",
-    "pdf": "PDF Raporu Oluştur",
-    "excel": "Excel Dışa Aktar",
-    "pdfHint": "TODO: backend PDF export endpointi gerekli",
-    "excelHint": "TODO: backend Excel export endpointi gerekli",
-    "reportablePortfolios": "Raporlanabilir portföyler",
-    "noRecentPortfolio": "Son portföy bulunmuyor",
-    "historyEmptyTitle": "Son oluşturulan rapor bulunmuyor",
-    "historyEmptyDescription": "PDF veya Excel raporu oluşturduğunuzda burada listelenecek.",
-    "cards": {
-      "portfolioCount": "Portföy adedi",
-      "portfolioCountSubtitle": "Raporlanabilir kayıt",
-      "latestPortfolio": "Son oluşturulan",
-      "totalSymbols": "Toplam sembol",
-      "totalSymbolsSubtitle": "Gözlenen piyasa kaydı",
-      "positiveSymbols": "Artıda olanlar",
-      "positiveSymbolsSubtitle": "Pozitif günlük hareket",
-      "negativeSymbols": "Ekside olanlar",
-      "negativeSymbolsSubtitle": "Negatif günlük hareket",
-      "reportTime": "Rapor zamanı",
-      "reportTimeSubtitle": "Anlık oluşan özet"
     }
   },
   "portfolioDetail": {
@@ -1477,9 +1441,9 @@
     }
   },
   "alerts": {
-    "eyebrow": "Bildirimler",
-    "title": "Alarmlar",
-    "description": "Fiyat seviyelerini izle, aktif kuralları yönet ve tetiklenen geçmişi takip et.",
+    "eyebrow": "Alarmlar & Notlar",
+    "title": "Alarmlar / Notlar",
+    "description": "Fiyat alarmlarını yönet, tetiklenen geçmişi takip et ve kişisel notlarını kaydet.",
     "loading": "Alarmlar yükleniyor...",
     "loadError": "Alarmlar yüklenemedi.",
     "create": "Alarm oluştur",
@@ -1536,6 +1500,16 @@
     "conditions": {
       "above": "Fiyat üstüne çıkarsa",
       "below": "Fiyat altına düşerse"
+    },
+    "notes": {
+      "eyebrow": "Notlarım",
+      "title": "Kişisel Notlar",
+      "add": "Not Ekle",
+      "empty": "Henüz not eklenmemiş.",
+      "placeholder": "AKBNK bilançosunu incele\nUSD 50 olursa tekrar değerlendir\nTakip edilmesi gereken hisseler...",
+      "saveError": "Not kaydedilemedi",
+      "createdAt": "Oluşturuldu",
+      "updatedAt": "Güncellendi"
     }
   },
   "newsDetail": {

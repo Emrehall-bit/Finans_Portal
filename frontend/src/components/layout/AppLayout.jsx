@@ -193,12 +193,6 @@ export default function AppLayout() {
       requiresAuth: true,
     },
     {
-      to: "/reports",
-      label: t("nav.reports"),
-      icon: Briefcase,
-      requiresAuth: true,
-    },
-    {
       to: "/profile",
       label: t("nav.profile"),
       icon: User,
@@ -767,16 +761,6 @@ export default function AppLayout() {
                       <>
                         <button type="button" className="topbar-user-menu-item" onClick={handleAccountPrimaryAction}>
                           {t("layout.myProfile")}
-                        </button>
-                        <button
-                          type="button"
-                          className="topbar-user-menu-item"
-                          onClick={() => {
-                            navigate("/reports");
-                            setUserMenuOpen(false);
-                          }}
-                        >
-                          {t("nav.reports")}
                         </button>
                       </>
                     ) : (

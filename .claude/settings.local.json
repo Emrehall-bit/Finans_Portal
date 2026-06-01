@@ -162,7 +162,10 @@
       "Bash(dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\components\\\\analysis\\\\advanced-chart *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\components\\\\analysis\" -File)",
       "Bash(Select-Object Name, FullName)",
-      "Bash(xargs grep -l \"score\\\\|Score\")"
+      "Bash(xargs grep -l \"score\\\\|Score\")",
+      "Bash(Remove-Item \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\pages\\\\ReportsPage.jsx\" -Force)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\styles\\\\pages\\\\reports.css\" -Force)",
+      "Bash(Write-Host \"Silindi\")"
     ]
   }
 }

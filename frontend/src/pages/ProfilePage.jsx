@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, LogOut, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, LogOut, X } from "lucide-react";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { useAuth } from "../auth/AuthContext";
@@ -47,21 +47,9 @@ export default function ProfilePage() {
   const [premiumLoading, setPremiumLoading] = useState(true);
   const [premiumWorking, setPremiumWorking] = useState(false);
 
-  // ── Notes state ──
-  const [notes, setNotes] = useState([]);
-  const [addingNote, setAddingNote] = useState(false);
-  const [newNoteText, setNewNoteText] = useState("");
-  const [editingId, setEditingId] = useState(null);
-  const [editingText, setEditingText] = useState("");
-  const [notesSaving, setNotesSaving] = useState(false);
-
   useEffect(() => {
     setForm(buildFormState(user, themePreference));
   }, [themePreference, user]);
-
-  useEffect(() => {
-    setNotes(Array.isArray(user?.notes) ? user.notes : []);
-  }, [user]);
 
   useEffect(() => {
     if (userProfile || authLoading) return;
@@ -144,82 +132,6 @@ export default function ProfilePage() {
     setForm((current) => ({ ...current, [name]: value }));
   }
 
-  // ── Notes helpers ──
-  async function saveNotes(updatedNotes) {
-    setNotesSaving(true);
-    try {
-      await updateUserProfile({
-        fullName: user?.fullName ?? "",
-        preferredLanguage: user?.preferredLanguage ?? null,
-        themePreference: user?.themePreference ?? null,
-        notes: updatedNotes,
-      });
-    } catch (err) {
-      showToast("error", extractErrorMessage(err, "Not kaydedilemedi"));
-      setNotes(Array.isArray(user?.notes) ? user.notes : []);
-    } finally {
-      setNotesSaving(false);
-    }
-  }
-
-  function startAddNote() {
-    setAddingNote(true);
-    setNewNoteText("");
-    setEditingId(null);
-  }
-
-  function cancelAdd() {
-    setAddingNote(false);
-    setNewNoteText("");
-  }
-
-  async function confirmAdd() {
-    const trimmed = newNoteText.trim();
-    if (!trimmed || notesSaving) return;
-    const newNote = {
-      id: crypto.randomUUID(),
-      content: trimmed,
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [...notes, newNote];
-    setNotes(updated);
-    setAddingNote(false);
-    setNewNoteText("");
-    await saveNotes(updated);
-  }
-
-  function startEdit(note) {
-    setEditingId(note.id);
-    setEditingText(note.content);
-    setAddingNote(false);
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
-    setEditingText("");
-  }
-
-  async function confirmEdit() {
-    const trimmed = editingText.trim();
-    if (!trimmed || notesSaving) return;
-    const updated = notes.map((n) =>
-      n.id === editingId ? { ...n, content: trimmed } : n,
-    );
-    setNotes(updated);
-    setEditingId(null);
-    setEditingText("");
-    await saveNotes(updated);
-  }
-
-  async function deleteNote(noteId) {
-    if (notesSaving) return;
-    const updated = notes.filter((n) => n.id !== noteId);
-    setNotes(updated);
-    await saveNotes(updated);
-  }
-
-  // ──────────────────
-
   function openDeleteConfirm() {
     setDeleteConfirmText("");
     setDeleteConfirmOpen(true);
@@ -294,95 +206,6 @@ export default function ProfilePage() {
                 <LogOut size={14} strokeWidth={2} aria-hidden />
                 <span>{t("profile.logout")}</span>
               </button>
-            </section>
-
-            {/* Personal Notes */}
-            <section className="panel-surface profile-form-card profile-notes-card">
-              <div className="panel-head">
-                <div>
-                  <p className="eyebrow">{t("profile.notes.eyebrow", "Notlarım")}</p>
-                  <h3>{t("profile.notes.title", "Kişisel Notlar")}</h3>
-                </div>
-                {!addingNote && !editingId && (
-                  <button
-                    type="button"
-                    className="secondary-button profile-notes-add-btn"
-                    onClick={startAddNote}
-                    disabled={notesSaving}
-                  >
-                    <Plus size={14} strokeWidth={2.5} />
-                    <span>{t("profile.notes.add", "Not Ekle")}</span>
-                  </button>
-                )}
-              </div>
-
-              {notes.length === 0 && !addingNote && (
-                <p className="profile-notes-empty">
-                  {t("profile.notes.empty", "Henüz not eklenmemiş.")}
-                </p>
-              )}
-
-              {notes.length > 0 && (
-                <div className={`profile-notes-scroll-wrap${notes.length > 3 ? " has-overflow" : ""}`}>
-                <ul className="profile-notes-list">
-                  {notes.map((note) => (
-                    <li key={note.id} className="profile-note-item">
-                      {editingId === note.id ? (
-                        <NoteEditForm
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          onSave={confirmEdit}
-                          onCancel={cancelEdit}
-                          saving={notesSaving}
-                        />
-                      ) : (
-                        <>
-                          <p className="profile-note-content">{note.content}</p>
-                          <div className="profile-note-meta">
-                            <span className="profile-note-date">{formatNoteDate(note.createdAt)}</span>
-                            <div className="profile-note-actions">
-                              <button
-                                type="button"
-                                className="profile-note-action-btn"
-                                onClick={() => startEdit(note)}
-                                disabled={notesSaving}
-                                title={t("common.edit", "Düzenle")}
-                              >
-                                <Pencil size={13} strokeWidth={2} />
-                              </button>
-                              <button
-                                type="button"
-                                className="profile-note-action-btn profile-note-action-btn--delete"
-                                onClick={() => deleteNote(note.id)}
-                                disabled={notesSaving}
-                                title={t("common.delete", "Sil")}
-                              >
-                                <Trash2 size={13} strokeWidth={2} />
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                </div>
-              )}
-
-              {addingNote && (
-                <NoteEditForm
-                  value={newNoteText}
-                  onChange={(e) => setNewNoteText(e.target.value)}
-                  onSave={confirmAdd}
-                  onCancel={cancelAdd}
-                  saving={notesSaving}
-                  placeholder={t(
-                    "profile.notes.placeholder",
-                    "AKBNK bilançosunu incele\nUSD 50 olursa tekrar değerlendir\nTakip edilmesi gereken hisseler...",
-                  )}
-                  autoFocus
-                />
-              )}
             </section>
 
             {/* Account Settings */}
@@ -647,47 +470,6 @@ export default function ProfilePage() {
       )}
     </div>
   );
-}
-
-function NoteEditForm({ value, onChange, onSave, onCancel, saving, placeholder, autoFocus }) {
-  return (
-    <div className="profile-note-edit-form">
-      <textarea
-        className="profile-notes-textarea"
-        value={value}
-        onChange={onChange}
-        maxLength={500}
-        rows={3}
-        placeholder={placeholder ?? ""}
-        // eslint-disable-next-line jsx-a11y/no-autofocus
-        autoFocus={autoFocus}
-      />
-      <div className="profile-notes-form-footer">
-        <span className="profile-notes-char-count">{value.length}/500</span>
-        <div className="actions-row">
-          <button type="button" className="secondary-button" onClick={onCancel} disabled={saving}>
-            İptal
-          </button>
-          <button type="button" onClick={onSave} disabled={saving || !value.trim()}>
-            {saving ? "Kaydediliyor..." : "Kaydet"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function formatNoteDate(isoString) {
-  if (!isoString) return "";
-  try {
-    return new Date(isoString).toLocaleDateString("tr-TR", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return "";
-  }
 }
 
 function getInitials(value) {

@@ -43,20 +43,32 @@ export const TechnicalViewCard = memo(function TechnicalViewCard({ view }) {
         <span>{view.title}</span>
         <strong className="advanced-tech-view-verdict">{view.label}</strong>
       </div>
-      <ul className="advanced-tech-view-checklist">
-        {view.reasons.map((reason) => {
-          const Icon = TECH_CHECK_ICONS[reason.tone] ?? Minus;
-          return (
-            <li key={reason.text} className={`advanced-tech-check advanced-tech-check--${reason.tone}`}>
-              <Icon size={13} strokeWidth={2.6} className="advanced-tech-check-icon" />
-              <span>{reason.text}</span>
-            </li>
-          );
-        })}
-      </ul>
+      <TechnicalReasonList reasons={view.reasons} />
+      {view.shortTermReasons?.length ? (
+        <div className="advanced-tech-view-subsignals">
+          <span className="advanced-tech-view-subtitle">{view.shortTermTitle}</span>
+          <TechnicalReasonList reasons={view.shortTermReasons} />
+        </div>
+      ) : null}
     </section>
   );
 });
+
+function TechnicalReasonList({ reasons }) {
+  return (
+    <ul className="advanced-tech-view-checklist">
+      {reasons.map((reason) => {
+        const Icon = TECH_CHECK_ICONS[reason.tone] ?? Minus;
+        return (
+          <li key={reason.text} className={`advanced-tech-check advanced-tech-check--${reason.tone}`}>
+            <Icon size={13} strokeWidth={2.6} className="advanced-tech-check-icon" />
+            <span>{reason.text}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 export const CrosshairTooltip = memo(function CrosshairTooltip({ model }) {
   const { t } = useTranslation();

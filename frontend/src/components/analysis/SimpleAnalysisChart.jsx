@@ -63,7 +63,7 @@ export default function SimpleAnalysisChart({
   const latestMa20 = useMemo(() => resolveLatestIndicator(analysis, chartData, "sma20", "SMA20"), [analysis, chartData]);
   const latestMa50 = useMemo(() => resolveLatestIndicator(analysis, chartData, "sma50", "SMA50"), [analysis, chartData]);
   const checklist = buildTechChecklist({ lastPrice, ma20: latestMa20, ma50: latestMa50, latestRsi, instrumentType });
-  const supportResistance = useMemo(() => buildSupportResistance(chartData), [chartData]);
+  const supportResistance = useMemo(() => buildSupportResistance(chartData, instrumentType), [chartData, instrumentType]);
   const yDomain = useMemo(() => buildPriceDomain(chartData), [chartData]);
   const selectedRangePerformance = useMemo(
     () => resolveSelectedRangePerformance(chartData, instrumentType, activeRange),
@@ -471,13 +471,14 @@ function buildPriceDomain(chartData) {
   return [min - pad, max + pad];
 }
 
-function buildSupportResistance(chartData) {
+function buildSupportResistance(chartData, instrumentType) {
   const rows = (Array.isArray(chartData) ? chartData : []).filter((point) => positiveNumber(point?.close) != null);
   if (rows.length < 2) {
     return null;
   }
   const latestClose = positiveNumber(rows.at(-1)?.close);
-  const hasOhlc = rows.some((point) => positiveNumber(point?.high) != null && positiveNumber(point?.low) != null);
+  const canUseSwingLevels = supportsSwingLevels(instrumentType);
+  const hasOhlc = canUseSwingLevels && rows.some((point) => positiveNumber(point?.high) != null && positiveNumber(point?.low) != null);
   const closes = rows.map((point) => positiveNumber(point.close)).filter((value) => value != null);
   const support = hasOhlc ? nearestSwingLevel(rows, latestClose, "low") : Math.min(...closes);
   const resistance = hasOhlc ? nearestSwingLevel(rows, latestClose, "high") : Math.max(...closes);
@@ -485,6 +486,10 @@ function buildSupportResistance(chartData) {
     return null;
   }
   return { support, resistance, levelMode: hasOhlc ? "swing" : "closeBand" };
+}
+
+function supportsSwingLevels(instrumentType) {
+  return String(instrumentType ?? "").trim().toUpperCase() === "CRYPTO";
 }
 
 function nearestSwingLevel(rows, latestClose, key) {
@@ -576,9 +581,7 @@ function buildSimpleSummaryModel({ analysis, chartData, latestRsi, activeRange, 
   const maSpreadPct = hasMaPair ? ((ma20 - ma50) / ma50) * 100 : null;
   const bullishMaLayout = maSpreadPct != null && maSpreadPct > 0.20;
   const bearishMaLayout = maSpreadPct != null && maSpreadPct < -0.20;
-  // Momentum lookback scales with the selected range so longer views reflect longer trends
-  const lookback = rangeMomentumLookback(activeRange, closes.length);
-  const momentumPct = closes.length > lookback ? derivePercentChange(closes.at(-(lookback + 1)), closes.at(-1)) : null;
+  const momentumPct = resolveSelectedRangePerformance(chartData, instrumentType, activeRange).totalChangePct;
   const momentumThreshold = resolveMomentumThreshold(instrumentType);
   const volatilityPct = closeToCloseVolatility(closes, activeRange);
 
@@ -623,11 +626,6 @@ function formatSelectedRangeStateLabel(stateKey) {
     default:
       return "Yatay-Nötr";
   }
-}
-
-function rangeMomentumLookback(activeRange, dataLength) {
-  const base = { "1M": 5, "3M": 15, "6M": 30, "1Y": 60, "MAX": 90 }[activeRange] ?? 15;
-  return Math.min(base, Math.max(1, dataLength - 1));
 }
 
 function resolveRsiZoneLabel(rsiValue, instrumentType) {

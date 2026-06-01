@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { cancelAlert, createAlert, getUserAlerts } from "../api/alertApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
@@ -14,7 +15,7 @@ import { formatCurrency, formatDateTime, formatNumber } from "../utils/formatter
 
 export default function AlertsPage() {
   const { t } = useTranslation();
-  const { userId } = useAuth();
+  const { userId, user, updateUserProfile } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,11 +30,23 @@ export default function AlertsPage() {
   const { toast, showToast } = useToast();
   const { data: quotes = [], isLoading: quotesLoading } = useMarketQuotes({ enabled: !!userId });
 
+  // ── Notes state ──
+  const [notes, setNotes] = useState([]);
+  const [addingNote, setAddingNote] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editingText, setEditingText] = useState("");
+  const [notesSaving, setNotesSaving] = useState(false);
+
   useEffect(() => {
     if (userId) {
       loadData();
     }
   }, [userId]);
+
+  useEffect(() => {
+    setNotes(Array.isArray(user?.notes) ? user.notes : []);
+  }, [user]);
 
   async function loadData() {
     try {
@@ -54,16 +67,10 @@ export default function AlertsPage() {
 
   const matchingQuotes = useMemo(() => {
     const query = symbolSearch.trim().toLowerCase();
-    if (!query) {
-      return quotes.slice(0, 8);
-    }
-
-    return quotes.filter((item) => {
-      return (
-        item.symbol?.toLowerCase().includes(query) ||
-        item.displayName?.toLowerCase().includes(query)
-      );
-    }).slice(0, 8);
+    if (!query) return quotes.slice(0, 8);
+    return quotes.filter((item) =>
+      item.symbol?.toLowerCase().includes(query) || item.displayName?.toLowerCase().includes(query),
+    ).slice(0, 8);
   }, [quotes, symbolSearch]);
 
   const selectedQuote = useMemo(
@@ -120,6 +127,76 @@ export default function AlertsPage() {
     } catch (err) {
       setError(extractErrorMessage(err, t("alerts.cancelError")));
     }
+  }
+
+  // ── Notes handlers ──
+  async function saveNotes(updatedNotes) {
+    setNotesSaving(true);
+    try {
+      await updateUserProfile({
+        fullName: user?.fullName ?? "",
+        preferredLanguage: user?.preferredLanguage ?? null,
+        themePreference: user?.themePreference ?? null,
+        notes: updatedNotes,
+      });
+    } catch (err) {
+      showToast("error", extractErrorMessage(err, t("alerts.notes.saveError", "Not kaydedilemedi")));
+      setNotes(Array.isArray(user?.notes) ? user.notes : []);
+    } finally {
+      setNotesSaving(false);
+    }
+  }
+
+  function startAddNote() {
+    setAddingNote(true);
+    setNewNoteText("");
+    setEditingId(null);
+  }
+
+  function cancelAdd() {
+    setAddingNote(false);
+    setNewNoteText("");
+  }
+
+  async function confirmAdd() {
+    const trimmed = newNoteText.trim();
+    if (!trimmed || notesSaving) return;
+    const newNote = { id: crypto.randomUUID(), content: trimmed, createdAt: new Date().toISOString() };
+    const updated = [...notes, newNote];
+    setNotes(updated);
+    setAddingNote(false);
+    setNewNoteText("");
+    await saveNotes(updated);
+  }
+
+  function startEdit(note) {
+    setEditingId(note.id);
+    setEditingText(note.content);
+    setAddingNote(false);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingText("");
+  }
+
+  async function confirmEdit() {
+    const trimmed = editingText.trim();
+    if (!trimmed || notesSaving) return;
+    const updated = notes.map((n) =>
+      n.id === editingId ? { ...n, content: trimmed, updatedAt: new Date().toISOString() } : n,
+    );
+    setNotes(updated);
+    setEditingId(null);
+    setEditingText("");
+    await saveNotes(updated);
+  }
+
+  async function deleteNote(noteId) {
+    if (notesSaving) return;
+    const updated = notes.filter((n) => n.id !== noteId);
+    setNotes(updated);
+    await saveNotes(updated);
   }
 
   return (
@@ -258,6 +335,104 @@ export default function AlertsPage() {
         </>
       ) : null}
 
+      {/* ── Kişisel Notlar ── */}
+      {userId ? (
+        <section className="panel-surface alerts-notes-panel">
+          <div className="panel-head">
+            <div>
+              <p className="eyebrow">{t("alerts.notes.eyebrow", "Notlarım")}</p>
+              <h3>{t("alerts.notes.title", "Kişisel Notlar")}</h3>
+            </div>
+            {!addingNote && !editingId && (
+              <button
+                type="button"
+                className="secondary-button alerts-notes-add-btn"
+                onClick={startAddNote}
+                disabled={notesSaving}
+              >
+                <Plus size={14} strokeWidth={2.5} />
+                <span>{t("alerts.notes.add", "Not Ekle")}</span>
+              </button>
+            )}
+          </div>
+
+          {notes.length === 0 && !addingNote && (
+            <p className="alerts-notes-empty">
+              {t("alerts.notes.empty", "Henüz not eklenmemiş.")}
+            </p>
+          )}
+
+          {notes.length > 0 && (
+            <div className={`alerts-notes-scroll-wrap${notes.length > 3 ? " has-overflow" : ""}`}>
+              <ul className="alerts-notes-list">
+                {notes.map((note) => (
+                  <li key={note.id} className="alerts-note-item">
+                    {editingId === note.id ? (
+                      <NoteEditForm
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        onSave={confirmEdit}
+                        onCancel={cancelEdit}
+                        saving={notesSaving}
+                      />
+                    ) : (
+                      <>
+                        <p className="alerts-note-content">{note.content}</p>
+                        <div className="alerts-note-meta">
+                          <span className="alerts-note-date">
+                            <span>{t("alerts.notes.createdAt", "Oluşturuldu")}: {formatNoteDate(note.createdAt)}</span>
+                            {note.updatedAt && note.updatedAt !== note.createdAt && (
+                              <span className="alerts-note-updated">
+                                {t("alerts.notes.updatedAt", "Güncellendi")}: {formatNoteDate(note.updatedAt)}
+                              </span>
+                            )}
+                          </span>
+                          <div className="alerts-note-actions">
+                            <button
+                              type="button"
+                              className="alerts-note-action-btn"
+                              onClick={() => startEdit(note)}
+                              disabled={notesSaving}
+                              title={t("common.edit", "Düzenle")}
+                            >
+                              <Pencil size={13} strokeWidth={2} />
+                            </button>
+                            <button
+                              type="button"
+                              className="alerts-note-action-btn alerts-note-action-btn--delete"
+                              onClick={() => deleteNote(note.id)}
+                              disabled={notesSaving}
+                              title={t("common.delete", "Sil")}
+                            >
+                              <Trash2 size={13} strokeWidth={2} />
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {addingNote && (
+            <NoteEditForm
+              value={newNoteText}
+              onChange={(e) => setNewNoteText(e.target.value)}
+              onSave={confirmAdd}
+              onCancel={cancelAdd}
+              saving={notesSaving}
+              placeholder={t(
+                "alerts.notes.placeholder",
+                "AKBNK bilançosunu incele\nUSD 50 olursa tekrar değerlendir\nTakip edilmesi gereken hisseler...",
+              )}
+              autoFocus
+            />
+          )}
+        </section>
+      ) : null}
+
       {isModalOpen ? (
         <div className="modal-backdrop" role="presentation" onClick={closeCreateModal}>
           <div className="auth-modal alerts-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
@@ -342,27 +517,58 @@ export default function AlertsPage() {
   );
 }
 
-function normalizeCode(value) {
-  if (value == null) {
+function NoteEditForm({ value, onChange, onSave, onCancel, saving, placeholder, autoFocus }) {
+  return (
+    <div className="alerts-note-edit-form">
+      <textarea
+        className="alerts-notes-textarea"
+        value={value}
+        onChange={onChange}
+        maxLength={500}
+        rows={3}
+        placeholder={placeholder ?? ""}
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={autoFocus}
+      />
+      <div className="alerts-notes-form-footer">
+        <span className="alerts-notes-char-count">{value.length}/500</span>
+        <div className="actions-row">
+          <button type="button" className="secondary-button" onClick={onCancel} disabled={saving}>
+            İptal
+          </button>
+          <button type="button" onClick={onSave} disabled={saving || !value.trim()}>
+            {saving ? "Kaydediliyor..." : "Kaydet"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatNoteDate(isoString) {
+  if (!isoString) return "";
+  try {
+    return new Date(isoString).toLocaleDateString("tr-TR", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
     return "";
   }
+}
 
+function normalizeCode(value) {
+  if (value == null) return "";
   const rawValue = String(value).trim();
-  if (rawValue.toUpperCase().startsWith("TCMB:")) {
-    return rawValue.toUpperCase();
-  }
-
+  if (rawValue.toUpperCase().startsWith("TCMB:")) return rawValue.toUpperCase();
   return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
 function formatCondition(value, t) {
-  return {
-    ABOVE: t("alerts.conditions.above"),
-    BELOW: t("alerts.conditions.below"),
-  }[value] ?? value ?? "-";
+  return { ABOVE: t("alerts.conditions.above"), BELOW: t("alerts.conditions.below") }[value] ?? value ?? "-";
 }
 
 function uniqueSymbolCount(rows) {
   return new Set(rows.map((item) => item.instrumentCode).filter(Boolean)).size;
 }
-

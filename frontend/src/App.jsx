@@ -19,7 +19,6 @@ const NewsPage = lazy(() => import("./pages/NewsPage"));
 const PortfolioDetailPage = lazy(() => import("./pages/PortfolioDetailPage"));
 const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
-const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const SimulationPage = lazy(() => import("./pages/SimulationPage"));
 
 function App() {
@@ -42,7 +41,6 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/simulation" element={<SimulationPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<Navigate to="/admin/data" replace />} />
               <Route path="/admin/data" element={<AdminDataPage />} />
