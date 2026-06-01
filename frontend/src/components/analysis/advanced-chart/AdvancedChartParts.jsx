@@ -114,6 +114,19 @@ export const CrosshairTooltip = memo(function CrosshairTooltip({ model }) {
           <TooltipMetric label={t("analysis.chart.tooltip.volume")} value={row.volume} digits={0} />
           <TooltipMetric label={t("analysis.chart.tooltip.change")} value={row.changePct} suffix="%" digits={2} />
         </div>
+        {model.indicators?.length ? (
+          <div className="advanced-crosshair-grid advanced-crosshair-grid--indicators">
+            {model.indicators.map((indicator) => (
+              <TooltipMetric
+                key={indicator.key}
+                label={indicator.label}
+                value={indicator.value}
+                digits={indicator.digits}
+                color={indicator.color}
+              />
+            ))}
+          </div>
+        ) : null}
       </>
     );
   }
@@ -126,10 +139,13 @@ export const CrosshairTooltip = memo(function CrosshairTooltip({ model }) {
   );
 });
 
-export const TooltipMetric = memo(function TooltipMetric({ label, value, digits = 2, suffix = "" }) {
+export const TooltipMetric = memo(function TooltipMetric({ label, value, digits = 2, suffix = "", color = "" }) {
   return (
     <div className="advanced-crosshair-row">
-      <span>{label}</span>
+      <span>
+        {color ? <i className="advanced-crosshair-row-dot" style={{ "--indicator-color": color }} aria-hidden="true" /> : null}
+        {label}
+      </span>
       <strong>{value == null ? "-" : `${formatNumber(value, digits)}${suffix}`}</strong>
     </div>
   );

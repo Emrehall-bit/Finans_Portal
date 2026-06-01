@@ -1106,6 +1106,12 @@ html[data-theme] .analysis-chart-shell {
   gap: 6px;
 }
 
+.advanced-crosshair-grid--indicators {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
 .advanced-crosshair-grid--compact {
   min-width: 120px;
 }
@@ -1123,7 +1129,18 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .advanced-crosshair-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: #94a3b8;
+}
+
+.advanced-crosshair-row-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--indicator-color, #94a3b8);
+  flex-shrink: 0;
 }
 
 .advanced-tech-panel {
@@ -1965,6 +1982,15 @@ html[data-theme] .analysis-chart-shell {
   background: rgba(248, 250, 252, 0.9);
 }
 
+.indicators-item.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.indicators-item.is-disabled:hover {
+  background: transparent;
+}
+
 .indicators-item input[type="checkbox"] {
   width: 13px;
   height: 13px;
@@ -1972,6 +1998,10 @@ html[data-theme] .analysis-chart-shell {
   accent-color: #2563eb;
   flex-shrink: 0;
   margin: 0;
+}
+
+.indicators-item input[type="checkbox"]:disabled {
+  cursor: not-allowed;
 }
 
 .indicators-item-dot {
@@ -2037,6 +2067,10 @@ html[data-theme] .analysis-chart-shell {
 
 [data-theme="dark"] .indicators-item:hover {
   background: rgba(30, 41, 59, 0.7);
+}
+
+[data-theme="dark"] .indicators-item.is-disabled:hover {
+  background: transparent;
 }
 
 [data-theme="dark"] .indicators-item-label {

@@ -72,17 +72,17 @@ const DRAW_TOOL_DEFS = [
 
 const INDICATOR_REGISTRY = [
   { key: "sma7", label: "MA 7", pane: "price", color: "#0f766e", children: ["sma7"] },
-  { key: "sma20", label: "MA 20", pane: "price", color: "#2563eb", children: ["sma20"] },
-  { key: "sma50", label: "MA 50", pane: "price", color: "#f59e0b", children: ["sma50"] },
-  { key: "ema20", label: "EMA 20", pane: "price", color: "#8b5cf6", children: ["ema20"] },
+  { key: "sma20", label: "MA 20", pane: "price", color: "#f59e0b", children: ["sma20"] },
+  { key: "sma50", label: "MA 50", pane: "price", color: "#7c3aed", children: ["sma50"] },
+  { key: "ema20", label: "EMA 20", pane: "price", color: "#e11d48", children: ["ema20"] },
   {
     key: "bollinger",
     label: "Bollinger",
     pane: "price",
-    color: "#94a3b8",
+    color: "#64748b",
     children: ["bollingerUpper", "bollingerMiddle", "bollingerLower"],
   },
-  { key: "volumeMa20", label: "Vol MA", pane: "volume", color: "#64748b", children: ["volumeMa20"] },
+  { key: "volumeMa20", label: "Vol MA", pane: "volume", color: "#6b7280", children: ["volumeMa20"] },
 ];
 
 const DEFAULT_RANGE = "6m";
@@ -158,6 +158,7 @@ export default function AdvancedChart({
   const warmupBgSeriesRef = useRef(null);
   const toolsDropdownRef = useRef(null);
   const indicatorsRef = useRef(null);
+  const activeIndicatorsRef = useRef(new Set());
 
   const [range, setRange] = useState(() => mapLegacyTimeframeToRange(initialTimeframe));
   const [loading, setLoading] = useState(false);
@@ -215,6 +216,7 @@ export default function AdvancedChart({
   selectedDrawingKeyRef.current = selectedDrawingKey;
   hoveredDrawingKeyRef.current = hoveredDrawingKey;
   technicalSnapshotRef.current = technicalSnapshot;
+  activeIndicatorsRef.current = activeIndicators;
 
   const isCrypto = String(quote?.instrumentType || "").toUpperCase() === "CRYPTO";
   const hasDrawings = Boolean(
@@ -228,6 +230,7 @@ export default function AdvancedChart({
     [dateRange, range],
   );
   const volumeVisible = Boolean(technicalSnapshot?.volumeVisible);
+  const hasVolumeMaData = (technicalSnapshot?.volumeDataCount ?? 0) >= 20;
 
   const clearTrendSelection = useCallback(() => {
     setTrendStart(null);
@@ -408,6 +411,7 @@ export default function AdvancedChart({
       top,
       dateLabel: formatTooltipDate(time),
       row,
+      indicators: buildTooltipIndicators(dataset, time, activeIndicatorsRef.current),
     });
   }, [showStructureLines, t]);
 
@@ -677,6 +681,7 @@ export default function AdvancedChart({
             series: targetChart.addSeries(LineSeries, {
               color: seriesColor(seriesKey),
               lineWidth: indicator.pane === "volume" ? 1.5 : 2,
+              lineStyle: seriesLineStyle(seriesKey),
               priceLineVisible: false,
               lastValueVisible: false,
             }),
@@ -694,6 +699,19 @@ export default function AdvancedChart({
   const syncStructurePriceLinesRef = useRef(null);
   syncStructurePriceLinesRef.current = syncStructurePriceLines;
 
+  useEffect(() => {
+    if (hasVolumeMaData || !activeIndicators.has("volumeMa20")) {
+      return;
+    }
+    setActiveIndicators((current) => {
+      if (!current.has("volumeMa20")) {
+        return current;
+      }
+      const next = new Set(current);
+      next.delete("volumeMa20");
+      return next;
+    });
+  }, [activeIndicators, hasVolumeMaData]);
 
   const updateDrawingSelection = useCallback((nextKey, nextHoverKey = null) => {
     setSelectedDrawingKey(nextKey);
@@ -1323,6 +1341,9 @@ export default function AdvancedChart({
   }, [techTab, isAuthenticated, isPremium, instrumentCode, aiData, aiLoading, t]);
 
   const toggleIndicator = useCallback((indicatorKey) => {
+    if (indicatorKey === "volumeMa20" && !hasVolumeMaData) {
+      return;
+    }
     setActiveIndicators((current) => {
       const next = new Set(current);
       if (next.has(indicatorKey)) {
@@ -1332,7 +1353,7 @@ export default function AdvancedChart({
       }
       return next;
     });
-  }, []);
+  }, [hasVolumeMaData]);
 
   function resolveHoveredDrawingKey(param) {
     if (!param?.point || !priceSeriesRef.current) {
@@ -1414,17 +1435,25 @@ export default function AdvancedChart({
               </button>
               {indicatorsOpen ? (
                 <div className="indicators-menu">
-                  {INDICATOR_REGISTRY.map((indicator) => (
-                    <label key={indicator.key} className="indicators-item">
+                  {INDICATOR_REGISTRY.map((indicator) => {
+                    const disabled = indicator.key === "volumeMa20" && !hasVolumeMaData;
+                    return (
+                    <label
+                      key={indicator.key}
+                      className={`indicators-item${disabled ? " is-disabled" : ""}`}
+                      title={disabled ? "Hacim verisi yok" : undefined}
+                    >
                       <input
                         type="checkbox"
                         checked={activeIndicators.has(indicator.key)}
+                        disabled={disabled}
                         onChange={() => toggleIndicator(indicator.key)}
                       />
                       <span className="indicators-item-dot" style={{ "--indicator-color": indicator.color }} />
                       <span className="indicators-item-label">{indicator.label}</span>
                     </label>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : null}
             </div>
@@ -1812,6 +1841,7 @@ async function loadCryptoData(symbol, range, t, quote) {
 
   const closes = candles.map((candle) => candle.close);
   const volumes = candles.map((candle) => candle.volume ?? null);
+  const validVolumeCandles = candles.filter((candle) => isValidVolume(candle.volume));
   const overlayData = buildOverlayData(candles, closes, volumes);
   const infoByTime = buildInfoByTime(candles);
   const rsiData = candles
@@ -1832,7 +1862,7 @@ async function loadCryptoData(symbol, range, t, quote) {
       close: candle.close,
     })),
     volumeData: candles
-      .filter((candle) => candle.volume != null)
+      .filter((candle) => isValidVolume(candle.volume))
       .map((candle) => ({
         time: candle.time,
         value: candle.volume,
@@ -1849,7 +1879,7 @@ async function loadCryptoData(symbol, range, t, quote) {
       overlayData,
       mode: "candlestick",
       volumeVisible: true,
-      volumeDataCount: candles.filter((candle) => candle.volume != null).length,
+      volumeDataCount: validVolumeCandles.length,
       rsiStats,
       rangeKey: range,
       instrumentType: "CRYPTO",
@@ -2362,23 +2392,61 @@ function mergeManualStructureLevels(snapshot, manualSupportLine, manualResistanc
 }
 
 function seriesColor(key) {
-  switch (key) {
-    case "sma7":
-      return "#0f766e";
-    case "sma20":
-      return "#2563eb";
-    case "sma50":
-      return "#f59e0b";
-    case "ema20":
-      return "#8b5cf6";
+  return INDICATOR_REGISTRY.find((indicator) => indicator.children.includes(key))?.color
+    ?? INDICATOR_REGISTRY.find((indicator) => indicator.key === "bollinger")?.color
+    ?? "#64748b";
+}
+
+function seriesLineStyle(key) {
+  if (key === "bollingerUpper" || key === "bollingerLower") {
+    return 2;
+  }
+  return 0;
+}
+
+function isValidVolume(value) {
+  const numeric = toFiniteNumber(value);
+  return numeric != null && numeric > 0;
+}
+
+function buildTooltipIndicators(dataset, time, activeIndicators) {
+  if (!dataset?.overlayData || !activeIndicators?.size) {
+    return [];
+  }
+
+  return INDICATOR_REGISTRY
+    .filter((indicator) => activeIndicators.has(indicator.key))
+    .flatMap((indicator) => indicator.children.map((seriesKey) => ({
+      key: seriesKey,
+      label: tooltipIndicatorLabel(indicator, seriesKey),
+      color: indicator.color,
+      value: findOverlayValueAtTime(dataset.overlayData[seriesKey], time),
+      digits: indicator.pane === "volume" ? 0 : 2,
+    })))
+    .filter((item) => item.value != null);
+}
+
+function findOverlayValueAtTime(series, time) {
+  if (!Array.isArray(series) || time == null) {
+    return null;
+  }
+  const match = series.find((point) => normalizeChartTime(point?.time) === time);
+  return toFiniteNumber(match?.value);
+}
+
+function tooltipIndicatorLabel(indicator, seriesKey) {
+  if (indicator.key !== "bollinger") {
+    return indicator.label;
+  }
+  switch (seriesKey) {
     case "bollingerUpper":
+      return "Bollinger Üst";
     case "bollingerMiddle":
+      return "Bollinger Orta";
     case "bollingerLower":
-      return "#94a3b8";
-    case "volumeMa20":
-      return "#64748b";
+      return "Bollinger Alt";
     default:
-      return "#94a3b8";
+      return indicator.label;
   }
 }
 
