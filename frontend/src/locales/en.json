@@ -656,6 +656,7 @@
         "insufficientData": "Insufficient data",
         "maAlignment": "MA Alignment",
         "volatility": "Volatility",
+        "closingVolatility": "Close Volatility",
         "momentum": "Momentum",
         "support": "Support",
         "resistance": "Resistance",
@@ -676,7 +677,14 @@
           "neutral": "Neutral momentum"
         },
         "showDetails": "Details",
-        "hideDetails": "Hide"
+        "hideDetails": "Hide",
+        "tooltip": {
+          "rsi": "Shows whether the price has entered an overbought or oversold zone recently.",
+          "trend": "Overall directional interpretation based on price movement and technical indicators.",
+          "momentum": "Shows the strength of recent price movement within the selected time range.",
+          "closingVolatility": "Shows the volatility of daily changes in closing prices.",
+          "maLayout": "Shows the positioning of short and medium-term moving averages relative to each other."
+        }
       },
       "rsiRegime": {
         "overbought": "Overbought risk",

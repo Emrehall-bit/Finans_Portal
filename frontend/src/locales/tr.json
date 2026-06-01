@@ -649,6 +649,7 @@
         "insufficientData": "Yetersiz veri",
         "maAlignment": "MA Dizilimi",
         "volatility": "Volatilite",
+        "closingVolatility": "Kapanış Oynaklığı",
         "momentum": "Momentum",
         "support": "Destek",
         "resistance": "Direnç",
@@ -669,7 +670,14 @@
           "neutral": "Nötr momentum"
         },
         "showDetails": "Detaylar",
-        "hideDetails": "Gizle"
+        "hideDetails": "Gizle",
+        "tooltip": {
+          "rsi": "Fiyatın son dönemde aşırı alım veya aşırı satım bölgesine yaklaşıp yaklaşmadığını gösterir.",
+          "trend": "Fiyat hareketi ve teknik göstergelere göre genel yön yorumudur.",
+          "momentum": "Seçilen aralıkta son dönem fiyat hareketinin gücünü gösterir.",
+          "closingVolatility": "Kapanış fiyatlarındaki günlük değişimlerin oynaklığını gösterir.",
+          "maLayout": "Kısa ve orta vadeli hareketli ortalamaların birbirine göre konumunu gösterir."
+        }
       },
       "rsiRegime": {
         "overbought": "Aşırı alım riski",

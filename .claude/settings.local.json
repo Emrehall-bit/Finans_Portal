@@ -159,7 +159,10 @@
       "Bash(dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\locales *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -Directory)",
       "Bash(PGPASSWORD=postgres psql *)",
-      "Bash(dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\components\\\\analysis\\\\advanced-chart *)"
+      "Bash(dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\components\\\\analysis\\\\advanced-chart *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\components\\\\analysis\" -File)",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(xargs grep -l \"score\\\\|Score\")"
     ]
   }
 }

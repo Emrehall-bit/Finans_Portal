@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Area,
@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { AlertTriangle, ArrowRight, Check, Gauge, Minus, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, Gauge, Info, Minus, TrendingUp } from "lucide-react";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -55,8 +55,8 @@ export default function SimpleAnalysisChart({
     analysis?.points?.at?.(-1)?.volume,
   );
   const summary = useMemo(
-    () => buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRsi }),
-    [analysis, chartData, quote, trendDirection, latestRsi],
+    () => buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRsi, activeRange }),
+    [analysis, chartData, quote, trendDirection, latestRsi, activeRange],
   );
   const sparklineData = useMemo(() => buildSparklineData(chartData), [chartData]);
   const latestMa20 = useMemo(() => resolveLatestIndicator(analysis, chartData, "sma20", "SMA20"), [analysis, chartData]);
@@ -221,11 +221,37 @@ export default function SimpleAnalysisChart({
             ) : null}
 
             <div className="simple-tech-metrics-grid">
-              <TechMetricCell label="RSI (14)" value={latestRsi != null ? Number(latestRsi).toFixed(1) : "-"} tone={toneFromRsi(latestRsi)} />
-              <TechMetricCell label={t("analysis.chart.techPanel.trend")} value={trendDirection ? formatTrendLabel(trendDirection) : "-"} tone={summary.scoreTone} />
-              <TechMetricCell label={t("analysis.chart.techPanel.momentum")} value={summary.momentumLabel} tone={summary.momentumTone} />
-              <TechMetricCell label={t("analysis.chart.techPanel.volatility")} value={summary.volatilityLabel} tone={summary.volatilityTone} />
-              <TechMetricCell label={t("analysis.chart.techPanel.maLayout", "MA Dizilimi")} value={summary.maPairLabel} tone={summary.maTone} />
+              <TechMetricCell
+                label="RSI (14)"
+                value={latestRsi != null ? Number(latestRsi).toFixed(1) : "-"}
+                tone={toneFromRsi(latestRsi)}
+                subLabel={summary.rsiZoneLabel}
+                tooltip={t("analysis.chart.techPanel.tooltip.rsi")}
+              />
+              <TechMetricCell
+                label={t("analysis.chart.techPanel.trend")}
+                value={trendDirection ? formatTrendLabel(trendDirection) : "-"}
+                tone={summary.scoreTone}
+                tooltip={t("analysis.chart.techPanel.tooltip.trend")}
+              />
+              <TechMetricCell
+                label={t("analysis.chart.techPanel.momentum")}
+                value={summary.momentumLabel}
+                tone={summary.momentumTone}
+                tooltip={t("analysis.chart.techPanel.tooltip.momentum")}
+              />
+              <TechMetricCell
+                label={t("analysis.chart.techPanel.closingVolatility")}
+                value={summary.volatilityRaw != null ? `${summary.volatilityLabel} (%${summary.volatilityRaw.toFixed(2)})` : summary.volatilityLabel}
+                tone={summary.volatilityTone}
+                tooltip={t("analysis.chart.techPanel.tooltip.closingVolatility")}
+              />
+              <TechMetricCell
+                label={t("analysis.chart.techPanel.maLayout", "MA Dizilimi")}
+                value={summary.maPairLabel}
+                tone={summary.maTone}
+                tooltip={t("analysis.chart.techPanel.tooltip.maLayout")}
+              />
             </div>
 
             {insufficientIndicators.length > 0 ? (
@@ -295,12 +321,40 @@ function SummaryMetric({ metric, sparklineData }) {
   );
 }
 
-function TechMetricCell({ label, value, tone = "neutral" }) {
+function TechMetricCell({ label, value, tone = "neutral", subLabel, tooltip }) {
   return (
     <div className="simple-tech-metric-cell">
-      <span className="simple-tech-metric-cell-label">{label}</span>
+      <span className="simple-tech-metric-cell-label">
+        {label}
+        {tooltip ? <TooltipHint text={tooltip} /> : null}
+      </span>
       <span className={`simple-tech-metric-cell-value simple-tech-summary-value--${tone}`}>{value}</span>
+      {subLabel ? <span className="simple-tech-metric-cell-sub">{subLabel}</span> : null}
     </div>
+  );
+}
+
+function TooltipHint({ text }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      className="simple-tech-tooltip-anchor"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+      tabIndex={0}
+      role="button"
+      aria-expanded={open}
+    >
+      <Info size={14} strokeWidth={2} />
+      {open ? (
+        <span className="simple-tech-tooltip-box" role="tooltip">
+          {text}
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -488,21 +542,24 @@ function resolveLatestIndicator(analysis, chartData, pointKey, indicatorKey) {
   return firstFinite(lastPointValue, analysisValue);
 }
 
-function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRsi }) {
+function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRsi, activeRange }) {
   const closes = chartData.map((point) => Number(point?.close)).filter(Number.isFinite);
-  const ma7 = resolveLatestIndicator(analysis, chartData, "sma7", "SMA7");
+  // MA alignment uses MA20 vs MA50 — the primary financial signal
   const ma20 = resolveLatestIndicator(analysis, chartData, "sma20", "SMA20");
   const ma50 = resolveLatestIndicator(analysis, chartData, "sma50", "SMA50");
-  const hasMaLayout = ma7 != null && ma20 != null && ma50 != null;
-  const bullishMaLayout = hasMaLayout && ma7 > ma20 && ma20 > ma50;
-  const bearishMaLayout = hasMaLayout && ma7 < ma20 && ma20 < ma50;
-  const momentumPct = closes.length >= 6 ? derivePercentChange(closes.at(-6), closes.at(-1)) : null;
-  const volatilityPct = closes.length >= 2 ? Math.abs(derivePercentChange(closes.at(-2), closes.at(-1)) ?? 0) : null;
+  const hasMaPair = ma20 != null && ma50 != null;
+  const maSpreadPct = hasMaPair ? ((ma20 - ma50) / ma50) * 100 : null;
+  const bullishMaLayout = maSpreadPct != null && maSpreadPct > 0.20;
+  const bearishMaLayout = maSpreadPct != null && maSpreadPct < -0.20;
+  // Momentum lookback scales with the selected range so longer views reflect longer trends
+  const lookback = rangeMomentumLookback(activeRange, closes.length);
+  const momentumPct = closes.length > lookback ? derivePercentChange(closes.at(-(lookback + 1)), closes.at(-1)) : null;
+  const volatilityPct = closeToCloseVolatility(closes, activeRange);
   const latestSignal = resolveLatestSignal(analysis?.signals?.[0]);
 
   let score = 50;
-  if (trendDirection === "UPTREND") score += 18;
-  if (trendDirection === "DOWNTREND") score -= 18;
+  if (trendDirection === "UPTREND") score += 12;
+  if (trendDirection === "DOWNTREND") score -= 12;
   if (momentumPct != null) score += Math.max(-14, Math.min(14, momentumPct * 2.4));
   if (latestRsi != null) score += latestRsi >= 60 ? 10 : latestRsi <= 40 ? -10 : 0;
 
@@ -510,35 +567,56 @@ function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRs
 
   return {
     scorePercent,
-    scoreTone: scorePercent >= 72 ? "positive" : scorePercent >= 55 ? "info" : scorePercent <= 35 ? "negative" : "neutral",
-    scoreLabel: scorePercent >= 78
+    scoreTone: scorePercent >= 75 ? "positive" : scorePercent >= 60 ? "info" : scorePercent <= 39 ? "negative" : "neutral",
+    scoreLabel: scorePercent >= 75
       ? "Güçlü Yükseliş"
-      : scorePercent >= 58
-        ? "Zayıf Yükseliş"
-        : scorePercent <= 28
-          ? "Zayıf Düşüş"
-          : "Nötr",
+      : scorePercent >= 60
+        ? "Yükseliş"
+        : scorePercent >= 40
+          ? "Nötr"
+          : "Düşüş",
     latestSignal,
     signalTone: inferSignalTone(latestSignal),
     momentumLabel: momentumPct == null ? "-" : momentumPct >= 1.4 ? "Pozitif" : momentumPct <= -1.4 ? "Negatif" : "Nötr",
     momentumTone: momentumPct == null ? "neutral" : momentumPct >= 1.4 ? "positive" : momentumPct <= -1.4 ? "negative" : "neutral",
-    volatilityLabel: volatilityPct == null ? "-" : volatilityPct >= 4 ? "Yüksek" : volatilityPct >= 2 ? "Orta" : "Düşük",
-    volatilityTone: volatilityPct == null ? "neutral" : volatilityPct >= 4 ? "warning" : volatilityPct >= 2 ? "neutral" : "positive",
-    maPairLabel: !hasMaLayout
+    volatilityLabel: volatilityPct == null ? "Yetersiz veri" : volatilityPct >= 2.0 ? "Yüksek" : volatilityPct >= 0.75 ? "Orta" : "Düşük",
+    volatilityTone: volatilityPct == null ? "neutral" : volatilityPct >= 2.0 ? "warning" : volatilityPct >= 0.75 ? "neutral" : "positive",
+    maPairLabel: !hasMaPair
       ? "Yetersiz veri"
       : bullishMaLayout
         ? "Yukarı dizilim"
         : bearishMaLayout
           ? "Aşağı dizilim"
           : "Yatay",
-    maTone: !hasMaLayout
+    maTone: !hasMaPair
       ? "neutral"
       : bullishMaLayout
         ? "positive"
         : bearishMaLayout
           ? "negative"
           : "neutral",
+    rsiZoneLabel: latestRsi == null ? null : latestRsi >= 70 ? "Aşırı alım" : latestRsi <= 30 ? "Aşırı satım" : "Nötr",
+    volatilityRaw: volatilityPct,
   };
+}
+
+function rangeMomentumLookback(activeRange, dataLength) {
+  const base = { "1M": 5, "3M": 15, "6M": 30, "1Y": 60, "MAX": 90 }[activeRange] ?? 15;
+  return Math.min(base, Math.max(1, dataLength - 1));
+}
+
+function closeToCloseVolatility(closes, activeRange) {
+  const returns = [];
+  for (let i = 1; i < closes.length; i++) {
+    const ret = derivePercentChange(closes[i - 1], closes[i]);
+    if (ret != null) returns.push(ret);
+  }
+  if (returns.length < 3) return null;
+  const n = Math.min({ "1M": 10, "3M": 20, "6M": 30, "1Y": 60, "MAX": 60 }[activeRange] ?? 20, returns.length);
+  const window = returns.slice(-n);
+  const mean = window.reduce((sum, r) => sum + r, 0) / window.length;
+  const variance = window.reduce((sum, r) => sum + (r - mean) ** 2, 0) / window.length;
+  return Math.sqrt(variance);
 }
 
 function resolveLatestSignal(raw) {
