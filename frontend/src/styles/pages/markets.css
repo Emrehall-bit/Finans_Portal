@@ -1166,6 +1166,55 @@
   font-size: 0.82rem;
 }
 
+.instrument-kap-card {
+  padding: 12px 16px 13px;
+  border-radius: 12px;
+  background: rgba(248, 250, 255, 0.9);
+  border: 1px solid rgba(76, 127, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.instrument-kap-card:hover {
+  border-color: rgba(76, 127, 255, 0.24);
+  box-shadow: 0 2px 10px rgba(76, 127, 255, 0.07);
+}
+
+.instrument-kap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.instrument-kap-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.instrument-kap-date {
+  font-size: 0.82rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.instrument-kap-text {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  line-height: 1.45;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .instrument-action-modal {
   width: min(560px, 100%);
 }

@@ -3,7 +3,12 @@ import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { formatNewsDate } from "../../utils/dateUtils";
-import { getNewsDateValue, resolveKapDisclosureGroup } from "../news/newsCardUtils";
+import {
+  getNewsDateValue,
+  resolveKapDisclosureGroup,
+  normalizeKapText,
+  extractKapSubtitle,
+} from "../news/newsCardUtils";
 
 export default function InstrumentKapNewsList({ loading, error, items }) {
   const { t } = useTranslation();
@@ -31,17 +36,37 @@ export default function InstrumentKapNewsList({ loading, error, items }) {
         <div className="instrument-news-list">
           {items.map((item) => {
             const group = resolveKapDisclosureGroup(item.title);
+            const subtitle = extractKapSubtitle(item.title, item.relatedSymbol);
+            const normSubtitle = normalizeKapText(subtitle);
+            const normBadge = normalizeKapText(group.label);
+            const normSummary = normalizeKapText(item?.summary || item?.contentPreview || "");
+
+            const showSubtitle = group.key !== "diger" && subtitle && normSubtitle !== normBadge;
+            const showSummary =
+              !showSubtitle &&
+              Boolean(item?.summary?.trim() || item?.contentPreview?.trim()) &&
+              normSummary !== normBadge;
+            const displayText = showSubtitle ? subtitle : showSummary ? (item?.summary?.trim() || item?.contentPreview?.trim()) : null;
+
             return (
-              <article key={item.id ?? item.externalId} className="instrument-news-card news-kap-card-inner">
-                <div className="instrument-news-meta">
-                  <span className="news-kap-chip-symbol">KAP</span>
-                  <span className={`kap-type-badge ${group.key}`}>{group.label}</span>
-                  <span>{formatNewsDate(getNewsDateValue(item))}</span>
+              <article key={item.id ?? item.externalId} className="instrument-kap-card">
+                <div className="instrument-kap-header">
+                  <div className="instrument-kap-badge-row">
+                    <span className="news-card-badge provider">KAP</span>
+                    <span className={`kap-type-badge ${group.key}`}>{group.label}</span>
+                  </div>
+                  <time className="instrument-kap-date" dateTime={getNewsDateValue(item) || ""}>
+                    {formatNewsDate(getNewsDateValue(item))}
+                  </time>
                 </div>
-                <h4>{item.title || t("instrumentDetail.kapDisclosures.noTitle")}</h4>
+
+                {displayText ? (
+                  <p className="instrument-kap-text">{displayText}</p>
+                ) : null}
+
                 {item.url ? (
-                  <a href={item.url} target="_blank" rel="noreferrer" className="news-kap-cta-btn">
-                    KAP&apos;ta Görüntüle
+                  <a href={item.url} target="_blank" rel="noreferrer" className="news-kap-cta-link">
+                    KAP&apos;ta Görüntüle ↗
                   </a>
                 ) : null}
               </article>

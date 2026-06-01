@@ -11,6 +11,8 @@ import {
   getNewsSourceUrl,
   isKapDisclosure,
   resolveKapDisclosureGroup,
+  normalizeKapText,
+  extractKapSubtitle,
 } from "./newsCardUtils";
 
 function resolveThumbnail(item) {
@@ -59,29 +61,46 @@ function NewsCardContent({ item, onClick, assetKey }) {
   const shellClassName = `news-card news-card-shell${kapDisclosure ? " kap" : ""}`;
 
   if (kapDisclosure) {
+    const subtitle = extractKapSubtitle(item?.title, item?.relatedSymbol);
+    const normSubtitle = normalizeKapText(subtitle);
+    const normBadge = normalizeKapText(kapGroup.label);
+    const normSummary = normalizeKapText(item?.summary || item?.contentPreview || "");
+
+    const showSubtitle = kapGroup.key !== "diger" && subtitle && normSubtitle !== normBadge;
+    const showSummary =
+      !showSubtitle &&
+      Boolean(item?.summary?.trim() || item?.contentPreview?.trim()) &&
+      normSummary !== normBadge;
+
     return (
       <article className={shellClassName} key={assetKey}>
         <div className="news-kap-card-inner">
-          <div className="news-card-meta">
-            <span className="news-card-badge provider">{providerLabel}</span>
-            <span className={`kap-type-badge ${kapGroup.key}`}>{kapGroup.label}</span>
+          <div className="news-kap-header">
+            <div className="news-kap-badge-row">
+              <span className="news-card-badge provider">{providerLabel}</span>
+              <span className={`kap-type-badge ${kapGroup.key}`}>{kapGroup.label}</span>
+            </div>
+            <time className="news-kap-date" dateTime={item?.publishedAt || item?.createdAt || item?.updatedAt || ""}>
+              {publishedAtLabel}
+            </time>
           </div>
 
-          <h3 className="news-card-title">{item?.title || t("news.titleMissing")}</h3>
-          <p className="news-card-summary">{previewText}</p>
+          {item?.relatedSymbol ? (
+            <strong className="news-kap-symbol">{item.relatedSymbol}</strong>
+          ) : null}
 
-          <div className="news-kap-chip-row">
-            {item?.relatedSymbol ? <span className="news-kap-chip-symbol">{item.relatedSymbol}</span> : null}
-            <time dateTime={item?.publishedAt || item?.createdAt || item?.updatedAt || ""}>{publishedAtLabel}</time>
-            <span>{sourceName}</span>
-          </div>
+          {showSubtitle ? (
+            <p className="news-kap-subtitle">{subtitle}</p>
+          ) : null}
+
+          {showSummary ? (
+            <p className="news-card-summary">{previewText}</p>
+          ) : null}
 
           {sourceUrl ? (
-            <div className="news-kap-cta-row">
-              <a className="news-kap-cta-btn" href={sourceUrl} target="_blank" rel="noreferrer">
-                {t("news.viewOfficialKap")}
-              </a>
-            </div>
+            <a className="news-kap-cta-link" href={sourceUrl} target="_blank" rel="noreferrer">
+              KAP&apos;ta Görüntüle ↗
+            </a>
           ) : null}
         </div>
       </article>

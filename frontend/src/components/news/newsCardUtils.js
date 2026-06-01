@@ -334,6 +334,18 @@ const KAP_DISCLOSURE_GROUPS = [
   },
 ];
 
+export function normalizeKapText(text) {
+  return String(text || "").trim().toLowerCase().replace(/\s+/g, " ").replace(/[.,;:!?]+$/, "");
+}
+
+export function extractKapSubtitle(title, symbol) {
+  if (!title) return "";
+  const prefix = symbol ? symbol + " - " : null;
+  if (prefix && title.startsWith(prefix)) return title.substring(prefix.length);
+  const idx = title.indexOf(" - ");
+  return idx !== -1 ? title.substring(idx + 3) : title;
+}
+
 export function resolveKapDisclosureGroup(title) {
   if (!title || !title.includes(" - ")) {
     return { key: "diger", label: "Diğer" };
