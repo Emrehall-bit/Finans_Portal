@@ -5,6 +5,7 @@ import {
   Activity,
   Check,
   ChevronDown,
+  ChevronsUpDown,
   CircleAlert,
   Minus,
   MousePointer2,
@@ -37,6 +38,7 @@ import {
   computeBollingerSeries,
   computeEmaSeries,
   computeSimpleMovingAverageSeries,
+  closeToCloseVolatility,
   formatCompactPrice,
   formatTooltipDate,
   normalizeCandles,
@@ -45,7 +47,12 @@ import {
   normalizeLinePoints,
   normalizeSignalDescriptor,
   normalizeTrendDirection,
+  resolveMomentumThreshold,
+  resolveQuoteLatestPrice,
+  resolveRsiThresholds,
+  resolveSelectedRangePerformance,
   toFiniteNumber,
+  toEpochSeconds,
   toneFromRsi,
   toneFromSignal,
   trendTone,
@@ -178,8 +185,8 @@ export default function AdvancedChart({
     [activeIndicators],
   );
   const resolvedTechnicalSnapshot = useMemo(
-    () => mergeTechnicalSnapshot(technicalSnapshot, technicalAnalysis),
-    [technicalSnapshot, technicalAnalysis],
+    () => mergeTechnicalSnapshot(technicalSnapshot, technicalAnalysis, quote?.instrumentType),
+    [technicalSnapshot, technicalAnalysis, quote?.instrumentType],
   );
   const manualSupportLine = useMemo(
     () => drawings.horizontalLines.find((line) => line.kind === "support") ?? null,
@@ -193,7 +200,7 @@ export default function AdvancedChart({
     () => mergeManualStructureLevels(resolvedTechnicalSnapshot, manualSupportLine, manualResistanceLine),
     [resolvedTechnicalSnapshot, manualSupportLine, manualResistanceLine],
   );
-  const technicalView = useMemo(() => buildTechnicalView(effectiveTechnicalSnapshot, t), [effectiveTechnicalSnapshot, t]);
+  const technicalView = useMemo(() => buildTechnicalView(effectiveTechnicalSnapshot, t, quote?.instrumentType), [effectiveTechnicalSnapshot, t, quote?.instrumentType]);
   const insufficientOverlays = useMemo(() => {
     if (!effectiveTechnicalSnapshot) return [];
     const names = [];
@@ -446,7 +453,7 @@ export default function AdvancedChart({
         top,
         dateLabel: formatTooltipDate(time),
         rsiValue: lineRsi,
-        zoneLabel: t(`analysis.chart.rsiZone.${resolveRsiZoneKey(lineRsi)}`),
+        zoneLabel: t(`analysis.chart.rsiZone.${resolveRsiZoneKey(lineRsi, quote?.instrumentType)}`),
       });
       return;
     }
@@ -464,7 +471,7 @@ export default function AdvancedChart({
     }
 
     setTooltipModel(null);
-  }, [t]);
+  }, [quote?.instrumentType, t]);
 
   const showLegendTooltip = useCallback((event, text) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -514,6 +521,11 @@ export default function AdvancedChart({
         try { priceChart.removeSeries(priceSeriesRef.current); } catch { /* noop */ }
       }
 
+      const nonNegativeScale = (original) => {
+        const info = original();
+        if (!info) return null;
+        return { ...info, priceRange: { minValue: Math.max(0, info.priceRange.minValue), maxValue: info.priceRange.maxValue } };
+      };
       priceSeriesRef.current = mode === "candlestick"
         ? priceChart.addSeries(CandlestickSeries, {
             upColor: "#22c55e",
@@ -524,12 +536,14 @@ export default function AdvancedChart({
             wickDownColor: "#ef4444",
             priceLineVisible: false,
             lastValueVisible: true,
+            autoscaleInfoProvider: nonNegativeScale,
           })
         : priceChart.addSeries(LineSeries, {
             color: "#2f6bff",
             lineWidth: 3,
             priceLineVisible: false,
             lastValueVisible: true,
+            autoscaleInfoProvider: nonNegativeScale,
           });
       priceSeriesRef.current.__mode = mode;
     }
@@ -1143,7 +1157,7 @@ export default function AdvancedChart({
 
       try {
         const dataset = isCrypto
-          ? await loadCryptoData(instrumentCode, range, t)
+          ? await loadCryptoData(instrumentCode, range, t, quote)
           : await loadLineData(instrumentCode, rangeDates, t, quote, activeRange ?? range);
 
         if (cancelled) {
@@ -1212,7 +1226,12 @@ export default function AdvancedChart({
     instrumentCode,
     isCrypto,
     presetPrice,
+    quote?.currentPrice,
     quote?.instrumentType,
+    quote?.last,
+    quote?.latestPrice,
+    quote?.price,
+    quote?.sellRate,
     quote?.source,
     range,
     rangeDates,
@@ -1558,6 +1577,9 @@ export default function AdvancedChart({
               ) : null}
 
               <div ref={priceContainerRef} className="advanced-chart-canvas advanced-chart-canvas--price" />
+              <div className="price-scale-drag-hint" aria-hidden="true">
+                <ChevronsUpDown size={14} strokeWidth={1.8} />
+              </div>
             </div>
 
             {volumeVisible ? (
@@ -1649,7 +1671,7 @@ export default function AdvancedChart({
               <MetricRow
                 label="RSI 14"
                 value={effectiveTechnicalSnapshot?.rsiValue != null ? effectiveTechnicalSnapshot.rsiValue.toFixed(2) : "-"}
-                tone={toneFromRsi(effectiveTechnicalSnapshot?.rsiValue)}
+                tone={toneFromRsi(effectiveTechnicalSnapshot?.rsiValue, quote?.instrumentType)}
               />
               <MetricRow
                 label={t("analysis.chart.techPanel.momentum")}
@@ -1778,8 +1800,12 @@ const DrawingChip = memo(function DrawingChip({
   );
 });
 
-async function loadCryptoData(symbol, range, t) {
-  const candles = normalizeCandles(await getTechnicalCandles(symbol, { range, interval: "1d" }));
+async function loadCryptoData(symbol, range, t, quote) {
+  const candles = alignAdvancedRowsWithQuote(
+    normalizeCandles(await getTechnicalCandles(symbol, { range, interval: "1d" })),
+    quote,
+    "candlestick",
+  );
   if (!candles.length) {
     throw new Error(t("analysis.chart.errors.noCandles"));
   }
@@ -1819,7 +1845,6 @@ async function loadCryptoData(symbol, range, t) {
     summary: buildTechnicalSummary({
       rows: candles,
       latestRow: candles.at(-1),
-      previousRow: candles.at(-2),
       trendDirection: deriveTrendDirection(candles),
       overlayData,
       mode: "candlestick",
@@ -1827,6 +1852,7 @@ async function loadCryptoData(symbol, range, t) {
       volumeDataCount: candles.filter((candle) => candle.volume != null).length,
       rsiStats,
       rangeKey: range,
+      instrumentType: "CRYPTO",
     }),
   };
 }
@@ -1856,6 +1882,7 @@ async function loadLineData(symbol, rangeDates, t, quote, rangeKey) {
     });
     points = normalizeHistoryPoints(history);
   }
+  points = alignAdvancedRowsWithQuote(points, quote, "line");
 
   if (!points.length) {
     if (analysisError) {
@@ -1889,7 +1916,6 @@ async function loadLineData(symbol, rangeDates, t, quote, rangeKey) {
     summary: buildTechnicalSummary({
       rows: points,
       latestRow: points.at(-1),
-      previousRow: points.at(-2),
       trendDirection: normalizeTrendDirection(analysis?.trendDirection) ?? deriveTrendDirection(points),
       overlayData,
       latestSignal: analysis?.signals?.[0]?.label ?? analysis?.signals?.[0]?.signalType ?? null,
@@ -1898,8 +1924,78 @@ async function loadLineData(symbol, rangeDates, t, quote, rangeKey) {
       volumeDataCount: 0,
       rsiStats,
       rangeKey,
+      instrumentType: quote?.instrumentType,
     }),
   };
+}
+
+function alignAdvancedRowsWithQuote(rows, quote, mode) {
+  const quotePrice = resolveQuoteLatestPrice(quote);
+  if (quotePrice == null || !Array.isArray(rows) || rows.length === 0) {
+    return rows;
+  }
+
+  const today = toEpochSeconds(new Date().toISOString().slice(0, 10));
+  const lastRow = rows.at(-1);
+  if (!lastRow?.time) {
+    return rows;
+  }
+
+  if (lastRow.time >= today) {
+    const updatedRow = mode === "candlestick"
+      ? {
+          ...lastRow,
+          close: quotePrice,
+          high: Math.max(toFiniteNumber(lastRow.high) ?? quotePrice, quotePrice),
+          low: Math.min(toFiniteNumber(lastRow.low) ?? quotePrice, quotePrice),
+        }
+      : {
+          ...lastRow,
+          close: quotePrice,
+        };
+    return [...rows.slice(0, -1), updatedRow];
+  }
+
+  const appendedRow = mode === "candlestick"
+    ? {
+        time: today,
+        dateLabel: formatTooltipDate(today),
+        open: quotePrice,
+        high: quotePrice,
+        low: quotePrice,
+        close: quotePrice,
+        volume: null,
+        sma7: null,
+        sma20: null,
+        sma50: null,
+        rsi14: null,
+        changePct: derivePercentChange(lastRow.close, quotePrice),
+      }
+    : {
+        time: today,
+        dateLabel: formatTooltipDate(today),
+        open: null,
+        high: null,
+        low: null,
+        close: quotePrice,
+        volume: null,
+        sma7: null,
+        sma20: null,
+        sma50: null,
+        rsi14: null,
+        changePct: derivePercentChange(lastRow.close, quotePrice),
+      };
+
+  return [...rows, appendedRow];
+}
+
+function derivePercentChange(from, to) {
+  const start = toFiniteNumber(from);
+  const end = toFiniteNumber(to);
+  if (start == null || end == null || start === 0) {
+    return null;
+  }
+  return ((end - start) / Math.abs(start)) * 100;
 }
 
 function buildOverlayData(rows, closes, volumes) {
@@ -1939,7 +2035,6 @@ function buildInfoByTime(rows) {
 function buildTechnicalSummary({
   rows,
   latestRow,
-  previousRow,
   trendDirection,
   latestSignal,
   mode,
@@ -1947,11 +2042,13 @@ function buildTechnicalSummary({
   volumeDataCount,
   rsiStats,
   rangeKey,
+  instrumentType,
 }) {
   const latestRsi = latestRow?.rsi14 ?? null;
   const maAlignment = deriveMaAlignment(latestRow);
-  const volatility = deriveVolatility(latestRow, previousRow);
-  const momentum = deriveMomentum(rows, rangeKey);
+  const volatility = deriveVolatility(rows, rangeKey);
+  const momentum = deriveMomentum(rows, rangeKey, instrumentType);
+  const selectedRangePerformance = resolveSelectedRangePerformance(rows, instrumentType, rangeKey);
   const supportResistance = deriveSupportResistance(rows, latestRow);
   const rawSignal = normalizeSignalDescriptor(latestSignal);
   const derivedSignal = deriveLatestSignal({ latestRow, trendDirection, maAlignment, volatility });
@@ -1959,9 +2056,11 @@ function buildTechnicalSummary({
 
   return {
     rsiValue: latestRsi,
-    rsiRegimeKey: latestRsi == null ? null : latestRsi >= 70 ? "overbought" : latestRsi <= 30 ? "oversold" : "neutral",
+    rsiRegimeKey: latestRsi == null ? null : resolveRsiZoneKey(latestRsi, instrumentType),
     trendKey: (trendDirection ?? "SIDEWAYS").toLowerCase(),
     trendTone: trendTone(trendDirection),
+    selectedRangeStateKey: selectedRangePerformance.stateKey,
+    selectedRangeTrendTone: selectedRangePerformance.tone,
     maAlignmentKey: maAlignment.key,
     maAlignmentTone: maAlignment.tone,
     volatilityKey: volatility.key,
@@ -1996,7 +2095,7 @@ function buildTechnicalSummary({
   };
 }
 
-function deriveMomentum(rows, rangeKey) {
+function deriveMomentum(rows, rangeKey, instrumentType) {
   const normalized = Array.isArray(rows) ? rows : [];
   const lookback = rangeMomentumLookback(rangeKey, normalized.length);
   if (normalized.length <= lookback) {
@@ -2008,17 +2107,19 @@ function deriveMomentum(rows, rangeKey) {
     return { key: "awaiting", tone: "neutral", value: null };
   }
   const value = ((latest - anchor) / Math.abs(anchor)) * 100;
-  if (value >= 1.4) {
+  const threshold = resolveMomentumThreshold(instrumentType);
+  if (value >= threshold) {
     return { key: "positive", tone: "positive", value };
   }
-  if (value <= -1.4) {
+  if (value <= -threshold) {
     return { key: "negative", tone: "negative", value };
   }
   return { key: "neutral", tone: "neutral", value };
 }
 
 function rangeMomentumLookback(rangeKey, dataLength) {
-  const base = { "1M": 5, "3M": 15, "6M": 30, "1Y": 60, "MAX": 90 }[rangeKey] ?? 15;
+  const normalizedRange = String(rangeKey || "").trim().toUpperCase();
+  const base = { "1M": 5, "3M": 15, "6M": 30, "1Y": 60, "MAX": 90 }[normalizedRange] ?? 15;
   return Math.min(base, Math.max(1, dataLength - 1));
 }
 
@@ -2119,22 +2220,25 @@ function deriveMaAlignment(latestRow) {
   return { key: "mixed", tone: "neutral" };
 }
 
-function deriveVolatility(latestRow, previousRow) {
-  if (!latestRow?.close || !previousRow?.close) {
+function deriveVolatility(rows, rangeKey) {
+  const closes = (Array.isArray(rows) ? rows : [])
+    .map((row) => toFiniteNumber(row?.close))
+    .filter((value) => value != null);
+  const volatilityPct = closeToCloseVolatility(closes, rangeKey);
+  if (volatilityPct == null) {
     return { key: "awaiting", tone: "neutral", summaryKey: "awaiting" };
   }
 
-  const dailyMove = Math.abs(((latestRow.close - previousRow.close) / previousRow.close) * 100);
-  if (dailyMove >= 4) {
-    return { key: "high", tone: "negative", summaryKey: "high" };
+  if (volatilityPct >= 2) {
+    return { key: "high", tone: "warning", summaryKey: "high" };
   }
-  if (dailyMove >= 2) {
-    return { key: "medium", tone: "warning", summaryKey: "medium" };
+  if (volatilityPct >= 0.75) {
+    return { key: "medium", tone: "neutral", summaryKey: "medium" };
   }
   return { key: "low", tone: "positive", summaryKey: "low" };
 }
 
-function mergeTechnicalSnapshot(snapshot, technicalAnalysis) {
+function mergeTechnicalSnapshot(snapshot, technicalAnalysis, instrumentType) {
   const baseSnapshot = snapshot ?? null;
   const backendRsi = extractIndicatorValue(technicalAnalysis, "RSI14");
   const backendTrendDirection = normalizeTrendDirection(technicalAnalysis?.trendDirection);
@@ -2144,9 +2248,11 @@ function mergeTechnicalSnapshot(snapshot, technicalAnalysis) {
   return {
     ...(baseSnapshot ?? {}),
     rsiValue: resolvedRsi,
-    rsiRegimeKey: resolvedRsi == null ? (baseSnapshot?.rsiRegimeKey ?? null) : resolveRsiZoneKey(resolvedRsi),
+    rsiRegimeKey: resolvedRsi == null ? (baseSnapshot?.rsiRegimeKey ?? null) : resolveRsiZoneKey(resolvedRsi, instrumentType),
     trendKey: backendTrendDirection ? backendTrendDirection.toLowerCase() : (baseSnapshot?.trendKey ?? null),
     trendTone: backendTrendDirection ? trendTone(backendTrendDirection) : (baseSnapshot?.trendTone ?? "neutral"),
+    selectedRangeStateKey: baseSnapshot?.selectedRangeStateKey ?? "neutral",
+    selectedRangeTrendTone: baseSnapshot?.selectedRangeTrendTone ?? "neutral",
     signalKey: backendSignal ? null : (baseSnapshot?.signalKey ?? null),
     rawSignalLabel: backendSignal?.shortLabel ?? baseSnapshot?.rawSignalLabel ?? null,
     rawSignalText: backendSignal?.text ?? baseSnapshot?.rawSignalText ?? null,
@@ -2331,11 +2437,12 @@ function tooltipDimensions(kind) {
   }
 }
 
-function resolveRsiZoneKey(rsiValue) {
-  if (rsiValue >= 70) {
+function resolveRsiZoneKey(rsiValue, instrumentType) {
+  const thresholds = resolveRsiThresholds(instrumentType);
+  if (rsiValue >= thresholds.overbought) {
     return "overbought";
   }
-  if (rsiValue <= 30) {
+  if (rsiValue <= thresholds.oversold) {
     return "oversold";
   }
   return "neutral";
@@ -2361,47 +2468,18 @@ function resolveHoveredStructureLine({ priceSeries, pointY, snapshot }) {
   return null;
 }
 
-function buildTechnicalView(snapshot, t) {
+function buildTechnicalView(snapshot, t, instrumentType) {
   if (!snapshot) {
     return null;
   }
 
-  let score = 0;
-  if (snapshot.trendKey === "uptrend") score += 2;
-  if (snapshot.trendKey === "downtrend") score -= 2;
-  if (snapshot.maAlignmentKey === "bullish") score += 2;
-  if (snapshot.maAlignmentKey === "bearish") score -= 2;
-  if (snapshot.momentumKey === "positive") score += 1;
-  if (snapshot.momentumKey === "negative") score -= 1;
-  if (snapshot.latestSignalTone === "positive") score += 1;
-  if (snapshot.latestSignalTone === "negative") score -= 1;
-  if (snapshot.rsiValue != null) {
-    if (snapshot.rsiValue >= 70) score -= 1;
-    else if (snapshot.rsiValue <= 30) score += 1;
-    else if (snapshot.rsiValue >= 55) score += 1;
-    else if (snapshot.rsiValue <= 45) score -= 1;
-  }
-
-  let stateKey = "neutral";
-  let tone = "neutral";
-  if (score >= 5 && snapshot.momentumKey === "positive") {
-    stateKey = "strongBullish";
-    tone = "positive";
-  } else if (score >= 2) {
-    stateKey = "weakBullish";
-    tone = "positive";
-  } else if (score <= -5 && snapshot.momentumKey === "negative") {
-    stateKey = "strongBearish";
-    tone = "negative";
-  } else if (score <= -2) {
-    stateKey = "weakBearish";
-    tone = "negative";
-  }
+  const stateKey = snapshot.selectedRangeStateKey ?? "neutral";
+  const tone = snapshot.selectedRangeTrendTone ?? "neutral";
 
   const reasons = [];
 
   if (snapshot.rsiValue != null) {
-    const rsiZone = resolveRsiZoneKey(snapshot.rsiValue);
+    const rsiZone = resolveRsiZoneKey(snapshot.rsiValue, instrumentType);
     reasons.push({
       text: t(`analysis.chart.techView.reason.rsi.${rsiZone}`),
       tone: rsiZone === "neutral" ? "neutral" : "warning",

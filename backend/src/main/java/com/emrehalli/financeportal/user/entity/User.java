@@ -51,6 +51,9 @@ public class User {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "profile_note", columnDefinition = "TEXT")
+    private String profileNote;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean active = true;

@@ -10,8 +10,9 @@ import { useComparisonAnalysis, useMarketHistory, useMarketQuotes, useTechnicalA
 import useToast from "../hooks/useToast";
 import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPanel";
 import AnalysisSymbolPicker from "../components/analysis/AnalysisSymbolPicker";
-import { ANALYSIS_RANGE_PRESETS, buildChartData, buildPresetRange, DEFAULT_INDICATORS } from "../components/analysis/analysisUtils";
+import { ANALYSIS_RANGE_PRESETS, buildChartData, buildPresetRange, DEFAULT_INDICATORS, formatChartDate } from "../components/analysis/analysisUtils";
 import SimpleAnalysisChart from "../components/analysis/SimpleAnalysisChart";
+import { resolveQuoteLatestPrice } from "../components/analysis/advancedChartUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -165,13 +166,17 @@ export default function AnalysisPage() {
     () => buildChartData(analysisPoints, history),
     [analysisPoints, history],
   );
-  const hasChartData = chartData.length > 0;
+  const quoteAlignedChartData = useMemo(
+    () => alignLatestChartCloseWithQuote(chartData, primaryQuote),
+    [chartData, primaryQuote],
+  );
+  const hasChartData = quoteAlignedChartData.length > 0;
   const hasAnalysisPoints = analysisPoints.length > 0;
   const simpleChartLoading = analysisLoading || (!hasAnalysisPoints && historyLoading);
   const simpleChartError = !hasChartData ? analysisError : "";
   const displayChartData = useMemo(() => {
-    if (currency === "TRY") return chartData;
-    return chartData.map((point) => ({
+    if (currency === "TRY") return quoteAlignedChartData;
+    return quoteAlignedChartData.map((point) => ({
       ...point,
       open: point.open != null ? convertAmount(point.open) : null,
       high: point.high != null ? convertAmount(point.high) : null,
@@ -182,7 +187,7 @@ export default function AnalysisPage() {
       sma50: point.sma50 != null ? convertAmount(point.sma50) : null,
       rsi14: point.rsi14,
     }));
-  }, [chartData, currency, convertAmount]);
+  }, [quoteAlignedChartData, currency, convertAmount]);
 
   function handlePrimaryChange(symbol) {
     setPrimarySymbol(symbol);
@@ -428,6 +433,45 @@ function resolveAnalysisErrorMessage(error, t) {
     return t("analysis.rangeUnavailable");
   }
   return extractErrorMessage(error, t("analysis.analysisError"));
+}
+
+function alignLatestChartCloseWithQuote(chartData, quote) {
+  const quotePrice = resolveQuoteLatestPrice(quote);
+  if (quotePrice == null || !Array.isArray(chartData) || chartData.length === 0) {
+    return chartData;
+  }
+
+  const today = new Date();
+  const todayKey = formatChartDate(today.toISOString());
+  const lastPoint = chartData.at(-1);
+  const quotePoint = {
+    ...lastPoint,
+    close: quotePrice,
+    sma7: null,
+    sma20: null,
+    sma50: null,
+    rsi14: null,
+  };
+
+  if (lastPoint?.date === todayKey) {
+    return [...chartData.slice(0, -1), quotePoint];
+  }
+
+  return [
+    ...chartData,
+    {
+      ...quotePoint,
+      date: todayKey,
+      fullDate: today.toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      open: null,
+      high: null,
+      low: null,
+    },
+  ];
 }
 
 function resolveComparisonErrorMessage(error, t) {

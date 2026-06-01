@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -27,6 +28,7 @@ public class UserResponseDto {
     private LocalDateTime updatedAt;
     private LocalDateTime lastLoginAt;
     private boolean active;
+    private List<ProfileNoteItem> notes;
 }
 
 

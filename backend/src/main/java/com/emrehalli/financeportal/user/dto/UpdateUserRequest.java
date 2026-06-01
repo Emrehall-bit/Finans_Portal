@@ -2,11 +2,14 @@ package com.emrehalli.financeportal.user.dto;
 
 import com.emrehalli.financeportal.user.entity.PreferredLanguage;
 import com.emrehalli.financeportal.user.entity.ThemePreference;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -20,6 +23,9 @@ public class UpdateUserRequest {
     private PreferredLanguage preferredLanguage;
 
     private ThemePreference themePreference;
+
+    @Valid
+    private List<ProfileNoteItem> notes;
 }
 
 

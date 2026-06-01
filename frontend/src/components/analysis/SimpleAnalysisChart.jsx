@@ -18,8 +18,16 @@ import LoadingSpinner from "../common/LoadingSpinner";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatNumber } from "../../utils/formatters";
 import { useCurrency } from "../../currency/CurrencyContext";
-import { formatAxisNumber, formatTrendLabel, resolveTrendDirection } from "./analysisUtils";
-import { detectInsufficientChartIndicators, toneFromRsi } from "./advancedChartUtils";
+import { formatAxisNumber } from "./analysisUtils";
+import {
+  closeToCloseVolatility,
+  detectInsufficientChartIndicators,
+  resolveMomentumThreshold,
+  resolveQuoteLatestPrice,
+  resolveRsiThresholds,
+  resolveSelectedRangePerformance,
+  toneFromRsi,
+} from "./advancedChartUtils";
 
 export default function SimpleAnalysisChart({
   activeRange,
@@ -36,49 +44,58 @@ export default function SimpleAnalysisChart({
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
   const { currency } = useCurrency();
+  const instrumentType = quote?.instrumentType;
   const hasData = chartData.length > 0;
-  const trendDirection = useMemo(
-    () => resolveTrendDirection(analysis?.trendDirection, chartData),
-    [analysis?.trendDirection, chartData],
-  );
   const latestPoint = hasData ? chartData.at(-1) : null;
   const previousPoint = chartData.length > 1 ? chartData.at(-2) : null;
   const latestRsi = useMemo(
     () => resolveLatestRsi(analysis, chartData),
     [analysis, chartData],
   );
-  const lastPrice = firstFinite(quote?.sellRate, quote?.price, analysis?.latestPrice, latestPoint?.close);
+  const lastPrice = firstFinite(resolveQuoteLatestPrice(quote), analysis?.latestPrice, latestPoint?.close);
   const dailyChange = firstFinite(quote?.changeRate, analysis?.latestChangePct, derivePercentChange(previousPoint?.close, latestPoint?.close));
   const volumeValue = firstFinite(
     quote?.volume,
     quote?.totalVolume,
     analysis?.points?.at?.(-1)?.volume,
   );
-  const summary = useMemo(
-    () => buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRsi, activeRange }),
-    [analysis, chartData, quote, trendDirection, latestRsi, activeRange],
-  );
   const sparklineData = useMemo(() => buildSparklineData(chartData), [chartData]);
   const latestMa20 = useMemo(() => resolveLatestIndicator(analysis, chartData, "sma20", "SMA20"), [analysis, chartData]);
   const latestMa50 = useMemo(() => resolveLatestIndicator(analysis, chartData, "sma50", "SMA50"), [analysis, chartData]);
-  const checklist = useMemo(
-    () => buildTechChecklist({ lastPrice, ma20: latestMa20, ma50: latestMa50, latestRsi }),
-    [lastPrice, latestMa20, latestMa50, latestRsi],
-  );
+  const checklist = buildTechChecklist({ lastPrice, ma20: latestMa20, ma50: latestMa50, latestRsi, instrumentType });
   const supportResistance = useMemo(() => buildSupportResistance(chartData), [chartData]);
   const yDomain = useMemo(() => buildPriceDomain(chartData), [chartData]);
-  const rangeChangePct = useMemo(() => {
-    const first = chartData.find((p) => p?.close != null && Number.isFinite(Number(p.close)));
-    const last = chartData.findLast((p) => p?.close != null && Number.isFinite(Number(p.close)));
-    if (!first || !last || first === last || Number(first.close) === 0) return null;
-    return ((Number(last.close) - Number(first.close)) / Math.abs(Number(first.close))) * 100;
-  }, [chartData]);
+  const selectedRangePerformance = useMemo(
+    () => resolveSelectedRangePerformance(chartData, instrumentType, activeRange),
+    [chartData, instrumentType, activeRange],
+  );
+  const rangeChangePct = selectedRangePerformance.totalChangePct;
+  const selectedRangeTone = selectedRangePerformance.tone;
+  const selectedRangeLabel = formatSelectedRangeStateLabel(selectedRangePerformance.stateKey);
+  const summary = useMemo(
+    () => buildSimpleSummaryModel({
+      analysis,
+      chartData,
+      latestRsi,
+      activeRange,
+      instrumentType,
+    }),
+    [analysis, chartData, latestRsi, activeRange, instrumentType],
+  );
   const insufficientIndicators = useMemo(() => detectInsufficientChartIndicators(chartData), [chartData]);
   const axisLabel = currency === "USD" ? "$" : "\u20ba";
 
   const [scaledDomain, setScaledDomain] = useState(null);
 
-  useEffect(() => { setScaledDomain(null); }, [chartData]);
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (active) setScaledDomain(null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [chartData]);
 
   const zoomIn = () => {
     const [lo, hi] = scaledDomain ?? yDomain;
@@ -109,9 +126,9 @@ export default function SimpleAnalysisChart({
     },
     {
       label: t("instrumentDetail.trend"),
-      value: trendDirection ? formatTrendLabel(trendDirection) : "-",
-      tone: summary.scoreTone,
-      sparkTone: summary.scoreTone,
+      value: selectedRangeLabel,
+      tone: selectedRangeTone,
+      sparkTone: selectedRangeTone,
       icon: <TrendingUp size={15} strokeWidth={2.3} />,
     },
     {
@@ -208,22 +225,6 @@ export default function SimpleAnalysisChart({
           <aside className="simple-tech-summary-card">
             <div className="simple-tech-summary-head">
               <span className="simple-tech-summary-label">{t("analysis.chart.techPanel.title")}</span>
-              <strong className={`simple-tech-summary-signal simple-tech-summary-signal--${summary.scoreTone}`}>
-                {summary.scoreLabel}
-              </strong>
-            </div>
-
-            <div className="simple-score-kpi">
-              <span className={`simple-score-kpi-value simple-score-kpi-value--${summary.scoreTone}`}>
-                {Math.round(summary.scorePercent ?? 0)}
-                <span className="simple-score-kpi-total">/100</span>
-              </span>
-              <div className="simple-score-bar">
-                <div
-                  className={`simple-score-bar-fill simple-score-bar-fill--${summary.scoreTone}`}
-                  style={{ width: `${Math.round(summary.scorePercent ?? 0)}%` }}
-                />
-              </div>
             </div>
 
             {checklist.length > 0 ? (
@@ -249,14 +250,14 @@ export default function SimpleAnalysisChart({
               <TechMetricCell
                 label="RSI (14)"
                 value={latestRsi != null ? Number(latestRsi).toFixed(1) : "-"}
-                tone={toneFromRsi(latestRsi)}
+                tone={toneFromRsi(latestRsi, instrumentType)}
                 subLabel={summary.rsiZoneLabel}
                 tooltip={t("analysis.chart.techPanel.tooltip.rsi")}
               />
               <TechMetricCell
                 label={t("analysis.chart.techPanel.trend")}
-                value={trendDirection ? formatTrendLabel(trendDirection) : "-"}
-                tone={summary.scoreTone}
+                value={selectedRangeLabel}
+                tone={selectedRangeTone}
                 tooltip={t("analysis.chart.techPanel.tooltip.trend")}
               />
               <TechMetricCell
@@ -292,9 +293,7 @@ export default function SimpleAnalysisChart({
                 <span>
                   {t("analysis.chart.techPanel.rangeTrend")}:{" "}
                   <strong>
-                    {analysis.trendContext.insufficientData
-                      ? t("analysis.chart.techPanel.insufficientData")
-                      : formatTrendLabel(analysis.trendContext.selectedRangeTrend)}
+                    {selectedRangeLabel}
                   </strong>
                 </span>
               </div>
@@ -419,7 +418,7 @@ function buildSparklineData(chartData) {
   }));
 }
 
-function buildTechChecklist({ lastPrice, ma20, ma50, latestRsi }) {
+function buildTechChecklist({ lastPrice, ma20, ma50, latestRsi, instrumentType }) {
   const items = [];
 
   if (lastPrice != null && ma20 != null) {
@@ -441,12 +440,13 @@ function buildTechChecklist({ lastPrice, ma20, ma50, latestRsi }) {
   }
 
   if (latestRsi != null) {
-    const label = latestRsi >= 70
+    const thresholds = resolveRsiThresholds(instrumentType);
+    const label = latestRsi >= thresholds.overbought
       ? "RSI aşırı alım bölgesinde"
-      : latestRsi <= 30
+      : latestRsi <= thresholds.oversold
         ? "RSI aşırı satım bölgesinde"
         : "RSI nötr bölgede";
-    items.push({ key: "rsi", tone: toneFromRsi(latestRsi), label });
+    items.push({ key: "rsi", tone: toneFromRsi(latestRsi, instrumentType), label });
   }
 
   return items;
@@ -567,7 +567,7 @@ function resolveLatestIndicator(analysis, chartData, pointKey, indicatorKey) {
   return firstFinite(lastPointValue, analysisValue);
 }
 
-function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRsi, activeRange }) {
+function buildSimpleSummaryModel({ analysis, chartData, latestRsi, activeRange, instrumentType }) {
   const closes = chartData.map((point) => Number(point?.close)).filter(Number.isFinite);
   // MA alignment uses MA20 vs MA50 — the primary financial signal
   const ma20 = resolveLatestIndicator(analysis, chartData, "sma20", "SMA20");
@@ -579,31 +579,12 @@ function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRs
   // Momentum lookback scales with the selected range so longer views reflect longer trends
   const lookback = rangeMomentumLookback(activeRange, closes.length);
   const momentumPct = closes.length > lookback ? derivePercentChange(closes.at(-(lookback + 1)), closes.at(-1)) : null;
+  const momentumThreshold = resolveMomentumThreshold(instrumentType);
   const volatilityPct = closeToCloseVolatility(closes, activeRange);
-  const latestSignal = resolveLatestSignal(analysis?.signals?.[0]);
-
-  let score = 50;
-  if (trendDirection === "UPTREND") score += 12;
-  if (trendDirection === "DOWNTREND") score -= 12;
-  if (momentumPct != null) score += Math.max(-14, Math.min(14, momentumPct * 2.4));
-  if (latestRsi != null) score += latestRsi >= 60 ? 10 : latestRsi <= 40 ? -10 : 0;
-
-  const scorePercent = Math.max(0, Math.min(100, score));
 
   return {
-    scorePercent,
-    scoreTone: scorePercent >= 75 ? "positive" : scorePercent >= 60 ? "info" : scorePercent <= 39 ? "negative" : "neutral",
-    scoreLabel: scorePercent >= 75
-      ? "Güçlü Yükseliş"
-      : scorePercent >= 60
-        ? "Yükseliş"
-        : scorePercent >= 40
-          ? "Nötr"
-          : "Düşüş",
-    latestSignal,
-    signalTone: inferSignalTone(latestSignal),
-    momentumLabel: momentumPct == null ? "-" : momentumPct >= 1.4 ? "Pozitif" : momentumPct <= -1.4 ? "Negatif" : "Nötr",
-    momentumTone: momentumPct == null ? "neutral" : momentumPct >= 1.4 ? "positive" : momentumPct <= -1.4 ? "negative" : "neutral",
+    momentumLabel: momentumPct == null ? "-" : momentumPct >= momentumThreshold ? "Pozitif" : momentumPct <= -momentumThreshold ? "Negatif" : "Nötr",
+    momentumTone: momentumPct == null ? "neutral" : momentumPct >= momentumThreshold ? "positive" : momentumPct <= -momentumThreshold ? "negative" : "neutral",
     volatilityLabel: volatilityPct == null ? "Yetersiz veri" : volatilityPct >= 2.0 ? "Yüksek" : volatilityPct >= 0.75 ? "Orta" : "Düşük",
     volatilityTone: volatilityPct == null ? "neutral" : volatilityPct >= 2.0 ? "warning" : volatilityPct >= 0.75 ? "neutral" : "positive",
     maPairLabel: !hasMaPair
@@ -620,9 +601,28 @@ function buildSimpleSummaryModel({ analysis, chartData, trendDirection, latestRs
         : bearishMaLayout
           ? "negative"
           : "neutral",
-    rsiZoneLabel: latestRsi == null ? null : latestRsi >= 70 ? "Aşırı alım" : latestRsi <= 30 ? "Aşırı satım" : "Nötr",
+    rsiZoneLabel: resolveRsiZoneLabel(latestRsi, instrumentType),
     volatilityRaw: volatilityPct,
   };
+}
+
+function formatSelectedRangeStateLabel(stateKey) {
+  switch (stateKey) {
+    case "strongBullish":
+      return "Güçlü yükseliş";
+    case "weakBullish":
+      return "Zayıf yükseliş";
+    case "bullish":
+      return "Yükseliş";
+    case "strongBearish":
+      return "Güçlü düşüş";
+    case "weakBearish":
+      return "Zayıf düşüş";
+    case "bearish":
+      return "Düşüş";
+    default:
+      return "Yatay-Nötr";
+  }
 }
 
 function rangeMomentumLookback(activeRange, dataLength) {
@@ -630,35 +630,12 @@ function rangeMomentumLookback(activeRange, dataLength) {
   return Math.min(base, Math.max(1, dataLength - 1));
 }
 
-function closeToCloseVolatility(closes, activeRange) {
-  const returns = [];
-  for (let i = 1; i < closes.length; i++) {
-    const ret = derivePercentChange(closes[i - 1], closes[i]);
-    if (ret != null) returns.push(ret);
-  }
-  if (returns.length < 3) return null;
-  const n = Math.min({ "1M": 10, "3M": 20, "6M": 30, "1Y": 60, "MAX": 60 }[activeRange] ?? 20, returns.length);
-  const window = returns.slice(-n);
-  const mean = window.reduce((sum, r) => sum + r, 0) / window.length;
-  const variance = window.reduce((sum, r) => sum + (r - mean) ** 2, 0) / window.length;
-  return Math.sqrt(variance);
-}
-
-function resolveLatestSignal(raw) {
-  if (raw == null) return null;
-  if (typeof raw === "string") return raw;
-  return raw?.signalType || raw?.label || null;
-}
-
-function inferSignalTone(signal) {
-  const raw = String(signal || "").toUpperCase();
-  if (!raw) return "neutral";
-  // RSI teknik bölge sinyalleri — yönlendirici renk verilmez
-  if (raw.includes("OVERBOUGHT") || raw.includes("OVERSOLD")) return "warning";
-  // MA pozisyon ve gerçek aksiyon sinyalleri
-  if (raw.includes("ABOVE") || raw.includes("BUY")) return "positive";
-  if (raw.includes("BELOW") || raw.includes("SELL")) return "negative";
-  return "neutral";
+function resolveRsiZoneLabel(rsiValue, instrumentType) {
+  if (rsiValue == null) return null;
+  const thresholds = resolveRsiThresholds(instrumentType);
+  if (rsiValue >= thresholds.overbought) return "Aşırı alım";
+  if (rsiValue <= thresholds.oversold) return "Aşırı satım";
+  return "Nötr";
 }
 
 function sparkColor(tone) {
@@ -673,3 +650,4 @@ function sparkColor(tone) {
       return "#94a3b8";
   }
 }
+

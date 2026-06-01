@@ -761,8 +761,10 @@
         "title": "Overall Technical View",
         "state": {
           "strongBullish": "Strong bullish",
+          "bullish": "Bullish",
           "weakBullish": "Weak bullish",
           "neutral": "Neutral",
+          "bearish": "Bearish",
           "weakBearish": "Weak bearish",
           "strongBearish": "Strong bearish"
         },

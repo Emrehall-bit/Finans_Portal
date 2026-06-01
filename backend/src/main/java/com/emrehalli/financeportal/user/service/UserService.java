@@ -317,6 +317,7 @@ public class UserService {
                 .fullName(resolvedFullName != null ? resolvedFullName : user.getFullName())
                 .preferredLanguage(request.getPreferredLanguage())
                 .themePreference(request.getThemePreference())
+                .notes(request.getNotes())
                 .build();
         userMapper.applyProfileUpdate(user, normalizedRequest);
     }

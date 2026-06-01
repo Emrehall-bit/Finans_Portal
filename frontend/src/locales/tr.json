@@ -754,8 +754,10 @@
         "title": "Genel Teknik Görünüm",
         "state": {
           "strongBullish": "Güçlü yükseliş",
+          "bullish": "Yükseliş",
           "weakBullish": "Zayıf yükseliş",
           "neutral": "Nötr",
+          "bearish": "Düşüş",
           "weakBearish": "Zayıf düşüş",
           "strongBearish": "Güçlü düşüş"
         },

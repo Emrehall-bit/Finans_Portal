@@ -742,6 +742,24 @@ html[data-theme] .analysis-chart-shell {
   min-height: 520px;
 }
 
+.price-scale-drag-hint {
+  position: absolute;
+  top: 14px;
+  right: 6px;
+  width: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.advanced-chart-canvas-shell--price:hover .price-scale-drag-hint {
+  opacity: 0.85;
+}
+
 .advanced-chart-canvas-shell--volume {
   min-height: 0;
   grid-template-rows: auto 48px;
@@ -1439,6 +1457,10 @@ html[data-theme] .analysis-chart-shell {
 [data-theme="dark"] .advanced-chart-canvas-shell,
 [data-theme="dark"] .advanced-tech-panel {
   background: #0a0f1e;
+}
+
+[data-theme="dark"] .price-scale-drag-hint {
+  color: #475569;
 }
 
 [data-theme="dark"] .advanced-tech-view {
@@ -2461,106 +2483,43 @@ html[data-theme] .analysis-chart-shell {
 .simple-tech-summary-head {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 0;
+  padding: 2px 0 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
 }
 
 .simple-tech-summary-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.simple-tech-summary-signal {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
   color: #1e293b;
+  letter-spacing: 0;
 }
-.simple-tech-summary-signal--positive { color: #15803d; }
-.simple-tech-summary-signal--negative { color: #dc2626; }
-.simple-tech-summary-signal--warning  { color: #b45309; }
-.simple-tech-summary-signal--info     { color: #2563eb; }
-.simple-tech-summary-signal--neutral  { color: #475569; }
 
 .simple-tech-summary-badge--positive,
-.simple-tech-summary-value--positive,
-.simple-score-gauge-score--positive {
+.simple-tech-summary-value--positive {
   color: #16a34a;
 }
 
 .simple-tech-summary-badge--negative,
-.simple-tech-summary-value--negative,
-.simple-score-gauge-score--negative {
+.simple-tech-summary-value--negative {
   color: #dc2626;
 }
 
 .simple-tech-summary-badge--neutral,
-.simple-tech-summary-value--neutral,
-.simple-score-gauge-score--neutral {
+.simple-tech-summary-value--neutral {
   color: #64748b;
 }
 
 .simple-tech-summary-badge--info,
-.simple-tech-summary-value--info,
-.simple-score-gauge-score--info {
+.simple-tech-summary-value--info {
   color: #2563eb;
 }
 
 .simple-tech-summary-badge--warning,
-.simple-tech-summary-value--warning,
-.simple-score-gauge-score--warning {
+.simple-tech-summary-value--warning {
   color: #b45309;
 }
-
-/* ── Flat score KPI (replaces gauge) ────────────────────────────────────── */
-
-.simple-score-kpi {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 8px 0 9px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-}
-
-.simple-score-kpi-value {
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1;
-  color: #1e293b;
-  letter-spacing: -0.01em;
-}
-
-.simple-score-kpi-value--positive { color: #16a34a; }
-.simple-score-kpi-value--negative { color: #dc2626; }
-.simple-score-kpi-value--warning  { color: #b45309; }
-.simple-score-kpi-value--neutral  { color: #475569; }
-.simple-score-kpi-value--info     { color: #2563eb; }
-
-.simple-score-kpi-total {
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: #94a3b8;
-  margin-left: 1px;
-}
-
-.simple-score-bar {
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(226, 232, 240, 0.6);
-  overflow: hidden;
-}
-
-.simple-score-bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.5s ease;
-}
-.simple-score-bar-fill--positive { background: #22c55e; }
-.simple-score-bar-fill--negative { background: #ef4444; }
-.simple-score-bar-fill--warning  { background: #f59e0b; }
-.simple-score-bar-fill--info     { background: #60a5fa; }
-.simple-score-bar-fill--neutral  { background: #94a3b8; }
 
 /* ── Teknik görünüm checklist ─────────────────────────────────────────── */
 .simple-tech-checklist {
@@ -2842,7 +2801,6 @@ html[data-theme] .analysis-chart-shell {
 }
 
 [data-theme="dark"] .analysis-hero-symbol-row h1,
-[data-theme="dark"] .simple-tech-summary-signal,
 [data-theme="dark"] .simple-analysis-metric strong {
   color: #f8fafc;
 }
@@ -2879,8 +2837,7 @@ html[data-theme] .analysis-chart-shell {
   border: 1px solid rgba(71, 85, 105, 0.45);
 }
 
-[data-theme="dark"] .simple-tech-summary-label { color: #475569; }
-[data-theme="dark"] .simple-score-bar { background: rgba(51, 65, 85, 0.4); }
+[data-theme="dark"] .simple-tech-summary-label { color: #f8fafc; }
 
 [data-theme="dark"] .simple-tech-metric-cell {
   background: rgba(15, 23, 42, 0.5);
@@ -2890,8 +2847,7 @@ html[data-theme] .analysis-chart-shell {
 [data-theme="dark"] .simple-tech-check-item { color: #94a3b8; }
 
 [data-theme="dark"] .analysis-hero-meta,
-[data-theme="dark"] .simple-analysis-metric span,
-[data-theme="dark"] .simple-score-gauge-labels {
+[data-theme="dark"] .simple-analysis-metric span {
   color: #94a3b8;
 }
 
