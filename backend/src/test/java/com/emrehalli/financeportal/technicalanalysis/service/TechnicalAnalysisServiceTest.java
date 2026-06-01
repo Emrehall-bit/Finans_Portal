@@ -15,6 +15,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -36,7 +38,8 @@ class TechnicalAnalysisServiceTest {
             ));
         }
 
-        when(historicalPriceReader.read("BTCUSDT", start, start.plusDays(60))).thenReturn(history);
+        // Service now calls read with warmupFrom (from - 90 days), use any() for date args
+        when(historicalPriceReader.read(eq("BTCUSDT"), any(), any())).thenReturn(history);
 
         TechnicalAnalysisService service = new TechnicalAnalysisService(
                 historicalPriceReader,
@@ -98,7 +101,7 @@ class TechnicalAnalysisServiceTest {
     void analyze_should_not_compute_unselected_indicators() {
         HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
         LocalDate start = LocalDate.of(2026, 1, 1);
-        when(historicalPriceReader.read("BTCUSDT", start, start.plusDays(60)))
+        when(historicalPriceReader.read(eq("BTCUSDT"), any(), any()))
                 .thenReturn(increasingHistory(start, 61));
 
         TechnicalAnalysisService service = buildService(historicalPriceReader);
@@ -118,7 +121,7 @@ class TechnicalAnalysisServiceTest {
     void analyze_blank_indicators_should_compute_all_four_indicators() {
         HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
         LocalDate start = LocalDate.of(2026, 1, 1);
-        when(historicalPriceReader.read("BTCUSDT", start, start.plusDays(60)))
+        when(historicalPriceReader.read(eq("BTCUSDT"), any(), any()))
                 .thenReturn(increasingHistory(start, 61));
 
         TechnicalAnalysisService service = buildService(historicalPriceReader);
@@ -136,7 +139,7 @@ class TechnicalAnalysisServiceTest {
     void analyze_should_compute_available_indicators_without_global_sixty_point_threshold() {
         HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
         LocalDate start = LocalDate.of(2026, 1, 1);
-        when(historicalPriceReader.read("BTCUSDT", start, start.plusDays(14)))
+        when(historicalPriceReader.read(eq("BTCUSDT"), any(), any()))
                 .thenReturn(increasingHistory(start, 15));
 
         TechnicalAnalysisService service = buildService(historicalPriceReader);
@@ -159,7 +162,7 @@ class TechnicalAnalysisServiceTest {
     void analyze_should_compute_sma50_when_fifty_or_more_points_are_available() {
         HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
         LocalDate start = LocalDate.of(2026, 3, 3);
-        when(historicalPriceReader.read("TCMB:AUD:SELL", start, start.plusDays(90)))
+        when(historicalPriceReader.read(eq("TCMB:AUD:SELL"), any(), any()))
                 .thenReturn(increasingHistory("TCMB:AUD:SELL", start, 58));
 
         TechnicalAnalysisService service = buildService(historicalPriceReader);
@@ -213,6 +216,121 @@ class TechnicalAnalysisServiceTest {
         assertThat(enoughLast.rsi14()).isNotNull();
     }
 
+    // --- Warmup testleri ---
+
+    @Test
+    void analyze_should_provide_stable_rsi_at_first_visible_day_when_warmup_data_is_available() {
+        // Senaryo: kullanıcı 30 günlük aralık (from..to) istiyor.
+        // Mock, from - WARMUP_DAYS tarihinden itibaren 120 günlük sürekli artan fiyat veriyor.
+        // Beklenti: from'daki ilk görünür noktada RSI14 ve SMA50 zaten hesaplanmış olmalı
+        // (warm-up verisi sayesinde).
+        LocalDate from = LocalDate.of(2026, 3, 1);
+        LocalDate to = from.plusDays(29);
+        LocalDate warmupStart = from.minusDays(TechnicalAnalysisService.INDICATOR_WARMUP_DAYS);
+
+        // Toplam 120 gün: 90 gün warmup + 30 gün görünür
+        List<HistoricalPricePoint> fullData = increasingHistory("USDTRY", warmupStart, 120);
+
+        HistoricalPriceReader reader = mock(HistoricalPriceReader.class);
+        when(reader.read(eq("USDTRY"), any(), any())).thenReturn(fullData);
+
+        TechnicalAnalysisResult result = buildService(reader).analyze("USDTRY", from, to, "SMA7,SMA20,SMA50,RSI14");
+
+        // Yalnızca görünür aralık döner
+        assertThat(result.points()).hasSize(30);
+        assertThat(result.points()).allMatch(point -> !point.date().isBefore(from));
+
+        // İlk görünür noktada (from) warm-up sayesinde RSI ve SMA'lar hesaplanmış olmalı
+        TechnicalAnalysisResult.Point firstVisible = result.points().getFirst();
+        assertThat(firstVisible.date()).isEqualTo(from);
+        assertThat(firstVisible.rsi14())
+                .as("RSI14 should be non-null at first visible day thanks to warmup")
+                .isNotNull();
+        assertThat(firstVisible.sma20())
+                .as("SMA20 should be non-null at first visible day thanks to warmup")
+                .isNotNull();
+        assertThat(firstVisible.sma50())
+                .as("SMA50 should be non-null at first visible day thanks to warmup")
+                .isNotNull();
+    }
+
+    @Test
+    void analyze_should_trim_response_points_to_visible_from_to_range() {
+        // Senaryo: mock warmup + görünür veriyi birlikte döndürüyor.
+        // Beklenti: response.points() yalnızca from..to aralığını içermeli; warmup günleri olmamalı.
+        LocalDate from = LocalDate.of(2026, 4, 1);
+        LocalDate to = from.plusDays(19);
+        LocalDate warmupStart = from.minusDays(TechnicalAnalysisService.INDICATOR_WARMUP_DAYS);
+
+        // 110 gün toplam (90 warmup + 20 görünür)
+        List<HistoricalPricePoint> fullData = increasingHistory("THYAO", warmupStart, 110);
+
+        HistoricalPriceReader reader = mock(HistoricalPriceReader.class);
+        when(reader.read(eq("THYAO"), any(), any())).thenReturn(fullData);
+
+        TechnicalAnalysisResult result = buildService(reader).analyze("THYAO", from, to, "SMA7,SMA20,SMA50,RSI14");
+
+        // Sadece görünür aralık: 20 gün
+        assertThat(result.points()).hasSize(20);
+
+        // Tüm noktaların tarihi from..to arasında
+        assertThat(result.points()).allMatch(point -> !point.date().isBefore(from) && !point.date().isAfter(to));
+
+        // Warmup noktaları response'a sızmamış olmalı
+        assertThat(result.points()).noneMatch(point -> point.date().isBefore(from));
+    }
+
+    @Test
+    void analyze_should_work_gracefully_when_no_warmup_data_is_available() {
+        // Senaryo: veri kaynağı warmup döneminde veri döndüremiyor; yalnızca from..to verisi var.
+        // Beklenti: uygulama hata vermemeli; kısa veri için RSI/SMA null olabilir (mevcut davranış).
+        LocalDate from = LocalDate.of(2026, 5, 1);
+        LocalDate to = from.plusDays(20);
+
+        // Sadece görünür aralık verisi (warmup yok) — 21 nokta
+        List<HistoricalPricePoint> visibleOnly = increasingHistory("BTCUSDT", from, 21);
+
+        HistoricalPriceReader reader = mock(HistoricalPriceReader.class);
+        when(reader.read(eq("BTCUSDT"), any(), any())).thenReturn(visibleOnly);
+
+        TechnicalAnalysisResult result = buildService(reader).analyze("BTCUSDT", from, to, "SMA7,SMA20,SMA50,RSI14");
+
+        assertThat(result.analysisStatus()).isEqualTo("AVAILABLE");
+        assertThat(result.points()).hasSize(21);
+
+        // 21 nokta: SMA7 hesaplanır (7 < 21), SMA20 hesaplanır (20 < 21), SMA50 null (50 > 21)
+        TechnicalAnalysisResult.Point last = result.points().getLast();
+        assertThat(last.sma7()).isNotNull();
+        assertThat(last.sma20()).isNotNull();
+        assertThat(last.sma50()).isNull();
+        // RSI14: 21 > 14 so calculated
+        assertThat(last.rsi14()).isNotNull();
+    }
+
+    @Test
+    void analyze_should_filter_out_non_positive_close_prices() {
+        // close <= 0 olan noktalar filtrelenmeli
+        LocalDate start = LocalDate.of(2026, 1, 1);
+        List<HistoricalPricePoint> history = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            BigDecimal close = (i == 5) ? BigDecimal.ZERO
+                    : (i == 12) ? BigDecimal.valueOf(-1)
+                    : BigDecimal.valueOf(100 + i);
+            history.add(new HistoricalPricePoint("TEST", start.plusDays(i), close));
+        }
+
+        HistoricalPriceReader reader = mock(HistoricalPriceReader.class);
+        when(reader.read(eq("TEST"), any(), any())).thenReturn(history);
+
+        TechnicalAnalysisResult result = buildService(reader).analyze("TEST", start, start.plusDays(29), "SMA7,RSI14");
+
+        // 2 geçersiz nokta (0 ve -1) filtrelenmiş olmalı
+        assertThat(result.points()).hasSize(28);
+        assertThat(result.points()).allMatch(point -> point.close().compareTo(BigDecimal.ZERO) > 0);
+    }
+
+    // --- Yardımcı metodlar ---
+
     private static List<HistoricalPricePoint> increasingHistory(LocalDate start, int count) {
         return increasingHistory("BTCUSDT", start, count);
     }
@@ -245,7 +363,7 @@ class TechnicalAnalysisServiceTest {
         HistoricalPriceReader historicalPriceReader = mock(HistoricalPriceReader.class);
         LocalDate from = history.getFirst().date();
         LocalDate to = history.getLast().date();
-        when(historicalPriceReader.read(symbol, from, to)).thenReturn(history);
+        when(historicalPriceReader.read(eq(symbol), any(), any())).thenReturn(history);
         return buildService(historicalPriceReader).analyze(symbol, from, to, "SMA7,SMA20,SMA50,RSI14");
     }
 

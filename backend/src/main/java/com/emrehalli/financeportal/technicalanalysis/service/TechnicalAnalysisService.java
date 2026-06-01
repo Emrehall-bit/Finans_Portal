@@ -25,6 +25,14 @@ public class TechnicalAnalysisService {
 
     private static final Logger logger = LogManager.getLogger(TechnicalAnalysisService.class);
 
+    /**
+     * RSI14 için Wilder ısınması ve SMA50 için geçmiş bağlamı sağlamak amacıyla
+     * istenen from tarihinden önce okunacak ekstra gün sayısı.
+     * RSI stabilizasyonu için ~3× period (42 gün) yeterli; SMA50 için 50 gün gerekli.
+     * 90 gün her iki gereksinimi de karşılar ve gereksiz veri çekmez.
+     */
+    static final int INDICATOR_WARMUP_DAYS = 90;
+
     private final HistoricalPriceReader historicalPriceReader;
     private final IndicatorSeriesCalculator indicatorSeriesCalculator;
     private final TrendAnalysisService trendAnalysisService;
@@ -49,19 +57,34 @@ public class TechnicalAnalysisService {
         validateDateRange(from, to);
 
         Set<IndicatorType> requestedIndicators = resolveIndicators(indicators);
-        List<HistoricalPricePoint> history = filterIncompleteCloses(historicalPriceReader.read(symbol, from, to));
-        if (history.isEmpty()) {
+
+        // Warm-up verisini de içerecek şekilde from tarihinden INDICATOR_WARMUP_DAYS önce oku.
+        // İndikatörler tüm veri üzerinde hesaplanır; sonuçlar aşağıda from-to aralığına kırpılır.
+        LocalDate warmupFrom = from.minusDays(INDICATOR_WARMUP_DAYS);
+        List<HistoricalPricePoint> fullHistory = filterIncompleteCloses(historicalPriceReader.read(symbol, warmupFrom, to));
+        if (fullHistory.isEmpty()) {
             throw new TechnicalAnalysisException.NotFound("Historical price data not found for symbol: " + symbol);
         }
 
-        List<BigDecimal> closes = history.stream()
+        List<BigDecimal> closes = fullHistory.stream()
                 .map(HistoricalPricePoint::close)
                 .toList();
 
         Map<IndicatorType, List<BigDecimal>> indicatorSeries = indicatorSeriesCalculator.calculate(closes, requestedIndicators);
-        List<TechnicalAnalysisResult.Point> points = buildPoints(history, indicatorSeries);
+
+        // Tüm veri (warmup + görünür) üzerinde point'leri oluştur, sonra görünür aralığa kırp.
+        List<TechnicalAnalysisResult.Point> allPoints = buildPoints(fullHistory, indicatorSeries);
+        List<TechnicalAnalysisResult.Point> points = allPoints.stream()
+                .filter(point -> !point.date().isBefore(from))
+                .toList();
+
+        if (points.isEmpty()) {
+            throw new TechnicalAnalysisException.NotFound("No data points in visible range for symbol: " + symbol);
+        }
+
         TechnicalAnalysisResult.Point latestPoint = points.getLast();
 
+        // latestIndicatorValues ve tüm türev hesaplar kırpılmış görünür points üzerinden yapılır.
         Map<IndicatorType, BigDecimal> latestIndicatorValues = new EnumMap<>(IndicatorType.class);
         for (IndicatorType indicatorType : requestedIndicators) {
             BigDecimal indicatorValue = indicatorValue(points, indicatorType);
@@ -71,16 +94,17 @@ public class TechnicalAnalysisService {
         }
 
         logger.info(
-                "Technical analysis completed: symbol={}, from={}, to={}, pointCount={}, indicators={}",
+                "Technical analysis completed: symbol={}, from={}, to={}, visiblePoints={}, warmupPoints={}, indicators={}",
                 symbol,
                 from,
                 to,
                 points.size(),
+                allPoints.size() - points.size(),
                 requestedIndicators
         );
 
         return new TechnicalAnalysisResult(
-                history.getFirst().symbol(),
+                fullHistory.getFirst().symbol(),
                 from,
                 to,
                 latestPoint.close(),
@@ -205,7 +229,7 @@ public class TechnicalAnalysisService {
         }
 
         return history.stream()
-                .filter(point -> point != null && point.close() != null)
+                .filter(point -> point != null && point.close() != null && point.close().compareTo(BigDecimal.ZERO) > 0)
                 .toList();
     }
 }

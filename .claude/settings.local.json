@@ -150,7 +150,16 @@
       "Bash(awk 'NR>=40 && NR<=120' market/persistence/JpaMarketQueryService.java)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Filter \"*kap*\" -ErrorAction SilentlyContinue)",
       "Bash(grep -E \"\\\\.java$\")",
-      "Bash(grep -E \"entity|\\\\.java$\")"
+      "Bash(grep -E \"entity|\\\\.java$\")",
+      "Bash(dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\components\\\\analysis *)",
+      "Bash(dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\i18n *)",
+      "Bash(dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\public\\\\locales *)",
+      "Bash(dir \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\")",
+      "Bash(dir \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\public\")",
+      "Bash(dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\locales *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\" -Recurse -Directory)",
+      "Bash(PGPASSWORD=postgres psql *)",
+      "Bash(dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\components\\\\analysis\\\\advanced-chart *)"
     ]
   }
 }

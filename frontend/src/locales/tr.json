@@ -605,6 +605,9 @@
         "1y": "1Y",
         "max": "MAX"
       },
+      "rangeChange": "Aralık değişimi",
+      "rsiDisclaimer": "RSI, uygulamadaki kapanış fiyatları üzerinden hesaplanmaktadır. Farklı veri kaynakları nedeniyle diğer platformlardan küçük sapmalar görülebilir.",
+      "rsiNoData": "Bu dönemde RSI hesaplanabilmesi için yeterli geçmiş veri bulunmuyor.",
       "tools": {
         "label": "Araçlar",
         "cursor": "İmleç",

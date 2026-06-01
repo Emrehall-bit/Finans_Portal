@@ -109,6 +109,9 @@ export default function AdvancedChart({
   quote = null,
   technicalAnalysis = null,
   dateRange = null,
+  activeRange = null,
+  rangePresets = null,
+  onRangeChange = null,
 }) {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
@@ -148,6 +151,7 @@ export default function AdvancedChart({
   const draggingRef = useRef(null);
   const latestDatasetRef = useRef(null);
   const technicalSnapshotRef = useRef(null);
+  const warmupBgSeriesRef = useRef(null);
   const toolsDropdownRef = useRef(null);
   const indicatorsRef = useRef(null);
 
@@ -481,6 +485,13 @@ export default function AdvancedChart({
       return;
     }
 
+    // Warm-up bölgesi: fiyat verisi var ama RSI henüz hesaplanamamış
+    if (time != null && row != null && lineRsi == null) {
+      const { left, top } = resolveTooltipPosition(rect, pointX, pointY, "rsi-zone");
+      setTooltipModel({ kind: "rsi-zone", left, top, title: t("analysis.chart.rsiNoData") });
+      return;
+    }
+
     if (hoveredRsi == null) {
       setTooltipModel(null);
       return;
@@ -565,6 +576,16 @@ export default function AdvancedChart({
       });
     }
 
+    // Warm-up arka plan — RSI line'dan önce eklenmeli (z-index sırası)
+    if (!warmupBgSeriesRef.current) {
+      warmupBgSeriesRef.current = rsiChart.addSeries(HistogramSeries, {
+        color: "rgba(148, 163, 184, 0.10)",
+        priceLineVisible: false,
+        lastValueVisible: false,
+        autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
+      });
+    }
+
     if (!rsiSeriesRef.current) {
       rsiSeriesRef.current = rsiChart.addSeries(LineSeries, {
         color: "#a855f7",
@@ -578,7 +599,6 @@ export default function AdvancedChart({
           },
         }),
       });
-
     }
 
     return {
@@ -639,6 +659,10 @@ export default function AdvancedChart({
         visible: false,
         autoScale: true,
       });
+    }
+
+    if (warmupBgSeriesRef.current) {
+      warmupBgSeriesRef.current.applyOptions({ color: withAlpha(chartTheme.grid, 0.18) });
     }
   }, [chartTheme]);
 
@@ -1111,6 +1135,7 @@ export default function AdvancedChart({
       priceSeriesRef.current = null;
       volumeSeriesRef.current = null;
       rsiSeriesRef.current = null;
+      warmupBgSeriesRef.current = null;
       overlaySeriesRefs.current = {};
     };
   }, [
@@ -1163,6 +1188,9 @@ export default function AdvancedChart({
         coreSeries.priceSeries.setData(dataset.priceData);
         coreSeries.volumeSeries.setData(dataset.volumeData);
         coreSeries.rsiSeries.setData(dataset.rsiData);
+        if (warmupBgSeriesRef.current) {
+          warmupBgSeriesRef.current.setData(dataset.warmupRsiData ?? []);
+        }
         latestDatasetRef.current = dataset;
         dataPointCountRef.current = dataset.priceData.length;
         const rsiDebug = {
@@ -1234,6 +1262,7 @@ export default function AdvancedChart({
   useEffect(() => {
     syncStructurePriceLines(technicalSnapshotRef.current);
   }, [showStructureLines, syncStructurePriceLines]);
+
 
   useEffect(() => {
     const handleOutside = (event) => {
@@ -1354,7 +1383,20 @@ export default function AdvancedChart({
 
       <div className="advanced-chart-toolbar">
         <div className="advanced-chart-toolbar-row">
-          {!dateRange ? (
+          {dateRange && rangePresets && onRangeChange ? (
+            <div className="chart-timeframes" role="group" aria-label="Range">
+              {rangePresets.map((preset) => (
+                <button
+                  type="button"
+                  key={preset.key}
+                  className={`chart-tf-btn${activeRange === preset.key ? " active" : ""}`}
+                  onClick={() => onRangeChange(preset)}
+                >
+                  {preset.key}
+                </button>
+              ))}
+            </div>
+          ) : !dateRange ? (
             <div className="chart-timeframes" role="group" aria-label="Range">
               {rangeOptions.map((option) => (
                 <button
@@ -1444,6 +1486,7 @@ export default function AdvancedChart({
                 </div>
               ) : null}
             </div>
+
           </div>
         </div>
 
@@ -1565,6 +1608,15 @@ export default function AdvancedChart({
               <div className="advanced-chart-subpanel-head advanced-chart-subpanel-head--rsi">
                 <div className="advanced-chart-rsi-head-left">
                   <span>RSI (14)</span>
+                  <button
+                    type="button"
+                    className="rsi-info-btn"
+                    onMouseEnter={(event) => showLegendTooltip(event, t("analysis.chart.rsiDisclaimer"))}
+                    onMouseLeave={hideLegendTooltip}
+                    aria-label={t("analysis.chart.rsiDisclaimer")}
+                  >
+                    ⓘ
+                  </button>
                   <div className="advanced-chart-rsi-legend" aria-label="RSI legend">
                     <span
                       className="advanced-chart-rsi-legend-dot advanced-chart-rsi-legend-dot--overbought"
@@ -1771,6 +1823,9 @@ async function loadCryptoData(symbol, range, t) {
   const rsiData = candles
     .filter((candle) => candle.rsi14 != null)
     .map((candle) => ({ time: candle.time, value: candle.rsi14 }));
+  const warmupRsiData = candles
+    .filter((candle) => candle.rsi14 == null)
+    .map((candle) => ({ time: candle.time, value: 100 }));
   const rsiStats = buildRsiStats(rsiData);
 
   return {
@@ -1790,6 +1845,7 @@ async function loadCryptoData(symbol, range, t) {
         color: candle.close >= candle.open ? "rgba(34, 197, 94, 0.72)" : "rgba(239, 68, 68, 0.72)",
       })),
     rsiData,
+    warmupRsiData,
     overlayData,
     infoByTime,
     summary: buildTechnicalSummary({
@@ -1844,6 +1900,9 @@ async function loadLineData(symbol, rangeDates, t, quote) {
   const rsiData = points
     .filter((point) => point.rsi14 != null)
     .map((point) => ({ time: point.time, value: point.rsi14 }));
+  const warmupRsiData = points
+    .filter((point) => point.rsi14 == null)
+    .map((point) => ({ time: point.time, value: 100 }));
   const rsiStats = buildRsiStats(rsiData);
 
   return {
@@ -1854,6 +1913,7 @@ async function loadLineData(symbol, rangeDates, t, quote) {
     })),
     volumeData: [],
     rsiData,
+    warmupRsiData,
     overlayData,
     infoByTime,
     summary: buildTechnicalSummary({
@@ -2106,7 +2166,7 @@ function mergeTechnicalSnapshot(snapshot, technicalAnalysis) {
   const backendRsi = extractIndicatorValue(technicalAnalysis, "RSI14");
   const backendTrendDirection = normalizeTrendDirection(technicalAnalysis?.trendDirection);
   const backendSignal = normalizeSignalDescriptor(Array.isArray(technicalAnalysis?.signals) ? technicalAnalysis.signals[0] : null);
-  const resolvedRsi = backendRsi ?? baseSnapshot?.rsiValue ?? null;
+  const resolvedRsi = baseSnapshot?.rsiValue ?? backendRsi ?? null;
 
   return {
     ...(baseSnapshot ?? {}),

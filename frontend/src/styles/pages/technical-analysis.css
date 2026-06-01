@@ -793,6 +793,18 @@ html[data-theme] .analysis-chart-shell {
   min-width: 0;
 }
 
+.rsi-info-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  cursor: help;
+  color: #94a3b8;
+  transition: color 0.15s;
+}
+.rsi-info-btn:hover { color: #64748b; }
+
 .advanced-chart-rsi-legend {
   display: inline-flex;
   align-items: center;
@@ -2235,7 +2247,27 @@ html[data-theme] .analysis-chart-shell {
 .simple-analysis-range-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
 }
+
+.simple-analysis-range-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.simple-range-change {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.simple-range-change--pos { color: #16a34a; }
+.simple-range-change--neg { color: #dc2626; }
+
 
 .simple-analysis-ranges {
   display: inline-flex;
@@ -2301,6 +2333,18 @@ html[data-theme] .analysis-chart-shell {
   line-height: 1.1;
   color: #0f172a;
   font-weight: 700;
+}
+
+.simple-analysis-metric.simple-analysis-metric--positive strong:not(.is-placeholder) {
+  color: #15803d;
+}
+
+.simple-analysis-metric.simple-analysis-metric--negative strong:not(.is-placeholder) {
+  color: #dc2626;
+}
+
+.simple-analysis-metric.simple-analysis-metric--warning strong:not(.is-placeholder) {
+  color: #b45309;
 }
 
 .simple-analysis-metric strong.is-placeholder {
@@ -2683,6 +2727,18 @@ html[data-theme] .analysis-chart-shell {
 [data-theme="dark"] .simple-tech-summary-signal,
 [data-theme="dark"] .simple-analysis-metric strong {
   color: #f8fafc;
+}
+
+[data-theme="dark"] .simple-analysis-metric.simple-analysis-metric--positive strong:not(.is-placeholder) {
+  color: #4ade80;
+}
+
+[data-theme="dark"] .simple-analysis-metric.simple-analysis-metric--negative strong:not(.is-placeholder) {
+  color: #f87171;
+}
+
+[data-theme="dark"] .simple-analysis-metric.simple-analysis-metric--warning strong:not(.is-placeholder) {
+  color: #fbbf24;
 }
 
 [data-theme="dark"] .simple-tech-summary-label { color: #475569; }

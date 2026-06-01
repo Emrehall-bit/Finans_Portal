@@ -612,6 +612,9 @@
         "1y": "1Y",
         "max": "MAX"
       },
+      "rangeChange": "Range change",
+      "rsiDisclaimer": "RSI is calculated from closing prices in this application. Minor deviations from other platforms may occur due to different data sources.",
+      "rsiNoData": "Not enough historical data to calculate RSI for this period.",
       "tools": {
         "label": "Tools",
         "cursor": "Cursor",

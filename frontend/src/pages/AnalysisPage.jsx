@@ -303,6 +303,9 @@ export default function AnalysisPage() {
                           quote={primaryQuote}
                           technicalAnalysis={analysis}
                           dateRange={dateRange}
+                          activeRange={activeRange}
+                          rangePresets={ANALYSIS_RANGE_PRESETS}
+                          onRangeChange={handleRangeChange}
                         />
                       </Suspense>
                     )}

@@ -67,6 +67,12 @@ export default function SimpleAnalysisChart({
   );
   const supportResistance = useMemo(() => buildSupportResistance(chartData), [chartData]);
   const yDomain = useMemo(() => buildPriceDomain(chartData), [chartData]);
+  const rangeChangePct = useMemo(() => {
+    const first = chartData.find((p) => p?.close != null && Number.isFinite(Number(p.close)));
+    const last = chartData.findLast((p) => p?.close != null && Number.isFinite(Number(p.close)));
+    if (!first || !last || first === last || Number(first.close) === 0) return null;
+    return ((Number(last.close) - Number(first.close)) / Math.abs(Number(first.close))) * 100;
+  }, [chartData]);
   const insufficientIndicators = useMemo(() => detectInsufficientChartIndicators(chartData), [chartData]);
   const axisLabel = currency === "USD" ? "$" : "\u20ba";
 
@@ -80,8 +86,8 @@ export default function SimpleAnalysisChart({
     {
       label: t("instrumentDetail.dailyChange"),
       value: dailyChange != null ? `${dailyChange >= 0 ? "+" : ""}${Number(dailyChange).toFixed(2)}%` : "-",
-      tone: dailyChange == null ? "neutral" : dailyChange >= 0 ? "positive" : "negative",
-      sparkTone: dailyChange == null ? "neutral" : dailyChange >= 0 ? "positive" : "negative",
+      tone: percentTone(dailyChange),
+      sparkTone: percentTone(dailyChange),
     },
     {
       label: t("instrumentDetail.trend"),
@@ -91,10 +97,10 @@ export default function SimpleAnalysisChart({
       icon: <TrendingUp size={15} strokeWidth={2.3} />,
     },
     {
-      label: "RSI (14)",
-      value: latestRsi != null ? Number(latestRsi).toFixed(2) : "-",
-      tone: toneFromRsi(latestRsi),
-      sparkTone: "info",
+      label: t("analysis.chart.rangeChange"),
+      value: rangeChangePct != null ? `${rangeChangePct >= 0 ? "+" : ""}${rangeChangePct.toFixed(2)}%` : "-",
+      tone: percentTone(rangeChangePct),
+      sparkTone: percentTone(rangeChangePct),
     },
     {
       label: t("analysis.chart.tooltip.volume"),
@@ -382,8 +388,6 @@ function buildPriceDomain(chartData) {
     return [min - pad, max + pad];
   }
 
-  // Eksen 0'dan değil, veri aralığının biraz altından/üstünden başlasın
-  // (ör. 30-33 verisi 0-36 yerine ~29.7-33.3 aralığında görünür).
   const pad = (max - min) * 0.08;
   return [min - pad, max + pad];
 }
@@ -450,6 +454,14 @@ function firstFinite(...values) {
     }
   }
   return null;
+}
+
+function percentTone(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric === 0) {
+    return "neutral";
+  }
+  return numeric > 0 ? "positive" : "negative";
 }
 
 function resolveLatestRsi(analysis, chartData) {
