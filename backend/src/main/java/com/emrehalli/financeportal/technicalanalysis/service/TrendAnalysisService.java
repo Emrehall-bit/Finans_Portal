@@ -16,29 +16,53 @@ import java.util.List;
 @Service
 public class TrendAnalysisService {
 
-    private static final BigDecimal TREND_THRESHOLD_PCT = BigDecimal.valueOf(0.1);
-    private static final BigDecimal RANGE_TREND_THRESHOLD_PCT = BigDecimal.ONE;
     private static final int RANGE_WINDOW_SIZE = 5;
 
-    /**
-     * Determines trend direction using a 5+5 closing-price window when enough data is available.
-     * Falls back to a two-point comparison when fewer than 10 points exist.
-     */
+    /** Backward-compatible overload; uses DEFAULT profile (original thresholds). */
     public TrendDirection determineTrend(List<TechnicalAnalysisResult.Point> points) {
+        return determineTrend(points, AnalysisProfile.DEFAULT);
+    }
+
+    /**
+     * Determines trend direction using a three-signal weighted scoring system.
+     *
+     * Scoring:
+     *   close > sma20   → +1 / close < sma20  → -1   (price vs medium-term average)
+     *   sma20 > sma50   → +2 / sma20 < sma50  → -2   (structural trend; skipped when sma50 unavailable)
+     *   shortTermRising → +1 / shortTermFalling → -1  (5+5 window momentum, or two-point fallback)
+     *
+     * SMA7 is intentionally excluded: it is too short-term and causes false SIDEWAYS
+     * readings during consolidations in instruments with a clear medium-term uptrend.
+     *
+     * score ≥ 2  → UPTREND
+     * score ≤ -2 → DOWNTREND
+     * otherwise  → SIDEWAYS
+     *
+     * The momentum threshold comes from the supplied profile so that FX, CRYPTO, etc.
+     * can use asset-class-appropriate sensitivity levels.
+     */
+    public TrendDirection determineTrend(List<TechnicalAnalysisResult.Point> points, AnalysisProfile profile) {
         if (points == null || points.size() < 2) {
             return TrendDirection.SIDEWAYS;
         }
 
         TechnicalAnalysisResult.Point latestPoint = points.getLast();
 
-        if (latestPoint.close() == null || latestPoint.sma20() == null || latestPoint.sma7() == null) {
+        if (latestPoint.close() == null || latestPoint.sma20() == null) {
             return TrendDirection.SIDEWAYS;
         }
 
-        boolean priceAboveSma20 = latestPoint.close().compareTo(latestPoint.sma20()) > 0;
-        boolean sma7AboveSma20 = latestPoint.sma7().compareTo(latestPoint.sma20()) > 0;
-        boolean priceBelowSma20 = latestPoint.close().compareTo(latestPoint.sma20()) < 0;
-        boolean sma7BelowSma20 = latestPoint.sma7().compareTo(latestPoint.sma20()) < 0;
+        int score = 0;
+
+        int closeSma20 = latestPoint.close().compareTo(latestPoint.sma20());
+        if (closeSma20 > 0) score += 1;
+        else if (closeSma20 < 0) score -= 1;
+
+        if (latestPoint.sma50() != null) {
+            int sma20Sma50 = latestPoint.sma20().compareTo(latestPoint.sma50());
+            if (sma20Sma50 > 0) score += 2;
+            else if (sma20Sma50 < 0) score -= 2;
+        }
 
         boolean shortTermRising;
         boolean shortTermFalling;
@@ -54,8 +78,9 @@ public class TrendAnalysisService {
                 BigDecimal changePct = recent.subtract(earlier)
                         .divide(earlier.abs(), 8, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100));
-                shortTermRising = changePct.compareTo(TREND_THRESHOLD_PCT) > 0;
-                shortTermFalling = changePct.compareTo(TREND_THRESHOLD_PCT.negate()) < 0;
+                BigDecimal threshold = profile.shortTermMomentumThresholdPct();
+                shortTermRising = changePct.compareTo(threshold) > 0;
+                shortTermFalling = changePct.compareTo(threshold.negate()) < 0;
             }
         } else {
             TechnicalAnalysisResult.Point previousPoint = points.get(points.size() - 2);
@@ -69,17 +94,21 @@ public class TrendAnalysisService {
             }
         }
 
-        if (priceAboveSma20 && sma7AboveSma20 && shortTermRising) {
-            return TrendDirection.UPTREND;
-        }
-        if (priceBelowSma20 && sma7BelowSma20 && shortTermFalling) {
-            return TrendDirection.DOWNTREND;
-        }
+        if (shortTermRising) score += 1;
+        else if (shortTermFalling) score -= 1;
+
+        if (score >= 2) return TrendDirection.UPTREND;
+        if (score <= -2) return TrendDirection.DOWNTREND;
         return TrendDirection.SIDEWAYS;
     }
 
+    /** Backward-compatible overload; uses DEFAULT profile (original thresholds). */
     public TrendContext buildTrendContext(List<TechnicalAnalysisResult.Point> points, LocalDate from, LocalDate to) {
-        TrendDirection shortTermTrend = determineTrend(points);
+        return buildTrendContext(points, from, to, AnalysisProfile.DEFAULT);
+    }
+
+    public TrendContext buildTrendContext(List<TechnicalAnalysisResult.Point> points, LocalDate from, LocalDate to, AnalysisProfile profile) {
+        TrendDirection shortTermTrend = determineTrend(points, profile);
         String rangeLabel = resolveRangeLabel(from, to);
         int dataPoints = points == null ? 0 : points.size();
         boolean insufficientData = false;
@@ -98,9 +127,10 @@ public class TrendAnalysisService {
                 BigDecimal changePct = endAvg.subtract(startAvg)
                         .divide(startAvg.abs(), 8, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100));
-                selectedRangeTrend = changePct.compareTo(RANGE_TREND_THRESHOLD_PCT) > 0
+                BigDecimal rangeThreshold = profile.rangeTrendThresholdPct();
+                selectedRangeTrend = changePct.compareTo(rangeThreshold) > 0
                         ? TrendDirection.UPTREND
-                        : changePct.compareTo(RANGE_TREND_THRESHOLD_PCT.negate()) < 0
+                        : changePct.compareTo(rangeThreshold.negate()) < 0
                                 ? TrendDirection.DOWNTREND
                                 : TrendDirection.SIDEWAYS;
             }
@@ -181,7 +211,12 @@ public class TrendAnalysisService {
         return count == 0 ? null : sum.divide(BigDecimal.valueOf(count), 8, RoundingMode.HALF_UP);
     }
 
+    /** Backward-compatible overload; uses DEFAULT profile (original RSI 70/30 levels). */
     public List<TechnicalSignal> determineSignals(TechnicalAnalysisResult.Point latestPoint) {
+        return determineSignals(latestPoint, AnalysisProfile.DEFAULT);
+    }
+
+    public List<TechnicalSignal> determineSignals(TechnicalAnalysisResult.Point latestPoint, AnalysisProfile profile) {
         if (latestPoint == null) {
             return List.of();
         }
@@ -209,9 +244,9 @@ public class TrendAnalysisService {
         }
 
         if (rsi14 != null) {
-            if (rsi14.compareTo(BigDecimal.valueOf(70)) >= 0) {
+            if (rsi14.compareTo(profile.rsiOverboughtLevel()) >= 0) {
                 signals.add(TechnicalSignal.RSI_OVERBOUGHT);
-            } else if (rsi14.compareTo(BigDecimal.valueOf(30)) <= 0) {
+            } else if (rsi14.compareTo(profile.rsiOversoldLevel()) <= 0) {
                 signals.add(TechnicalSignal.RSI_OVERSOLD);
             } else {
                 signals.add(TechnicalSignal.RSI_NEUTRAL);

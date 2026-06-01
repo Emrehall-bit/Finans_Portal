@@ -39,10 +39,10 @@ const INTERNAL_CASH_LABEL = "Nakit";
 function extractFxCurrency(code) {
   if (!code) return null;
   const s = String(code);
-  const colonMatch = s.match(/^TCMB:([A-Z]{2,4}):(BUY|SELL)$/i);
+  const colonMatch = s.match(/^[A-Z_]+:([A-Z]{2,4}):(BUY|SELL)$/i);
   if (colonMatch) return colonMatch[1].toUpperCase();
 
-  const packedMatch = s.match(/^TCMB([A-Z]{2,4})(BUY|SELL)$/i);
+  const packedMatch = s.match(/^[A-Z_]+([A-Z]{2,4})(BUY|SELL)$/i);
   if (packedMatch) return packedMatch[1].toUpperCase();
 
   return null;

@@ -99,8 +99,9 @@ export default function AnalysisPage() {
       from: dateRange.from,
       to: dateRange.to,
       indicators: DEFAULT_ANALYSIS_INDICATORS_PARAM,
+      ...(primaryQuote?.instrumentType != null && { instrumentType: primaryQuote.instrumentType }),
     }),
-    [dateRange],
+    [dateRange, primaryQuote?.instrumentType],
   );
 
   const { data: analysis = null, isLoading: analysisLoading, error: analysisQueryError } = useTechnicalAnalysis(

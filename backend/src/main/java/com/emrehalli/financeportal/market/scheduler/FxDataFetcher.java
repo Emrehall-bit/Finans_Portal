@@ -24,7 +24,7 @@ public class FxDataFetcher {
     private final ZiraatFxProvider ziraatFxProvider;
     private final FxService fxService;
 
-    @Scheduled(initialDelay = 0, fixedRateString = "${market.scheduler.fx-rate-ms:1800000}")
+    @Scheduled(initialDelay = 0, fixedRateString = "${market.providers.tcmb.current-sync-fixed-rate-ms:3600000}")
     public void fetch() {
         SchedulerLogSupport.Run run = SchedulerLogSupport.start("FxDataFetcher.fetch");
         int processedCount = 0;

@@ -24,7 +24,6 @@ market:
     tefas:
       base-url: https://www.tefas.gov.tr
   scheduler:
-    fx-rate-ms: 1800000
     crypto-rate-ms: 600000
     fund-cron: "0 30 18 * * MON-FRI"
     stock-rate-ms: 1800000

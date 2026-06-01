@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.technicalanalysis.controller;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.config.security.CurrentUser;
 import com.emrehalli.financeportal.config.security.CurrentUserResolver;
+import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.technicalanalysis.dto.IndicatorConfigDtos.Request;
 import com.emrehalli.financeportal.technicalanalysis.dto.IndicatorConfigDtos.Response;
 import com.emrehalli.financeportal.technicalanalysis.service.IndicatorConfigService;
@@ -69,10 +70,11 @@ public class TechnicalAnalysisController {
             String symbol,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(required = false) String indicators
+            @RequestParam(required = false) String indicators,
+            @RequestParam(required = false) InstrumentType instrumentType
     ) {
         return technicalAnalysisMapper.toResponse(
-                technicalAnalysisService.analyze(symbol, from, to, indicators)
+                technicalAnalysisService.analyze(symbol, from, to, indicators, instrumentType)
         );
     }
 

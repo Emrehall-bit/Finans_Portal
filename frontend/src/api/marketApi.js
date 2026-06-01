@@ -59,6 +59,7 @@ function normalizeAggregateMarketsPayload(payload) {
   return [
     ...fxList
       .filter((item) => item && typeof item === "object")
+      .filter(isDefaultFxSource)
       .map(mapFxQuote),
     ...cryptoList,
     ...stockList,
@@ -144,7 +145,7 @@ export async function getMarketQuote(symbol) {
 export async function getMarketsByType(type) {
   if (type === "FX") {
     const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/fx`);
-    return normalizeArrayPayload(data).map(mapFxQuote);
+    return normalizeArrayPayload(data).filter(isDefaultFxSource).map(mapFxQuote);
   }
 
   if (type === "CRYPTO") {
@@ -243,6 +244,7 @@ export async function getTechnicalAnalysis(symbol, from, to, indicators = DEFAUL
           from: from.from ?? defaultRange.from,
           to: from.to ?? defaultRange.to,
           indicators: from.indicators ?? DEFAULT_INDICATORS,
+          ...(from.instrumentType != null && { instrumentType: from.instrumentType }),
         }
       : {
           from: from ?? defaultRange.from,
@@ -281,21 +283,29 @@ export async function getPriceOnDate(symbol, date) {
 function mapFxQuote(item) {
   const code = item.code ?? item.currencyCode ?? item.symbol;
   const source = item.source ?? item.sourceName;
-  const instrumentSymbol = source === "TCMB" && code ? `TCMB:${String(code).toUpperCase()}:SELL` : code;
-  const displayCode = code ? String(code).toUpperCase() : instrumentSymbol;
+  const normalizedSource = source ? String(source).toUpperCase() : "TCMB";
+  const rawCode = code ? String(code).trim().toUpperCase() : "";
+  const isProviderSymbol = /^[A-Z_]+:[A-Z]{2,4}:(BUY|SELL)$/.test(rawCode);
+  const instrumentSymbol = isProviderSymbol ? rawCode : (normalizedSource && rawCode ? `${normalizedSource}:${rawCode}:SELL` : rawCode);
+  const displayCode = isProviderSymbol ? rawCode.split(":")[1] : rawCode;
 
   return {
     symbol: instrumentSymbol,
-    displayName: item.name ?? (source === "TCMB" && displayCode ? `${displayCode}/TRY` : displayCode),
+    displayName: item.name ?? (normalizedSource && displayCode ? `${displayCode}/TRY` : displayCode),
     price: item.last ?? item.sellRate ?? item.sellingRate ?? item.sell ?? item.ask ?? item.buyRate ?? item.buyingRate ?? item.buy ?? item.bid,
     changeRate: item.changePercent ?? item.dailyChangePercent ?? item.changeRate ?? null,
-    source,
+    source: normalizedSource,
     instrumentType: item.type || "FX",
     dataTimestamp: item.priceTimestamp ?? item.dataTimestamp,
     buyRate: item.buyRate ?? item.buyingRate ?? item.buy ?? item.alis ?? item.bid ?? null,
     sellRate: item.sellRate ?? item.sellingRate ?? item.sell ?? item.satis ?? item.ask ?? null,
     code: displayCode,
   };
+}
+
+function isDefaultFxSource(item) {
+  const source = item?.source ?? item?.sourceName ?? "TCMB";
+  return String(source).toUpperCase() === "TCMB";
 }
 
 function mapCryptoQuote(item) {

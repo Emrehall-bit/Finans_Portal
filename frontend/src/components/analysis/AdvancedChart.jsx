@@ -81,10 +81,8 @@ const INDICATOR_REGISTRY = [
 const DEFAULT_RANGE = "6m";
 const DEFAULT_INDICATORS = "SMA7,SMA20,SMA50,RSI14";
 const DEFAULT_BAR_SPACING = 11;
-const MIN_BAR_SPACING = 8;
+const MIN_BAR_SPACING = 1;
 const DEFAULT_RIGHT_OFFSET = 2;
-const MAX_VISIBLE_CANDLE_BARS = 180;
-const MAX_VISIBLE_LINE_BARS = 260;
 const PRICE_CHART_HEIGHT = 680;
 const VOLUME_CHART_HEIGHT = 48;
 const RSI_CHART_HEIGHT = 170;
@@ -145,7 +143,6 @@ export default function AdvancedChart({
   const pendingAutoFitRef = useRef(true);
   const dataPointCountRef = useRef(0);
   const syncLockRef = useRef(false);
-  const rangeAdjustLockRef = useRef(false);
   const selectedDrawingKeyRef = useRef(null);
   const hoveredDrawingKeyRef = useRef(null);
   const draggingRef = useRef(null);
@@ -159,7 +156,7 @@ export default function AdvancedChart({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [reloadToken, setReloadToken] = useState(0);
-  const [activeIndicators, setActiveIndicators] = useState(() => new Set(["sma20", "sma50", "volumeMa20"]));
+  const [activeIndicators, setActiveIndicators] = useState(() => new Set());
   const [activeTool, setActiveTool] = useState(() => mapInitialTool(initialHighlightTool));
   const [drawings, setDrawings] = useState(DEFAULT_DRAWINGS);
   const [trendStart, setTrendStart] = useState(null);
@@ -325,15 +322,6 @@ export default function AdvancedChart({
     }
   }, [clearStructurePriceLines, showStructureLines]);
 
-  const getMaxVisibleBars = useCallback(() => {
-    const dataset = latestDatasetRef.current;
-    if (!dataset) {
-      return MAX_VISIBLE_CANDLE_BARS;
-    }
-    return dataset.mode === "candlestick"
-      ? Math.min(dataset.priceData.length || MAX_VISIBLE_CANDLE_BARS, MAX_VISIBLE_CANDLE_BARS)
-      : Math.min(dataset.priceData.length || MAX_VISIBLE_LINE_BARS, MAX_VISIBLE_LINE_BARS);
-  }, []);
 
   const syncVisibleRangeAcrossCharts = useCallback((sourceChart, logicalRange) => {
     if (!logicalRange || syncLockRef.current) {
@@ -351,28 +339,6 @@ export default function AdvancedChart({
     });
   }, []);
 
-  const clampVisibleRange = useCallback((chart, logicalRange) => {
-    if (!logicalRange || rangeAdjustLockRef.current) {
-      return;
-    }
-    const maxVisibleBars = getMaxVisibleBars();
-    if (!maxVisibleBars) {
-      return;
-    }
-    const visibleBars = logicalRange.to - logicalRange.from;
-    if (visibleBars <= maxVisibleBars) {
-      return;
-    }
-    const center = (logicalRange.from + logicalRange.to) / 2;
-    rangeAdjustLockRef.current = true;
-    chart.timeScale().setVisibleLogicalRange({
-      from: center - (maxVisibleBars / 2),
-      to: center + (maxVisibleBars / 2),
-    });
-    requestAnimationFrame(() => {
-      rangeAdjustLockRef.current = false;
-    });
-  }, [getMaxVisibleBars]);
 
   const updateTooltip = useCallback((param) => {
     const dataset = latestDatasetRef.current;
@@ -650,6 +616,8 @@ export default function AdvancedChart({
           horzLine: { color: withAlpha(chartTheme.axis, 0.2), labelBackgroundColor: withAlpha(chartTheme.axis, 0.12) },
         },
         timeScale: commonTimeScale,
+        handleScroll: { mouseWheel: false, pressedMouseMove: true },
+        handleScale: { mouseWheel: false, axisPressedMouseMove: { time: false, price: true } },
         ...extraOptions,
       });
     });
@@ -708,6 +676,10 @@ export default function AdvancedChart({
 
   const syncIndicatorSeriesRef = useRef(null);
   syncIndicatorSeriesRef.current = syncIndicatorSeries;
+
+  const syncStructurePriceLinesRef = useRef(null);
+  syncStructurePriceLinesRef.current = syncStructurePriceLines;
+
 
   const updateDrawingSelection = useCallback((nextKey, nextHoverKey = null) => {
     setSelectedDrawingKey(nextKey);
@@ -943,7 +915,6 @@ export default function AdvancedChart({
 
     const bindTimeScale = (chart) => {
       const handler = (logicalRange) => {
-        clampVisibleRange(chart, logicalRange);
         syncVisibleRangeAcrossCharts(chart, logicalRange);
       };
       chart.timeScale().subscribeVisibleLogicalRangeChange(handler);
@@ -1141,7 +1112,6 @@ export default function AdvancedChart({
   }, [
     addPriceLine,
     applyThemeOptions,
-    clampVisibleRange,
     ensureCoreSeries,
     syncVisibleRangeAcrossCharts,
     updateHorizontalDrawingPrice,
@@ -1174,7 +1144,7 @@ export default function AdvancedChart({
       try {
         const dataset = isCrypto
           ? await loadCryptoData(instrumentCode, range, t)
-          : await loadLineData(instrumentCode, rangeDates, t, quote);
+          : await loadLineData(instrumentCode, rangeDates, t, quote, activeRange ?? range);
 
         if (cancelled) {
           return;
@@ -1201,13 +1171,12 @@ export default function AdvancedChart({
           ...dataset.summary,
           rsiDebug,
         });
-        syncStructurePriceLines(dataset.summary);
+        syncStructurePriceLinesRef.current(dataset.summary);
         syncIndicatorSeriesRef.current(dataset);
 
         if (pendingAutoFitRef.current) {
+          priceChartRef.current?.applyOptions({ timeScale: { barSpacing: rangeToBarSpacing(activeRange ?? range) } });
           priceChartRef.current?.timeScale().fitContent();
-          volumeChartRef.current?.timeScale().fitContent();
-          rsiChartRef.current?.timeScale().fitContent();
           pendingAutoFitRef.current = false;
         }
 
@@ -1249,7 +1218,6 @@ export default function AdvancedChart({
     rangeDates,
     reloadToken,
     clearStructurePriceLines,
-    syncStructurePriceLines,
   ]);
 
   useEffect(() => {
@@ -1858,11 +1826,12 @@ async function loadCryptoData(symbol, range, t) {
       volumeVisible: true,
       volumeDataCount: candles.filter((candle) => candle.volume != null).length,
       rsiStats,
+      rangeKey: range,
     }),
   };
 }
 
-async function loadLineData(symbol, rangeDates, t, quote) {
+async function loadLineData(symbol, rangeDates, t, quote, rangeKey) {
   let analysis = null;
   let analysisError = null;
 
@@ -1871,6 +1840,7 @@ async function loadLineData(symbol, rangeDates, t, quote) {
       from: rangeDates.from,
       to: rangeDates.to,
       indicators: DEFAULT_INDICATORS,
+      ...(quote?.instrumentType != null && { instrumentType: quote.instrumentType }),
     });
   } catch (error) {
     analysisError = error;
@@ -1927,6 +1897,7 @@ async function loadLineData(symbol, rangeDates, t, quote) {
       volumeVisible: false,
       volumeDataCount: 0,
       rsiStats,
+      rangeKey,
     }),
   };
 }
@@ -1975,11 +1946,12 @@ function buildTechnicalSummary({
   volumeVisible,
   volumeDataCount,
   rsiStats,
+  rangeKey,
 }) {
   const latestRsi = latestRow?.rsi14 ?? null;
   const maAlignment = deriveMaAlignment(latestRow);
   const volatility = deriveVolatility(latestRow, previousRow);
-  const momentum = deriveMomentum(rows);
+  const momentum = deriveMomentum(rows, rangeKey);
   const supportResistance = deriveSupportResistance(rows, latestRow);
   const rawSignal = normalizeSignalDescriptor(latestSignal);
   const derivedSignal = deriveLatestSignal({ latestRow, trendDirection, maAlignment, volatility });
@@ -2024,24 +1996,30 @@ function buildTechnicalSummary({
   };
 }
 
-function deriveMomentum(rows) {
+function deriveMomentum(rows, rangeKey) {
   const normalized = Array.isArray(rows) ? rows : [];
-  if (normalized.length < 6) {
+  const lookback = rangeMomentumLookback(rangeKey, normalized.length);
+  if (normalized.length <= lookback) {
     return { key: "awaiting", tone: "neutral", value: null };
   }
   const latest = toFiniteNumber(normalized.at(-1)?.close);
-  const anchor = toFiniteNumber(normalized.at(-6)?.close);
+  const anchor = toFiniteNumber(normalized.at(-(lookback + 1))?.close);
   if (latest == null || anchor == null || anchor === 0) {
     return { key: "awaiting", tone: "neutral", value: null };
   }
   const value = ((latest - anchor) / Math.abs(anchor)) * 100;
-  if (value >= 3) {
+  if (value >= 1.4) {
     return { key: "positive", tone: "positive", value };
   }
-  if (value <= -3) {
+  if (value <= -1.4) {
     return { key: "negative", tone: "negative", value };
   }
   return { key: "neutral", tone: "neutral", value };
+}
+
+function rangeMomentumLookback(rangeKey, dataLength) {
+  const base = { "1M": 5, "3M": 15, "6M": 30, "1Y": 60, "MAX": 90 }[rangeKey] ?? 15;
+  return Math.min(base, Math.max(1, dataLength - 1));
 }
 
 function deriveSupportResistance(rows, latestRow) {
@@ -2130,19 +2108,14 @@ function deriveTrendDirection(rows) {
 }
 
 function deriveMaAlignment(latestRow) {
-  const sma7 = latestRow?.sma7;
   const sma20 = latestRow?.sma20;
   const sma50 = latestRow?.sma50;
-
-  if ([sma7, sma20, sma50].some((value) => value == null)) {
+  if (sma20 == null || sma50 == null) {
     return { key: "limited", tone: "neutral" };
   }
-  if (sma7 > sma20 && sma20 > sma50) {
-    return { key: "bullish", tone: "positive" };
-  }
-  if (sma7 < sma20 && sma20 < sma50) {
-    return { key: "bearish", tone: "negative" };
-  }
+  const spreadPct = ((sma20 - sma50) / sma50) * 100;
+  if (spreadPct > 0.20) return { key: "bullish", tone: "positive" };
+  if (spreadPct < -0.20) return { key: "bearish", tone: "negative" };
   return { key: "mixed", tone: "neutral" };
 }
 
@@ -2411,13 +2384,13 @@ function buildTechnicalView(snapshot, t) {
 
   let stateKey = "neutral";
   let tone = "neutral";
-  if (score >= 5) {
+  if (score >= 5 && snapshot.momentumKey === "positive") {
     stateKey = "strongBullish";
     tone = "positive";
   } else if (score >= 2) {
     stateKey = "weakBullish";
     tone = "positive";
-  } else if (score <= -5) {
+  } else if (score <= -5 && snapshot.momentumKey === "negative") {
     stateKey = "strongBearish";
     tone = "negative";
   } else if (score <= -2) {
@@ -2571,5 +2544,14 @@ function mapInitialTool(value) {
     return "takeProfit";
   }
   return "cursor";
+}
+
+function rangeToBarSpacing(rangeKey) {
+  const key = String(rangeKey || "").toLowerCase();
+  if (key === "1m") return 8;
+  if (key === "3m") return 5;
+  if (key === "6m") return 3;
+  if (key === "1y") return 2;
+  return 1;
 }
 

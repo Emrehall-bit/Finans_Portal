@@ -2399,6 +2399,47 @@ html[data-theme] .analysis-chart-shell {
   margin-bottom: 2px;
 }
 
+.simple-chart-scale-btns {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding-right: 4px;
+}
+
+.simple-chart-scale-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  background: transparent;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.simple-chart-scale-btn:hover {
+  background: rgba(241, 245, 249, 0.9);
+  color: #334155;
+  border-color: rgba(148, 163, 184, 0.6);
+}
+
+.simple-chart-scale-btn--reset {
+  color: #6366f1;
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.07);
+}
+
+.simple-chart-scale-btn--reset:hover {
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(99, 102, 241, 0.55);
+}
+
 .simple-analysis-chart-header h3 {
   margin: 0 0 6px;
   padding-left: 84px;
@@ -2765,6 +2806,27 @@ html[data-theme] .analysis-chart-shell {
   border: none;
   border-radius: 0;
   background: transparent;
+}
+
+[data-theme="dark"] .simple-chart-scale-btn {
+  color: #94a3b8;
+  border-color: rgba(71, 85, 105, 0.6);
+}
+
+[data-theme="dark"] .simple-chart-scale-btn:hover {
+  background: rgba(30, 41, 59, 0.7);
+  color: #cbd5e1;
+  border-color: rgba(100, 116, 139, 0.7);
+}
+
+[data-theme="dark"] .simple-chart-scale-btn--reset {
+  color: #818cf8;
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+[data-theme="dark"] .simple-chart-scale-btn--reset:hover {
+  background: rgba(99, 102, 241, 0.22);
 }
 
 [data-theme="dark"] .analysis-terminal-shell,

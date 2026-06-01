@@ -12,6 +12,8 @@ export const RANGE_PRESETS = [
 
 export const DEFAULT_INDICATORS = ["SMA7", "SMA20", "SMA50", "RSI14"];
 
+const FX_PROVIDER_SYMBOL_PATTERN = /^[A-Z_]+:[A-Z]{2,4}:(BUY|SELL)$/;
+
 export function resolveInstrumentSymbols(symbol, instrumentType) {
   const rawSymbol = String(symbol || "").trim();
   const normalizedType = String(instrumentType || "").trim().toUpperCase();
@@ -31,7 +33,7 @@ export function resolveInstrumentSymbols(symbol, instrumentType) {
   }
 
   const upperSymbol = rawSymbol.toUpperCase();
-  if (upperSymbol.startsWith("TCMB:")) {
+  if (FX_PROVIDER_SYMBOL_PATTERN.test(upperSymbol)) {
     return {
       displaySymbol: upperSymbol.split(":")[1] || rawSymbol,
       apiSymbol: upperSymbol,

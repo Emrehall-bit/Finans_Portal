@@ -48,7 +48,6 @@ public class MarketProperties {
 
     @Data
     public static class Scheduler {
-        private long fxRateMs = 1800000;
         private long cryptoRateMs = 300000;
         private String fundCron = "0 30 18 * * MON-FRI";
         private long stockRateMs = 1800000;

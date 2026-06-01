@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Area,
@@ -76,6 +76,24 @@ export default function SimpleAnalysisChart({
   const insufficientIndicators = useMemo(() => detectInsufficientChartIndicators(chartData), [chartData]);
   const axisLabel = currency === "USD" ? "$" : "\u20ba";
 
+  const [scaledDomain, setScaledDomain] = useState(null);
+
+  useEffect(() => { setScaledDomain(null); }, [chartData]);
+
+  const zoomIn = () => {
+    const [lo, hi] = scaledDomain ?? yDomain;
+    const mid = (lo + hi) / 2;
+    const half = (hi - lo) / 2 * 0.9;
+    setScaledDomain([mid - half, mid + half]);
+  };
+
+  const zoomOut = () => {
+    const [lo, hi] = scaledDomain ?? yDomain;
+    const mid = (lo + hi) / 2;
+    const half = (hi - lo) / 2 * 1.1;
+    setScaledDomain([mid - half, mid + half]);
+  };
+
   const metrics = [
     {
       label: t("instrumentDetail.latestPrice"),
@@ -144,6 +162,13 @@ export default function SimpleAnalysisChart({
           <div className="simple-analysis-chart-card">
             <div className="simple-analysis-chart-header">
               <h3>{primaryContext?.symbolLine || "-"}</h3>
+              <div className="simple-chart-scale-btns">
+                <button type="button" className="simple-chart-scale-btn" onClick={zoomIn} title="Yakınlaştır">+</button>
+                <button type="button" className="simple-chart-scale-btn" onClick={zoomOut} title="Uzaklaştır">−</button>
+                {scaledDomain ? (
+                  <button type="button" className="simple-chart-scale-btn simple-chart-scale-btn--reset" onClick={() => setScaledDomain(null)} title="Sıfırla">↺</button>
+                ) : null}
+              </div>
             </div>
             <ResponsiveContainer width="100%" height={580}>
               <LineChart data={chartData} margin={{ top: 12, right: 18, bottom: 26, left: 10 }}>
@@ -164,7 +189,7 @@ export default function SimpleAnalysisChart({
                 />
                 <YAxis
                   stroke={chartTheme.axis}
-                  domain={yDomain}
+                  domain={scaledDomain ?? yDomain}
                   allowDataOverflow
                   tickLine={false}
                   axisLine={false}

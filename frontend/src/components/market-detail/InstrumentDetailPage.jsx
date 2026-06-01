@@ -230,7 +230,7 @@ export default function InstrumentDetailPage() {
       } catch (err) {
         if (active) {
           setAnalysis(null);
-          setAnalysisError(extractErrorMessage(err, t("instrumentDetail.analysisError")));
+          setAnalysisError(isNonTcmbFxSymbol(apiSymbol, resolvedInstrumentType) ? "" : extractErrorMessage(err, t("instrumentDetail.analysisError")));
         }
       } finally {
         if (active) {
@@ -724,11 +724,21 @@ function normalizeCode(value) {
   }
 
   const rawValue = String(value).trim().toUpperCase();
-  if (rawValue.startsWith("TCMB:")) {
-    return rawValue.split(":")[1] || rawValue;
+  if (/^[A-Z_]+:[A-Z]{2,4}:(BUY|SELL)$/.test(rawValue)) {
+    return rawValue;
   }
 
   return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+
+function isNonTcmbFxSymbol(symbol, instrumentType) {
+  if (String(instrumentType || "").trim().toUpperCase() !== "FX") {
+    return false;
+  }
+
+  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  const providerMatch = normalizedSymbol.match(/^([A-Z_]+):[A-Z]{2,4}:(BUY|SELL)$/);
+  return Boolean(providerMatch && providerMatch[1] !== "TCMB");
 }
 
 function formatSignedPercent(value) {
@@ -776,7 +786,7 @@ function resolveInstrumentType(value, symbol) {
   }
 
   const normalizedSymbol = String(symbol || "").trim().toUpperCase();
-  if (normalizedSymbol.startsWith("TCMB:") || /^[A-Z]{3}TRY$/.test(normalizedSymbol)) {
+  if (/^[A-Z_]+:[A-Z]{2,4}:(BUY|SELL)$/.test(normalizedSymbol) || /^[A-Z]{3}TRY$/.test(normalizedSymbol)) {
     return "FX";
   }
   if (/(USDT|TRY)$/.test(normalizedSymbol) && /^(BTC|ETH|SOL|XRP|BNB|AVAX)/.test(normalizedSymbol)) {

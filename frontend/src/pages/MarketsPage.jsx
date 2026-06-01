@@ -61,6 +61,13 @@ const STOCK_RANK_SORT_OPTIONS = [
   { value: "price_asc", label: "Fiyat düşükten" },
 ];
 const SEARCH_DEBOUNCE_MS = 275;
+const FX_SOURCE_MODES = [
+  { value: "TCMB", label: "TCMB" },
+  { value: "AKBANK", label: "AKBANK" },
+  { value: "COMPARE", label: "Karşılaştır" },
+];
+const AKBANK_VISIBLE_CODES = new Set(["AUD", "AZN", "CAD", "CHF", "CNY", "EUR", "GBP", "JPY", "KRW", "KWD", "QAR", "RUB", "USD"]);
+const FX_PROVIDER_SYMBOL_PATTERN = /^[A-Z_]+:[A-Z]{2,4}:(BUY|SELL)$/;
 
 export default function MarketsPage() {
   const { t } = useTranslation();
@@ -73,6 +80,7 @@ export default function MarketsPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState(() => location.state?.category ?? "FX");
   const [sourceFilter, setSourceFilter] = useState("");
+  const [fxSourceMode, setFxSourceMode] = useState("TCMB");
   const [viewMode, setViewMode] = useState("table");
   const [sortBy, setSortBy] = useState("name");
   const [minPrice, setMinPrice] = useState("");
@@ -103,7 +111,7 @@ export default function MarketsPage() {
 
   const screenParams = useMemo(() => ({
     type: categoryFilter,
-    source: sourceFilter || undefined,
+    source: isFxTab ? (fxSourceMode !== "COMPARE" ? fxSourceMode : undefined) : sourceFilter || undefined,
     q: debouncedSearch.trim() || undefined,
     minPrice: toFilterNumber(minPrice),
     maxPrice: toFilterNumber(maxPrice),
@@ -126,6 +134,8 @@ export default function MarketsPage() {
     sort: normalizeScreenSort(sortBy),
   }), [
     categoryFilter,
+    fxSourceMode,
+    isFxTab,
     sourceFilter,
     debouncedSearch,
     minPrice,
@@ -222,7 +232,10 @@ export default function MarketsPage() {
       return [...screenedQuotes].sort((left, right) => sortQuotes(left, right, sortBy));
     }
 
-    return [...screenedQuotes].sort((left, right) => sortQuotes(left, right, sortBy));
+    const nextQuotes = [...screenedQuotes]
+      .filter((item) => !isFxTab || fxSourceMode !== "AKBANK" || AKBANK_VISIBLE_CODES.has(extractFxCode(item.code || item.symbol)))
+      .sort((left, right) => sortQuotes(left, right, sortBy));
+    return nextQuotes;
   }, [
     allQuotes,
     categoryFilter,
@@ -232,13 +245,21 @@ export default function MarketsPage() {
     sourceFilter,
     sortBy,
     watchlistItems,
+    fxSourceMode,
+    isFxTab,
   ]);
 
+  const fxComparisonRows = useMemo(
+    () => buildFxComparisonRows(screenedQuotes, debouncedSearch),
+    [screenedQuotes, debouncedSearch],
+  );
+
+  const displayedCount = isFxTab && fxSourceMode === "COMPARE" ? fxComparisonRows.length : visibleQuotes.length;
   const marketPulse = useMemo(() => ({
-    visible: visibleQuotes.length,
+    visible: displayedCount,
     positive: visibleQuotes.filter((item) => Number(item.changeRate) >= 0).length,
     negative: visibleQuotes.filter((item) => Number(item.changeRate) < 0).length,
-  }), [visibleQuotes]);
+  }), [displayedCount, visibleQuotes]);
 
   const sourceOptions = useMemo(() => {
     const sourceItems = isFavoritesTab ? allQuotes : screenedQuotes;
@@ -339,7 +360,7 @@ export default function MarketsPage() {
   }
 
   async function handleFavoriteToggle(item) {
-    const symbolKey = item.symbol || item.code || "";
+    const symbolKey = getMarketActionSymbol(item);
     if (!symbolKey) return;
     if (!userId) {
       await login();
@@ -409,16 +430,27 @@ export default function MarketsPage() {
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("markets.searchPlaceholder")} />
           </label>
 
-          <label className="market-filter-field">
+          {!isFxTab ? <label className="market-filter-field">
             <span>Enstrüman tipi</span>
             <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
               {CATEGORY_OPTIONS.filter((item) => item !== "FAVORITES").map((category) => (
                 <option key={category} value={category}>{formatCategoryLabel(category, t)}</option>
               ))}
             </select>
-          </label>
+          </label> : null}
 
-          <label className="market-filter-field">
+          {isFxTab ? (
+            <label className="market-filter-field">
+              <span>{t("markets.columns.source")}</span>
+              <select value={fxSourceMode} onChange={(event) => setFxSourceMode(event.target.value)}>
+                {FX_SOURCE_MODES.map((mode) => (
+                  <option key={mode.value} value={mode.value}>{mode.label}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {!isFxTab ? <label className="market-filter-field">
             <span>{t("markets.columns.source")}</span>
             <select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>
               <option value="">Tümü</option>
@@ -426,7 +458,7 @@ export default function MarketsPage() {
                 <option key={source} value={source}>{source}</option>
               ))}
             </select>
-          </label>
+          </label> : null}
 
           <label className="market-filter-field">
             <span>{isStockTab ? "Sırala" : t("markets.sorting")}</span>
@@ -606,13 +638,13 @@ export default function MarketsPage() {
             <p className="eyebrow">{t("markets.listEyebrow")}</p>
             <h3>{formatCategoryLabel(categoryFilter, t)}</h3>
             <div className="market-result-meta">
-              <span>{visibleQuotes.length} sonuç bulundu</span>
+              <span>{displayedCount} sonuç bulundu</span>
               {isStockTab && hasAdvancedFilters ? <span className="terminal-badge muted">İleri filtre aktif</span> : null}
               {isStockTab ? <span className="terminal-badge muted">Sıralama: {activeSortLabel}</span> : null}
             </div>
           </div>
           <div className="markets-view-controls">
-            <span className="terminal-badge muted">{t("common.records", { count: visibleQuotes.length })}</span>
+            <span className="terminal-badge muted">{t("common.records", { count: displayedCount })}</span>
             <div className="markets-view-toggle" role="tablist" aria-label={t("markets.listTitle")}>
               <button type="button" role="tab" aria-selected={viewMode === "table"} className={`market-segmented-tab ${viewMode === "table" ? "active" : ""}`} onClick={() => setViewMode("table")}>
                 {t("markets.tableView")}
@@ -627,14 +659,47 @@ export default function MarketsPage() {
         {loading ? <LoadingSpinner label={t("markets.loading")} /> : null}
         {error ? <ErrorMessage message={error} /> : null}
 
-        {!loading && !error && visibleQuotes.length === 0 ? (
+        {!loading && !error && displayedCount === 0 ? (
           <EmptyState
             title={isFavoritesTab && userId ? t("markets.favoritesEmptyTitle") : t("markets.emptyTitle")}
             description={isFavoritesTab && userId ? t("markets.favoritesEmptyDescription") : t("markets.emptyDescription")}
           />
         ) : null}
 
-        {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" ? (
+        {!loading && !error && isFxTab && fxSourceMode === "COMPARE" && fxComparisonRows.length > 0 ? (
+          <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap">
+            <table className="finance-market-table">
+              <thead>
+                <tr>
+                  <th>Döviz</th>
+                  <th>TCMB Alış</th>
+                  <th>TCMB Satış</th>
+                  <th>AKBANK Alış</th>
+                  <th>AKBANK Satış</th>
+                  <th>Satış Farkı %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fxComparisonRows.map((row) => (
+                  <tr key={row.code}>
+                    <td>
+                      <button type="button" className="finance-table-row-button" onClick={() => navigate(buildMarketDetailPath(row.detailSymbol, "FX"))}>
+                        <strong>{row.code}</strong>
+                      </button>
+                    </td>
+                    <td>{formatRateConverted(row.tcmb?.buyRate)}</td>
+                    <td>{formatRateConverted(row.tcmb?.sellRate ?? row.tcmb?.price)}</td>
+                    <td>{formatRateConverted(row.akbank?.buyRate)}</td>
+                    <td>{formatRateConverted(row.akbank?.sellRate ?? row.akbank?.price)}</td>
+                    <td className={getChangeToneClass(row.sellDiffPct)}>{formatMarketChange(row.sellDiffPct)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+
+        {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !(isFxTab && fxSourceMode === "COMPARE") ? (
           <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap">
             <table className="finance-market-table">
               <thead>
@@ -652,7 +717,7 @@ export default function MarketsPage() {
               </thead>
               <tbody>
                 {visibleQuotes.map((item) => {
-                  const sym = item.symbol || item.code || "";
+                  const sym = getMarketActionSymbol(item);
                   const busyKey = `${sym}-${item.source ?? ""}`;
                   return (
                     <tr key={`${item.symbol}-${item.source}-${item.marketCategory}`}>
@@ -664,7 +729,7 @@ export default function MarketsPage() {
                         />
                       </td>
                       <td>
-                        <button type="button" className="finance-table-row-button" onClick={() => navigate(buildMarketDetailPath(item.symbol, item.instrumentType))}>
+                        <button type="button" className="finance-table-row-button" onClick={() => navigate(buildMarketDetailPath(getMarketActionSymbol(item), item.instrumentType))}>
                           <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="table" />
                         </button>
                       </td>
@@ -681,14 +746,14 @@ export default function MarketsPage() {
           </div>
         ) : null}
 
-        {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" ? (
+        {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && !(isFxTab && fxSourceMode === "COMPARE") ? (
           <div className="market-card-grid markets-card-scroll-wrap">
             {visibleQuotes.map((item) => {
-              const sym = item.symbol || item.code || "";
+              const sym = getMarketActionSymbol(item);
               const busyKey = `${sym}-${item.source ?? ""}`;
               return (
                 <div key={`${item.symbol}-${item.source}-${item.marketCategory}-card`} className="market-quote-card-wrap">
-                  <button type="button" className="market-quote-card" onClick={() => navigate(buildMarketDetailPath(item.symbol, item.instrumentType))}>
+                  <button type="button" className="market-quote-card" onClick={() => navigate(buildMarketDetailPath(getMarketActionSymbol(item), item.instrumentType))}>
                     <div className="market-quote-card-top">
                       <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="card" />
                       <span className="terminal-badge muted">{item.source || "-"}</span>
@@ -936,7 +1001,11 @@ function getChangeToneClass(value) {
 
 function normalizeCode(value) {
   if (value == null) return "";
-  return String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const rawValue = String(value).trim().toUpperCase();
+  if (FX_PROVIDER_SYMBOL_PATTERN.test(rawValue)) {
+    return rawValue;
+  }
+  return rawValue.replace(/[^A-Z0-9]/g, "");
 }
 
 function isOnWatchlist(rows, symbol) {
@@ -960,17 +1029,23 @@ function normalizeScreenSort(value) {
 }
 
 function mapScreenItem(item) {
+  const normalizedType = String(item.type || "").toUpperCase();
+  const isFxItem = normalizedType === "FX";
+  const fxCode = isFxItem ? extractFxCode(item.symbol) : "";
+  const source = item.source ? String(item.source).toUpperCase() : "";
+  const symbol = isFxItem ? buildFxSymbol(source || "TCMB", fxCode) : item.symbol;
+
   return {
-    symbol: item.symbol,
-    code: item.symbol,
-    displayName: item.name ?? item.symbol,
+    symbol,
+    code: isFxItem ? fxCode : item.symbol,
+    displayName: item.name ?? (isFxItem && fxCode ? `${fxCode}/TRY` : item.symbol),
     buyRate: item.buyPrice ?? null,
     sellRate: item.sellPrice ?? null,
     price: item.lastPrice,
     changeRate: item.sellChangePercent ?? item.changePercent,
-    source: item.source,
-    instrumentType: item.type,
-    marketCategory: item.type,
+    source,
+    instrumentType: normalizedType || item.type,
+    marketCategory: normalizedType || item.type,
     sector: item.sector,
     market: item.market,
     volume: item.volume,
@@ -986,4 +1061,74 @@ function mapScreenItem(item) {
     calculatedAt: item.calculatedAt,
     dataTimestamp: item.dataTimestamp,
   };
+}
+
+function buildFxComparisonRows(quotes, queryValue) {
+  const query = String(queryValue || "").trim().toLowerCase();
+  const rowsByCode = new Map();
+
+  for (const item of Array.isArray(quotes) ? quotes : []) {
+    if (String(item?.instrumentType || "").toUpperCase() !== "FX") {
+      continue;
+    }
+
+    const code = extractFxCode(item.code || item.symbol);
+    const source = String(item.source || "").toUpperCase();
+    if (!code || !AKBANK_VISIBLE_CODES.has(code) || (source !== "TCMB" && source !== "AKBANK")) {
+      continue;
+    }
+
+    const searchable = `${code} ${item.displayName || ""}`.toLowerCase();
+    if (query && !searchable.includes(query)) {
+      continue;
+    }
+
+    const row = rowsByCode.get(code) || { code, tcmb: null, akbank: null, detailSymbol: buildFxSymbol("TCMB", code) };
+    if (source === "TCMB") {
+      row.tcmb = item;
+    } else if (source === "AKBANK") {
+      row.akbank = item;
+    }
+    rowsByCode.set(code, row);
+  }
+
+  return [...rowsByCode.values()]
+    .filter((row) => row.tcmb && row.akbank)
+    .map((row) => {
+      const tcmbSell = toComparableNumber(row.tcmb?.sellRate ?? row.tcmb?.price);
+      const akbankSell = toComparableNumber(row.akbank?.sellRate ?? row.akbank?.price);
+      const sellDiffPct = tcmbSell !== null && akbankSell !== null && tcmbSell !== 0
+        ? ((akbankSell - tcmbSell) / Math.abs(tcmbSell)) * 100
+        : null;
+      return { ...row, sellDiffPct };
+    })
+    .sort((left, right) => left.code.localeCompare(right.code, "tr"));
+}
+
+function extractFxCode(value) {
+  if (value == null) {
+    return "";
+  }
+
+  const rawValue = String(value).trim().toUpperCase();
+  if (FX_PROVIDER_SYMBOL_PATTERN.test(rawValue)) {
+    return rawValue.split(":")[1] || "";
+  }
+
+  return rawValue.replace(/[^A-Z0-9]/g, "");
+}
+
+function buildFxSymbol(source, code, side = "SELL") {
+  const normalizedSource = String(source || "TCMB").trim().toUpperCase();
+  const normalizedCode = extractFxCode(code);
+  const normalizedSide = String(side || "SELL").trim().toUpperCase() === "BUY" ? "BUY" : "SELL";
+  return normalizedCode ? `${normalizedSource}:${normalizedCode}:${normalizedSide}` : "";
+}
+
+function getMarketActionSymbol(item) {
+  if (String(item?.instrumentType || item?.marketCategory || "").toUpperCase() === "FX") {
+    return buildFxSymbol("TCMB", item?.code || item?.symbol);
+  }
+
+  return item?.symbol || item?.code || "";
 }

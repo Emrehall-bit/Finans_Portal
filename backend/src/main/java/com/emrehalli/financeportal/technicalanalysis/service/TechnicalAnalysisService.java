@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.technicalanalysis.service;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
+import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.technicalanalysis.dto.ComparisonResponse;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResult;
 import com.emrehalli.financeportal.technicalanalysis.enums.IndicatorType;
@@ -51,8 +52,13 @@ public class TechnicalAnalysisService {
         this.appMessageSource = appMessageSource;
     }
 
+    /** Backward-compatible overload; uses DEFAULT profile (null instrumentType). */
     public TechnicalAnalysisResult analyze(String symbol, LocalDate from, LocalDate to, String indicators) {
-        logger.info("Technical analysis started: symbol={}, from={}, to={}, indicators={}", symbol, from, to, indicators);
+        return analyze(symbol, from, to, indicators, null);
+    }
+
+    public TechnicalAnalysisResult analyze(String symbol, LocalDate from, LocalDate to, String indicators, InstrumentType instrumentType) {
+        logger.info("Technical analysis started: symbol={}, from={}, to={}, indicators={}, instrumentType={}", symbol, from, to, indicators, instrumentType);
         TechnicalAnalysisInputs.validateSymbol(symbol);
         validateDateRange(from, to);
 
@@ -103,6 +109,7 @@ public class TechnicalAnalysisService {
                 requestedIndicators
         );
 
+        AnalysisProfile profile = AnalysisProfile.forType(instrumentType);
         return new TechnicalAnalysisResult(
                 fullHistory.getFirst().symbol(),
                 from,
@@ -110,11 +117,11 @@ public class TechnicalAnalysisService {
                 latestPoint.close(),
                 "AVAILABLE",
                 null,
-                trendAnalysisService.determineTrend(points),
-                trendAnalysisService.determineSignals(latestPoint),
+                trendAnalysisService.determineTrend(points, profile),
+                trendAnalysisService.determineSignals(latestPoint, profile),
                 latestIndicatorValues.isEmpty() ? Map.of() : Map.copyOf(latestIndicatorValues),
                 points,
-                trendAnalysisService.buildTrendContext(points, from, to)
+                trendAnalysisService.buildTrendContext(points, from, to, profile)
         );
     }
 
