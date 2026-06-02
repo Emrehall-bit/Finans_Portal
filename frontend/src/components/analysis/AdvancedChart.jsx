@@ -113,6 +113,7 @@ const DEFAULT_DRAWINGS = {
   horizontalLines: [],
   trendLines: [],
 };
+const DRAWING_API_TIMEFRAME = "1d";
 
 export default function AdvancedChart({
   instrumentCode,
@@ -186,6 +187,7 @@ export default function AdvancedChart({
   const [technicalSnapshot, setTechnicalSnapshot] = useState(null);
   const [selectedDrawingKey, setSelectedDrawingKey] = useState(null);
   const [hoveredDrawingKey, setHoveredDrawingKey] = useState(null);
+  const [trendPopoverKey, setTrendPopoverKey] = useState(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [techTab, setTechTab] = useState("rules");
@@ -215,6 +217,10 @@ export default function AdvancedChart({
     [resolvedTechnicalSnapshot, manualSupportLine, manualResistanceLine],
   );
   const technicalView = useMemo(() => buildTechnicalView(effectiveTechnicalSnapshot, t, quote?.instrumentType), [effectiveTechnicalSnapshot, t, quote?.instrumentType]);
+  const selectedTrendPopover = useMemo(() => {
+    const trendLine = drawings.trendLines.find((line) => line.id === trendPopoverKey);
+    return buildTrendPopoverModel(trendLine);
+  }, [drawings.trendLines, trendPopoverKey]);
   const insufficientOverlays = useMemo(() => {
     if (!effectiveTechnicalSnapshot) return [];
     const names = [];
@@ -242,13 +248,18 @@ export default function AdvancedChart({
     () => dateRange ?? buildDateRange(range),
     [dateRange, range],
   );
-  const drawingTimeframe = activeRange ?? range;
+  const drawingTimeframe = DRAWING_API_TIMEFRAME;
   const volumeVisible = Boolean(technicalSnapshot?.volumeVisible);
   const hasVolumeMaData = (technicalSnapshot?.volumeDataCount ?? 0) >= 20;
 
-  const clearTrendSelection = useCallback(() => {
-    setTrendStart(null);
+  const updateTrendStart = useCallback((point) => {
+    trendStartRef.current = point;
+    setTrendStart(point);
   }, []);
+
+  const clearTrendSelection = useCallback(() => {
+    updateTrendStart(null);
+  }, [updateTrendStart]);
 
   const clearAllDrawings = useCallback(() => {
     const current = drawingsRef.current;
@@ -281,8 +292,52 @@ export default function AdvancedChart({
     });
     setSelectedDrawingKey(null);
     setHoveredDrawingKey(null);
+    setTrendPopoverKey(null);
     clearTrendSelection();
   }, [clearTrendSelection]);
+
+  const rollbackUnsavedDrawing = useCallback((drawing) => {
+    if (!drawing || getDrawingBackendId(drawing)) {
+      return;
+    }
+
+    const renderedDrawing = findDrawingByKey(
+      drawingsRef.current,
+      drawing.kind === "stopLoss" || drawing.kind === "takeProfit" ? drawing.kind : drawing.id,
+    ) ?? drawing;
+
+    if (renderedDrawing.kind === "trend") {
+      try { priceChartRef.current?.removeSeries(renderedDrawing.series); } catch { /* noop */ }
+    } else if (renderedDrawing.priceLine) {
+      try { priceSeriesRef.current?.removePriceLine(renderedDrawing.priceLine); } catch { /* noop */ }
+    }
+
+    setDrawings((current) => {
+      if (drawing.kind === "stopLoss" || drawing.kind === "takeProfit") {
+        const target = current[drawing.kind];
+        if (!target || target.id !== drawing.id || getDrawingBackendId(target)) {
+          return current;
+        }
+        return { ...current, [drawing.kind]: null };
+      }
+
+      if (drawing.kind === "trend") {
+        return {
+          ...current,
+          trendLines: current.trendLines.filter((line) => line.id !== drawing.id || getDrawingBackendId(line)),
+        };
+      }
+
+      return {
+        ...current,
+        horizontalLines: current.horizontalLines.filter((line) => line.id !== drawing.id || getDrawingBackendId(line)),
+      };
+    });
+
+    setSelectedDrawingKey((key) => (key === drawing.id ? null : key));
+    setHoveredDrawingKey((key) => (key === drawing.id ? null : key));
+    setTrendPopoverKey((key) => (key === drawing.id ? null : key));
+  }, []);
 
   const persistDrawing = useCallback((drawing) => {
     if (!isAuthenticated || !instrumentCode || !drawing) {
@@ -309,9 +364,12 @@ export default function AdvancedChart({
       })
       .catch((err) => {
         console.warn("Çizim kaydedilemedi:", err?.response?.status ?? err?.message);
+        if (!backendId) {
+          rollbackUnsavedDrawing(drawing);
+        }
         showToast("error", "Çizim kaydedilemedi");
       });
-  }, [drawingTimeframe, instrumentCode, isAuthenticated, showToast]);
+  }, [drawingTimeframe, instrumentCode, isAuthenticated, rollbackUnsavedDrawing, showToast]);
 
   const deletePersistedDrawing = useCallback((drawing) => {
     const backendId = getDrawingBackendId(drawing);
@@ -339,7 +397,7 @@ export default function AdvancedChart({
       trendLines: [],
     };
 
-    (Array.isArray(items) ? items : []).forEach((item) => {
+    (Array.isArray(items) ? [...items].sort(comparePersistedDrawingOrder) : []).forEach((item) => {
       const drawing = buildChartDrawingFromApi(item, priceSeries, priceChart, t);
       if (!drawing) {
         return;
@@ -360,9 +418,10 @@ export default function AdvancedChart({
       nextDrawings.horizontalLines.push(drawing);
     });
 
-    setDrawings(nextDrawings);
+    setDrawings(numberMultiDrawingsForDisplay(nextDrawings, t));
     setSelectedDrawingKey(null);
     setHoveredDrawingKey(null);
+    setTrendPopoverKey(null);
   }, [t]);
 
   const clearOverlaySeries = useCallback(() => {
@@ -813,6 +872,16 @@ export default function AdvancedChart({
     setHoveredDrawingKey(nextHoverKey);
   }, []);
 
+  const openTrendPopover = useCallback((drawingKey) => {
+    const drawing = findDrawingByKey(drawingsRef.current, drawingKey);
+    if (drawing?.kind !== "trend" || !buildTrendPopoverModel(drawing)) {
+      setTrendPopoverKey(null);
+      return;
+    }
+    setSelectedDrawingKey(drawing.id);
+    setTrendPopoverKey(drawing.id);
+  }, []);
+
   const addPriceLine = useCallback((tool, price) => {
     const priceSeries = priceSeriesRef.current;
     if (!priceSeries) {
@@ -874,35 +943,32 @@ export default function AdvancedChart({
       return;
     }
 
-    const existing = drawingsRef.current.horizontalLines.find((line) => line.kind === tool);
-    const backendId = getDrawingBackendId(existing);
-    if (existing?.priceLine) {
-      try { priceSeries.removePriceLine(existing.priceLine); } catch { /* noop */ }
-    }
-
-    const id = existing?.id ?? `${tool}-${Date.now()}`;
+    const id = `${tool}-${Date.now()}`;
+    const label = formatNumberedDrawingLabel(
+      config.label,
+      getNextDrawingOrdinal(drawingsRef.current, tool),
+    );
     const priceLine = priceSeries.createPriceLine({
       price,
       color: config.color,
-      lineWidth: 1,
+      lineWidth: 3,
       lineStyle: config.lineStyle,
       axisLabelVisible: true,
-      title: `${config.label}: ${formatCompactPrice(price)}`,
+      title: `${label}: ${formatCompactPrice(price)}`,
     });
 
     setDrawings((current) => ({
       ...current,
       horizontalLines: [
-        ...current.horizontalLines.filter((line) => line.kind !== tool),
+        ...current.horizontalLines,
         {
           id,
           kind: tool,
-          label: config.label,
+          label,
           color: config.color,
           price,
           lineStyle: config.lineStyle,
           priceLine,
-          backendId,
         },
       ],
     }));
@@ -910,11 +976,10 @@ export default function AdvancedChart({
     persistDrawing({
       id,
       kind: tool,
-      label: config.label,
+      label,
       color: config.color,
       price,
       lineStyle: config.lineStyle,
-      backendId,
     });
   }, [persistDrawing, t]);
 
@@ -970,6 +1035,7 @@ export default function AdvancedChart({
       }
       setDrawings((current) => ({ ...current, stopLoss: null }));
       setSelectedDrawingKey(null);
+      setTrendPopoverKey(null);
       return;
     }
 
@@ -980,6 +1046,7 @@ export default function AdvancedChart({
       }
       setDrawings((current) => ({ ...current, takeProfit: null }));
       setSelectedDrawingKey(null);
+      setTrendPopoverKey(null);
       return;
     }
 
@@ -992,6 +1059,7 @@ export default function AdvancedChart({
         horizontalLines: current.horizontalLines.filter((item) => item.id !== drawingKey),
       }));
       setSelectedDrawingKey(null);
+      setTrendPopoverKey(null);
       return;
     }
 
@@ -1004,6 +1072,7 @@ export default function AdvancedChart({
         trendLines: current.trendLines.filter((item) => item.id !== drawingKey),
       }));
       setSelectedDrawingKey(null);
+      setTrendPopoverKey((key) => (key === drawingKey ? null : key));
     }
   }, [deletePersistedDrawing]);
 
@@ -1111,7 +1180,71 @@ export default function AdvancedChart({
 
       const hoveredKey = resolveHoveredDrawingKey(param);
       if (tool === "cursor" && hoveredKey) {
+        const hoveredDrawing = findDrawingByKey(drawingsRef.current, hoveredKey);
         setSelectedDrawingKey(hoveredKey);
+        if (hoveredDrawing?.kind === "trend") {
+          openTrendPopover(hoveredKey);
+        } else {
+          setTrendPopoverKey(null);
+        }
+        return;
+      }
+
+      if (tool === "trend") {
+        const snappedPoint = resolveTrendSnapPoint(param.time, latestDatasetRef.current);
+        if (!snappedPoint) {
+          return;
+        }
+        const start = trendStartRef.current;
+        if (!start) {
+          updateTrendStart(snappedPoint);
+          return;
+        }
+
+        if (snappedPoint.time === start.time) {
+          updateTrendStart(null);
+          return;
+        }
+
+        const selectedPoints = [
+          { time: start.time, value: start.price },
+          { time: snappedPoint.time, value: snappedPoint.price },
+        ];
+        const lineData = sortTrendDrawingData(selectedPoints);
+        if (lineData.length < 2) {
+          updateTrendStart(null);
+          return;
+        }
+
+        const trendSeries = priceChart.addSeries(LineSeries, {
+          color: "#8b5cf6",
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+        trendSeries.setData(lineData);
+
+        const id = `trend-${Date.now()}`;
+        const label = formatTrendDrawingLabel(
+          t("analysis.chart.drawing.trend"),
+          getNextDrawingOrdinal(drawingsRef.current, "trend"),
+        );
+        const drawing = {
+          id,
+          kind: "trend",
+          label,
+          color: "#8b5cf6",
+          series: trendSeries,
+          data: lineData,
+        };
+        setDrawings((current) => ({
+          ...current,
+          trendLines: [...current.trendLines, drawing],
+        }));
+        setSelectedDrawingKey(id);
+        setTrendPopoverKey(id);
+        updateTrendStart(null);
+        persistDrawing(drawing);
         return;
       }
 
@@ -1127,54 +1260,6 @@ export default function AdvancedChart({
 
       if (tool === "stopLoss" || tool === "takeProfit") {
         addPriceLine(tool, price);
-        return;
-      }
-
-      if (tool === "trend") {
-        const start = trendStartRef.current;
-        if (!start) {
-          if (param.time == null) {
-            return;
-          }
-          setTrendStart({ time: normalizeChartTime(param.time), price });
-          return;
-        }
-
-        const nextTime = normalizeChartTime(param.time);
-        if (nextTime == null || nextTime === start.time) {
-          setTrendStart(null);
-          return;
-        }
-
-        const lineData = [
-          { time: start.time, value: start.price },
-          { time: nextTime, value: price },
-        ].sort((left, right) => left.time - right.time);
-
-        const trendSeries = priceChart.addSeries(LineSeries, {
-          color: "#8b5cf6",
-          lineWidth: 1.5,
-          priceLineVisible: false,
-          lastValueVisible: false,
-        });
-        trendSeries.setData(lineData);
-
-        const id = `trend-${Date.now()}`;
-        const drawing = {
-          id,
-          kind: "trend",
-          label: t("analysis.chart.drawing.trend"),
-          color: "#8b5cf6",
-          series: trendSeries,
-          data: lineData,
-        };
-        setDrawings((current) => ({
-          ...current,
-          trendLines: [...current.trendLines, drawing],
-        }));
-        setSelectedDrawingKey(id);
-        setTrendStart(null);
-        persistDrawing(drawing);
       }
     };
 
@@ -1283,10 +1368,12 @@ export default function AdvancedChart({
     addHorizontalDrawing,
     applyThemeOptions,
     ensureCoreSeries,
+    openTrendPopover,
     persistDrawing,
     syncVisibleRangeAcrossCharts,
     t,
     updateHorizontalDrawingPrice,
+    updateTrendStart,
     updateTooltip,
     updateRsiTooltip,
   ]);
@@ -1345,7 +1432,7 @@ export default function AdvancedChart({
         });
         syncStructurePriceLinesRef.current(dataset.summary);
         syncIndicatorSeriesRef.current(dataset);
-        const syncKey = `${instrumentCode}:::${activeRange ?? range}`;
+        const syncKey = `${instrumentCode}:::${drawingTimeframe}`;
         if (drawingSyncKeyRef.current !== syncKey) {
           drawingSyncKeyRef.current = syncKey;
           setDrawingSyncVersion((value) => value + 1);
@@ -1385,6 +1472,7 @@ export default function AdvancedChart({
     addHorizontalDrawing,
     activeRange,
     clearAllDrawings,
+    drawingTimeframe,
     ensureCoreSeries,
     initialHighlightTool,
     instrumentCode,
@@ -1475,7 +1563,7 @@ export default function AdvancedChart({
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         setActiveTool("cursor");
-        setTrendStart(null);
+        updateTrendStart(null);
         draggingRef.current = null;
         return;
       }
@@ -1561,6 +1649,32 @@ export default function AdvancedChart({
     const hit = horizontalCandidates.find((line) => Math.abs(line.price - priceAtPointer) <= threshold);
     if (hit) {
       return hit.id ?? hit.kind;
+    }
+
+    const priceChart = priceChartRef.current;
+    if (!priceChart) {
+      return null;
+    }
+
+    const trendHit = drawingsRef.current.trendLines.find((line) => {
+      const points = Array.isArray(line.data) ? line.data : [];
+      if (points.length < 2) {
+        return false;
+      }
+      const start = points[0];
+      const end = points[points.length - 1];
+      const startX = priceChart.timeScale().timeToCoordinate(start.time);
+      const endX = priceChart.timeScale().timeToCoordinate(end.time);
+      const startY = priceSeriesRef.current.priceToCoordinate(start.value);
+      const endY = priceSeriesRef.current.priceToCoordinate(end.value);
+      if ([startX, endX, startY, endY].some((value) => value == null || !Number.isFinite(value))) {
+        return false;
+      }
+      return distanceToSegment(param.point, { x: startX, y: startY }, { x: endX, y: endY }) <= 7;
+    });
+
+    if (trendHit) {
+      return trendHit.id;
     }
     return null;
   }
@@ -1665,7 +1779,7 @@ export default function AdvancedChart({
                         className={`draw-tool-btn${activeTool === tool.key ? " active" : ""}`}
                         onClick={() => {
                           setActiveTool(tool.key);
-                          if (tool.key !== "trend") setTrendStart(null);
+                          if (tool.key !== "trend") updateTrendStart(null);
                           setToolsOpen(false);
                         }}
                       >
@@ -1757,6 +1871,7 @@ export default function AdvancedChart({
                   deleteLabel={t("analysis.chart.drawing.delete")}
                   onDelete={() => removeDrawingByKey(line.id)}
                   onSelect={() => updateDrawingSelection(line.id)}
+                  onActivate={() => openTrendPopover(line.id)}
                 />
               ))}
 
@@ -1772,6 +1887,13 @@ export default function AdvancedChart({
                 />
               ))}
             </div>
+          ) : null}
+
+          {selectedTrendPopover ? (
+            <TrendDrawingPopover
+              model={selectedTrendPopover}
+              onClose={() => setTrendPopoverKey(null)}
+            />
           ) : null}
 
           <div className={`advanced-chart-stack${activeTool !== "cursor" ? " drawing-mode" : ""}`}>
@@ -2010,18 +2132,20 @@ const DrawingChip = memo(function DrawingChip({
   onAction,
   onDelete,
   onSelect,
+  onActivate,
 }) {
+  const activate = onActivate ?? onSelect;
   return (
     <span
       className={`drawing-chip drawing-chip--${chipTone(drawing.kind)}${selected ? " is-selected" : ""}${hovered ? " is-hovered" : ""}`}
       onMouseEnter={onSelect}
-      onClick={onSelect}
+      onClick={activate}
       role="button"
       tabIndex={0}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onSelect();
+          activate();
         }
       }}
     >
@@ -2049,6 +2173,31 @@ const DrawingChip = memo(function DrawingChip({
         x
       </button>
     </span>
+  );
+});
+
+const TrendDrawingPopover = memo(function TrendDrawingPopover({ model, onClose }) {
+  if (!model) {
+    return null;
+  }
+
+  return (
+    <div className="trend-drawing-popover" role="dialog" aria-label="Trend Çizgisi">
+      <div className="trend-drawing-popover-head">
+        <strong>Trend Çizgisi</strong>
+        <button type="button" onClick={onClose} aria-label="Kapat">
+          <X size={13} strokeWidth={2.4} />
+        </button>
+      </div>
+      <div className="trend-drawing-popover-grid">
+        {model.rows.map((row) => (
+          <div className="trend-drawing-popover-row" key={row.label}>
+            <span>{row.label}</span>
+            <strong>{row.value}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 });
 
@@ -2576,24 +2725,86 @@ function resolveHorizontalToolConfig(tool, t) {
     case "horizontal":
       return {
         label: t("analysis.chart.drawing.horizontal"),
-        color: "#64748b",
+        color: "#e2e8f0",
         lineStyle: 2,
       };
     case "support":
       return {
         label: "Destek",
-        color: "rgba(34, 197, 94, 0.66)",
+        color: "rgba(34, 197, 94, 0.9)",
         lineStyle: 2,
       };
     case "resistance":
       return {
         label: "Direnç",
-        color: "rgba(239, 68, 68, 0.66)",
+        color: "rgba(239, 68, 68, 0.9)",
         lineStyle: 2,
       };
     default:
       return null;
   }
+}
+
+function comparePersistedDrawingOrder(left, right) {
+  const leftId = getDrawingBackendId(left) ?? 0;
+  const rightId = getDrawingBackendId(right) ?? 0;
+  if (leftId !== rightId) {
+    return leftId - rightId;
+  }
+  return String(left?.createdAt || "").localeCompare(String(right?.createdAt || ""));
+}
+
+function formatNumberedDrawingLabel(baseLabel, ordinal) {
+  return `${stripDrawingOrdinal(baseLabel)}(${ordinal})`;
+}
+
+function formatTrendDrawingLabel(baseLabel, ordinal) {
+  const base = stripDrawingOrdinal(baseLabel);
+  return ordinal <= 1 ? base : `${base} (${ordinal})`;
+}
+
+function stripDrawingOrdinal(label) {
+  return String(label || "").replace(/\s*\(\d+\)\s*$/, "").trim();
+}
+
+function getNextDrawingOrdinal(drawings, kind) {
+  const existing = kind === "trend"
+    ? drawings?.trendLines ?? []
+    : drawings?.horizontalLines?.filter((line) => line.kind === kind) ?? [];
+  const ordinals = existing
+    .map((line) => Number(String(line?.label || "").match(/\((\d+)\)\s*$/)?.[1]))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  return Math.max(existing.length, 0, ...ordinals) + 1;
+}
+
+function numberMultiDrawingsForDisplay(drawings, t) {
+  const horizontalCounts = {};
+  const horizontalLines = (drawings.horizontalLines ?? []).map((line) => {
+    const config = resolveHorizontalToolConfig(line.kind, t) ?? resolveHorizontalToolConfig("horizontal", t);
+    const ordinal = (horizontalCounts[line.kind] ?? 0) + 1;
+    horizontalCounts[line.kind] = ordinal;
+    const label = formatNumberedDrawingLabel(config.label, ordinal);
+
+    if (line.priceLine) {
+      line.priceLine.applyOptions({
+        title: `${label}: ${formatCompactPrice(line.price)}`,
+      });
+    }
+
+    return { ...line, label };
+  });
+
+  const trendLabel = t("analysis.chart.drawing.trend");
+  const trendLines = (drawings.trendLines ?? []).map((line, index) => ({
+    ...line,
+    label: formatTrendDrawingLabel(trendLabel, index + 1),
+  }));
+
+  return {
+    ...drawings,
+    horizontalLines,
+    trendLines,
+  };
 }
 
 function mergeManualStructureLevels(snapshot, manualSupportLine, manualResistanceLine) {
@@ -2947,7 +3158,7 @@ function serializeDrawingForApi(drawing, timeframe) {
   };
 
   if (kind === "trend") {
-    const points = (drawing.data ?? [])
+    const points = sortTrendDrawingData(drawing.data ?? [])
       .map((point) => ({
         time: normalizeChartTime(point.time),
         price: Number(point.value ?? point.price),
@@ -3038,13 +3249,7 @@ function buildChartDrawingFromApi(item, priceSeries, priceChart, t) {
   const lineStyle = Number.isFinite(Number(style.lineStyle)) ? Number(style.lineStyle) : undefined;
 
   if (kind === "trend") {
-    const lineData = (item?.points ?? [])
-      .map((point) => ({
-        time: normalizeChartTime(point.time),
-        value: Number(point.price),
-      }))
-      .filter((point) => point.time != null && Number.isFinite(point.value))
-      .sort((left, right) => left.time - right.time);
+    const lineData = sortTrendDrawingData(item?.points ?? []);
 
     if (lineData.length < 2) {
       return null;
@@ -3106,7 +3311,7 @@ function buildChartDrawingFromApi(item, priceSeries, priceChart, t) {
   const priceLine = priceSeries.createPriceLine({
     price,
     color: resolvedColor,
-    lineWidth: 1,
+    lineWidth: 3,
     lineStyle: resolvedLineStyle,
     axisLabelVisible: true,
     title: `${label}: ${formatCompactPrice(price)}`,
@@ -3156,6 +3361,138 @@ function rangeToBarSpacing(rangeKey) {
   if (key === "6m") return 3;
   if (key === "1y") return 2;
   return 1;
+}
+
+function sortTrendDrawingData(points) {
+  return (Array.isArray(points) ? points : [])
+    .map((point) => ({
+      time: normalizeChartTime(point.time),
+      value: Number(point.value ?? point.price),
+    }))
+    .filter((point) => point.time != null && Number.isFinite(point.value))
+    .sort((left, right) => left.time - right.time);
+}
+
+function resolveTrendSnapPoint(time, dataset) {
+  const targetTime = normalizeChartTime(time);
+  if (targetTime == null || !dataset) {
+    return null;
+  }
+
+  const exactRow = dataset.infoByTime?.get(targetTime);
+  const exactPrice = getSeriesClosePrice(exactRow);
+  if (Number.isFinite(exactPrice)) {
+    return { time: targetTime, price: exactPrice };
+  }
+
+  let nearest = null;
+  for (const point of Array.isArray(dataset.priceData) ? dataset.priceData : []) {
+    const pointTime = normalizeChartTime(point.time);
+    const pointPrice = getSeriesClosePrice(point);
+    if (pointTime == null || !Number.isFinite(pointPrice)) {
+      continue;
+    }
+
+    const distance = Math.abs(pointTime - targetTime);
+    if (!nearest || distance < nearest.distance) {
+      nearest = { time: pointTime, price: pointPrice, distance };
+    }
+  }
+
+  return nearest ? { time: nearest.time, price: nearest.price } : null;
+}
+
+function getSeriesClosePrice(point) {
+  const price = Number(point?.close ?? point?.value);
+  return Number.isFinite(price) ? price : null;
+}
+
+function buildTrendPopoverModel(trendLine) {
+  const data = Array.isArray(trendLine?.data) ? [...trendLine.data] : [];
+  if (data.length < 2) {
+    return null;
+  }
+
+  const sorted = data
+    .map((point) => ({
+      time: normalizeChartTime(point.time),
+      price: Number(point.value ?? point.price),
+    }))
+    .filter((point) => point.time != null && Number.isFinite(point.price))
+    .sort((left, right) => left.time - right.time);
+
+  if (sorted.length < 2) {
+    return null;
+  }
+
+  const start = sorted[0];
+  const end = sorted[sorted.length - 1];
+  if (!Number.isFinite(start.price) || !Number.isFinite(end.price) || start.price === 0) {
+    return null;
+  }
+
+  const dayCount = calendarDayDiff(start.time, end.time);
+  const totalChangePct = ((end.price - start.price) / start.price) * 100;
+  const dailySlopePct = dayCount > 0 ? totalChangePct / dayCount : null;
+  const direction = end.price > start.price ? "Yükselen" : end.price < start.price ? "Düşen" : "Yatay";
+
+  return {
+    rows: [
+      { label: "Başlangıç tarihi", value: formatTooltipDate(start.time) },
+      { label: "Başlangıç fiyatı", value: formatNumber(start.price, 2) },
+      { label: "Bitiş tarihi", value: formatTooltipDate(end.time) },
+      { label: "Bitiş fiyatı", value: formatNumber(end.price, 2) },
+      { label: "Süre (gün)", value: String(dayCount) },
+      { label: "Toplam Değişim (%)", value: formatSignedPercent(totalChangePct) },
+      { label: "Günlük Ortalama Eğim (%/gün)", value: dailySlopePct == null ? "-" : formatSignedPercent(dailySlopePct) },
+      { label: "Yön", value: direction },
+    ],
+  };
+}
+
+function calendarDayDiff(startTime, endTime) {
+  const startDate = chartTimeToDate(startTime);
+  const endDate = chartTimeToDate(endTime);
+  if (!startDate || !endDate) {
+    return 0;
+  }
+
+  const startUtc = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+  const endUtc = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+  return Math.max(0, Math.round((endUtc - startUtc) / 86400000));
+}
+
+function chartTimeToDate(time) {
+  if (typeof time === "number" && Number.isFinite(time)) {
+    return new Date(time * 1000);
+  }
+  if (typeof time === "string" && time) {
+    const date = new Date(time);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  if (time && typeof time === "object" && Number.isFinite(time.year) && Number.isFinite(time.month) && Number.isFinite(time.day)) {
+    return new Date(Date.UTC(time.year, time.month - 1, time.day));
+  }
+  return null;
+}
+
+function formatSignedPercent(value) {
+  if (!Number.isFinite(Number(value))) {
+    return "-";
+  }
+  const numeric = Number(value);
+  return `${numeric > 0 ? "+" : ""}${numeric.toFixed(2)}%`;
+}
+
+function distanceToSegment(point, start, end) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  if (dx === 0 && dy === 0) {
+    return Math.hypot(point.x - start.x, point.y - start.y);
+  }
+
+  const t = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
 }
 
 function resolveDisplayCode(instrumentCode, quote) {

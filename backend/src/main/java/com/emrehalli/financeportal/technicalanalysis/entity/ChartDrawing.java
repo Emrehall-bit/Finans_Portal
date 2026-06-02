@@ -6,6 +6,7 @@ import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnTransformer;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -38,11 +39,13 @@ public class ChartDrawing {
     private String drawingType;
 
     @Convert(converter = JsonListConverter.class)
+    @ColumnTransformer(write = "?::jsonb")
     @Column(name = "points", nullable = false, columnDefinition = "jsonb")
     @Builder.Default
     private List<Map<String, Object>> points = new java.util.ArrayList<>();
 
     @Convert(converter = JsonMapConverter.class)
+    @ColumnTransformer(write = "?::jsonb")
     @Column(name = "style", nullable = false, columnDefinition = "jsonb")
     @Builder.Default
     private Map<String, Object> style = new java.util.HashMap<>();

@@ -692,6 +692,7 @@ html[data-theme] .analysis-chart-shell {
 }
 
 .advanced-chart-workspace {
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
@@ -1130,6 +1131,68 @@ html[data-theme] .analysis-chart-shell {
   transform: translateY(-1px);
 }
 
+.trend-drawing-popover {
+  position: absolute;
+  top: 58px;
+  right: 18px;
+  z-index: 8;
+  width: min(320px, calc(100% - 32px));
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  color: #1e293b;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(10px);
+}
+
+.trend-drawing-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #6d28d9;
+  font-size: 13px;
+}
+
+.trend-drawing-popover-head button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.09);
+  color: #6d28d9;
+  cursor: pointer;
+}
+
+.trend-drawing-popover-grid {
+  display: grid;
+  gap: 7px;
+}
+
+.trend-drawing-popover-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 11px;
+}
+
+.trend-drawing-popover-row span {
+  color: #64748b;
+}
+
+.trend-drawing-popover-row strong {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
 .advanced-crosshair-tooltip {
   position: fixed;
   z-index: 99999;
@@ -1510,6 +1573,30 @@ html[data-theme] .analysis-chart-shell {
   background: rgba(168, 85, 247, 0.12);
   border-color: rgba(168, 85, 247, 0.3);
   color: #c084fc;
+}
+
+[data-theme="dark"] .trend-drawing-popover {
+  border-color: rgba(168, 85, 247, 0.28);
+  background: rgba(15, 23, 42, 0.96);
+  color: #e2e8f0;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+}
+
+[data-theme="dark"] .trend-drawing-popover-head {
+  color: #c084fc;
+}
+
+[data-theme="dark"] .trend-drawing-popover-head button {
+  background: rgba(168, 85, 247, 0.14);
+  color: #c084fc;
+}
+
+[data-theme="dark"] .trend-drawing-popover-row span {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .trend-drawing-popover-row strong {
+  color: #f8fafc;
 }
 
 [data-theme="dark"] .drawing-chip-del {
