@@ -21,9 +21,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -32,6 +39,9 @@ import java.util.concurrent.atomic.AtomicReference;
 public class AaRssNewsClient {
 
     private static final Logger logger = LogManager.getLogger(AaRssNewsClient.class);
+    private static final DateTimeFormatter RSS_DATE_FORMATTER =
+            DateTimeFormatter.RFC_1123_DATE_TIME.withLocale(Locale.ENGLISH);
+    private static final ZoneId AA_SOURCE_ZONE = ZoneId.of("Europe/Istanbul");
 
     private final RestTemplate restTemplate;
     private final AaNewsProperties properties;
@@ -274,6 +284,7 @@ public class AaRssNewsClient {
         }
 
         String normalizedSummary = normalizeSummary(summary);
+        LocalDateTime publishedAt = parseAaPublishedAt(pubDate);
 
         return NewsItemDto.builder()
                 .externalId(rssFeedSupport.resolveExternalId(NewsProviderType.AA_RSS.name(), guid, link))
@@ -287,10 +298,33 @@ public class AaRssNewsClient {
                 .relatedSymbol(null)
                 .url(link)
                 .imageUrl(imageUrl)
-                .publishedAt(rssFeedSupport.parsePublishedAt(pubDate, logger, "AA RSS"))
+                .publishedAt(publishedAt)
                 .qualityStatus(resolveQualityStatus(normalizedSummary, fullContent))
                 .isKapDisclosure(false)
                 .build();
+    }
+
+    private LocalDateTime parseAaPublishedAt(String pubDate) {
+        if (pubDate == null || pubDate.isBlank()) {
+            return null;
+        }
+        String trimmed = pubDate.trim();
+        try {
+            return ZonedDateTime.parse(trimmed, RSS_DATE_FORMATTER)
+                    .withZoneSameInstant(ZoneOffset.UTC)
+                    .toLocalDateTime();
+        } catch (Exception ignored) {
+            try {
+                return OffsetDateTime.parse(trimmed)
+                        .atZoneSameInstant(ZoneOffset.UTC)
+                        .toLocalDateTime();
+            } catch (Exception ignoredOffset) {
+                LocalDateTime localTime = rssFeedSupport.parsePublishedAt(trimmed, logger, "AA RSS");
+                return localTime != null
+                        ? localTime.atZone(AA_SOURCE_ZONE).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime()
+                        : null;
+            }
+        }
     }
 
     private boolean isEconomyArticleLink(String link) {
@@ -346,7 +380,4 @@ public class AaRssNewsClient {
         return NewsQualityStatus.SOURCE_LINK_ONLY.name();
     }
 }
-
-
-
 

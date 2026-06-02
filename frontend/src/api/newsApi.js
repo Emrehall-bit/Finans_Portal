@@ -83,3 +83,9 @@ export async function auditAffectedInstruments(params = {}) {
   return normalizeApiResponse(response).data ?? null;
 }
 
+export async function repairNewsCategories(params = {}) {
+  const response = await axiosClient.post(`${API_CONFIG.ENDPOINTS.news}/admin/repair-categories`, null, {
+    params: compactParams(params),
+  });
+  return normalizeApiResponse(response).data ?? null;
+}

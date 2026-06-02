@@ -19,12 +19,18 @@ class NewsCategoryClassifierTest {
                 "business"
         );
         assertThat(tcmbResult.category()).isEqualTo(NewsCategoryClassifier.INTEREST_BONDS);
-        assertThat(tcmbResult.tags()).contains(NewsCategoryClassifier.INTEREST_BONDS, NewsCategoryClassifier.FX);
 
         assertThat(classifier.classify(
                 "Dolar/TL haftaya yukselisle basladi",
                 "Kur cephesinde hareketlilik suruyor.",
                 "Dolar/TL haftaya yukselisle basladi",
+                "general"
+        ).category()).isEqualTo(NewsCategoryClassifier.FX);
+
+        assertThat(classifier.classify(
+                "Finansal kesim disindaki firmalarin net doviz pozisyon acigi azaldi",
+                "Net doviz pozisyonu ve yabanci para pozisyonu verileri aciklandi.",
+                "Finansal kesim disindaki firmalarin net doviz pozisyon acigi azaldi",
                 "general"
         ).category()).isEqualTo(NewsCategoryClassifier.FX);
 
@@ -35,7 +41,6 @@ class NewsCategoryClassifierTest {
                 "markets"
         );
         assertThat(bankingResult.category()).isIn(NewsCategoryClassifier.BANKING, NewsCategoryClassifier.STOCKS);
-        assertThat(bankingResult.tags()).contains(NewsCategoryClassifier.BANKING, NewsCategoryClassifier.STOCKS);
 
         assertThat(classifier.classify(
                 "Altin ons fiyati guclendi",
@@ -49,7 +54,7 @@ class NewsCategoryClassifierTest {
                 "Enerji arzi ve brent fiyatlari yeniden gundemde.",
                 "Petrol arz endisesi artti",
                 "general"
-        ).category()).isEqualTo(NewsCategoryClassifier.ENERGY);
+        ).category()).isEqualTo(NewsCategoryClassifier.GOLD_COMMODITY);
 
         var fedResult = classifier.classify(
                 "Fed faiz indirimi sinyali verdi",
@@ -58,12 +63,6 @@ class NewsCategoryClassifierTest {
                 "top_news"
         );
         assertThat(fedResult.category()).isIn(NewsCategoryClassifier.INTEREST_BONDS, NewsCategoryClassifier.GLOBAL_MARKETS);
-        assertThat(fedResult.tags()).contains(
-                NewsCategoryClassifier.INTEREST_BONDS,
-                NewsCategoryClassifier.FX,
-                NewsCategoryClassifier.GOLD_COMMODITY,
-                NewsCategoryClassifier.GLOBAL_MARKETS
-        );
 
         var geopoliticsResult = classifier.classify(
                 "ABD-Iran gerilimi petrol arzini etkiledi",
@@ -72,17 +71,10 @@ class NewsCategoryClassifierTest {
                 "top_news"
         );
         assertThat(geopoliticsResult.category()).isIn(
-                NewsCategoryClassifier.ENERGY,
-                NewsCategoryClassifier.GEOPOLITICS,
+                NewsCategoryClassifier.GOLD_COMMODITY,
                 NewsCategoryClassifier.GLOBAL_MARKETS
         );
-        assertThat(geopoliticsResult.tags()).contains(
-                NewsCategoryClassifier.ENERGY,
-                NewsCategoryClassifier.GLOBAL_MARKETS,
-                NewsCategoryClassifier.GOLD_COMMODITY,
-                NewsCategoryClassifier.FX,
-                NewsCategoryClassifier.STOCKS
-        );
+        assertThat(geopoliticsResult.category()).isNotEqualTo(NewsCategoryClassifier.GEOPOLITICS);
     }
 
     @Test
@@ -103,41 +95,43 @@ class NewsCategoryClassifierTest {
     }
 
     @Test
-    void resolvesLegacyFilterValuesWithoutBreakingExistingQueries() {
+    void resolvesFilterCategoryWithoutAliasExpansion() {
         assertThat(classifier.resolveFilterCategories("ECONOMY"))
-                .contains("ECONOMY", NewsCategoryClassifier.GENERAL_ECONOMY);
+                .isEqualTo(Set.of("ECONOMY"));
 
         assertThat(classifier.resolveFilterCategories("business"))
-                .contains("BUSINESS", NewsCategoryClassifier.GENERAL_ECONOMY, NewsCategoryClassifier.COMPANY);
+                .isEqualTo(Set.of("BUSINESS"));
 
         assertThat(classifier.resolveFilterCategories("top_news"))
-                .contains("TOP_NEWS", NewsCategoryClassifier.GLOBAL_MARKETS, NewsCategoryClassifier.STOCKS);
+                .isEqualTo(Set.of("TOP_NEWS"));
 
         assertThat(classifier.resolveFilterCategories("FX"))
-                .isEqualTo(Set.of("FX", "FOREX", "CURRENCY", "DOVIZ"));
+                .isEqualTo(Set.of("FX"));
     }
 
     @Test
-    void resolvesFilterKeywordFallbacksForCanonicalFilters() {
-        assertThat(classifier.resolveFilterRuntimeKeywords(NewsCategoryClassifier.INTEREST_BONDS))
-                .contains("faiz", "tahvil", "fed");
+    void keepsWeakContextStoriesOutOfBroadMarketCategories() {
+        assertThat(classifier.classify(
+                "Turizmde maliyetler ve tesvikler degerlendirildi",
+                "Sektorde doviz bazinda maliyetler ve parite etkisi konusuldu.",
+                "Turizmde maliyetler ve tesvikler degerlendirildi",
+                "general"
+        ).category()).isNotEqualTo(NewsCategoryClassifier.FX);
 
-        assertThat(classifier.resolveFilterRuntimeKeywords(NewsCategoryClassifier.FX))
-                .contains("dolar tl", "parite", "forex");
+        assertThat(classifier.classify(
+                "Bitkisel uretimin tahil ve meyvelerde artmasi bekleniyor",
+                "Kuru meyve ve tarimsal uretim beklentileri aciklandi.",
+                "Bitkisel uretimin tahil ve meyvelerde artmasi bekleniyor",
+                "general"
+        ).category()).isNotEqualTo(NewsCategoryClassifier.FX);
 
-        assertThat(classifier.resolveFilterRuntimeKeywords(NewsCategoryClassifier.GOLD_COMMODITY))
-                .contains("altin", "commodity", "petrol");
-    }
-
-    @Test
-    void avoidsOverTaggingWeakContextStories() {
         var politicsResult = classifier.classify(
                 "ABD heyeti siyasi temaslarda bulundu",
                 "Siyasi gundem ve diplomatik gorusmeler one cikti.",
                 "ABD heyeti siyasi temaslarda bulundu",
                 "general"
         );
-        assertThat(politicsResult.tags()).doesNotContain(NewsCategoryClassifier.FX, NewsCategoryClassifier.GOLD_COMMODITY);
+        assertThat(politicsResult.category()).isEqualTo(NewsCategoryClassifier.GENERAL_ECONOMY);
 
         var usMentionResult = classifier.classify(
                 "ABD tarim raporu aciklandi",
@@ -145,7 +139,7 @@ class NewsCategoryClassifierTest {
                 "ABD tarim raporu aciklandi",
                 "general"
         );
-        assertThat(usMentionResult.tags()).doesNotContain(NewsCategoryClassifier.GLOBAL_MARKETS);
+        assertThat(usMentionResult.category()).isEqualTo(NewsCategoryClassifier.GENERAL_ECONOMY);
 
         var companyResult = classifier.classify(
                 "Sirket yeni lojistik merkezini acti",
@@ -154,22 +148,21 @@ class NewsCategoryClassifierTest {
                 "company"
         );
         assertThat(companyResult.category()).isEqualTo(NewsCategoryClassifier.COMPANY);
-        assertThat(companyResult.tags()).doesNotContain(NewsCategoryClassifier.STOCKS);
     }
 
     @Test
-    void keepsHighPrecisionCrossMarketTagsWhenContextIsStrong() {
+    void classifiesStrongMarketContextByPrimaryCategory() {
         var energyResult = classifier.classify(
                 "Petrol arz riski savas endisesiyle buyudu",
                 "Savas, yaptirim ve enerji arz endiseleri brent fiyatlarini ve kuresel piyasalari baskiladi.",
                 "Petrol arz riski savas endisesiyle buyudu",
                 "top_news"
         );
-        assertThat(energyResult.tags()).contains(
-                NewsCategoryClassifier.ENERGY,
+        assertThat(energyResult.category()).isIn(
                 NewsCategoryClassifier.GOLD_COMMODITY,
                 NewsCategoryClassifier.GLOBAL_MARKETS
         );
+        assertThat(energyResult.category()).isNotEqualTo(NewsCategoryClassifier.GEOPOLITICS);
 
         var tcmbResult = classifier.classify(
                 "TCMB faiz karari sonrasi kur piyasasi hareketlendi",
@@ -177,22 +170,26 @@ class NewsCategoryClassifierTest {
                 "TCMB faiz karari sonrasi kur piyasasi hareketlendi",
                 "business"
         );
-        assertThat(tcmbResult.tags()).contains(NewsCategoryClassifier.INTEREST_BONDS, NewsCategoryClassifier.FX);
+        assertThat(tcmbResult.category()).isEqualTo(NewsCategoryClassifier.INTEREST_BONDS);
     }
 
     @Test
-    void requiresRealContextBeforeAddingBroadMarketTags() {
+    void requiresRealContextBeforeSelectingBroadMarketCategory() {
+        var geopoliticalOnlyResult = classifier.classify(
+                "Orta Dogu gerilimi ve savas endisesi suruyor",
+                "Bolgedeki diplomatik gelismeler izleniyor.",
+                "Orta Dogu gerilimi ve savas endisesi suruyor",
+                "general"
+        );
+        assertThat(geopoliticalOnlyResult.category()).isEqualTo(NewsCategoryClassifier.GENERAL_ECONOMY);
+
         var politicsResult = classifier.classify(
                 "ABD'de siyasi heyet yeni gorusme turuna basladi",
                 "Diplomatik ziyaret ve siyasi temaslarin ayrintilari paylasildi.",
                 "ABD'de siyasi heyet yeni gorusme turuna basladi",
                 "general"
         );
-        assertThat(politicsResult.tags()).doesNotContain(
-                NewsCategoryClassifier.FX,
-                NewsCategoryClassifier.GOLD_COMMODITY,
-                NewsCategoryClassifier.GLOBAL_MARKETS
-        );
+        assertThat(politicsResult.category()).isEqualTo(NewsCategoryClassifier.GENERAL_ECONOMY);
 
         var usOnlyResult = classifier.classify(
                 "ABD tarim verisi aciklandi",
@@ -200,7 +197,7 @@ class NewsCategoryClassifierTest {
                 "ABD tarim verisi aciklandi",
                 "general"
         );
-        assertThat(usOnlyResult.tags()).doesNotContain(NewsCategoryClassifier.GLOBAL_MARKETS);
+        assertThat(usOnlyResult.category()).isEqualTo(NewsCategoryClassifier.GENERAL_ECONOMY);
 
         var companyOnlyResult = classifier.classify(
                 "Sirket yeni depo yatirimini duyurdu",
@@ -209,7 +206,6 @@ class NewsCategoryClassifierTest {
                 "company"
         );
         assertThat(companyOnlyResult.category()).isEqualTo(NewsCategoryClassifier.COMPANY);
-        assertThat(companyOnlyResult.tags()).doesNotContain(NewsCategoryClassifier.STOCKS);
     }
 }
 

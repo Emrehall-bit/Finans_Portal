@@ -3277,11 +3277,6 @@ html[data-theme="dark"] .dashboard-ai-summary-metric {
   font-weight: 700;
 }
 
-.news-tag-chip-row {
-  gap: 5px;
-}
-
-.news-tag-chip,
 .news-card-badge {
   min-height: 20px;
   padding: 0 7px;

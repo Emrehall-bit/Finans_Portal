@@ -287,24 +287,13 @@
       "all": "All",
       "generalEconomy": "General Economy",
       "stocks": "Stocks",
+      "company": "Company News",
       "fx": "FX",
       "goldCommodities": "Gold & Commodities",
       "interestBonds": "Interest & Bonds",
       "banking": "Banking",
       "crypto": "Crypto",
       "globalMarkets": "Global Markets"
-    },
-    "tagsLabel": "News tags",
-    "tagLabels": {
-      "GENERAL_ECONOMY": "General Economy",
-      "STOCKS": "Stocks",
-      "FX": "FX",
-      "GOLD_COMMODITY": "Gold & Commodities",
-      "INTEREST_BONDS": "Interest & Bonds",
-      "BANKING": "Banking",
-      "CRYPTO": "Crypto",
-      "GLOBAL_MARKETS": "Global Markets",
-      "ENERGY": "Energy"
     },
     "filterProviders": {
       "aa": "Anadolu Ajansı",

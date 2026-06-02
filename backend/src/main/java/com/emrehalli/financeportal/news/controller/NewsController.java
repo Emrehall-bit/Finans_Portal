@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.news.controller;
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
+import com.emrehalli.financeportal.news.dto.response.NewsCategoryRepairResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsAffectedInstrumentsAuditResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsPurgeResponseDto;
@@ -126,6 +127,19 @@ public class NewsController {
                 .build();
     }
 
+    @PostMapping("/admin/repair-categories")
+    public ApiResponse<NewsCategoryRepairResponseDto> repairCategories(
+            @RequestParam(defaultValue = "500") int limit,
+            @RequestParam(defaultValue = "true") boolean dryRun) {
+        NewsCategoryRepairResponseDto response = newsService.repairCategories(limit, dryRun);
+
+        return ApiResponse.<NewsCategoryRepairResponseDto>builder()
+                .success(true)
+                .data(response)
+                .message(appMessageSource.get("news.sync.completed"))
+                .build();
+    }
+
     @GetMapping("/admin/affected-instruments-audit")
     public ApiResponse<NewsAffectedInstrumentsAuditResponseDto> auditAffectedInstruments(
             @RequestParam(defaultValue = "100") int limit) {
@@ -160,7 +174,6 @@ public class NewsController {
                 .build();
     }
 }
-
 
 
 

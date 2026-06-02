@@ -3,6 +3,7 @@ export const ALL_CATEGORY_OPTION_VALUE = "__ALL__";
 const FILTER_CATEGORY_CONFIG = [
   { value: "GENERAL_ECONOMY", labelKey: "news.filterCategories.generalEconomy" },
   { value: "STOCKS", labelKey: "news.filterCategories.stocks" },
+  { value: "COMPANY", labelKey: "news.filterCategories.company" },
   { value: "FX", labelKey: "news.filterCategories.fx" },
   { value: "GOLD_COMMODITY", labelKey: "news.filterCategories.goldCommodities" },
   { value: "INTEREST_BONDS", labelKey: "news.filterCategories.interestBonds" },
@@ -20,7 +21,7 @@ const DISPLAY_CATEGORY_GROUPS = {
   STOCK: "STOCKS",
   SHARES: "STOCKS",
   EQUITY: "STOCKS",
-  COMPANY: "STOCKS",
+  COMPANY: "COMPANY",
   FX: "FX",
   FOREX: "FX",
   CURRENCY: "FX",
@@ -49,6 +50,7 @@ const DISPLAY_CATEGORY_GROUPS = {
 const DISPLAY_CATEGORY_LABEL_KEYS = {
   GENERAL_ECONOMY: "news.filterCategories.generalEconomy",
   STOCKS: "news.filterCategories.stocks",
+  COMPANY: "news.filterCategories.company",
   FX: "news.filterCategories.fx",
   GOLD_COMMODITY: "news.filterCategories.goldCommodities",
   INTEREST_BONDS: "news.filterCategories.interestBonds",

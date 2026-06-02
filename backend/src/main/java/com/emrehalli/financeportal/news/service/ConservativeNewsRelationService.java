@@ -353,7 +353,6 @@ public class ConservativeNewsRelationService {
         }
 
         Set<String> srcTokens = buildTokens(news);
-        Set<String> srcTags = extractTags(news);
         Set<String> srcStocks = extractStockSymbols(srcTokens);
         Set<String> srcMacro = extractMacroInstruments(srcTokens);
         Set<String> srcInstitutions = extractInstitutions(srcTokens);
@@ -361,7 +360,7 @@ public class ConservativeNewsRelationService {
         return candidates.stream()
                 .map(c -> {
                     Set<String> cTokens = buildTokens(c);
-                    int score = scoreCandidate(news, srcTokens, srcTags, srcStocks, srcMacro, srcInstitutions, c, cTokens);
+                    int score = scoreCandidate(news, srcTokens, srcStocks, srcMacro, srcInstitutions, c, cTokens);
                     return new ScoredCandidate(c, score);
                 })
                 .filter(sc -> sc.score() > 0)
@@ -381,7 +380,7 @@ public class ConservativeNewsRelationService {
     }
 
     private int scoreCandidate(
-            News src, Set<String> srcTokens, Set<String> srcTags,
+            News src, Set<String> srcTokens,
             Set<String> srcStocks, Set<String> srcMacro, Set<String> srcInstitutions,
             News cand, Set<String> cTokens) {
 
@@ -426,10 +425,6 @@ public class ConservativeNewsRelationService {
             score += 10;
         }
 
-        // Tag overlap
-        Set<String> cTags = extractTags(cand);
-        score += Math.min(24, overlapCount(srcTags, cTags) * 8);
-
         // Title token overlap (capped to avoid generic words dominating)
         score += Math.min(20, overlapCount(srcTokens, cTokens) * 2);
 
@@ -465,14 +460,6 @@ public class ConservativeNewsRelationService {
                 .toUpperCase(Locale.ROOT);
         return Arrays.stream(TOKEN_SPLIT.split(normalized))
                 .filter(t -> t.length() >= 2)
-                .collect(Collectors.toSet());
-    }
-
-    private Set<String> extractTags(News news) {
-        if (!hasText(news.getFilterTags())) return Set.of();
-        return Arrays.stream(news.getFilterTags().split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
     }
 

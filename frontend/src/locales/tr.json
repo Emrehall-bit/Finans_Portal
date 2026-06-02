@@ -280,24 +280,13 @@
       "all": "Tümü",
       "generalEconomy": "Genel Ekonomi",
       "stocks": "Hisse Senetleri",
+      "company": "Şirket Haberleri",
       "fx": "Döviz",
       "goldCommodities": "Altın & Emtia",
       "interestBonds": "Faiz & Tahvil",
       "banking": "Bankacılık",
       "crypto": "Kripto",
       "globalMarkets": "Küresel Piyasalar"
-    },
-    "tagsLabel": "Haber etiketleri",
-    "tagLabels": {
-      "GENERAL_ECONOMY": "Genel Ekonomi",
-      "STOCKS": "Hisse",
-      "FX": "Döviz",
-      "GOLD_COMMODITY": "Altın & Emtia",
-      "INTEREST_BONDS": "Faiz & Tahvil",
-      "BANKING": "Bankacılık",
-      "CRYPTO": "Kripto",
-      "GLOBAL_MARKETS": "Küresel Piyasalar",
-      "ENERGY": "Enerji"
     },
     "filterProviders": {
       "aa": "Anadolu Ajansı",

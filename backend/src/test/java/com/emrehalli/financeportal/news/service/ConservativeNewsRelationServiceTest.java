@@ -45,11 +45,11 @@ class ConservativeNewsRelationServiceTest {
 
     @Test
     void siteAidatiNewsProducesNoInstruments() {
-        // "Site aidatÄ±" has no financial market keywords
+        // "Site aidatÃ„Â±" has no financial market keywords
         News news = baseNews(1L,
-                "Site aidatlarÄ± bu yÄ±l yÃ¼zde on arttÄ±",
-                "Konut sakinleri artan aidat maliyetlerini tartÄ±ÅŸÄ±yor.",
-                "LIFESTYLE", "HOUSING");
+                "Site aidatlarÃ„Â± bu yÃ„Â±l yÃƒÂ¼zde on arttÃ„Â±",
+                "Konut sakinleri artan aidat maliyetlerini tartÃ„Â±Ã…Å¸Ã„Â±yor.",
+                "LIFESTYLE");
 
         when(newsRepository.findById(1L)).thenReturn(Optional.of(news));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any()))
@@ -66,7 +66,7 @@ class ConservativeNewsRelationServiceTest {
         News news = baseNews(2L,
                 "Kuresel gundem yogun seyrediyor",
                 "Uzmanlar genel beklentileri tartisiyor.",
-                "GENERAL", "GENERAL");
+                "GENERAL");
         stubNotMarketRelevant(news);
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
@@ -88,7 +88,6 @@ class ConservativeNewsRelationServiceTest {
                 .language("tr")
                 .regionScope("DOMESTIC")
                 .category("STOCKS")
-                .filterTags("STOCKS")
                 .url("https://kap.org.tr/10")
                 .relatedSymbol("THYAO")
                 .isKapDisclosure(true)
@@ -109,9 +108,9 @@ class ConservativeNewsRelationServiceTest {
     @Test
     void newsWithExplicitThyaoTextShowsThyaoAsDirectHighConfidence() {
         News news = baseNews(20L,
-                "Turk Hava Yollari yeni uÃ§uÅŸ gÃ¼zergahlarÄ± aÃ§Ä±kladÄ±",
-                "THY bÃ¼yÃ¼me stratejisi kapsamÄ±nda yeni destinasyonlar ekliyor.",
-                "COMPANY", "STOCKS");
+                "Turk Hava Yollari yeni uÃƒÂ§uÃ…Å¸ gÃƒÂ¼zergahlarÃ„Â± aÃƒÂ§Ã„Â±kladÃ„Â±",
+                "THY bÃƒÂ¼yÃƒÂ¼me stratejisi kapsamÃ„Â±nda yeni destinasyonlar ekliyor.",
+                "COMPANY");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -122,9 +121,9 @@ class ConservativeNewsRelationServiceTest {
     @Test
     void newsWithExplicitAselsamTextShowsAselsAsDirectHighConfidence() {
         News news = baseNews(21L,
-                "Aselsan yeni ihracat anlaÅŸmasÄ± imzaladÄ±",
-                "Aselsan savunma elektroniÄŸi ihracatÄ±nÄ± artÄ±rÄ±yor.",
-                "COMPANY", "STOCKS");
+                "Aselsan yeni ihracat anlaÃ…Å¸masÃ„Â± imzaladÃ„Â±",
+                "Aselsan savunma elektroniÃ„Å¸i ihracatÃ„Â±nÃ„Â± artÃ„Â±rÃ„Â±yor.",
+                "COMPANY");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -134,11 +133,11 @@ class ConservativeNewsRelationServiceTest {
 
     @Test
     void stockWithoutDirectMentionNeverProducedByConservativeService() {
-        // News about banking regulation â€” "bankacilik" mentioned but no company name
+        // News about banking regulation Ã¢â‚¬â€ "bankacilik" mentioned but no company name
         News news = baseNews(22L,
                 "BDDK bankacilik sektorune yeni duzenleme getirdi",
                 "Bankacilik sektoru ve kredi buyumesi acisindan yeni kurallar aciklandi.",
-                "BANKING", "BANKING,STOCKS");
+                "BANKING");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -158,7 +157,7 @@ class ConservativeNewsRelationServiceTest {
         News news = baseNews(30L,
                 "TCMB politika faizini sabit tuttu",
                 "Merkez bankasi faiz karari sonrasinda piyasalar tepki verdi.",
-                "INTEREST_BONDS", "INTEREST_BONDS,FX");
+                "INTEREST_BONDS");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -169,9 +168,9 @@ class ConservativeNewsRelationServiceTest {
     @Test
     void goldNewsReturnsGoldAndGramAltin() {
         News news = baseNews(40L,
-                "Altin fiyatlari rekor kÄ±rdi, ons altin yukseliyor",
+                "Altin fiyatlari rekor kÃ„Â±rdi, ons altin yukseliyor",
                 "Guvenli liman talebi arttikca altin piyasasinda yukselis surdu.",
-                "GOLD_COMMODITY", "GOLD_COMMODITY");
+                "GOLD_COMMODITY");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -188,7 +187,7 @@ class ConservativeNewsRelationServiceTest {
         News news = baseNews(50L,
                 "Brent petrol 90 dolara yaklasti, enerji arz endisesi buyuyor",
                 "OPEC uretim kisintisi sonrasinda petrol fiyatlari yukselmis durumda.",
-                "GOLD_COMMODITY", "GOLD_COMMODITY,GLOBAL_MARKETS");
+                "GOLD_COMMODITY");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -199,12 +198,12 @@ class ConservativeNewsRelationServiceTest {
 
     @Test
     void machineExportWithKurFinansmanDoesNotProduceBankOrDefenseStocks() {
-        // "kur" is in text â†’ gate passes; "FINANSMAN" provides export context
-        // No company names â†’ no stocks
+        // "kur" is in text Ã¢â€ â€™ gate passes; "FINANSMAN" provides export context
+        // No company names Ã¢â€ â€™ no stocks
         News news = baseNews(60L,
                 "Makine Ihracatcilari Birligi rekor ihracat rakamini acikladi",
                 "Imalat sanayinde finansman kanallari ve kur baskisi nedeniyle ihracat gelirleri tartisiliyor.",
-                "GENERAL_ECONOMY", "GENERAL_ECONOMY,STOCKS");
+                "GENERAL_ECONOMY");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -224,9 +223,9 @@ class ConservativeNewsRelationServiceTest {
     void siteAidatiWithFinansmanAloneStillProducesNoInstruments() {
         // "finansman" alone does NOT open the gate (not in STRONG_GATE_TOKENS)
         News news = baseNews(61L,
-                "Site aidati finansman ihtiyaci artÄ±yor",
+                "Site aidati finansman ihtiyaci artÃ„Â±yor",
                 "Konut yonetim maliyetleri ve finansman kosullari tartisiliyor.",
-                "LIFESTYLE", "HOUSING");
+                "LIFESTYLE");
         stubNotMarketRelevant(news);
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
@@ -240,7 +239,7 @@ class ConservativeNewsRelationServiceTest {
         News news = baseNews(62L,
                 "Turkiye ihracat rakamlari aciklandi",
                 "Gecen ayin ihracat verileri aciklandi.",
-                "GENERAL_ECONOMY", "GENERAL_ECONOMY");
+                "GENERAL_ECONOMY");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -253,9 +252,9 @@ class ConservativeNewsRelationServiceTest {
     void maxInstrumentsLimitIsThree() {
         // News with many market signals
         News news = baseNews(70L,
-                "TCMB faiz kararÄ±nÄ±n ardÄ±ndan borsa, altin, dolar ve petrol fiyatlandi",
-                "Faiz kararÄ± sonrasÄ±nda USDTRY, altin, brent petrol ve BIST 100 yeni seviyelere ulasti.",
-                "INTEREST_BONDS", "INTEREST_BONDS,FX,GOLD_COMMODITY");
+                "TCMB faiz kararÃ„Â±nÃ„Â±n ardÃ„Â±ndan borsa, altin, dolar ve petrol fiyatlandi",
+                "Faiz kararÃ„Â± sonrasÃ„Â±nda USDTRY, altin, brent petrol ve BIST 100 yeni seviyelere ulasti.",
+                "INTEREST_BONDS");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -268,8 +267,8 @@ class ConservativeNewsRelationServiceTest {
     void lowConfidenceInstrumentsNeverReturned() {
         News news = baseNews(80L,
                 "TCMB faiz kararini acikladi",
-                "Politika faizi haberi piyasalarÄ± etkiledi.",
-                "INTEREST_BONDS", "INTEREST_BONDS,FX");
+                "Politika faizi haberi piyasalarÃ„Â± etkiledi.",
+                "INTEREST_BONDS");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -282,8 +281,8 @@ class ConservativeNewsRelationServiceTest {
     void instrumentsHaveNonEmptyReasonField() {
         News news = baseNews(90L,
                 "TCMB faizini degistirmedi, kur reaksiyon verdi",
-                "Merkez bankasi kararinin ardÄ±ndan doviz kurlari hareket etti.",
-                "INTEREST_BONDS", "INTEREST_BONDS,FX");
+                "Merkez bankasi kararinin ardÃ„Â±ndan doviz kurlari hareket etti.",
+                "INTEREST_BONDS");
 
         List<RelatedInstrumentDto> result = service.resolveInstruments(news);
 
@@ -296,14 +295,13 @@ class ConservativeNewsRelationServiceTest {
         News kapNews = News.builder()
                 .id(91L)
                 .externalId("KAP-91")
-                .title("Garanti BBVA temettÃ¼ daÄŸÄ±tÄ±m kararÄ±")
+                .title("Garanti BBVA temettÃƒÂ¼ daÃ„Å¸Ã„Â±tÃ„Â±m kararÃ„Â±")
                 .summary("Garanti BBVA yonetim kurulu karar aldi.")
                 .source("KAP")
                 .provider("KAP")
                 .language("tr")
                 .regionScope("DOMESTIC")
                 .category("STOCKS")
-                .filterTags("STOCKS")
                 .url("https://kap.org.tr/91")
                 .relatedSymbol("GARAN")
                 .isKapDisclosure(true)
@@ -325,7 +323,7 @@ class ConservativeNewsRelationServiceTest {
         News news = baseNews(100L,
                 "Dolar kuru yeni seviyelere yukseldi",
                 "Dolar TL paritesi yeni zirvelere ulasti.",
-                "FX", "FX");
+                "FX");
 
         when(marketQueryService.findBySymbol("USDTRY", InstrumentType.FX))
                 .thenReturn(Optional.of(new MarketQueryService.MarketSnapshot(
@@ -342,7 +340,7 @@ class ConservativeNewsRelationServiceTest {
     // Helpers
     // ============================================================
 
-    private News baseNews(Long id, String title, String summary, String category, String filterTags) {
+    private News baseNews(Long id, String title, String summary, String category) {
         return News.builder()
                 .id(id)
                 .externalId("TEST-" + id)
@@ -353,7 +351,6 @@ class ConservativeNewsRelationServiceTest {
                 .language("tr")
                 .regionScope("DOMESTIC")
                 .category(category)
-                .filterTags(filterTags)
                 .url("https://example.com/news/" + id)
                 .publishedAt(LocalDateTime.of(2026, 5, 24, 9, 0))
                 .importanceScore(80)
@@ -373,6 +370,7 @@ class ConservativeNewsRelationServiceTest {
                         org.mockito.ArgumentMatchers.eq(news.getUrl()));
     }
 }
+
 
 
 

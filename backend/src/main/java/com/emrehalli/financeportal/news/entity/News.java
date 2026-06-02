@@ -99,9 +99,6 @@ public class News {
     @Column(name = "content_sections", columnDefinition = "TEXT")
     private String contentSections;
 
-    @Column(name = "filter_tags", columnDefinition = "TEXT")
-    private String filterTags;
-
     @Builder.Default
     @Column(name = "importance_score", nullable = false)
     private Integer importanceScore = 0;

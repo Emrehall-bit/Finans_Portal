@@ -6,7 +6,6 @@ import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.enums.NewsQualityStatus;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Locale;
 
 @Component
@@ -44,7 +43,6 @@ public class NewsPresentationMapper {
                 .qualityStatus(qualityStatus)
                 .isKapDisclosure(isKapDisclosure)
                 .disclosureType(resolveDisclosureType(news, isKapDisclosure))
-                .tags(List.of())
                 .build();
     }
 

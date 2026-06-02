@@ -11,12 +11,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class NewsFilterTagsBackfillResponseDto {
+public class NewsCategoryRepairResponseDto {
 
     private int processedCount;
-    private int updatedCount;
-    private int skippedKapCount;
+    private int changedCategoryCount;
     private int unchangedCount;
+    private int skippedKapCount;
     private List<SampleChangeDto> sampleChanges;
 
     @Getter
@@ -28,9 +28,6 @@ public class NewsFilterTagsBackfillResponseDto {
         private String title;
         private String oldCategory;
         private String newCategory;
+        private String reason;
     }
 }
-
-
-
-

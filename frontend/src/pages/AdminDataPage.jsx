@@ -27,7 +27,7 @@ import {
   updateMarketTapeConfig,
   seedMockRatios,
 } from "../api/adminApi";
-import { auditAffectedInstruments, syncNews } from "../api/newsApi";
+import { auditAffectedInstruments, repairNewsCategories, syncNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { getNewsProviderLabel } from "../components/news/newsCardUtils";
 import EmptyState from "../components/common/EmptyState";
@@ -73,6 +73,7 @@ export default function AdminDataPage() {
   const [tefasFundCode, setTefasFundCode] = useState("");
   const [tefasPeriod, setTefasPeriod] = useState("");
   const [affectedAuditLimit, setAffectedAuditLimit] = useState("100");
+  const [categoryRepairLimit, setCategoryRepairLimit] = useState("500");
   const [marketTapeSymbols, setMarketTapeSymbols] = useState([]);
   const [marketTapeCatalog, setMarketTapeCatalog] = useState([]);
   const [marketTapeSearch, setMarketTapeSearch] = useState("");
@@ -313,6 +314,58 @@ export default function AdminDataPage() {
           ),
       },
       {
+        key: "news-category-repair",
+        group: "live",
+        eyebrow: "News Repair",
+        title: "DB Category Repair",
+        description:
+          "KAP dışı haberlerde DB'deki eski category değerlerini mevcut classifier sonucuyla karşılaştırır. Önce dry-run çalıştır.",
+        input: (
+          <input
+            type="number"
+            min="1"
+            max="5000"
+            step="1"
+            value={categoryRepairLimit}
+            onChange={(event) => setCategoryRepairLimit(event.target.value)}
+            className="admin-console-input"
+            placeholder="500"
+          />
+        ),
+        actions: [
+          {
+            key: "news-category-repair-dry-run",
+            label: "Dry-run",
+            onClick: () =>
+              runAction("news-category-repair-dry-run", () =>
+                repairNewsCategories({
+                  limit: Number.parseInt(categoryRepairLimit, 10) || 500,
+                  dryRun: true,
+                }),
+              ),
+          },
+          {
+            key: "news-category-repair-apply",
+            label: "DB'ye uygula",
+            secondary: true,
+            onClick: () => {
+              const confirmed = window.confirm(
+                "Category repair dryRun=false çalışacak ve DB'deki category değerlerini güncelleyecek. Devam edilsin mi?",
+              );
+              if (!confirmed) {
+                return;
+              }
+              return runAction("news-category-repair-apply", () =>
+                repairNewsCategories({
+                  limit: Number.parseInt(categoryRepairLimit, 10) || 500,
+                  dryRun: false,
+                }),
+              );
+            },
+          },
+        ],
+      },
+      {
         key: "tcmb-sync",
         group: "live",
         eyebrow: t("admin.cards.tcmbSync.eyebrow"),
@@ -492,7 +545,16 @@ export default function AdminDataPage() {
           ),
       },
     ],
-    [affectedAuditLimit, binanceDays, commodityHistoryDays, indexHistoryDays, tefasFundCode, tefasPeriod, t],
+    [
+      affectedAuditLimit,
+      binanceDays,
+      categoryRepairLimit,
+      commodityHistoryDays,
+      indexHistoryDays,
+      tefasFundCode,
+      tefasPeriod,
+      t,
+    ],
   );
 
   const runMacroSyncAll = async () => {
@@ -694,15 +756,32 @@ export default function AdminDataPage() {
         <p>{card.description}</p>
       </div>
       {card.input ?? null}
-      <button
-        type="button"
-        className="admin-console-button"
-        disabled={controlsDisabled}
-        onClick={card.onClick}
-      >
-        <span className="admin-console-button-glow" />
-        <span>{isBusy(card.key) ? t("admin.running") : card.actionLabel}</span>
-      </button>
+      {Array.isArray(card.actions) && card.actions.length > 0 ? (
+        <div className="admin-console-actions admin-operation-actions">
+          {card.actions.map((action) => (
+            <button
+              key={action.key}
+              type="button"
+              className={`admin-console-button${action.secondary ? " admin-console-button-secondary" : ""}`}
+              disabled={controlsDisabled}
+              onClick={action.onClick}
+            >
+              <span className="admin-console-button-glow" />
+              <span>{isBusy(action.key) ? t("admin.running") : action.label}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="admin-console-button"
+          disabled={controlsDisabled}
+          onClick={card.onClick}
+        >
+          <span className="admin-console-button-glow" />
+          <span>{isBusy(card.key) ? t("admin.running") : card.actionLabel}</span>
+        </button>
+      )}
       {renderJobProgress(card.key)}
     </article>
   );
@@ -713,6 +792,13 @@ export default function AdminDataPage() {
     typeof result.checkedCount === "number" &&
     Array.isArray(result.suspiciousItems);
 
+  const isCategoryRepairResult =
+    result &&
+    typeof result === "object" &&
+    typeof result.processedCount === "number" &&
+    typeof result.changedCategoryCount === "number" &&
+    Array.isArray(result.sampleChanges);
+
   const renderResultPanel = () => {
     if (!result) {
       return (
@@ -720,6 +806,56 @@ export default function AdminDataPage() {
           title={t("admin.result.emptyTitle")}
           description={t("admin.result.emptyDescription")}
         />
+      );
+    }
+
+    if (isCategoryRepairResult) {
+      const sampleChanges = result.sampleChanges ?? [];
+
+      return (
+        <div className="admin-audit-result">
+          <div className="admin-audit-metrics">
+            <div className="admin-console-metric-card">
+              <span>Processed</span>
+              <strong>{result.processedCount ?? 0}</strong>
+            </div>
+            <div className="admin-console-metric-card">
+              <span>Changed</span>
+              <strong>{result.changedCategoryCount ?? 0}</strong>
+            </div>
+            <div className="admin-console-metric-card">
+              <span>Unchanged</span>
+              <strong>{result.unchangedCount ?? 0}</strong>
+            </div>
+            <div className="admin-console-metric-card">
+              <span>Skipped KAP</span>
+              <strong>{result.skippedKapCount ?? 0}</strong>
+            </div>
+          </div>
+
+          {sampleChanges.length === 0 ? (
+            <EmptyState
+              title="Category repair değişikliği yok"
+              description="Mevcut limit içinde classifier sonucuna göre category değişimi bulunmadı."
+            />
+          ) : (
+            <div className="admin-audit-list">
+              {sampleChanges.map((item) => (
+                <article key={item.id} className="admin-audit-item">
+                  <div className="admin-audit-item-head">
+                    <strong>{item.title}</strong>
+                    <span className="summary-chip">#{item.id}</span>
+                  </div>
+                  <div className="admin-audit-meta">
+                    <span>Old: {item.oldCategory || "-"}</span>
+                    <span>New: {item.newCategory || "-"}</span>
+                  </div>
+                  {item.reason ? <p className="admin-console-copy">{item.reason}</p> : null}
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
       );
     }
 
@@ -774,9 +910,6 @@ export default function AdminDataPage() {
                 <p className="admin-console-copy">{item.suspiciousReason}</p>
                 <div className="admin-audit-meta">
                   <span>{t("admin.audit.category")}: {item.category || "-"}</span>
-                  <span>
-                    {t("admin.audit.tags")}: {Array.isArray(item.filterTags) && item.filterTags.length ? item.filterTags.join(", ") : "-"}
-                  </span>
                   <span>
                     {t("admin.audit.symbols")}: {Array.isArray(item.affectedSymbols) && item.affectedSymbols.length ? item.affectedSymbols.join(", ") : "-"}
                   </span>

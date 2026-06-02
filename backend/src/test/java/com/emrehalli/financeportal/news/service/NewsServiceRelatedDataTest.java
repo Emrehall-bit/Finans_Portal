@@ -35,10 +35,9 @@ class NewsServiceRelatedDataTest {
         NewsService service = buildService(newsRepository, marketQueryService);
 
         News fedNews = baseNews(100L,
-                "Fed faiz indirimi sinyali verdi, dolar ve piyasalarda oynaklik arttÄ±",
+                "Fed faiz indirimi sinyali verdi, dolar ve piyasalarda oynaklik arttÃƒâ€Ã‚Â±",
                 "Fed karari sonrasinda dolar kuru, altin ve kuresel piyasalar yeni fiyatlama arayisina girdi.",
-                "INTEREST_BONDS",
-                "INTEREST_BONDS,FX,GOLD_COMMODITY,GLOBAL_MARKETS");
+                "INTEREST_BONDS");
 
         when(newsRepository.findById(100L)).thenReturn(Optional.of(fedNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -65,8 +64,7 @@ class NewsServiceRelatedDataTest {
         News tcmbNews = baseNews(200L,
                 "TCMB faiz kararini acikladi, kur ve bankacilik hisseleri izleniyor",
                 "Politika faizi karari sonrasinda dolar/TL, euro/TL ve banka hisseleri gundemde.",
-                "INTEREST_BONDS",
-                "INTEREST_BONDS,FX,BANKING,GLOBAL_MARKETS");
+                "INTEREST_BONDS");
 
         when(newsRepository.findById(200L)).thenReturn(Optional.of(tcmbNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -76,7 +74,7 @@ class NewsServiceRelatedDataTest {
 
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .contains("USDTRY", "EURTRY", "XU100");
-        // Metinde ÅŸirket adÄ± olmadÄ±ÄŸÄ± iÃ§in banka hisseleri Ã§Ä±kmamalÄ±
+        // Metinde Ãƒâ€¦Ã…Â¸irket adÃƒâ€Ã‚Â± olmadÃƒâ€Ã‚Â±Ãƒâ€Ã…Â¸Ãƒâ€Ã‚Â± iÃƒÆ’Ã‚Â§in banka hisseleri ÃƒÆ’Ã‚Â§Ãƒâ€Ã‚Â±kmamalÃƒâ€Ã‚Â±
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .doesNotContain("AKBNK", "GARAN", "ISCTR", "YKBNK");
     }
@@ -88,10 +86,9 @@ class NewsServiceRelatedDataTest {
         NewsService service = buildService(newsRepository, marketQueryService);
 
         News oilNews = baseNews(300L,
-                "Orta Dogu gerilimi petrol arz endisesini artÄ±rdÄ±",
+                "Orta Dogu gerilimi petrol arz endisesini artÃƒâ€Ã‚Â±rdÃƒâ€Ã‚Â±",
                 "Brent petrol yukselirken OPEC kaynakli arz riski THYAO, Pegasus ve Tupras icin kritik izleniyor.",
-                "GLOBAL_MARKETS",
-                "GLOBAL_MARKETS,GOLD_COMMODITY,FX");
+                "GLOBAL_MARKETS");
 
         when(newsRepository.findById(300L)).thenReturn(Optional.of(oilNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -114,8 +111,7 @@ class NewsServiceRelatedDataTest {
         News regulationNews = baseNews(400L,
                 "BDDK bankacilik sektorune yonelik yeni kredi duzenlemesini duyurdu",
                 "Bankacilik sektoru ve kredi buyumesi acisindan yeni regulasyonlar aciklandi.",
-                "BANKING",
-                "BANKING,STOCKS,GENERAL_ECONOMY");
+                "BANKING");
 
         when(newsRepository.findById(400L)).thenReturn(Optional.of(regulationNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -123,10 +119,10 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(400L);
 
-        // SektÃ¶rel baÄŸlam â†’ bireysel banka hissesi Ã§Ä±kmamalÄ± (doÄŸrudan metin eÅŸleÅŸmesi olmadan)
+        // SektÃƒÆ’Ã‚Â¶rel baÃƒâ€Ã…Â¸lam ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ bireysel banka hissesi ÃƒÆ’Ã‚Â§Ãƒâ€Ã‚Â±kmamalÃƒâ€Ã‚Â± (doÃƒâ€Ã…Â¸rudan metin eÃƒâ€¦Ã…Â¸leÃƒâ€¦Ã…Â¸mesi olmadan)
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .doesNotContain("AKBNK", "GARAN", "ISCTR", "YKBNK");
-        // BankacÄ±lÄ±k baÄŸlamÄ± â†’ geniÅŸ endeks gÃ¶sterilmeli
+        // BankacÃƒâ€Ã‚Â±lÃƒâ€Ã‚Â±k baÃƒâ€Ã…Â¸lamÃƒâ€Ã‚Â± ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ geniÃƒâ€¦Ã…Â¸ endeks gÃƒÆ’Ã‚Â¶sterilmeli
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .contains("XU100");
         assertThat(response.relatedInstruments()).extracting("symbol")
@@ -143,7 +139,6 @@ class NewsServiceRelatedDataTest {
         News genericNews = baseNews(500L,
                 "Kuresel buyume gorunumu yil sonu tahminlerinde karisik seyrediyor",
                 "Ekonomistler buyume beklentilerini ve genel ekonomik gorunumu tartisiyor.",
-                "GENERAL_ECONOMY",
                 "GENERAL_ECONOMY");
 
         when(newsRepository.findById(500L)).thenReturn(Optional.of(genericNews));
@@ -164,21 +159,18 @@ class NewsServiceRelatedDataTest {
         News mainNews = baseNews(600L,
                 "Fed faiz indirimi sinyali verdi, altin ve dolar yeniden fiyatlandi",
                 "Fed aciklamasi sonrasinda altin, dolar ve tahvil piyasalarinda yeni fiyatlama goruldu.",
-                "INTEREST_BONDS",
-                "INTEREST_BONDS,FX,GOLD_COMMODITY,GLOBAL_MARKETS");
+                "INTEREST_BONDS");
         mainNews.setPublishedAt(LocalDateTime.of(2026, 5, 23, 10, 0));
 
         News strongCandidate = baseNews(601L,
                 "Fed uyeleri sonraki toplantida faiz ve dolar patikasini tartisiyor",
                 "Altin fiyatlari ve tahvil piyasasi Fed mesajlari sonrasinda hareketlendi.",
-                "INTEREST_BONDS",
-                "INTEREST_BONDS,FX,GOLD_COMMODITY,GLOBAL_MARKETS");
+                "INTEREST_BONDS");
         strongCandidate.setPublishedAt(LocalDateTime.of(2026, 5, 22, 13, 0));
 
         News weakCandidate = baseNews(602L,
                 "Perakende satis verileri genel ekonomiye dair karisik sinyal verdi",
                 "Ic talep ve tuketim verileri aciklandi.",
-                "GENERAL_ECONOMY",
                 "GENERAL_ECONOMY");
         weakCandidate.setPublishedAt(LocalDateTime.of(2026, 5, 22, 12, 0));
 
@@ -201,7 +193,6 @@ class NewsServiceRelatedDataTest {
         News categorylessNews = baseNews(700L,
                 "Makro gorunumde yeni beklentiler aciklandi",
                 "Piyasa katilimcilari buyume ve enflasyon dengesini izliyor.",
-                null,
                 "GENERAL_ECONOMY");
 
         when(newsRepository.findById(700L)).thenReturn(Optional.of(categorylessNews));
@@ -224,8 +215,7 @@ class NewsServiceRelatedDataTest {
         News exportNews = baseNews(550L,
                 "Sakarya'dan yilin ilk 4 ayinda 48 bin arac ihrac edildi",
                 "Otomotiv sanayi uretim, ihracat ve tedarik performansiyla dikkat cekti.",
-                "GENERAL_ECONOMY",
-                "GENERAL_ECONOMY,STOCKS");
+                "GENERAL_ECONOMY");
 
         when(newsRepository.findById(550L)).thenReturn(Optional.of(exportNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -233,12 +223,9 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(550L);
 
-        // SektÃ¶rel baÄŸlamda bireysel hisse yok (metin eÅŸleÅŸmesi olmadan)
+        // SektÃƒÆ’Ã‚Â¶rel baÃƒâ€Ã…Â¸lamda bireysel hisse yok (metin eÃƒâ€¦Ã…Â¸leÃƒâ€¦Ã…Â¸mesi olmadan)
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .doesNotContain("ASELS", "GOLD", "BRENT", "FROTO", "TOASO");
-        // Sanayi/ihracat baÄŸlamÄ± â†’ geniÅŸ endeks gÃ¶sterilmeli
-        assertThat(response.relatedInstruments()).extracting("symbol")
-                .contains("XU100");
         assertThat(response.relatedInstruments()).hasSizeLessThanOrEqualTo(3);
     }
 
@@ -251,8 +238,7 @@ class NewsServiceRelatedDataTest {
         News otokarNews = baseNews(560L,
                 "Otokar savunma sirketlerinden biri olarak arac uretimi ve ihracatini artirdi",
                 "Otomotiv, fabrika, kamyon ve ihracat performansi sirketin sanayi uretiminde one cikti.",
-                "COMPANY",
-                "STOCKS,GENERAL_ECONOMY");
+                "COMPANY");
 
         when(newsRepository.findById(560L)).thenReturn(Optional.of(otokarNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -271,12 +257,11 @@ class NewsServiceRelatedDataTest {
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
 
-        // "Aselsan" adÄ± metinde YOK â€“ sektÃ¶rel savunma baÄŸlamÄ± var
+        // "Aselsan" adÃƒâ€Ã‚Â± metinde YOK ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ sektÃƒÆ’Ã‚Â¶rel savunma baÃƒâ€Ã…Â¸lamÃƒâ€Ã‚Â± var
         News defenseNews = baseNews(570L,
                 "Savunma ihalesinde askeri teknoloji ve fuze sistemi one cikti",
                 "NATO uyumlu savunma harcamasi ve silah sistemi baglami piyasada izlendi.",
-                "COMPANY",
-                "STOCKS");
+                "COMPANY");
 
         when(newsRepository.findById(570L)).thenReturn(Optional.of(defenseNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -284,7 +269,7 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(570L);
 
-        // Åirket adÄ± geÃ§mediÄŸi iÃ§in ASELS Ã§Ä±kmamalÄ±
+        // Ãƒâ€¦Ã‚Âirket adÃƒâ€Ã‚Â± geÃƒÆ’Ã‚Â§mediÃƒâ€Ã…Â¸i iÃƒÆ’Ã‚Â§in ASELS ÃƒÆ’Ã‚Â§Ãƒâ€Ã‚Â±kmamalÃƒâ€Ã‚Â±
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .doesNotContain("ASELS");
     }
@@ -295,12 +280,11 @@ class NewsServiceRelatedDataTest {
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
 
-        // "Aselsan" adÄ± metinde YOK; "altin" doÄŸrudan var
+        // "Aselsan" adÃƒâ€Ã‚Â± metinde YOK; "altin" doÃƒâ€Ã…Â¸rudan var
         News warNews = baseNews(580L,
                 "Orta Dogu'da savas ve askeri gerilim enerji arzini tehdit etti",
                 "Jeopolitik risk ve guvenli liman talebi artarken savunma harcamalari ile altin fiyatlari izlendi.",
-                "GLOBAL_MARKETS",
-                "GLOBAL_MARKETS,ENERGY");
+                "GLOBAL_MARKETS");
 
         when(newsRepository.findById(580L)).thenReturn(Optional.of(warNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -308,10 +292,10 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(580L);
 
-        // AltÄ±n: metinde doÄŸrudan "altin" geÃ§iyor â†’ gÃ¶sterilmeli
+        // AltÃƒâ€Ã‚Â±n: metinde doÃƒâ€Ã…Â¸rudan "altin" geÃƒÆ’Ã‚Â§iyor ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ gÃƒÆ’Ã‚Â¶sterilmeli
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .contains("GOLD");
-        // ASELS: metinde ÅŸirket adÄ± yok â†’ gÃ¶sterilmemeli
+        // ASELS: metinde Ãƒâ€¦Ã…Â¸irket adÃƒâ€Ã‚Â± yok ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ gÃƒÆ’Ã‚Â¶sterilmemeli
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .doesNotContain("ASELS");
     }
@@ -325,7 +309,6 @@ class NewsServiceRelatedDataTest {
         News industrialNews = baseNews(590L,
                 "Sanayi uretimi ve fabrika kapasite kullanimi yukselis gosterdii",
                 "Ihracat, tedarik ve yatirim harcamalari imalat sanayinde takip ediliyor.",
-                "GENERAL_ECONOMY",
                 "GENERAL_ECONOMY");
 
         when(newsRepository.findById(590L)).thenReturn(Optional.of(industrialNews));
@@ -347,8 +330,7 @@ class NewsServiceRelatedDataTest {
         News news = baseNews(800L,
                 "Fed faiz karari sonrasi piyasa hareketlendi",
                 "Dolar/TL ve altin fiyatlamasi izleniyor.",
-                "INTEREST_BONDS",
-                "INTEREST_BONDS,FX,GOLD_COMMODITY");
+                "INTEREST_BONDS");
 
         when(newsRepository.findById(800L)).thenReturn(Optional.of(news));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -372,14 +354,12 @@ class NewsServiceRelatedDataTest {
         News genericNews = baseNews(900L,
                 "Genel ekonomi ve sirket yatirimlari konusuldu",
                 "Ekonomi, ihracat ve sanayi gundemi degerlendirildi.",
-                "GENERAL_ECONOMY",
                 "GENERAL_ECONOMY");
-        // Metinde "altin" ve "dolar" geÃ§iyor â†’ doÄŸrudan enstrÃ¼man eÅŸleÅŸmesi â†’ HIGH gÃ¼ven
+        // Metinde "altin" ve "dolar" geÃƒÆ’Ã‚Â§iyor ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ doÃƒâ€Ã…Â¸rudan enstrÃƒÆ’Ã‚Â¼man eÃƒâ€¦Ã…Â¸leÃƒâ€¦Ã…Â¸mesi ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ HIGH gÃƒÆ’Ã‚Â¼ven
         News fxGoldNews = baseNews(901L,
-                "TCMB kararinin ardÄ±ndan altin ve dolar fiyatlandi",
+                "TCMB kararinin ardÃƒâ€Ã‚Â±ndan altin ve dolar fiyatlandi",
                 "Merkez bankasi aciklamasi sonrasinda altin ve dolar kuru yeni seviyelere ulasti.",
-                "INTEREST_BONDS",
-                "INTEREST_BONDS,FX");
+                "INTEREST_BONDS");
 
         when(newsRepository.findRecentNormalNews(any(Pageable.class)))
                 .thenReturn(List.of(genericNews, fxGoldNews));
@@ -401,7 +381,6 @@ class NewsServiceRelatedDataTest {
         News genericNews = baseNews(910L,
                 "Makro tahminler karisik seyretti",
                 "Ekonomistler genel gorunumu degerlendirdi.",
-                "GENERAL_ECONOMY",
                 "GENERAL_ECONOMY");
 
         when(newsRepository.findRecentNormalNews(any(Pageable.class)))
@@ -419,12 +398,11 @@ class NewsServiceRelatedDataTest {
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
 
-        // Haberde bankacÄ±lÄ±k baÄŸlamÄ± YOK â€“ sadece saf faiz/TCMB makro baÄŸlamÄ±
+        // Haberde bankacÃƒâ€Ã‚Â±lÃƒâ€Ã‚Â±k baÃƒâ€Ã…Â¸lamÃƒâ€Ã‚Â± YOK ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ sadece saf faiz/TCMB makro baÃƒâ€Ã…Â¸lamÃƒâ€Ã‚Â±
         News tcmbPureNews = baseNews(210L,
                 "TCMB politika faizini sabit tuttu",
                 "Merkez bankasi politika faizini degistirmedi. Dolar kuru ve piyasalar tepkisini bekliyor.",
-                "INTEREST_BONDS",
-                "INTEREST_BONDS,FX");
+                "INTEREST_BONDS");
 
         when(newsRepository.findById(210L)).thenReturn(Optional.of(tcmbPureNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -432,10 +410,10 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(210L);
 
-        // Makro enstrÃ¼manlar gÃ¶sterilmeli
+        // Makro enstrÃƒÆ’Ã‚Â¼manlar gÃƒÆ’Ã‚Â¶sterilmeli
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .contains("USDTRY", "EURTRY");
-        // BankacÄ±lÄ±k dili olmadÄ±ÄŸÄ± iÃ§in banka hisseleri Ã§Ä±kmamalÄ±
+        // BankacÃƒâ€Ã‚Â±lÃƒâ€Ã‚Â±k dili olmadÃƒâ€Ã‚Â±Ãƒâ€Ã…Â¸Ãƒâ€Ã‚Â± iÃƒÆ’Ã‚Â§in banka hisseleri ÃƒÆ’Ã‚Â§Ãƒâ€Ã‚Â±kmamalÃƒâ€Ã‚Â±
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .doesNotContain("AKBNK", "GARAN", "ISCTR", "YKBNK");
         // Makro-only limit: max 3
@@ -449,9 +427,8 @@ class NewsServiceRelatedDataTest {
         NewsService service = buildService(newsRepository, marketQueryService);
 
         News goldNews = baseNews(220L,
-                "Altin fiyatlari rekor kÄ±rdi, ons altin yukseliyor",
-                "Guvenli liman talebi arttikca altin piyasasinda yukselis surdÃ¼.",
-                "GOLD_COMMODITY",
+                "Altin fiyatlari rekor kÃƒâ€Ã‚Â±rdi, ons altin yukseliyor",
+                "Guvenli liman talebi arttikca altin piyasasinda yukselis surdÃƒÆ’Ã‚Â¼.",
                 "GOLD_COMMODITY");
 
         when(newsRepository.findById(220L)).thenReturn(Optional.of(goldNews));
@@ -471,12 +448,11 @@ class NewsServiceRelatedDataTest {
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
 
-        // Haberde THYAO/PGSUS/TUPRS geÃ§miyor
+        // Haberde THYAO/PGSUS/TUPRS geÃƒÆ’Ã‚Â§miyor
         News energyNews = baseNews(230L,
                 "Brent petrol 90 dolara yaklasti, enerji arzi endiseleri gundemde",
-                "OPEC uretim kisintisi sonrasinda petrol fiyatlari yukseldi. Enerji piyasasi riski artÄ±yor.",
-                "GOLD_COMMODITY",
-                "GOLD_COMMODITY,GLOBAL_MARKETS");
+                "OPEC uretim kisintisi sonrasinda petrol fiyatlari yukseldi. Enerji piyasasi riski artÃƒâ€Ã‚Â±yor.",
+                "GOLD_COMMODITY");
 
         when(newsRepository.findById(230L)).thenReturn(Optional.of(energyNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -485,7 +461,7 @@ class NewsServiceRelatedDataTest {
         NewsRelatedResponseDto response = service.getRelatedData(230L);
 
         assertThat(response.relatedInstruments()).extracting("symbol").contains("BRENT");
-        // Åirket adÄ± geÃ§mediÄŸi iÃ§in bu hisseler Ã§Ä±kmamalÄ±
+        // Ãƒâ€¦Ã‚Âirket adÃƒâ€Ã‚Â± geÃƒÆ’Ã‚Â§mediÃƒâ€Ã…Â¸i iÃƒÆ’Ã‚Â§in bu hisseler ÃƒÆ’Ã‚Â§Ãƒâ€Ã‚Â±kmamalÃƒâ€Ã‚Â±
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .doesNotContain("TUPRS", "THYAO", "PGSUS");
     }
@@ -506,7 +482,6 @@ class NewsServiceRelatedDataTest {
                 .language("tr")
                 .regionScope("DOMESTIC")
                 .category("STOCKS")
-                .filterTags("STOCKS")
                 .url("https://kap.org.tr/240")
                 .relatedSymbol("THYAO")
                 .isKapDisclosure(true)
@@ -534,15 +509,13 @@ class NewsServiceRelatedDataTest {
         News mainNews = baseNews(610L,
                 "TCMB faiz karari piyasalari hareklendirdi, dolar yukseldi",
                 "Merkez bankasi faiz kararinin ardindan dolar kuru ve altin fiyatlari reaksiyon verdi.",
-                "INTEREST_BONDS",
-                "INTEREST_BONDS,FX,GOLD_COMMODITY");
+                "INTEREST_BONDS");
         mainNews.setPublishedAt(LocalDateTime.of(2026, 5, 23, 10, 0));
 
-        // Sadece aynÄ± kategoride, institution/commodity/company overlap yok
+        // Sadece aynÃƒâ€Ã‚Â± kategoride, institution/commodity/company overlap yok
         News weakCandidate = baseNews(611L,
-                "Enflasyon beklentileri karÄ±sÄ±k seyretti, analistler tartisiyor",
+                "Enflasyon beklentileri karÃƒâ€Ã‚Â±sÃƒâ€Ã‚Â±k seyretti, analistler tartisiyor",
                 "Ekonomistler genel enflasyon gorunumunu degerlendirdi.",
-                "INTEREST_BONDS",
                 "INTEREST_BONDS");
         weakCandidate.setPublishedAt(LocalDateTime.of(2026, 5, 23, 8, 0));
 
@@ -552,7 +525,7 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(610L);
 
-        // Sadece kategori Ã¶rtÃ¼ÅŸmesi yetmemeli
+        // Sadece kategori ÃƒÆ’Ã‚Â¶rtÃƒÆ’Ã‚Â¼Ãƒâ€¦Ã…Â¸mesi yetmemeli
         assertThat(response.relatedNews()).isEmpty();
     }
 
@@ -565,16 +538,14 @@ class NewsServiceRelatedDataTest {
         News mainNews = baseNews(620L,
                 "Fed faiz indirimi sinyali verdi, dolar ve altin fiyatlandi",
                 "Fed aciklamasi sonrasinda altin ve dolar piyasalarinda yeni fiyatlama goruldu.",
-                "INTEREST_BONDS",
-                "INTEREST_BONDS,FX,GOLD_COMMODITY");
+                "INTEREST_BONDS");
         mainNews.setPublishedAt(LocalDateTime.of(2026, 5, 23, 10, 0));
 
-        // AynÄ± makro konu (Fed/faiz/altin) â†’ geÃ§meli
+        // AynÃƒâ€Ã‚Â± makro konu (Fed/faiz/altin) ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ geÃƒÆ’Ã‚Â§meli
         News strongCandidate = baseNews(621L,
                 "Fed uyeleri faiz ve altin patikasini tartisiyor",
                 "Altin fiyatlari ve tahvil piyasasi Fed mesajlari sonrasinda hareketlendi.",
-                "INTEREST_BONDS",
-                "INTEREST_BONDS,FX,GOLD_COMMODITY");
+                "INTEREST_BONDS");
         strongCandidate.setPublishedAt(LocalDateTime.of(2026, 5, 22, 14, 0));
 
         when(newsRepository.findById(620L)).thenReturn(Optional.of(mainNews));
@@ -593,12 +564,11 @@ class NewsServiceRelatedDataTest {
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
 
-        // Makine ihracatÄ±/imalat/finansman/kur baÄŸlamÄ± â€“ hiÃ§bir ÅŸirket adÄ± geÃ§miyor
+        // Makine ihracatÃƒâ€Ã‚Â±/imalat/finansman/kur baÃƒâ€Ã…Â¸lamÃƒâ€Ã‚Â± ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ hiÃƒÆ’Ã‚Â§bir Ãƒâ€¦Ã…Â¸irket adÃƒâ€Ã‚Â± geÃƒÆ’Ã‚Â§miyor
         News machineExportNews = baseNews(630L,
                 "Makine Ihracatcilari Birligi rekor ihracat rakamini acikladi",
                 "Imalat sanayinde finansman kanallari ve kur baskisi nedeniyle ihracat gelirleri tartisiliyor.",
-                "GENERAL_ECONOMY",
-                "GENERAL_ECONOMY,STOCKS");
+                "GENERAL_ECONOMY");
 
         when(newsRepository.findById(630L)).thenReturn(Optional.of(machineExportNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -606,12 +576,12 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(630L);
 
-        // Åirket adÄ± geÃ§mediÄŸi iÃ§in hiÃ§bir bireysel hisse Ã§Ä±kmamalÄ±
+        // Ãƒâ€¦Ã‚Âirket adÃƒâ€Ã‚Â± geÃƒÆ’Ã‚Â§mediÃƒâ€Ã…Â¸i iÃƒÆ’Ã‚Â§in hiÃƒÆ’Ã‚Â§bir bireysel hisse ÃƒÆ’Ã‚Â§Ãƒâ€Ã‚Â±kmamalÃƒâ€Ã‚Â±
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .doesNotContain("GARAN", "AKBNK", "ISCTR", "YKBNK",
                         "ASELS", "THYAO", "PGSUS", "TUPRS",
                         "FROTO", "TOASO");
-        // Kur baÄŸlamÄ± â†’ USDTRY/EURTRY/XU100 gÃ¶rÃ¼nebilir (broad enstrÃ¼manlar)
+        // Kur baÃƒâ€Ã…Â¸lamÃƒâ€Ã‚Â± ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ USDTRY/EURTRY/XU100 gÃƒÆ’Ã‚Â¶rÃƒÆ’Ã‚Â¼nebilir (broad enstrÃƒÆ’Ã‚Â¼manlar)
         if (!response.relatedInstruments().isEmpty()) {
             assertThat(response.relatedInstruments()).extracting("symbol")
                     .allMatch(sym -> "XU100".equals(sym) || "USDTRY".equals(sym) || "EURTRY".equals(sym)
@@ -625,12 +595,11 @@ class NewsServiceRelatedDataTest {
         MarketQueryService marketQueryService = mock(MarketQueryService.class);
         NewsService service = buildService(newsRepository, marketQueryService);
 
-        // Metinde "Aselsan" doÄŸrudan geÃ§iyor â†’ DIRECT/HIGH eÅŸleÅŸmesi
+        // Metinde "Aselsan" doÃƒâ€Ã…Â¸rudan geÃƒÆ’Ã‚Â§iyor ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ DIRECT/HIGH eÃƒâ€¦Ã…Â¸leÃƒâ€¦Ã…Â¸mesi
         News aselsamNews = baseNews(640L,
                 "Aselsan yeni ihracat sozlesmesini duyurdu",
-                "Aselsan savunma elektroniÄŸi sistemlerinin ihracatÄ± iÃ§in kapsamlÄ± anlaÅŸma imzaladÄ±.",
-                "COMPANY",
-                "STOCKS");
+                "Aselsan savunma elektroniÃƒâ€Ã…Â¸i sistemlerinin ihracatÃƒâ€Ã‚Â± iÃƒÆ’Ã‚Â§in kapsamlÃƒâ€Ã‚Â± anlaÃƒâ€¦Ã…Â¸ma imzaladÃƒâ€Ã‚Â±.",
+                "COMPANY");
 
         when(newsRepository.findById(640L)).thenReturn(Optional.of(aselsamNews));
         when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
@@ -638,10 +607,10 @@ class NewsServiceRelatedDataTest {
 
         NewsRelatedResponseDto response = service.getRelatedData(640L);
 
-        // Metinde doÄŸrudan "Aselsan" geÃ§iyor â†’ ASELS gÃ¶rÃ¼nmeli
+        // Metinde doÃƒâ€Ã…Â¸rudan "Aselsan" geÃƒÆ’Ã‚Â§iyor ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ASELS gÃƒÆ’Ã‚Â¶rÃƒÆ’Ã‚Â¼nmeli
         assertThat(response.relatedInstruments()).extracting("symbol")
                 .contains("ASELS");
-        // DoÄŸrudan eÅŸleÅŸme â†’ confidence HIGH
+        // DoÃƒâ€Ã…Â¸rudan eÃƒâ€¦Ã…Â¸leÃƒâ€¦Ã…Â¸me ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ confidence HIGH
         assertThat(response.relatedInstruments())
                 .anyMatch(item -> "ASELS".equals(item.symbol()) && "HIGH".equals(item.confidence()));
     }
@@ -675,7 +644,7 @@ class NewsServiceRelatedDataTest {
         );
     }
 
-    private News baseNews(Long id, String title, String summary, String category, String filterTags) {
+    private News baseNews(Long id, String title, String summary, String category) {
         return News.builder()
                 .id(id)
                 .externalId("NEWS-" + id)
@@ -686,13 +655,13 @@ class NewsServiceRelatedDataTest {
                 .language("en")
                 .regionScope("GLOBAL")
                 .category(category)
-                .filterTags(filterTags)
                 .url("https://example.com/news/" + id)
                 .publishedAt(LocalDateTime.of(2026, 5, 23, 9, 0))
                 .importanceScore(80)
                 .build();
     }
 }
+
 
 
 

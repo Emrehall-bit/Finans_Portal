@@ -7,6 +7,7 @@ import com.emrehalli.financeportal.common.logging.LoggingConstants;
 import com.emrehalli.financeportal.common.logging.LoggingContext;
 import com.emrehalli.financeportal.news.config.NewsNotificationProperties;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
+import com.emrehalli.financeportal.news.dto.response.NewsCategoryRepairResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
@@ -84,6 +85,8 @@ public class NewsService {
     private static final int MAX_NO_HIGH_CONFIDENCE_INSTRUMENTS = 3;
     private static final int RELATED_NEWS_RECENCY_HOURS = 72;
     private static final int MAX_AFFECTED_INSTRUMENT_AUDIT_LIMIT = 500;
+    private static final int MAX_CATEGORY_REPAIR_LIMIT = 5_000;
+    private static final int CATEGORY_REPAIR_SAMPLE_LIMIT = 10;
     private static final Pattern TOKEN_SPLIT_PATTERN = Pattern.compile("[^\\p{L}\\p{Nd}]+");
     private static final Set<String> TRACKING_QUERY_PARAMS = Set.of(
             "fbclid", "gclid", "mc_cid", "mc_eid", "ref", "ref_src", "spm", "igshid"
@@ -346,6 +349,80 @@ public class NewsService {
                 .build();
     }
 
+    @Transactional
+    public NewsCategoryRepairResponseDto repairCategories(int limit, boolean dryRun) {
+        int validatedLimit = Math.max(1, Math.min(limit, MAX_CATEGORY_REPAIR_LIMIT));
+        List<News> candidates = newsRepository.findRecentNormalNews(
+                PageRequest.of(0, validatedLimit, Sort.by(Sort.Direction.DESC, "publishedAt")
+                        .and(Sort.by(Sort.Direction.DESC, "createdAt")))
+        );
+
+        int processedCount = 0;
+        int changedCategoryCount = 0;
+        int unchangedCount = 0;
+        int skippedKapCount = 0;
+        List<NewsCategoryRepairResponseDto.SampleChangeDto> sampleChanges = new ArrayList<>();
+
+        for (News news : candidates) {
+            processedCount++;
+            if (isKapNews(news)) {
+                skippedKapCount++;
+                continue;
+            }
+
+            NewsCategoryClassifier.ClassificationResult classificationResult = newsCategoryClassifier.classify(
+                    news.getTitle(),
+                    news.getSummary(),
+                    deriveClassificationPreview(news),
+                    resolveRepairCategoryHint(news)
+            );
+
+            String oldCategory = normalizeNullable(news.getCategory());
+            String newCategory;
+            String repairReason = null;
+            if (classificationResult.rejected() || !hasText(classificationResult.category())) {
+                if (!isStaleCategoryRepairFallback(oldCategory)) {
+                    unchangedCount++;
+                    continue;
+                }
+                newCategory = NewsCategoryClassifier.GENERAL_ECONOMY;
+                repairReason = "Current classifier rejected stale " + oldCategory + " category"
+                        + (hasText(classificationResult.rejectReason()) ? " with " + classificationResult.rejectReason() : "")
+                        + "; old stored category was " + oldCategory + ".";
+            } else {
+                newCategory = classificationResult.category().trim();
+            }
+
+            if (sameCategory(oldCategory, newCategory)) {
+                unchangedCount++;
+                continue;
+            }
+
+            changedCategoryCount++;
+            addCategoryRepairSample(sampleChanges, news, oldCategory, newCategory, repairReason);
+            if (!dryRun) {
+                news.setCategory(newCategory);
+            }
+        }
+
+        logger.info(
+                "News category repair completed. dryRun={}, processedCount={}, changedCategoryCount={}, unchangedCount={}, skippedKapCount={}",
+                dryRun,
+                processedCount,
+                changedCategoryCount,
+                unchangedCount,
+                skippedKapCount
+        );
+
+        return NewsCategoryRepairResponseDto.builder()
+                .processedCount(processedCount)
+                .changedCategoryCount(changedCategoryCount)
+                .unchangedCount(unchangedCount)
+                .skippedKapCount(skippedKapCount)
+                .sampleChanges(sampleChanges)
+                .build();
+    }
+
     @Transactional(readOnly = true)
     public NewsAffectedInstrumentsAuditResponseDto auditAffectedInstruments(int limit) {
         int validatedLimit = Math.max(1, Math.min(limit, MAX_AFFECTED_INSTRUMENT_AUDIT_LIMIT));
@@ -388,7 +465,6 @@ public class NewsService {
                         .newsId(news.getId())
                         .title(truncateForLog(news.getTitle()))
                         .category(news.getCategory())
-                        .filterTags(news.getFilterTags())
                         .affectedSymbols(visibleCandidates.stream().map(RelatedInstrumentCandidate::symbol).toList())
                         .reasons(visibleCandidates.stream().map(RelatedInstrumentCandidate::reason).toList())
                         .suspiciousReason(String.join("; ", suspiciousReasons))
@@ -1088,6 +1164,9 @@ public class NewsService {
                 normalizedCategory = classificationResult.category();
             }
         }
+        if (!hasText(normalizedCategory)) {
+            normalizedCategory = isKapDisclosure ? "DISCLOSURE" : NewsCategoryClassifier.GENERAL_ECONOMY;
+        }
         return NewsItemDto.builder()
                 .externalId(hasText(item.getExternalId()) ? item.getExternalId().trim() : item.getExternalId())
                 .title(hasText(item.getTitle()) ? item.getTitle().trim() : item.getTitle())
@@ -1162,6 +1241,106 @@ public class NewsService {
         return preview.length() <= 400 ? preview : preview.substring(0, 400);
     }
 
+    private String resolveRepairCategoryHint(News news) {
+        if (news == null) {
+            return null;
+        }
+        if (isKapNews(news)) {
+            return "DISCLOSURE";
+        }
+        return "ECONOMY";
+    }
+
+    private boolean isKapNews(News news) {
+        if (news == null) {
+            return false;
+        }
+        String category = normalizeNullable(news.getCategory());
+        return Boolean.TRUE.equals(news.getIsKapDisclosure())
+                || NewsProviderType.KAP.name().equalsIgnoreCase(news.getProvider())
+                || "DISCLOSURE".equalsIgnoreCase(category)
+                || "SPECIAL_DISCLOSURE".equalsIgnoreCase(category)
+                || "FINANCIAL_REPORT".equalsIgnoreCase(category);
+    }
+
+    private boolean sameCategory(String left, String right) {
+        if (!hasText(left) && !hasText(right)) {
+            return true;
+        }
+        if (!hasText(left) || !hasText(right)) {
+            return false;
+        }
+        return left.trim().equalsIgnoreCase(right.trim());
+    }
+
+    private String buildCategoryRepairReason(String oldCategory, String newCategory) {
+        return "Current classifier accepted " + newCategory
+                + " using neutral repair hint ECONOMY; old stored category was "
+                + (hasText(oldCategory) ? oldCategory : "blank")
+                + ". Classifier rules were not changed.";
+    }
+
+    private void addCategoryRepairSample(
+            List<NewsCategoryRepairResponseDto.SampleChangeDto> sampleChanges,
+            News news,
+            String oldCategory,
+            String newCategory
+    ) {
+        addCategoryRepairSample(sampleChanges, news, oldCategory, newCategory, null);
+    }
+
+    private void addCategoryRepairSample(
+            List<NewsCategoryRepairResponseDto.SampleChangeDto> sampleChanges,
+            News news,
+            String oldCategory,
+            String newCategory,
+            String repairReason
+    ) {
+        NewsCategoryRepairResponseDto.SampleChangeDto sample = NewsCategoryRepairResponseDto.SampleChangeDto.builder()
+                .id(news.getId())
+                .title(truncateForLog(news.getTitle()))
+                .oldCategory(oldCategory)
+                .newCategory(newCategory)
+                .reason(hasText(repairReason) ? repairReason : buildCategoryRepairReason(oldCategory, newCategory))
+                .build();
+
+        if (sampleChanges.size() < CATEGORY_REPAIR_SAMPLE_LIMIT) {
+            sampleChanges.add(sample);
+            return;
+        }
+        if (!isPriorityRepairCategory(oldCategory)) {
+            return;
+        }
+        for (int i = 0; i < sampleChanges.size(); i++) {
+            NewsCategoryRepairResponseDto.SampleChangeDto existing = sampleChanges.get(i);
+            if (!isPriorityRepairCategory(existing.getOldCategory())) {
+                sampleChanges.set(i, sample);
+                return;
+            }
+        }
+    }
+
+    private boolean isPriorityRepairCategory(String category) {
+        if (!hasText(category)) {
+            return false;
+        }
+        String normalized = category.trim().toUpperCase(Locale.ROOT);
+        return NewsCategoryClassifier.FX.equals(normalized)
+                || NewsCategoryClassifier.BANKING.equals(normalized)
+                || NewsCategoryClassifier.GOLD_COMMODITY.equals(normalized)
+                || NewsCategoryClassifier.GEOPOLITICS.equals(normalized);
+    }
+
+    private boolean isStaleCategoryRepairFallback(String oldCategory) {
+        if (!hasText(oldCategory)) {
+            return true;
+        }
+        String normalized = oldCategory.trim().toUpperCase(Locale.ROOT);
+        return NewsCategoryClassifier.FX.equals(normalized)
+                || NewsCategoryClassifier.GEOPOLITICS.equals(normalized)
+                || NewsCategoryClassifier.ENERGY.equals(normalized);
+    }
+
     private boolean shouldUpdateCategory(News existingNews, NewsItemDto item) {
         if (existingNews == null || item == null || Boolean.TRUE.equals(existingNews.getIsKapDisclosure())) {
             return false;
@@ -1175,13 +1354,6 @@ public class NewsService {
 
     private String normalizeNullable(String value) {
         return hasText(value) ? value.trim() : null;
-    }
-
-    private String normalizeKeywordForLike(String keyword) {
-        if (!hasText(keyword)) {
-            return "";
-        }
-        return keyword.trim().toLowerCase(Locale.ROOT);
     }
 
     private int calculateFinancialRelevanceScore(NewsItemDto item) {
@@ -1641,37 +1813,11 @@ public class NewsService {
         if (!hasText(request.getCategory())) {
             return null;
         }
-        Set<String> categories = newsCategoryClassifier.resolveCategoryAndTagMatches(request.getCategory());
-        Set<String> runtimeKeywords = newsCategoryClassifier.resolveFilterRuntimeKeywords(request.getCategory());
-        if (categories.isEmpty() && runtimeKeywords.isEmpty()) {
+        Set<String> categories = newsCategoryClassifier.resolveFilterCategories(request.getCategory());
+        if (categories.isEmpty()) {
             return null;
         }
-        return (root, query, cb) -> {
-            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
-            if (!categories.isEmpty()) {
-                predicates.add(cb.upper(root.get("category")).in(categories));
-            }
-            if (!runtimeKeywords.isEmpty()) {
-                jakarta.persistence.criteria.Predicate noTagsStored = cb.and(
-                        cb.isNull(root.get("category")),
-                        cb.or(
-                                cb.isNull(root.get("filterTags")),
-                                cb.equal(cb.coalesce(root.get("filterTags"), ""), "")
-                        )
-                );
-                List<jakarta.persistence.criteria.Predicate> keywordPredicates = runtimeKeywords.stream()
-                        .map(keyword -> {
-                            String likeKeyword = "%" + normalizeKeywordForLike(keyword) + "%";
-                            return cb.or(
-                                    cb.like(cb.lower(root.get("title")), likeKeyword),
-                                    cb.like(cb.lower(cb.coalesce(root.get("summary"), "")), likeKeyword)
-                            );
-                        })
-                        .toList();
-                predicates.add(cb.and(noTagsStored, cb.or(keywordPredicates.toArray(jakarta.persistence.criteria.Predicate[]::new))));
-            }
-            return cb.or(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
-        };
+        return (root, query, cb) -> cb.upper(root.get("category")).in(categories);
     }
 
     private Specification<News> byLanguage(NewsSearchRequest request) {
@@ -1862,7 +2008,7 @@ public class NewsService {
                 .filter(candidate -> candidate.score() >= MIN_RELATED_INSTRUMENT_SCORE)
                 .filter(candidate -> !"LOW".equalsIgnoreCase(candidate.confidence()))
                 .filter(candidate -> {
-                    // Hisse senedi (STOCK) yalnÄ±zca metinde doÄŸrudan ÅŸirket adÄ±/ticker geÃ§iyorsa gÃ¶sterilir
+                    // Hisse senedi (STOCK) yalnÃ„Â±zca metinde doÃ„Å¸rudan Ã…Å¸irket adÃ„Â±/ticker geÃƒÂ§iyorsa gÃƒÂ¶sterilir
                     if ("STOCK".equalsIgnoreCase(candidate.instrumentType()) && !"DIRECT".equalsIgnoreCase(candidate.relationType())) {
                         logger.debug("REJECTED_STOCK_NO_DIRECT_MATCH: symbol={}, matchType={}, confidence={}, reason={}",
                                 candidate.symbol(), candidate.matchType(), candidate.confidence(), candidate.reason());
@@ -1879,7 +2025,7 @@ public class NewsService {
         if (filtered.isEmpty()) {
             return List.of();
         }
-        // DoÄŸrudan eÅŸleÅŸme (ÅŸirket adÄ±/ticker metinde geÃ§iyor) varsa limit 4, yoksa makro/tematik sÄ±nÄ±rÄ± 3
+        // DoÃ„Å¸rudan eÃ…Å¸leÃ…Å¸me (Ã…Å¸irket adÃ„Â±/ticker metinde geÃƒÂ§iyor) varsa limit 4, yoksa makro/tematik sÃ„Â±nÃ„Â±rÃ„Â± 3
         boolean hasDirectMatch = filtered.stream()
                 .anyMatch(candidate -> "DIRECT".equalsIgnoreCase(candidate.relationType()));
         int limit = hasDirectMatch ? MAX_RELATED_INSTRUMENTS : MAX_RELATED_INSTRUMENTS_MACRO_ONLY;
@@ -1956,22 +2102,19 @@ public class NewsService {
         int score = 0;
         boolean hasDirectMatch = false;
 
-        // Kategori eÅŸleÅŸmesi tek baÅŸÄ±na yeterli deÄŸil; diÄŸer sinyallerle desteklenmeli
+        // Kategori eÃ…Å¸leÃ…Å¸mesi tek baÃ…Å¸Ã„Â±na yeterli deÃ„Å¸il; diÃ„Å¸er sinyallerle desteklenmeli
         if (samePrimaryCategory(sourceNews.getCategory(), candidate.getCategory())) {
             score += 10;
         }
 
-        // Tag overlap: azaltÄ±lmÄ±ÅŸ aÄŸÄ±rlÄ±k, Ã¼st sÄ±nÄ±rlÄ±
-        score += Math.min(24, overlapScore(sourceContext.tags(), candidateContext.tags(), 8));
-
-        // Kurum overlap (TCMB, FED vb.) â†’ gÃ¼Ã§lÃ¼ makro sinyal
+        // Kurum overlap (TCMB, FED vb.) Ã¢â€ â€™ gÃƒÂ¼ÃƒÂ§lÃƒÂ¼ makro sinyal
         int instScore = overlapScore(sourceContext.institutions(), candidateContext.institutions(), 35);
         if (instScore > 0) {
             hasDirectMatch = true;
             score += instScore;
         }
 
-        // Emtia/enstrÃ¼man overlap (GOLD, BRENT, USDTRY vb.) â†’ gÃ¼Ã§lÃ¼ tematik sinyal
+        // Emtia/enstrÃƒÂ¼man overlap (GOLD, BRENT, USDTRY vb.) Ã¢â€ â€™ gÃƒÂ¼ÃƒÂ§lÃƒÂ¼ tematik sinyal
         Set<String> sourceCommodityInstrument = union(sourceContext.commodities(), sourceContext.instruments());
         Set<String> candidateCommodityInstrument = union(candidateContext.commodities(), candidateContext.instruments());
         int commodScore = overlapScore(sourceCommodityInstrument, candidateCommodityInstrument, 50);
@@ -1980,14 +2123,14 @@ public class NewsService {
             score += commodScore;
         }
 
-        // Åirket overlap â†’ en gÃ¼Ã§lÃ¼ sinyal
+        // Ã…Âirket overlap Ã¢â€ â€™ en gÃƒÂ¼ÃƒÂ§lÃƒÂ¼ sinyal
         int compScore = overlapScore(sourceContext.companies(), candidateContext.companies(), 70);
         if (compScore > 0) {
             hasDirectMatch = true;
             score += compScore;
         }
 
-        // AynÄ± KAP ÅŸirketi â†’ en yÃ¼ksek sinyal
+        // AynÃ„Â± KAP Ã…Å¸irketi Ã¢â€ â€™ en yÃƒÂ¼ksek sinyal
         if (Boolean.TRUE.equals(sourceNews.getIsKapDisclosure())
                 && hasText(sourceNews.getRelatedSymbol())
                 && hasText(candidate.getRelatedSymbol())
@@ -1996,7 +2139,7 @@ public class NewsService {
             hasDirectMatch = true;
         }
 
-        // Makro konu overlap (faiz, altÄ±n, petrol, dÃ¶viz vb.)
+        // Makro konu overlap (faiz, altÃ„Â±n, petrol, dÃƒÂ¶viz vb.)
         Set<String> sourceMacroTopics = extractMacroTopics(sourceContext);
         Set<String> candidateMacroTopics = extractMacroTopics(candidateContext);
         int macroOverlap = overlapScore(sourceMacroTopics, candidateMacroTopics, 35);
@@ -2005,10 +2148,10 @@ public class NewsService {
             score += macroOverlap;
         }
 
-        // BaÅŸlÄ±k benzerliÄŸi: Ã¼st sÄ±nÄ±rlÄ±
+        // BaÃ…Å¸lÃ„Â±k benzerliÃ„Å¸i: ÃƒÂ¼st sÃ„Â±nÃ„Â±rlÃ„Â±
         score += titleSimilarityScore(sourceContext.titleTokens(), candidateContext.titleTokens());
 
-        // YakÄ±nlÄ±k bonusu
+        // YakÃ„Â±nlÃ„Â±k bonusu
         if (withinHours(sourceNews.getPublishedAt(), candidate.getPublishedAt(), RELATED_NEWS_RECENCY_HOURS)) {
             score += 10;
         }
@@ -2022,7 +2165,7 @@ public class NewsService {
 
     private Set<String> extractMacroTopics(ExtractedNewsContext context) {
         Set<String> topics = new LinkedHashSet<>();
-        // INTEREST_RATE: kurum gerektirir veya doÄŸrudan faiz dili gerektirir (enflasyon tek baÅŸÄ±na yetmez)
+        // INTEREST_RATE: kurum gerektirir veya doÃ„Å¸rudan faiz dili gerektirir (enflasyon tek baÃ…Å¸Ã„Â±na yetmez)
         if (context.institutions().contains("TCMB") || context.institutions().contains("FED") || context.institutions().contains("ECB")
                 || hasAny(context.tokens(), "FAIZ", "POLITIKA FAIZI")) {
             topics.add("INTEREST_RATE");
@@ -2050,10 +2193,10 @@ public class NewsService {
                 InstrumentAlias alias = BIST_INSTRUMENT_ALIASES.get(normalizedSymbol);
                 if (alias != null) {
                     matched.put(normalizedSymbol, RelatedInstrumentCandidate.kap(
-                            alias.symbol(), alias.name(), alias.instrumentType(), "KAP bildirimi doÄŸrudan bu ÅŸirketle iliÅŸkili", 140));
+                            alias.symbol(), alias.name(), alias.instrumentType(), "KAP bildirimi doÃ„Å¸rudan bu Ã…Å¸irketle iliÃ…Å¸kili", 140));
                 } else {
                     matched.put(normalizedSymbol, RelatedInstrumentCandidate.kap(
-                            normalizedSymbol, normalizedSymbol, InstrumentType.STOCK.name(), "KAP bildirimi doÄŸrudan bu ÅŸirketle iliÅŸkili", 140));
+                            normalizedSymbol, normalizedSymbol, InstrumentType.STOCK.name(), "KAP bildirimi doÃ„Å¸rudan bu Ã…Å¸irketle iliÃ…Å¸kili", 140));
                 }
             }
             return matched;
@@ -2065,7 +2208,7 @@ public class NewsService {
             InstrumentAlias alias = BIST_INSTRUMENT_ALIASES.get(companySymbol);
             if (alias != null) {
                 matched.put(alias.symbol(), RelatedInstrumentCandidate.direct(
-                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde ÅŸirket adÄ± geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi", 130));
+                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde Ã…Å¸irket adÃ„Â± geÃƒÂ§tiÃ„Å¸i iÃƒÂ§in iliÃ…Å¸kilendirildi", 130));
             }
         }
 
@@ -2073,7 +2216,7 @@ public class NewsService {
             InstrumentAlias alias = resolveKnownInstrumentAlias(instrumentSymbol);
             if (alias != null) {
                 matched.putIfAbsent(alias.symbol(), RelatedInstrumentCandidate.direct(
-                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde enstrÃ¼man/emtia adÄ± geÃ§tiÄŸi iÃ§in iliÅŸkilendirildi", 120));
+                        alias.symbol(), alias.name(), alias.instrumentType(), "Haberde enstrÃƒÂ¼man/emtia adÃ„Â± geÃƒÂ§tiÃ„Å¸i iÃƒÂ§in iliÃ…Å¸kilendirildi", 120));
             }
         }
 
@@ -2097,43 +2240,43 @@ public class NewsService {
         boolean hasAutomotiveIndustrialContext = hasAutomotiveIndustrialContext(context, automotiveContextScore, defenseContextScore);
 
         if (context.institutions().contains("FED") && hasRateContext) {
-            addThemeCandidate(matched, "USDTRY", "Fed/faiz kararÄ± baÄŸlamÄ± nedeniyle dÃ¶viz kuru etkisi", 85);
+            addThemeCandidate(matched, "USDTRY", "Fed/faiz kararÃ„Â± baÃ„Å¸lamÃ„Â± nedeniyle dÃƒÂ¶viz kuru etkisi", 85);
             if (hasSafeHavenGoldContext) {
-                addThemeCandidate(matched, "GOLD", "Fed/faiz ve gÃ¼venli liman baÄŸlamÄ± nedeniyle altÄ±n etkisi", 72);
+                addThemeCandidate(matched, "GOLD", "Fed/faiz ve gÃƒÂ¼venli liman baÃ„Å¸lamÃ„Â± nedeniyle altÃ„Â±n etkisi", 72);
             }
             if (hasMarketContext || hasCurrencyContext) {
-                addThemeCandidate(matched, "XU100", "Fed/faiz ve kÃ¼resel piyasa baÄŸlamÄ± nedeniyle endeks etkisi", 65);
+                addThemeCandidate(matched, "XU100", "Fed/faiz ve kÃƒÂ¼resel piyasa baÃ„Å¸lamÃ„Â± nedeniyle endeks etkisi", 65);
             }
         }
 
         if (context.institutions().contains("TCMB") && (hasRateContext || hasCurrencyContext)) {
-            addThemeCandidate(matched, "USDTRY", "TCMB/faiz baÄŸlamÄ± nedeniyle makro etki", 95);
-            addThemeCandidate(matched, "EURTRY", "TCMB/faiz baÄŸlamÄ± nedeniyle makro etki", 90);
-            addThemeCandidate(matched, "XU100", "TCMB/faiz/kur baÄŸlamÄ± nedeniyle piyasa endeksi etkisi", 74);
-            // Banka hisseleri yalnÄ±zca aÃ§Ä±k bankacÄ±lÄ±k baÄŸlamÄ± varsa (hasBankingContext kuralÄ±) eklenir
+            addThemeCandidate(matched, "USDTRY", "TCMB/faiz baÃ„Å¸lamÃ„Â± nedeniyle makro etki", 95);
+            addThemeCandidate(matched, "EURTRY", "TCMB/faiz baÃ„Å¸lamÃ„Â± nedeniyle makro etki", 90);
+            addThemeCandidate(matched, "XU100", "TCMB/faiz/kur baÃ„Å¸lamÃ„Â± nedeniyle piyasa endeksi etkisi", 74);
+            // Banka hisseleri yalnÃ„Â±zca aÃƒÂ§Ã„Â±k bankacÃ„Â±lÃ„Â±k baÃ„Å¸lamÃ„Â± varsa (hasBankingContext kuralÃ„Â±) eklenir
         }
 
         if (hasEnergyContext) {
-            addThemeCandidate(matched, "BRENT", "Petrol/enerji fiyatÄ± baÄŸlamÄ± nedeniyle emtia etkisi", 95);
-            addThemeCandidate(matched, "XU100", "Petrol/enerji ve piyasa riski baÄŸlamÄ± nedeniyle makro etki", 48);
-            // TUPRS/THYAO/PGSUS yalnÄ±zca haber metninde doÄŸrudan adlarÄ± geÃ§erse (direct match) gÃ¶sterilir
+            addThemeCandidate(matched, "BRENT", "Petrol/enerji fiyatÃ„Â± baÃ„Å¸lamÃ„Â± nedeniyle emtia etkisi", 95);
+            addThemeCandidate(matched, "XU100", "Petrol/enerji ve piyasa riski baÃ„Å¸lamÃ„Â± nedeniyle makro etki", 48);
+            // TUPRS/THYAO/PGSUS yalnÃ„Â±zca haber metninde doÃ„Å¸rudan adlarÃ„Â± geÃƒÂ§erse (direct match) gÃƒÂ¶sterilir
         }
 
         if (hasSafeHavenGoldContext) {
-            addThemeCandidate(matched, "GOLD", "GÃ¼venli liman/jeopolitik risk baÄŸlamÄ± nedeniyle altÄ±n etkisi", 68);
+            addThemeCandidate(matched, "GOLD", "GÃƒÂ¼venli liman/jeopolitik risk baÃ„Å¸lamÃ„Â± nedeniyle altÃ„Â±n etkisi", 68);
         }
 
         if (geopoliticalContextScore >= 5 && hasMarketContext) {
-            addThemeCandidate(matched, "XU100", "Jeopolitik riskin piyasalara etkisi baÄŸlamÄ± nedeniyle endeks etkisi", 45);
+            addThemeCandidate(matched, "XU100", "Jeopolitik riskin piyasalara etkisi baÃ„Å¸lamÃ„Â± nedeniyle endeks etkisi", 45);
         }
 
         if (hasBankingContext) {
-            addThemeCandidate(matched, "XU100", "BankacÄ±lÄ±k ve piyasa baÄŸlamÄ± nedeniyle endeks etkisi", 52);
+            addThemeCandidate(matched, "XU100", "BankacÃ„Â±lÃ„Â±k ve piyasa baÃ„Å¸lamÃ„Â± nedeniyle endeks etkisi", 52);
         }
 
         if (hasAutomotiveIndustrialContext) {
-            if (hasMarketContext || context.tags().contains("STOCKS")) {
-                addThemeCandidate(matched, "XU100", "Otomotiv ve sanayi baÄŸlamÄ± nedeniyle endeks etkisi", 46);
+            if (hasMarketContext) {
+                addThemeCandidate(matched, "XU100", "Otomotiv ve sanayi baÃ„Å¸lamÃ„Â± nedeniyle endeks etkisi", 46);
             }
         }
     }
@@ -2253,7 +2396,6 @@ public class NewsService {
                 safeText(preview)));
         Set<String> tokens = tokenizeText(normalizedText);
         Set<String> titleTokens = tokenizeText(normalizeText(safeText(news.getTitle())));
-        Set<String> tags = resolveNewsTags(news);
         Set<String> regions = collectKeywordMatches(normalizedText, tokens, REGION_KEYWORDS);
         Set<String> institutions = collectKeywordMatches(normalizedText, tokens, INSTITUTION_KEYWORDS);
         Set<String> commodities = collectKeywordMatches(normalizedText, tokens, COMMODITY_KEYWORDS);
@@ -2261,7 +2403,7 @@ public class NewsService {
         Set<String> companies = detectCompanySymbols(normalizedText, tokens, news.getRelatedSymbol());
         Set<String> instruments = detectInstrumentSymbols(normalizedText, tokens, news.getRelatedSymbol());
 
-        return new ExtractedNewsContext(normalizedText, tokens, titleTokens, tags, regions, institutions, commodities, sectors, companies, instruments);
+        return new ExtractedNewsContext(normalizedText, tokens, titleTokens, regions, institutions, commodities, sectors, companies, instruments);
     }
 
     private boolean hasStrongCurrencyContext(ExtractedNewsContext context) {
@@ -2278,14 +2420,14 @@ public class NewsService {
     }
 
     private boolean hasExplicitMarketContext(ExtractedNewsContext context) {
-        return hasAny(context.tokens(), "PIYASA", "PÄ°YASA", "MARKET", "BORSA", "BIST", "HISSE", "ENDEKS", "RISK", "FIYATLAMA", "YATIRIMCI");
+        return hasAny(context.tokens(), "PIYASA", "PÃ„Â°YASA", "MARKET", "BORSA", "BIST", "HISSE", "ENDEKS", "RISK", "FIYATLAMA", "YATIRIMCI");
     }
 
     private boolean hasGeopoliticalRiskContext(ExtractedNewsContext context) {
         if (containsOnlyGenericMacroSignals(context)) {
             return false;
         }
-        boolean hasEvent = containsAnyToken(context.tokens(), GEOPOLITICAL_EVENT_TOKENS) || hasAny(context.tokens(), "JEOPOLITIK", "JEOPOLÄ°TÄ°K");
+        boolean hasEvent = containsAnyToken(context.tokens(), GEOPOLITICAL_EVENT_TOKENS) || hasAny(context.tokens(), "JEOPOLITIK", "JEOPOLÃ„Â°TÃ„Â°K");
         boolean hasRegionOrActor = context.regions().contains("MIDDLE_EAST")
                 || context.regions().contains("USA")
                 || context.regions().contains("EUROPE")
@@ -2438,21 +2580,6 @@ public class NewsService {
             }
         }
         return false;
-    }
-
-    private Set<String> resolveNewsTags(News news) {
-        LinkedHashSet<String> tags = new LinkedHashSet<>();
-        if (hasText(news.getFilterTags())) {
-            for (String token : news.getFilterTags().split(",")) {
-                if (hasText(token)) {
-                    tags.add(token.trim().toUpperCase(Locale.ROOT));
-                }
-            }
-        }
-        if (tags.isEmpty() && hasText(news.getCategory())) {
-            tags.add(news.getCategory().trim().toUpperCase(Locale.ROOT));
-        }
-        return tags;
     }
 
     private Set<String> collectKeywordMatches(String normalizedText, Set<String> tokens, Map<String, Set<String>> keywordMap) {
@@ -2664,27 +2791,27 @@ public class NewsService {
 
     private static Map<String, InstrumentAlias> createInstrumentAliases() {
         Map<String, InstrumentAlias> aliases = new LinkedHashMap<>();
-        aliases.put("THYAO", new InstrumentAlias("THYAO", "TÃƒÂ¼rk Hava YollarÃ„Â±", InstrumentType.STOCK.name(), Set.of("THYAO", "TURK HAVA YOLLARI", "THY", "TURKISH AIRLINES")));
+        aliases.put("THYAO", new InstrumentAlias("THYAO", "TÃƒÆ’Ã‚Â¼rk Hava YollarÃƒâ€Ã‚Â±", InstrumentType.STOCK.name(), Set.of("THYAO", "TURK HAVA YOLLARI", "THY", "TURKISH AIRLINES")));
         aliases.put("ASELS", new InstrumentAlias("ASELS", "Aselsan", InstrumentType.STOCK.name(), Set.of("ASELS", "ASELSAN")));
         aliases.put("AKBNK", new InstrumentAlias("AKBNK", "Akbank", InstrumentType.STOCK.name(), Set.of("AKBNK", "AKBANK")));
-        aliases.put("BIMAS", new InstrumentAlias("BIMAS", "BÃ„Â°M", InstrumentType.STOCK.name(), Set.of("BIMAS", "BIM", "BIM BIRLESIK", "BIRLESIK MAGAZALAR")));
-        aliases.put("KCHOL", new InstrumentAlias("KCHOL", "KoÃƒÂ§ Holding", InstrumentType.STOCK.name(), Set.of("KCHOL", "KOC HOLDING", "KOC")));
-        aliases.put("TUPRS", new InstrumentAlias("TUPRS", "TÃƒÂ¼praÃ…Å¸", InstrumentType.STOCK.name(), Set.of("TUPRS", "TUPRAS")));
+        aliases.put("BIMAS", new InstrumentAlias("BIMAS", "BÃƒâ€Ã‚Â°M", InstrumentType.STOCK.name(), Set.of("BIMAS", "BIM", "BIM BIRLESIK", "BIRLESIK MAGAZALAR")));
+        aliases.put("KCHOL", new InstrumentAlias("KCHOL", "KoÃƒÆ’Ã‚Â§ Holding", InstrumentType.STOCK.name(), Set.of("KCHOL", "KOC HOLDING", "KOC")));
+        aliases.put("TUPRS", new InstrumentAlias("TUPRS", "TÃƒÆ’Ã‚Â¼praÃƒâ€¦Ã…Â¸", InstrumentType.STOCK.name(), Set.of("TUPRS", "TUPRAS")));
         aliases.put("GARAN", new InstrumentAlias("GARAN", "Garanti BBVA", InstrumentType.STOCK.name(), Set.of("GARAN", "GARANTI", "GARANTI BBVA")));
-        aliases.put("ISCTR", new InstrumentAlias("ISCTR", "Ã„Â°Ã…Å¸ BankasÃ„Â±", InstrumentType.STOCK.name(), Set.of("ISCTR", "IS BANKASI", "TURKIYE IS BANKASI", "ISBANK")));
-        aliases.put("YKBNK", new InstrumentAlias("YKBNK", "YapÃ„Â± Kredi", InstrumentType.STOCK.name(), Set.of("YKBNK", "YAPI KREDI")));
-        aliases.put("EREGL", new InstrumentAlias("EREGL", "EreÃ„Å¸li Demir Ãƒâ€¡elik", InstrumentType.STOCK.name(), Set.of("EREGL", "EREGLI", "ERDEMIR", "EREGLI DEMIR CELIK")));
-        aliases.put("SISE", new InstrumentAlias("SISE", "Ã…ÂiÃ…Å¸ecam", InstrumentType.STOCK.name(), Set.of("SISE", "SISECAM", "TURKIYE SISE VE CAM")));
+        aliases.put("ISCTR", new InstrumentAlias("ISCTR", "Ãƒâ€Ã‚Â°Ãƒâ€¦Ã…Â¸ BankasÃƒâ€Ã‚Â±", InstrumentType.STOCK.name(), Set.of("ISCTR", "IS BANKASI", "TURKIYE IS BANKASI", "ISBANK")));
+        aliases.put("YKBNK", new InstrumentAlias("YKBNK", "YapÃƒâ€Ã‚Â± Kredi", InstrumentType.STOCK.name(), Set.of("YKBNK", "YAPI KREDI")));
+        aliases.put("EREGL", new InstrumentAlias("EREGL", "EreÃƒâ€Ã…Â¸li Demir ÃƒÆ’Ã¢â‚¬Â¡elik", InstrumentType.STOCK.name(), Set.of("EREGL", "EREGLI", "ERDEMIR", "EREGLI DEMIR CELIK")));
+        aliases.put("SISE", new InstrumentAlias("SISE", "Ãƒâ€¦Ã‚ÂiÃƒâ€¦Ã…Â¸ecam", InstrumentType.STOCK.name(), Set.of("SISE", "SISECAM", "TURKIYE SISE VE CAM")));
         aliases.put("FROTO", new InstrumentAlias("FROTO", "Ford Otosan", InstrumentType.STOCK.name(), Set.of("FROTO", "FORD OTOSAN", "FORD")));
-        aliases.put("TOASO", new InstrumentAlias("TOASO", "TofaÃ…Å¸", InstrumentType.STOCK.name(), Set.of("TOASO", "TOFAS")));
+        aliases.put("TOASO", new InstrumentAlias("TOASO", "TofaÃƒâ€¦Ã…Â¸", InstrumentType.STOCK.name(), Set.of("TOASO", "TOFAS")));
         aliases.put("OTKAR", new InstrumentAlias("OTKAR", "Otokar", InstrumentType.STOCK.name(), Set.of("OTKAR", "OTOKAR")));
         aliases.put("MGROS", new InstrumentAlias("MGROS", "Migros", InstrumentType.STOCK.name(), Set.of("MGROS", "MIGROS")));
         aliases.put("KRDMD", new InstrumentAlias("KRDMD", "Kardemir", InstrumentType.STOCK.name(), Set.of("KRDMD", "KARDEMIR")));
         aliases.put("AKSEN", new InstrumentAlias("AKSEN", "Aksa Enerji", InstrumentType.STOCK.name(), Set.of("AKSEN", "AKSA ENERJI")));
         aliases.put("ENJSA", new InstrumentAlias("ENJSA", "Enerjisa", InstrumentType.STOCK.name(), Set.of("ENJSA", "ENERJISA")));
-        aliases.put("CIMSA", new InstrumentAlias("CIMSA", "Ãƒâ€¡imsa", InstrumentType.STOCK.name(), Set.of("CIMSA")));
-        aliases.put("OYAKC", new InstrumentAlias("OYAKC", "OYAK Ãƒâ€¡imento", InstrumentType.STOCK.name(), Set.of("OYAKC", "OYAK CIMENTO")));
-        aliases.put("SAHOL", new InstrumentAlias("SAHOL", "SabancÃ„Â± Holding", InstrumentType.STOCK.name(), Set.of("SAHOL", "SABANCI HOLDING", "SABANCI")));
+        aliases.put("CIMSA", new InstrumentAlias("CIMSA", "ÃƒÆ’Ã¢â‚¬Â¡imsa", InstrumentType.STOCK.name(), Set.of("CIMSA")));
+        aliases.put("OYAKC", new InstrumentAlias("OYAKC", "OYAK ÃƒÆ’Ã¢â‚¬Â¡imento", InstrumentType.STOCK.name(), Set.of("OYAKC", "OYAK CIMENTO")));
+        aliases.put("SAHOL", new InstrumentAlias("SAHOL", "SabancÃƒâ€Ã‚Â± Holding", InstrumentType.STOCK.name(), Set.of("SAHOL", "SABANCI HOLDING", "SABANCI")));
         aliases.put("PGSUS", new InstrumentAlias("PGSUS", "Pegasus", InstrumentType.STOCK.name(), Set.of("PGSUS", "PEGASUS")));
         aliases.put("TAVHL", new InstrumentAlias("TAVHL", "TAV Havalimanlari", InstrumentType.STOCK.name(), Set.of("TAVHL", "TAV", "TAV HAVALIMANLARI")));
         aliases.put("XU100", new InstrumentAlias("XU100", "BIST 100", InstrumentType.INDEX.name(), Set.of("XU100", "BIST100", "BIST 100")));
@@ -2698,7 +2825,7 @@ public class NewsService {
         aliases.put("GOLD", new InstrumentAlias("GOLD", "Altin", InstrumentType.COMMODITY.name(), Set.of("GOLD", "ALTIN", "ONS ALTIN", "ONS", "XAUUSD")));
         aliases.put("GRAM_ALTIN", new InstrumentAlias("GRAM_ALTIN", "Gram Altin", InstrumentType.COMMODITY.name(), Set.of("GRAM_ALTIN", "GRAM ALTIN", "ALTIN GRAM")));
         aliases.put("BRENT", new InstrumentAlias("BRENT", "Brent Petrol", InstrumentType.COMMODITY.name(), Set.of("BRENT", "PETROL", "HAM PETROL", "AKARYAKIT")));
-        aliases.put("XBANK", new InstrumentAlias("XBANK", "BankacÄ±lÄ±k Endeksi", InstrumentType.INDEX.name(), Set.of("XBANK", "BANKACILIK ENDEKSI")));
+        aliases.put("XBANK", new InstrumentAlias("XBANK", "BankacÃ„Â±lÃ„Â±k Endeksi", InstrumentType.INDEX.name(), Set.of("XBANK", "BANKACILIK ENDEKSI")));
         return aliases;
     }
 
@@ -2749,36 +2876,36 @@ public class NewsService {
                 new ThemeRule(Set.of("KARBON", "EMISYON", "IKLIM", "SURDURULEBILIRLIK", "YESIL DONUSUM", "KARBON FIYATLANDIRMASI"),
                         "Karbon fiyatlandirmasi / emisyon maliyeti temasi",
                         List.of(
-                                new ThemeInstrument("EREGL", "EreÃ„Å¸li Demir Ãƒâ€¡elik", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("EREGL", "EreÃƒâ€Ã…Â¸li Demir ÃƒÆ’Ã¢â‚¬Â¡elik", InstrumentType.STOCK.name(), "MEDIUM"),
                                 new ThemeInstrument("KRDMD", "Kardemir", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("TUPRS", "TÃƒÂ¼praÃ…Å¸", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("TUPRS", "TÃƒÆ’Ã‚Â¼praÃƒâ€¦Ã…Â¸", InstrumentType.STOCK.name(), "MEDIUM"),
                                 new ThemeInstrument("AKSEN", "Aksa Enerji", InstrumentType.STOCK.name(), "LOW"),
                                 new ThemeInstrument("ENJSA", "Enerjisa", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("CIMSA", "Ãƒâ€¡imsa", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("OYAKC", "OYAK Ãƒâ€¡imento", InstrumentType.STOCK.name(), "LOW")
+                                new ThemeInstrument("CIMSA", "ÃƒÆ’Ã¢â‚¬Â¡imsa", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("OYAKC", "OYAK ÃƒÆ’Ã¢â‚¬Â¡imento", InstrumentType.STOCK.name(), "LOW")
                         )),
                 new ThemeRule(Set.of("BUYUME", "RESESYON", "KURESEL EKONOMI", "TICARET", "TEDARIK ZINCIRI"),
                         "Kuresel buyume ve piyasa geneli etkisi",
                         List.of(
                                 new ThemeInstrument("XU100", "BIST 100", InstrumentType.INDEX.name(), "LOW"),
-                                new ThemeInstrument("THYAO", "TÃƒÂ¼rk Hava YollarÃ„Â±", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("TUPRS", "TÃƒÂ¼praÃ…Å¸", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("KCHOL", "KoÃƒÂ§ Holding", InstrumentType.STOCK.name(), "LOW"),
-                                new ThemeInstrument("SAHOL", "SabancÃ„Â± Holding", InstrumentType.STOCK.name(), "LOW")
+                                new ThemeInstrument("THYAO", "TÃƒÆ’Ã‚Â¼rk Hava YollarÃƒâ€Ã‚Â±", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("TUPRS", "TÃƒÆ’Ã‚Â¼praÃƒâ€¦Ã…Â¸", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("KCHOL", "KoÃƒÆ’Ã‚Â§ Holding", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("SAHOL", "SabancÃƒâ€Ã‚Â± Holding", InstrumentType.STOCK.name(), "LOW")
                         )),
                 new ThemeRule(Set.of("FAIZ", "TCMB", "ENFLASYON", "KREDI", "POLITIKA FAIZI"),
                         "Faiz ve kredi hassasiyeti",
                         List.of(
                                 new ThemeInstrument("AKBNK", "Akbank", InstrumentType.STOCK.name(), "MEDIUM"),
                                 new ThemeInstrument("GARAN", "Garanti BBVA", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("ISCTR", "Ã„Â°Ã…Å¸ BankasÃ„Â±", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("YKBNK", "YapÃ„Â± Kredi", InstrumentType.STOCK.name(), "MEDIUM")
+                                new ThemeInstrument("ISCTR", "Ãƒâ€Ã‚Â°Ãƒâ€¦Ã…Â¸ BankasÃƒâ€Ã‚Â±", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("YKBNK", "YapÃƒâ€Ã‚Â± Kredi", InstrumentType.STOCK.name(), "MEDIUM")
                         )),
                 new ThemeRule(Set.of("PETROL", "BRENT", "AKARYAKIT", "YAKIT"),
                         "Petrol/yakit maliyeti temasi",
                         List.of(
-                                new ThemeInstrument("TUPRS", "TÃƒÂ¼praÃ…Å¸", InstrumentType.STOCK.name(), "MEDIUM"),
-                                new ThemeInstrument("THYAO", "TÃƒÂ¼rk Hava YollarÃ„Â±", InstrumentType.STOCK.name(), "MEDIUM")
+                                new ThemeInstrument("TUPRS", "TÃƒÆ’Ã‚Â¼praÃƒâ€¦Ã…Â¸", InstrumentType.STOCK.name(), "MEDIUM"),
+                                new ThemeInstrument("THYAO", "TÃƒÆ’Ã‚Â¼rk Hava YollarÃƒâ€Ã‚Â±", InstrumentType.STOCK.name(), "MEDIUM")
                         )),
                 new ThemeRule(Set.of("SAVUNMA", "SAVAS", "JEOPOLITIK", "GUVENLIK"),
                         "Savunma ve jeopolitik tema",
@@ -2786,12 +2913,12 @@ public class NewsService {
                 new ThemeRule(Set.of("GIDA", "PERAKENDE", "TUKETIM"),
                         "Tuketim ve perakende temasi",
                         List.of(
-                                new ThemeInstrument("BIMAS", "BÃ„Â°M", InstrumentType.STOCK.name(), "LOW"),
+                                new ThemeInstrument("BIMAS", "BÃƒâ€Ã‚Â°M", InstrumentType.STOCK.name(), "LOW"),
                                 new ThemeInstrument("MGROS", "Migros", InstrumentType.STOCK.name(), "LOW")
                         )),
                 new ThemeRule(Set.of("TURIZM", "HAVACILIK", "YOLCU"),
                         "Havacilik/turizm talebi temasi",
-                        List.of(new ThemeInstrument("THYAO", "TÃƒÂ¼rk Hava YollarÃ„Â±", InstrumentType.STOCK.name(), "MEDIUM")))
+                        List.of(new ThemeInstrument("THYAO", "TÃƒÆ’Ã‚Â¼rk Hava YollarÃƒâ€Ã‚Â±", InstrumentType.STOCK.name(), "MEDIUM")))
         );
     }
 
@@ -2811,7 +2938,6 @@ public class NewsService {
             String normalizedText,
             Set<String> tokens,
             Set<String> titleTokens,
-            Set<String> tags,
             Set<String> regions,
             Set<String> institutions,
             Set<String> commodities,

@@ -20,7 +20,6 @@ public record NewsAffectedInstrumentsAuditResponseDto(
             Long newsId,
             String title,
             String category,
-            String filterTags,
             List<String> affectedSymbols,
             List<String> reasons,
             String suspiciousReason

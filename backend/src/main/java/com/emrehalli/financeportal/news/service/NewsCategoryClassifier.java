@@ -4,7 +4,6 @@ import org.springframework.stereotype.Component;
 
 import java.text.Normalizer;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -36,8 +35,6 @@ public class NewsCategoryClassifier {
             GOLD_COMMODITY,
             BANKING,
             CRYPTO,
-            ENERGY,
-            GEOPOLITICS,
             COMPANY
     );
     private static final List<String> FINANCIAL_CONTEXT_KEYWORDS = List.of(
@@ -58,15 +55,17 @@ public class NewsCategoryClassifier {
             "parliament", "kongre", "congress", "cumhurbaskani", "president", "bakan", "ministry",
             "muhalefet", "iktidar", "belediye", "governor", "miting", "oylama"
     );
-    private static final List<String> GEOPOLITICAL_KEYWORDS = List.of(
-            "iran", "israil", "ukrayna", "rusya", "russia", "orta dogu", "middle east", "gerilim",
-            "tension", "savas", "war", "ateskes", "ceasefire", "nato", "yaptirim", "sanction",
-            "trade war", "tariff", "abd cin", "us china"
+    private static final List<String> FX_STRONG_CONTEXT_KEYWORDS = List.of(
+            "doviz pozisyonu", "doviz pozisyon", "net doviz pozisyonu", "net doviz pozisyon",
+            "doviz pozisyon acigi", "doviz acigi", "doviz kuru",
+            "kur riski", "kur etkisi", "kur farki",
+            "dolar tl", "euro tl", "usd try", "eur try", "usdtry", "eurtry",
+            "doviz rezervi", "rezerv para",
+            "yabanci para pozisyonu", "yabanci para pozisyon",
+            "euro dolar", "eur usd", "usd eur"
     );
     private static final LinkedHashMap<String, List<String>> CATEGORY_KEYWORDS = new LinkedHashMap<>();
-    private static final Map<String, Set<String>> LEGACY_FILTER_MAPPING = createLegacyFilterMapping();
     private static final Map<String, String> CATEGORY_HINT_MAPPING = createCategoryHintMapping();
-    private static final Map<String, List<String>> FILTER_CATEGORY_RUNTIME_KEYWORDS;
 
     static {
         CATEGORY_KEYWORDS.put(INTEREST_BONDS, List.of(
@@ -75,11 +74,12 @@ public class NewsCategoryClassifier {
         ));
         CATEGORY_KEYWORDS.put(FX, List.of(
                 "dolar tl", "euro tl", "usd try", "eur try", "usdtry", "eurtry",
-                "doviz", "dovize", "dovizde", "dovizi", "dovizin",
-                "forex", "fx",
-                "kur", "kuru", "kurda", "kuruna", "kurdan", "kurunda",
-                "parite", "sterlin", "yen",
-                "doviz kuru", "exchange rate"
+                "doviz pozisyonu", "doviz pozisyon", "net doviz pozisyonu", "net doviz pozisyon",
+                "doviz pozisyon acigi", "doviz acigi", "doviz kuru",
+                "kur riski", "kur etkisi", "kur farki",
+                "doviz rezervi", "rezerv para",
+                "yabanci para pozisyonu", "yabanci para pozisyon",
+                "euro dolar", "eur usd", "usd eur"
         ));
         CATEGORY_KEYWORDS.put(BANKING, List.of(
                 "bankacilik", "banka", "bankasi", "bankalari", "bankaciligi",
@@ -96,19 +96,13 @@ public class NewsCategoryClassifier {
         ));
         CATEGORY_KEYWORDS.put(GOLD_COMMODITY, List.of(
                 "altin", "gold", "ons", "gram altin", "gumus", "silver", "emtia", "commodity",
-                "bakir", "copper", "metal"
-        ));
-        CATEGORY_KEYWORDS.put(ENERGY, List.of(
-                "petrol", "oil", "brent", "opec", "dogalgaz", "natural gas", "lng", "enerji",
-                "energy", "arz endisesi", "supply disruption", "rafineri"
+                "bakir", "copper", "metal",
+                "petrol", "oil", "brent", "opec", "dogalgaz", "natural gas", "lng", "rafineri",
+                "arz endisesi", "supply disruption", "petrol fiyati", "petrol fiyatlari",
+                "enerji fiyati", "enerji fiyatlari", "enerji emtiasi"
         ));
         CATEGORY_KEYWORDS.put(CRYPTO, List.of(
                 "kripto", "crypto", "bitcoin", "ethereum", "btc", "eth", "stablecoin", "blockchain"
-        ));
-        CATEGORY_KEYWORDS.put(GEOPOLITICS, List.of(
-                "orta dogu", "middle east", "gerilim", "tension",
-                "savas", "war", "ateskes", "ceasefire", "nato",
-                "yaptirim", "sanction", "trade war", "tariff"
         ));
         CATEGORY_KEYWORDS.put(GLOBAL_MARKETS, List.of(
                 "global markets",
@@ -117,7 +111,8 @@ public class NewsCategoryClassifier {
                 "wall street", "nasdaq", "dow", "dow jones",
                 "sp500", "s p 500", "msci",
                 "asian markets", "avrupa borsalari", "risk appetite",
-                "dax", "ftse", "nikkei"
+                "dax", "ftse", "nikkei",
+                "kuresel enerji piyasasi", "petrol piyasasi"
         ));
         CATEGORY_KEYWORDS.put(COMPANY, List.of(
                 "company", "ceo", "earnings", "revenue", "guidance",
@@ -128,9 +123,9 @@ public class NewsCategoryClassifier {
         CATEGORY_KEYWORDS.put(GENERAL_ECONOMY, List.of(
                 "ekonomi", "economy", "enflasyon", "inflation", "buyume", "growth", "issizlik",
                 "unemployment", "gsyh", "gdp", "cpi", "ppi", "vergi", "tax", "butce", "budget",
-                "ihracat", "export", "ithalat", "import", "cari acik", "macro", "resesyon", "recession"
+                "ihracat", "export", "ithalat", "import", "cari acik", "macro", "resesyon", "recession",
+                "yenilenebilir enerji", "enerji bakanligi", "enerji verimliligi"
         ));
-        FILTER_CATEGORY_RUNTIME_KEYWORDS = createFilterCategoryRuntimeKeywords();
     }
 
     public ClassificationResult classify(String title, String summary, String contentPreview, String sourceCategoryHint) {
@@ -146,8 +141,7 @@ public class NewsCategoryClassifier {
         }
 
         boolean hasPoliticalContent = containsAny(combined, POLITICAL_KEYWORDS);
-        boolean hasGeopoliticalContent = containsAny(combined, GEOPOLITICAL_KEYWORDS);
-        if (hasPoliticalContent && !hasFinancialContext && !hasGeopoliticalContent) {
+        if (hasPoliticalContent && !hasFinancialContext) {
             return ClassificationResult.rejected("REJECT_NON_FINANCE_POLITICS");
         }
 
@@ -169,57 +163,23 @@ public class NewsCategoryClassifier {
             return ClassificationResult.accepted(hintCategory);
         }
 
-        if (hasFinancialContext || hasGeopoliticalContent) {
-            boolean geopoliticsQualifies = hasGeopoliticalContent && hasFinancialContext;
-            String primaryCategory = geopoliticsQualifies ? GEOPOLITICS : GENERAL_ECONOMY;
-            return ClassificationResult.accepted(primaryCategory);
+        if (hasFinancialContext) {
+            return ClassificationResult.accepted(GENERAL_ECONOMY);
         }
 
-        return ClassificationResult.rejected("REJECT_CATEGORY_UNCLASSIFIED");
+        return ClassificationResult.accepted(GENERAL_ECONOMY);
     }
 
     public Set<String> resolveFilterCategories(String requestedCategory) {
         if (!hasText(requestedCategory)) {
             return Set.of();
         }
-        String normalized = normalize(requestedCategory).replace(' ', '_');
         String uppercaseRequested = requestedCategory.trim().toUpperCase(Locale.ROOT).replace(' ', '_');
-        LinkedHashSet<String> categories = new LinkedHashSet<>();
-        categories.add(uppercaseRequested);
-        if (PRIMARY_CATEGORIES.contains(uppercaseRequested)) {
-            categories.add(uppercaseRequested);
-        }
-        categories.addAll(LEGACY_FILTER_MAPPING.getOrDefault(normalized, Set.of()));
-        return categories;
+        return Set.of(uppercaseRequested);
     }
 
     public boolean isPrimaryCategory(String category) {
         return hasText(category) && PRIMARY_CATEGORIES.contains(category.trim().toUpperCase(Locale.ROOT));
-    }
-
-    public Set<String> resolveFilterRuntimeKeywords(String requestedCategory) {
-        if (!hasText(requestedCategory)) {
-            return Set.of();
-        }
-        String normalized = normalize(requestedCategory).replace(' ', '_');
-        Set<String> categories = resolveFilterCategories(requestedCategory);
-        LinkedHashSet<String> keywords = new LinkedHashSet<>();
-        for (String category : categories) {
-            keywords.addAll(FILTER_CATEGORY_RUNTIME_KEYWORDS.getOrDefault(category, List.of()));
-        }
-        keywords.addAll(FILTER_CATEGORY_RUNTIME_KEYWORDS.getOrDefault(normalized.toUpperCase(Locale.ROOT), List.of()));
-        return keywords;
-    }
-
-    public Set<String> resolveCategoryAndTagMatches(String requestedCategory) {
-        LinkedHashSet<String> matches = new LinkedHashSet<>(resolveFilterCategories(requestedCategory));
-        String normalized = hasText(requestedCategory)
-                ? requestedCategory.trim().toUpperCase(Locale.ROOT).replace(' ', '_')
-                : "";
-        if (PRIMARY_CATEGORIES.contains(normalized)) {
-            matches.add(normalized);
-        }
-        return matches;
     }
 
     private int scoreCategory(
@@ -230,6 +190,9 @@ public class NewsCategoryClassifier {
             String category,
             List<String> keywords
     ) {
+        if (FX.equals(category) && !containsAny(combined, FX_STRONG_CONTEXT_KEYWORDS)) {
+            return 0;
+        }
         int score = 0;
         for (String keyword : keywords) {
             if (containsKeyword(normalizedTitle, keyword)) {
@@ -313,42 +276,6 @@ public class NewsCategoryClassifier {
         return paddedText.contains(paddedKeyword);
     }
 
-    private static Map<String, Set<String>> createLegacyFilterMapping() {
-        return Map.ofEntries(
-                Map.entry("economy", Set.of(GENERAL_ECONOMY, "ECONOMY", "GENERAL")),
-                Map.entry("general", Set.of(GENERAL_ECONOMY, "GENERAL", "ECONOMY")),
-                Map.entry("general_economy", Set.of(GENERAL_ECONOMY, "GENERAL", "ECONOMY")),
-                Map.entry("business", Set.of(GENERAL_ECONOMY, COMPANY, "BUSINESS")),
-                Map.entry("top_news", Set.of(
-                        GENERAL_ECONOMY, GLOBAL_MARKETS, FX, STOCKS, INTEREST_BONDS, GOLD_COMMODITY,
-                        BANKING, CRYPTO, ENERGY, GEOPOLITICS, COMPANY, "TOP_NEWS"
-                )),
-                Map.entry("top news", Set.of(
-                        GENERAL_ECONOMY, GLOBAL_MARKETS, FX, STOCKS, INTEREST_BONDS, GOLD_COMMODITY,
-                        BANKING, CRYPTO, ENERGY, GEOPOLITICS, COMPANY, "TOP_NEWS"
-                )),
-                Map.entry("markets", Set.of(GLOBAL_MARKETS, STOCKS, FX, INTEREST_BONDS, GOLD_COMMODITY, ENERGY, BANKING, "MARKETS")),
-                Map.entry("global_markets", Set.of(GLOBAL_MARKETS, "MARKETS")),
-                Map.entry("fx", Set.of(FX, "FOREX", "CURRENCY", "DOVIZ")),
-                Map.entry("forex", Set.of(FX, "FOREX", "CURRENCY", "DOVIZ")),
-                Map.entry("currency", Set.of(FX, "FOREX", "CURRENCY", "DOVIZ")),
-                Map.entry("doviz", Set.of(FX, "FOREX", "CURRENCY", "DOVIZ")),
-                Map.entry("stocks", Set.of(STOCKS, "STOCK", "SHARES", "EQUITY")),
-                Map.entry("stock", Set.of(STOCKS, "STOCK", "SHARES", "EQUITY")),
-                Map.entry("banking", Set.of(BANKING, "BANK")),
-                Map.entry("interest_bonds", Set.of(INTEREST_BONDS, "INTEREST_RATE", "BOND", "TAHVIL", "FAIZ")),
-                Map.entry("bond", Set.of(INTEREST_BONDS, "INTEREST_RATE", "BOND", "TAHVIL", "FAIZ")),
-                Map.entry("faiz", Set.of(INTEREST_BONDS, "INTEREST_RATE", "BOND", "TAHVIL", "FAIZ")),
-                Map.entry("gold_commodity", Set.of(GOLD_COMMODITY, "GOLD", "COMMODITY", "EMTIA", "ALTIN")),
-                Map.entry("commodity", Set.of(GOLD_COMMODITY, "GOLD", "COMMODITY", "EMTIA", "ALTIN")),
-                Map.entry("altin", Set.of(GOLD_COMMODITY, "GOLD", "COMMODITY", "EMTIA", "ALTIN")),
-                Map.entry("crypto", Set.of(CRYPTO, "CRYPTOCURRENCY")),
-                Map.entry("energy", Set.of(ENERGY, "OIL", "PETROL")),
-                Map.entry("geopolitics", Set.of(GEOPOLITICS, "POLITICS")),
-                Map.entry("company", Set.of(COMPANY, "BUSINESS"))
-        );
-    }
-
     private static Map<String, String> createCategoryHintMapping() {
         return Map.ofEntries(
                 Map.entry("economy", GENERAL_ECONOMY),
@@ -375,52 +302,10 @@ public class NewsCategoryClassifier {
                 Map.entry("emtia", GOLD_COMMODITY),
                 Map.entry("altin", GOLD_COMMODITY),
                 Map.entry("crypto", CRYPTO),
-                Map.entry("energy", ENERGY),
-                Map.entry("oil", ENERGY),
-                Map.entry("petrol", ENERGY),
-                Map.entry("geopolitics", GEOPOLITICS),
-                Map.entry("politics", GEOPOLITICS),
+                Map.entry("energy", GOLD_COMMODITY),
+                Map.entry("oil", GOLD_COMMODITY),
+                Map.entry("petrol", GOLD_COMMODITY),
                 Map.entry("company", COMPANY)
-        );
-    }
-
-    private static Map<String, List<String>> createFilterCategoryRuntimeKeywords() {
-        return Map.ofEntries(
-                Map.entry(GENERAL_ECONOMY, CATEGORY_KEYWORDS.get(GENERAL_ECONOMY)),
-                Map.entry(GLOBAL_MARKETS, List.of("kuresel piyasa", "global market", "wall street", "nasdaq", "dow", "msci", "risk appetite", "piyasa etkisi", "market impact")),
-                Map.entry(FX, List.of("dolar tl", "dolar/tl", "euro tl", "euro/tl", "usd try", "eur try", "parite", "doviz kuru", "fx", "forex")),
-                Map.entry(STOCKS, List.of("borsa istanbul", "bist", "hisse", "hisseleri", "hisse senedi", "stock", "equity", "shares", "endeks", "halka acik")),
-                Map.entry(INTEREST_BONDS, CATEGORY_KEYWORDS.get(INTEREST_BONDS)),
-                Map.entry(GOLD_COMMODITY, List.of("altin", "gold", "emtia", "commodity", "gumus", "silver", "petrol", "oil", "brent")),
-                Map.entry(BANKING, CATEGORY_KEYWORDS.get(BANKING)),
-                Map.entry(CRYPTO, CATEGORY_KEYWORDS.get(CRYPTO)),
-                Map.entry("ECONOMY", CATEGORY_KEYWORDS.get(GENERAL_ECONOMY)),
-                Map.entry("GENERAL", CATEGORY_KEYWORDS.get(GENERAL_ECONOMY)),
-                Map.entry("BUSINESS", CATEGORY_KEYWORDS.get(GENERAL_ECONOMY)),
-                Map.entry("TOP_NEWS", List.of("global market", "kuresel piyasa", "market impact", "risk appetite")),
-                Map.entry("MARKETS", List.of("global market", "kuresel piyasa", "market impact", "wall street", "nasdaq")),
-                Map.entry("FOREX", List.of("dolar tl", "dolar/tl", "euro tl", "euro/tl", "parite", "doviz kuru", "forex", "fx")),
-                Map.entry("CURRENCY", List.of("dolar tl", "euro tl", "parite", "doviz kuru", "forex", "fx")),
-                Map.entry("DOVIZ", List.of("dolar tl", "euro tl", "parite", "doviz kuru", "forex", "fx")),
-                Map.entry("STOCK", List.of("stock", "hisse", "borsa istanbul", "equity", "endeks")),
-                Map.entry("SHARES", List.of("shares", "hisseleri", "hisse senedi", "endeks")),
-                Map.entry("EQUITY", List.of("equity", "stock", "hisse senedi", "endeks")),
-                Map.entry("BANK", CATEGORY_KEYWORDS.get(BANKING)),
-                Map.entry("INTEREST_RATE", CATEGORY_KEYWORDS.get(INTEREST_BONDS)),
-                Map.entry("BOND", CATEGORY_KEYWORDS.get(INTEREST_BONDS)),
-                Map.entry("TAHVIL", CATEGORY_KEYWORDS.get(INTEREST_BONDS)),
-                Map.entry("FAIZ", CATEGORY_KEYWORDS.get(INTEREST_BONDS)),
-                Map.entry("GOLD", CATEGORY_KEYWORDS.get(GOLD_COMMODITY)),
-                Map.entry("COMMODITY", CATEGORY_KEYWORDS.get(GOLD_COMMODITY)),
-                Map.entry("EMTIA", CATEGORY_KEYWORDS.get(GOLD_COMMODITY)),
-                Map.entry("ALTIN", CATEGORY_KEYWORDS.get(GOLD_COMMODITY)),
-                Map.entry("ENERGY", CATEGORY_KEYWORDS.get(ENERGY)),
-                Map.entry("OIL", CATEGORY_KEYWORDS.get(ENERGY)),
-                Map.entry("PETROL", CATEGORY_KEYWORDS.get(ENERGY)),
-                Map.entry("GEOPOLITICS", CATEGORY_KEYWORDS.get(GEOPOLITICS)),
-                Map.entry("POLITICS", CATEGORY_KEYWORDS.get(GEOPOLITICS)),
-                Map.entry("COMPANY", CATEGORY_KEYWORDS.get(COMPANY)),
-                Map.entry("CRYPTOCURRENCY", CATEGORY_KEYWORDS.get(CRYPTO))
         );
     }
 
@@ -434,7 +319,3 @@ public class NewsCategoryClassifier {
         }
     }
 }
-
-
-
-
