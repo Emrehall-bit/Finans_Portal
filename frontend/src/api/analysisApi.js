@@ -10,16 +10,17 @@ export async function getAdvancedTechnical(instrumentCode, params = {}) {
   }
 }
 
-export async function getTechnicalCandles(symbol, params = {}) {
+export async function getTechnicalCandles(symbol, params = {}, options = {}) {
   try {
     const res = await axiosClient.get(`/api/v1/technical-analysis/${encodeURIComponent(symbol)}/candles`, { params });
     return res.data?.data ?? res.data;
   } catch (err) {
-    console.error(`Mum verisi alınamadı [${symbol}]:`, err?.response?.status ?? err.message);
+    if (!options.silent) {
+      console.error(`Mum verisi alinamadi [${symbol}]:`, err?.response?.status ?? err.message);
+    }
     throw err;
   }
 }
-
 export async function getUserIndicators(instrumentCode) {
   try {
     const res = await axiosClient.get(`/api/v1/technical-analysis/${encodeURIComponent(instrumentCode)}/indicators`);
@@ -133,3 +134,5 @@ export async function getFinancialData(instrumentCode, periodType = "ANNUAL") {
     throw err;
   }
 }
+
+

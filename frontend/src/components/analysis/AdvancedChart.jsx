@@ -160,6 +160,7 @@ export default function AdvancedChart({
   const prevInstrumentRef = useRef(null);
   const drawingSyncKeyRef = useRef(null);
   const pendingAutoFitRef = useRef(true);
+  const scheduledAutoFitFramesRef = useRef([]);
   const dataPointCountRef = useRef(0);
   const syncLockRef = useRef(false);
   const selectedDrawingKeyRef = useRef(null);
@@ -237,7 +238,9 @@ export default function AdvancedChart({
   technicalSnapshotRef.current = technicalSnapshot;
   activeIndicatorsRef.current = activeIndicators;
 
-  const isCrypto = String(quote?.instrumentType || "").toUpperCase() === "CRYPTO";
+  const normalizedInstrumentType = String(quote?.instrumentType || "").toUpperCase();
+  const isCrypto = normalizedInstrumentType === "CRYPTO";
+  const supportsCandleEndpoint = isCrypto || normalizedInstrumentType === "STOCK";
   const hasDrawings = Boolean(
     drawings.stopLoss ||
     drawings.takeProfit ||
@@ -872,6 +875,55 @@ export default function AdvancedChart({
     setHoveredDrawingKey(nextHoverKey);
   }, []);
 
+  const cancelScheduledAutoFit = useCallback(() => {
+    scheduledAutoFitFramesRef.current.forEach((frameId) => {
+      cancelAnimationFrame(frameId);
+    });
+    scheduledAutoFitFramesRef.current = [];
+  }, []);
+
+  const runPriceChartAutoFit = useCallback((rangeKey) => {
+    const priceChart = priceChartRef.current;
+    if (!priceChart) {
+      return;
+    }
+    priceChart.applyOptions({ timeScale: { barSpacing: rangeToBarSpacing(rangeKey) } });
+    priceChart.priceScale("right").applyOptions({ autoScale: true });
+    priceChart.timeScale().fitContent();
+  }, []);
+
+  const runCandleChartAutoFit = useCallback((rangeKey) => {
+    [priceChartRef.current, volumeChartRef.current, rsiChartRef.current]
+      .filter(Boolean)
+      .forEach((chart) => {
+        chart.applyOptions({ timeScale: { barSpacing: rangeToBarSpacing(rangeKey) } });
+        chart.timeScale().fitContent();
+      });
+
+    priceChartRef.current?.priceScale("right").applyOptions({ autoScale: true });
+    rsiChartRef.current?.priceScale("right").applyOptions({ autoScale: true });
+  }, []);
+
+  const fitLoadedDataset = useCallback((mode, rangeKey) => {
+    cancelScheduledAutoFit();
+
+    if (mode !== "candlestick") {
+      runPriceChartAutoFit(rangeKey);
+      return;
+    }
+
+    runCandleChartAutoFit(rangeKey);
+
+    const firstFrame = requestAnimationFrame(() => {
+      const secondFrame = requestAnimationFrame(() => {
+        runCandleChartAutoFit(rangeKey);
+        scheduledAutoFitFramesRef.current = [];
+      });
+      scheduledAutoFitFramesRef.current = [secondFrame];
+    });
+    scheduledAutoFitFramesRef.current = [firstFrame];
+  }, [cancelScheduledAutoFit, runCandleChartAutoFit, runPriceChartAutoFit]);
+
   useEffect(() => {
     drawings.trendLines.forEach((line) => {
       if (!line.series) {
@@ -1370,6 +1422,7 @@ export default function AdvancedChart({
       priceChart.timeScale().unsubscribeVisibleLogicalRangeChange(priceRangeHandler);
       volumeChart.timeScale().unsubscribeVisibleLogicalRangeChange(volumeRangeHandler);
       rsiChart.timeScale().unsubscribeVisibleLogicalRangeChange(rsiRangeHandler);
+      cancelScheduledAutoFit();
       priceChart.remove();
       volumeChart.remove();
       rsiChart.remove();
@@ -1387,6 +1440,7 @@ export default function AdvancedChart({
     addPriceLine,
     addHorizontalDrawing,
     applyThemeOptions,
+    cancelScheduledAutoFit,
     ensureCoreSeries,
     openTrendPopover,
     persistDrawing,
@@ -1421,9 +1475,11 @@ export default function AdvancedChart({
       setError(null);
 
       try {
-        const dataset = isCrypto
-          ? await loadCryptoData(instrumentCode, range, t, quote)
-          : await loadLineData(instrumentCode, rangeDates, t, quote, activeRange ?? range);
+        const selectedRangeKey = activeRange ?? range;
+        const candleRange = toCandleEndpointRange(selectedRangeKey);
+        const dataset = supportsCandleEndpoint
+          ? await loadDatasetWithCandleFallback(instrumentCode, candleRange, rangeDates, t, quote, selectedRangeKey, isCrypto)
+          : await loadLineData(instrumentCode, rangeDates, t, quote, selectedRangeKey);
 
         if (cancelled) {
           return;
@@ -1459,8 +1515,7 @@ export default function AdvancedChart({
         }
 
         if (pendingAutoFitRef.current) {
-          priceChartRef.current?.applyOptions({ timeScale: { barSpacing: rangeToBarSpacing(activeRange ?? range) } });
-          priceChartRef.current?.timeScale().fitContent();
+          fitLoadedDataset(dataset.mode, activeRange ?? range);
           pendingAutoFitRef.current = false;
         }
 
@@ -1494,9 +1549,11 @@ export default function AdvancedChart({
     clearAllDrawings,
     drawingTimeframe,
     ensureCoreSeries,
+    fitLoadedDataset,
     initialHighlightTool,
     instrumentCode,
     isCrypto,
+    supportsCandleEndpoint,
     presetPrice,
     quote?.currentPrice,
     quote?.instrumentType,
@@ -2221,9 +2278,20 @@ const TrendDrawingPopover = memo(function TrendDrawingPopover({ model, onClose }
   );
 });
 
-async function loadCryptoData(symbol, range, t, quote) {
+async function loadDatasetWithCandleFallback(symbol, range, rangeDates, t, quote, rangeKey, requireCandles) {
+  try {
+    return await loadCandleData(symbol, range, t, quote, !requireCandles);
+  } catch (error) {
+    if (requireCandles) {
+      throw error;
+    }
+    return loadLineData(symbol, rangeDates, t, quote, rangeKey);
+  }
+}
+
+async function loadCandleData(symbol, range, t, quote, silentErrors = false) {
   const candles = alignAdvancedRowsWithQuote(
-    normalizeCandles(await getTechnicalCandles(symbol, { range, interval: "1d" })),
+    normalizeCandles(await getTechnicalCandles(symbol, { range, interval: "1d" }, { silent: silentErrors })),
     quote,
     "candlestick",
   );
@@ -2274,7 +2342,7 @@ async function loadCryptoData(symbol, range, t, quote) {
       volumeDataCount: validVolumeCandles.length,
       rsiStats,
       rangeKey: range,
-      instrumentType: "CRYPTO",
+      instrumentType: quote?.instrumentType,
     }),
   };
 }
@@ -3101,6 +3169,11 @@ function buildDateRange(range) {
     from: toIsoDate(from),
     to: toIsoDate(today),
   };
+}
+
+function toCandleEndpointRange(rangeKey) {
+  const normalized = String(rangeKey || "").trim().toLowerCase();
+  return RANGE_VALUES.includes(normalized) ? normalized : DEFAULT_RANGE;
 }
 
 function toIsoDate(value) {

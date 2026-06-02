@@ -1,11 +1,13 @@
 package com.emrehalli.financeportal.market.scheduler;
 
 import com.emrehalli.financeportal.common.logging.SchedulerLogSupport;
+import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
-import com.emrehalli.financeportal.market.provider.stock.IsYatirimStockHistoryProvider;
 import com.emrehalli.financeportal.market.provider.stock.dto.StockHistoryDto;
+import com.emrehalli.financeportal.market.provider.yahoo.YahooHistoricalClient;
 import com.emrehalli.financeportal.market.service.StockService;
 import com.emrehalli.financeportal.market.support.BistSymbolRegistry;
+import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisCacheEvictionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,7 +30,8 @@ public class StockHistoryScheduler {
     private final BistSymbolRegistry bistSymbolRegistry;
     private final StockService stockService;
     private final MarketPriceHistoryRepository marketPriceHistoryRepository;
-    private final IsYatirimStockHistoryProvider isYatirimStockHistoryProvider;
+    private final YahooHistoricalClient yahooHistoricalClient;
+    private final TechnicalAnalysisCacheEvictionService technicalAnalysisCacheEvictionService;
 
     @Scheduled(cron = "0 30 19 * * MON-FRI")
     public void fetch() {
@@ -37,13 +40,15 @@ public class StockHistoryScheduler {
         int processedCount = 0;
         int successCount = 0;
         int failedCount = 0;
+        boolean historyFetched = false;
 
         for (String symbol : bistSymbolRegistry.getAllSymbols()) {
             processedCount++;
             try {
-                Optional<LocalDate> latestDate = marketPriceHistoryRepository.findTopDateBySymbolOrderByDateDesc(symbol);
+                Optional<LocalDate> latestDate = marketPriceHistoryRepository
+                        .findTopDateBySymbolAndSourceNameOrderByDateDesc(symbol, SourceName.YAHOO_FINANCE.name());
                 if (latestDate.isEmpty()) {
-                    log.warn("Skipping stock history scheduler for symbol={} because no existing history record was found.", symbol);
+                    log.warn("Skipping stock history scheduler for symbol={} because no existing Yahoo history record was found.", symbol);
                     continue;
                 }
 
@@ -52,8 +57,13 @@ public class StockHistoryScheduler {
                     continue;
                 }
 
-                List<StockHistoryDto> history = isYatirimStockHistoryProvider.fetchHistory(symbol, startDate, today);
-                stockService.saveHistory(symbol, history);
+                List<StockHistoryDto> yahooHistory = yahooHistoricalClient.fetchDailyHistory(
+                        bistSymbolRegistry.toYahooSymbol(symbol),
+                        startDate,
+                        today
+                );
+                stockService.saveYahooHistory(symbol, yahooHistory);
+                historyFetched = historyFetched || !yahooHistory.isEmpty();
                 successCount++;
             } catch (Exception exception) {
                 failedCount++;
@@ -68,6 +78,9 @@ public class StockHistoryScheduler {
                 run.log(log, processedCount, successCount, failedCount + 1, exception);
                 return;
             }
+        }
+        if (historyFetched) {
+            technicalAnalysisCacheEvictionService.evictAllTechnicalCaches();
         }
         run.log(log, processedCount, successCount, failedCount);
     }

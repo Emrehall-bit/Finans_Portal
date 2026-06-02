@@ -71,12 +71,13 @@ public class TechnicalCandleService {
         String normalizedSymbol = normalizeSymbol(symbol);
         MarketInstrument instrument = resolveInstrument(normalizedSymbol);
 
-        if (instrument.getInstrumentType() != InstrumentType.CRYPTO || instrument.getSourceName() != SourceName.BINANCE) {
+        SourceName candleSource = resolveCandleSource(instrument, normalizedSymbol);
+        if (candleSource == null) {
             throw new TechnicalAnalysisException.Validation("Candlestick data not available for symbol " + normalizedSymbol);
         }
 
         String normalizedRange = normalizeRange(range);
-        Instant displayStart = resolveStartTimestamp(instrument, normalizedRange);
+        Instant displayStart = resolveStartTimestamp(instrument, candleSource, normalizedRange);
         Instant fetchStart = resolveWarmupStart(normalizedRange, displayStart);
         Instant to = Instant.now(clock);
 
@@ -84,7 +85,7 @@ public class TechnicalCandleService {
                 .findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
                         instrument,
                         IntervalType.ONE_DAY,
-                        SourceName.BINANCE,
+                        candleSource,
                         fetchStart,
                         to
                 );
@@ -203,7 +204,19 @@ public class TechnicalCandleService {
         return displayStart.minus(Duration.ofDays(WARMUP_DAYS));
     }
 
-    private Instant resolveStartTimestamp(MarketInstrument instrument, String range) {
+    private SourceName resolveCandleSource(MarketInstrument instrument, String normalizedSymbol) {
+        if (instrument.getInstrumentType() == InstrumentType.CRYPTO && instrument.getSourceName() == SourceName.BINANCE) {
+            return SourceName.BINANCE;
+        }
+        if (instrument.getInstrumentType() == InstrumentType.STOCK) {
+            return SourceName.YAHOO_FINANCE;
+        }
+        logger.info("Candlestick data not supported: symbol={}, instrumentType={}, source={}",
+                normalizedSymbol, instrument.getInstrumentType(), instrument.getSourceName());
+        return null;
+    }
+
+    private Instant resolveStartTimestamp(MarketInstrument instrument, SourceName sourceName, String range) {
         Instant now = Instant.now(clock);
         LocalDate today = LocalDate.now(clock);
 
@@ -216,7 +229,7 @@ public class TechnicalCandleService {
                     .findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampAsc(
                             instrument,
                             IntervalType.ONE_DAY,
-                            SourceName.BINANCE
+                            sourceName
                     )
                     .map(MarketPriceHistory::getPriceTimestamp)
                     .orElse(now);
@@ -293,4 +306,3 @@ public class TechnicalCandleService {
         return symbol.replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
     }
 }
-

@@ -11,6 +11,7 @@ import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryReposito
 import com.emrehalli.financeportal.market.provider.fx.tcmb.TcmbHistoricalFxProvider;
 import com.emrehalli.financeportal.market.provider.fx.tcmb.dto.TcmbHistoricalFxValue;
 import com.emrehalli.financeportal.market.provider.fx.tcmb.mapper.TcmbHistoricalFxMapper;
+import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisCacheEvictionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -35,6 +36,7 @@ class TcmbFxHistoricalBackfillServiceTest {
     private TcmbHistoricalFxMapper historicalFxMapper;
     private MarketInstrumentRepository instrumentRepository;
     private MarketPriceHistoryRepository priceHistoryRepository;
+    private TechnicalAnalysisCacheEvictionService cacheEvictionService;
     private TcmbFxHistoricalBackfillService service;
 
     @BeforeEach
@@ -43,12 +45,14 @@ class TcmbFxHistoricalBackfillServiceTest {
         historicalFxMapper = mock(TcmbHistoricalFxMapper.class);
         instrumentRepository = mock(MarketInstrumentRepository.class);
         priceHistoryRepository = mock(MarketPriceHistoryRepository.class);
+        cacheEvictionService = mock(TechnicalAnalysisCacheEvictionService.class);
         service = new TcmbFxHistoricalBackfillService(
                 historicalFxProvider,
                 historicalFxMapper,
                 instrumentRepository,
                 priceHistoryRepository,
-                marketProperties()
+                marketProperties(),
+                cacheEvictionService
         );
     }
 

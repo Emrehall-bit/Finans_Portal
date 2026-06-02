@@ -19,6 +19,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,14 +46,27 @@ public class YahooHistoricalClient {
      * @throws DataProviderException on HTTP or parse failure
      */
     public List<StockHistoryDto> fetchDailyHistory(String yahooSymbol, int days) {
+        long period2 = Instant.now().getEpochSecond();
+        long period1 = period2 - ((long) days * 86400);
+        return fetchDailyHistory(yahooSymbol, period1, period2);
+    }
+
+    public List<StockHistoryDto> fetchDailyHistory(String yahooSymbol, LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
+            throw new DataProviderException("Invalid Yahoo historical date range. symbol=" + yahooSymbol);
+        }
+
+        long period1 = startDate.atStartOfDay().toEpochSecond(ZoneOffset.UTC);
+        long period2 = endDate.plusDays(1).atStartOfDay().toEpochSecond(ZoneOffset.UTC);
+        return fetchDailyHistory(yahooSymbol, period1, period2);
+    }
+
+    private List<StockHistoryDto> fetchDailyHistory(String yahooSymbol, long period1, long period2) {
         String cookie = props.getProviders().getYahoo().getCookie();
         String crumb  = props.getProviders().getYahoo().getCrumb();
         if (!hasText(cookie) || !hasText(crumb)) {
             throw new DataProviderException("Yahoo Finance cookie/crumb is not configured");
         }
-
-        long period2 = Instant.now().getEpochSecond();
-        long period1 = period2 - ((long) days * 86400);
 
         // Build URL via string concat to avoid UriComponentsBuilder misinterpreting '=' in ticker path
         String baseUrl = props.getProviders().getYahoo().getBaseUrl();

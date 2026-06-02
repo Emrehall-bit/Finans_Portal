@@ -640,8 +640,8 @@
         "groupLevels": "Seviyeler",
         "groupTrend": "Trend Yapısı",
         "waiting": "Bekleniyor",
-        "trend": "Kısa Vadeli Eğilim",
-        "rangeTrend": "Aralık eğilimi",
+        "trend": "Teknik Trend",
+        "rangeTrend": "Seçili Aralık Performansı",
         "insufficientData": "Yetersiz veri",
         "maAlignment": "MA Dizilimi",
         "volatility": "Volatilite",
@@ -669,7 +669,7 @@
         "hideDetails": "Gizle",
         "tooltip": {
           "rsi": "Fiyatın son dönemde aşırı alım veya aşırı satım bölgesine yaklaşıp yaklaşmadığını gösterir.",
-          "trend": "Fiyat hareketi ve teknik göstergelere göre genel yön yorumudur.",
+          "trend": "Kullanıcının seçtiği zaman aralığındaki toplam fiyat değişim yüzdesini gösterir.",
           "momentum": "Seçilen aralıkta son dönem fiyat hareketinin gücünü gösterir.",
           "closingVolatility": "Kapanış fiyatlarındaki günlük değişimlerin oynaklığını gösterir.",
           "maLayout": "Kısa ve orta vadeli hareketli ortalamaların birbirine göre konumunu gösterir."
@@ -1721,7 +1721,7 @@
     "analysisLoading": "Analiz özetleri yükleniyor...",
     "analysisEmptyTitle": "Analiz verisi bulunamadı",
     "analysisEmptyDescription": "Bu enstrüman için teknik özet oluşmadı.",
-    "trend": "Trend",
+    "trend": "Teknik Trend",
     "latestPrice": "Son fiyat",
     "dailyChange": "Günlük hareket",
     "dataPoints": "Veri noktası",

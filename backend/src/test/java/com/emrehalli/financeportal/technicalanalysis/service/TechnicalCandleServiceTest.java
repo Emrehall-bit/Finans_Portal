@@ -33,7 +33,7 @@ class TechnicalCandleServiceTest {
     private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-06-01T00:00:00Z"), ZoneOffset.UTC);
 
     @Test
-    void getCandles_should_reject_non_binance_or_non_crypto_instruments() {
+    void getCandles_should_not_return_stock_candles_from_is_yatirim_history() {
         MarketInstrumentRepository instrumentRepository = mock(MarketInstrumentRepository.class);
         MarketPriceHistoryRepository historyRepository = mock(MarketPriceHistoryRepository.class);
         BinancePairMapper binancePairMapper = mock(BinancePairMapper.class);
@@ -49,6 +49,13 @@ class TechnicalCandleServiceTest {
                 .thenReturn(List.of());
         when(instrumentRepository.findByInstrumentCodeIgnoreCase("THYAO"))
                 .thenReturn(Optional.of(instrument));
+        when(historyRepository.findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+                org.mockito.ArgumentMatchers.eq(instrument),
+                org.mockito.ArgumentMatchers.eq(IntervalType.ONE_DAY),
+                org.mockito.ArgumentMatchers.eq(SourceName.YAHOO_FINANCE),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(List.of());
 
         TechnicalCandleService service = new TechnicalCandleService(
                 instrumentRepository,
@@ -59,8 +66,63 @@ class TechnicalCandleServiceTest {
         );
 
         assertThatThrownBy(() -> service.getCandles("THYAO", "6m", "1d"))
-                .isInstanceOf(TechnicalAnalysisException.Validation.class)
+                .isInstanceOf(TechnicalAnalysisException.NotFound.class)
                 .hasMessageContaining("Candlestick data not available for symbol THYAO");
+    }
+
+    @Test
+    void getCandles_should_return_stock_candles_from_yahoo_complete_ohlcv_history() {
+        MarketInstrumentRepository instrumentRepository = mock(MarketInstrumentRepository.class);
+        MarketPriceHistoryRepository historyRepository = mock(MarketPriceHistoryRepository.class);
+        BinancePairMapper binancePairMapper = mock(BinancePairMapper.class);
+
+        MarketInstrument instrument = MarketInstrument.builder()
+                .instrumentCode("THYAO")
+                .instrumentType(InstrumentType.STOCK)
+                .sourceName(SourceName.BIST)
+                .build();
+
+        when(binancePairMapper.toDisplayCode("THYAO")).thenReturn("THYAO");
+        when(instrumentRepository.findAllByInstrumentCodeInAndSourceName(org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(SourceName.BINANCE)))
+                .thenReturn(List.of());
+        when(instrumentRepository.findByInstrumentCodeIgnoreCase("THYAO"))
+                .thenReturn(Optional.of(instrument));
+
+        MarketPriceHistory yahooBar = MarketPriceHistory.builder()
+                .instrument(instrument)
+                .intervalType(IntervalType.ONE_DAY)
+                .sourceName(SourceName.YAHOO_FINANCE)
+                .priceTimestamp(Instant.parse("2026-05-01T00:00:00Z"))
+                .openPrice(BigDecimal.valueOf(318))
+                .highPrice(BigDecimal.valueOf(325))
+                .lowPrice(BigDecimal.valueOf(315))
+                .closePrice(BigDecimal.valueOf(321))
+                .volume(BigDecimal.valueOf(1000))
+                .build();
+
+        when(historyRepository.findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+                org.mockito.ArgumentMatchers.eq(instrument),
+                org.mockito.ArgumentMatchers.eq(IntervalType.ONE_DAY),
+                org.mockito.ArgumentMatchers.eq(SourceName.YAHOO_FINANCE),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(List.of(yahooBar));
+
+        TechnicalCandleService service = new TechnicalCandleService(
+                instrumentRepository,
+                historyRepository,
+                new IndicatorSeriesCalculator(new MovingAverageService(), new RsiService()),
+                binancePairMapper,
+                FIXED_CLOCK
+        );
+
+        List<TechnicalCandleDto> candles = service.getCandles("THYAO", "1m", "1d");
+
+        assertThat(candles).hasSize(1);
+        assertThat(candles.getFirst().open()).isEqualByComparingTo("318");
+        assertThat(candles.getFirst().high()).isEqualByComparingTo("325");
+        assertThat(candles.getFirst().low()).isEqualByComparingTo("315");
+        assertThat(candles.getFirst().close()).isEqualByComparingTo("321");
     }
 
     @Test
@@ -415,4 +477,3 @@ class TechnicalCandleServiceTest {
                 .hasMessageContaining("too long");
     }
 }
-

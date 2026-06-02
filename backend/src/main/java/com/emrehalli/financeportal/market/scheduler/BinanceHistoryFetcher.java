@@ -10,6 +10,7 @@ import com.emrehalli.financeportal.market.persistence.LastHistoryDateProjection;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
 import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
 import com.emrehalli.financeportal.market.support.BinancePairMapper;
+import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisCacheEvictionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -42,6 +43,7 @@ public class BinanceHistoryFetcher {
     private final MarketInstrumentRepository instrumentRepository;
     private final MarketPriceHistoryRepository historyRepository;
     private final MarketProperties binanceProperties;
+    private final TechnicalAnalysisCacheEvictionService technicalAnalysisCacheEvictionService;
     private final ExecutorService executor = Executors.newFixedThreadPool(5);
 
     @Scheduled(initialDelay = 2 * 60 * 1000, fixedDelay = Long.MAX_VALUE)
@@ -89,6 +91,9 @@ public class BinanceHistoryFetcher {
         }
 
         log.info("[BinanceHistoryFetcher] Startup catch-up tamamlandı. Toplam kaydedilen: {}", total);
+        if (total > 0) {
+            technicalAnalysisCacheEvictionService.evictAllTechnicalCaches();
+        }
     }
 
     private Map<String, LocalDate> preloadLastDates() {
@@ -116,14 +121,17 @@ public class BinanceHistoryFetcher {
             log.warn("[BinanceHistoryFetcher] PairMapper hazÄ±r deÄŸil, dailyFetch atlanÄ±yor.");
             return;
         }
-
+        int totalSaved = 0;
         for (String binanceSymbol : pairMapper.getAllSymbols()) {
             String coin = pairMapper.toDisplayCode(binanceSymbol);
             try {
-                fetchAndSavePage(coin, binanceSymbol, 1, null);
+                totalSaved += fetchAndSavePage(coin, binanceSymbol, 1, null);
             } catch (Exception exception) {
                 log.warn("[BinanceHistoryFetcher] dailyFetch coin iÅŸlenemedi. coin={}, symbol={}", coin, binanceSymbol, exception);
             }
+        }
+        if (totalSaved > 0) {
+            technicalAnalysisCacheEvictionService.evictAllTechnicalCaches();
         }
     }
 
@@ -248,8 +256,12 @@ public class BinanceHistoryFetcher {
             }
         }
 
-        log.info("[BinanceHistoryFetcher] Manuel yÃ¼kleme tamamlandÄ±. Toplam: {}", totalSaved.get());
-        return totalSaved.get();
+        int savedTotal = totalSaved.get();
+        log.info("[BinanceHistoryFetcher] Manuel yukleme tamamlandi. Toplam: {}", savedTotal);
+        if (savedTotal > 0) {
+            technicalAnalysisCacheEvictionService.evictAllTechnicalCaches();
+        }
+        return savedTotal;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -267,6 +279,7 @@ public class BinanceHistoryFetcher {
                 });
     }
 }
+
 
 
 

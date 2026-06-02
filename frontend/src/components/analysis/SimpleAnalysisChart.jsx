@@ -16,7 +16,7 @@ import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { useTheme } from "../../theme/ThemeContext";
-import { formatNumber } from "../../utils/formatters";
+import { formatCurrency, formatNumber } from "../../utils/formatters";
 import { useCurrency } from "../../currency/CurrencyContext";
 import { formatAxisNumber } from "./analysisUtils";
 import {
@@ -45,7 +45,7 @@ export default function SimpleAnalysisChart({
 }) {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
-  const { currency } = useCurrency();
+  const { convertAmount, currency } = useCurrency();
   const instrumentType = quote?.instrumentType;
   const hasData = chartData.length > 0;
   const latestPoint = hasData ? chartData.at(-1) : null;
@@ -54,7 +54,8 @@ export default function SimpleAnalysisChart({
     () => resolveLatestRsi(analysis, chartData),
     [analysis, chartData],
   );
-  const lastPrice = firstFinite(resolveQuoteLatestPrice(quote), analysis?.latestPrice, latestPoint?.close);
+  const rawLastPrice = firstFinite(resolveQuoteLatestPrice(quote), analysis?.latestPrice);
+  const lastPrice = rawLastPrice != null ? convertAmount(rawLastPrice) : latestPoint?.close;
   const dailyChange = firstFinite(quote?.changeRate, analysis?.latestChangePct, derivePercentChange(previousPoint?.close, latestPoint?.close));
   const volumeValue = firstFinite(
     quote?.volume,
@@ -116,7 +117,7 @@ export default function SimpleAnalysisChart({
   const metrics = [
     {
       label: t("instrumentDetail.latestPrice"),
-      value: lastPrice != null ? formatNumber(lastPrice, 2) : "-",
+      value: lastPrice != null ? formatCurrency(lastPrice, currency) : "-",
       tone: "neutral",
       sparkTone: "positive",
     },
@@ -127,7 +128,7 @@ export default function SimpleAnalysisChart({
       sparkTone: percentTone(dailyChange),
     },
     {
-      label: t("instrumentDetail.trend"),
+      label: t("analysis.chart.techPanel.rangeTrend"),
       value: selectedRangeLabel,
       tone: selectedRangeTone,
       sparkTone: selectedRangeTone,
@@ -257,7 +258,7 @@ export default function SimpleAnalysisChart({
                 tooltip={t("analysis.chart.techPanel.tooltip.rsi")}
               />
               <TechMetricCell
-                label={t("analysis.chart.techPanel.trend")}
+                label={t("analysis.chart.techPanel.rangeTrend")}
                 value={selectedRangeLabel}
                 tone={selectedRangeTone}
                 tooltip={t("analysis.chart.techPanel.tooltip.trend")}

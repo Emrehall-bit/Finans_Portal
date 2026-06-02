@@ -92,19 +92,19 @@ public class StockService {
     }
 
     @Transactional
-    public void saveHistory(String symbol, List<StockHistoryDto> history) {
+    public void saveYahooHistory(String symbol, List<StockHistoryDto> history) {
         if (isBlank(symbol) || history == null || history.isEmpty()) {
             return;
         }
 
         String normalizedSymbol = normalizeSymbol(symbol);
-        MarketInstrument instrument = marketInstrumentRepository.findByInstrumentCodeAndSourceName(normalizedSymbol, SourceName.BIST)
-                .filter(item -> item.getInstrumentType() == InstrumentType.STOCK)
+        MarketInstrument instrument = marketInstrumentRepository
+                .findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(normalizedSymbol, InstrumentType.STOCK)
                 .orElseGet(() -> marketInstrumentRepository.save(MarketInstrument.builder()
                         .instrumentCode(normalizedSymbol)
                         .instrumentName(normalizedSymbol)
                         .instrumentType(InstrumentType.STOCK)
-                        .sourceName(SourceName.BIST)
+                        .sourceName(SourceName.YAHOO_FINANCE)
                         .build()));
 
         for (StockHistoryDto item : history) {
@@ -122,13 +122,13 @@ public class StockService {
                     .findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestamp(
                             instrument,
                             IntervalType.ONE_DAY,
-                            SourceName.IS_YATIRIM,
+                            SourceName.YAHOO_FINANCE,
                             normalizedTimestamp
                     )
                     .orElseGet(() -> MarketPriceHistory.builder()
                             .instrument(instrument)
                             .intervalType(IntervalType.ONE_DAY)
-                            .sourceName(SourceName.IS_YATIRIM)
+                            .sourceName(SourceName.YAHOO_FINANCE)
                             .priceTimestamp(normalizedTimestamp)
                             .build());
 
@@ -206,7 +206,7 @@ public class StockService {
     public List<StockHistoryDto> getHistory(String symbol, LocalDate startDate, LocalDate endDate) {
         String normalizedSymbol = normalizeSymbol(symbol);
         MarketInstrument instrument = marketInstrumentRepository
-                .findByInstrumentCodeIgnoreCaseAndSourceName(normalizedSymbol, SourceName.BIST)
+                .findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(normalizedSymbol, InstrumentType.STOCK)
                 .filter(item -> item.getInstrumentType() == InstrumentType.STOCK)
                 .orElseThrow(() -> new InstrumentNotFoundException("Stock instrument not found: " + normalizedSymbol));
 
@@ -218,8 +218,10 @@ public class StockService {
                 .toInstant(ZoneOffset.UTC);
 
         List<StockHistoryDto> history = marketPriceHistoryRepository
-                .findByInstrumentIdAndPriceTimestampBetweenOrderByPriceTimestampAsc(
-                        instrument.getId(),
+                .findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
+                        instrument,
+                        IntervalType.ONE_DAY,
+                        SourceName.YAHOO_FINANCE,
                         from,
                         to
                 ).stream()
@@ -247,7 +249,7 @@ public class StockService {
                 null,
                 null,
                 null,
-                instrument.getSourceName().name(),
+                latestPrice.getSourceName().name(),
                 latestPrice.getPriceTimestamp().toInstant(ZoneOffset.UTC),
                 null
         );
@@ -267,7 +269,7 @@ public class StockService {
                 cachedSource != null ? cachedSource.dayHigh() : null,
                 cachedSource != null ? cachedSource.dayLow() : null,
                 cachedSource != null ? cachedSource.volume() : null,
-                instrument.getSourceName().name(),
+                cachedSource != null ? cachedSource.sourceName() : SourceName.YAHOO_FINANCE.name(),
                 dataTimestamp != null ? dataTimestamp.toInstant(ZoneOffset.UTC) : Instant.now(),
                 cachedSource != null ? cachedSource.openPrice() : null
         );
@@ -282,12 +284,6 @@ public class StockService {
                 history.getClosePrice(),
                 history.getVolume()
         );
-    }
-
-    private MarketInstrument findStockInstrument(String normalizedSymbol) {
-        return marketInstrumentRepository.findByInstrumentCodeAndSourceName(normalizedSymbol, SourceName.YAHOO_FINANCE)
-                .filter(item -> item.getInstrumentType() == InstrumentType.STOCK)
-                .orElseThrow(() -> new InstrumentNotFoundException("Stock instrument not found: " + normalizedSymbol));
     }
 
     private StockPriceDto getCachedStock(String symbol) {

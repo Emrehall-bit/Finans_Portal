@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Plus, Search, Star, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { formatNumber } from "../../utils/formatters";
+import { useCurrency } from "../../currency/CurrencyContext";
 import { formatInstrumentCode, getFxCodeLabel } from "../../utils/instrumentUtils";
 
 export default function AnalysisSymbolPicker({
@@ -22,6 +22,7 @@ export default function AnalysisSymbolPicker({
   onFavoriteToggle,
 }) {
   const { t, i18n } = useTranslation();
+  const { formatAmount } = useCurrency();
   const [search, setSearch] = useState("");
   const [compareOpen, setCompareOpen] = useState(false);
   const popoverRef = useRef(null);
@@ -78,7 +79,7 @@ export default function AnalysisSymbolPicker({
             <h1>{primaryContext?.symbolLine || "-"}</h1>
             {advancedHeaderPrice != null ? (
               <div className="analysis-hero-price-block">
-                <strong>{formatNumber(advancedHeaderPrice, 2)}</strong>
+                <strong>{formatAmount(advancedHeaderPrice)}</strong>
                 {advancedHeaderChange != null ? (
                   <span className={advancedHeaderChange >= 0 ? "is-positive" : "is-negative"}>
                     {advancedHeaderChange >= 0 ? "+" : ""}

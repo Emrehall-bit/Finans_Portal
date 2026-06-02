@@ -10,6 +10,7 @@ import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryReposito
 import com.emrehalli.financeportal.market.provider.fund.TefasProvider;
 import com.emrehalli.financeportal.market.provider.fund.dto.TefasFundListResponseItem;
 import com.emrehalli.financeportal.market.provider.fund.dto.TefasFundPriceResponseItem;
+import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisCacheEvictionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class TefasFundHistoricalBackfillService {
     private final TefasProvider tefasProvider;
     private final MarketInstrumentRepository marketInstrumentRepository;
     private final MarketPriceHistoryRepository marketPriceHistoryRepository;
+    private final TechnicalAnalysisCacheEvictionService technicalAnalysisCacheEvictionService;
 
     @Transactional
     public BackfillResult runBackfill(String fundCode, Integer periyod) {
@@ -77,6 +79,10 @@ public class TefasFundHistoricalBackfillService {
                 if (end < fundCodes.size()) {
                     sleepBetweenChunks();
                 }
+            }
+
+            if (savedRecords > 0) {
+                technicalAnalysisCacheEvictionService.evictAllTechnicalCaches();
             }
 
             return new BackfillResult(

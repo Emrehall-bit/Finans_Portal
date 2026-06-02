@@ -47,6 +47,18 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
     Optional<LocalDate> findTopDateBySymbolOrderByDateDesc(@Param("symbol") String symbol);
 
     @Query(value = """
+            select cast(max(mph.price_timestamp) as date)
+            from market_price_history mph
+            join market_instruments mi on mi.id = mph.instrument_id
+            where upper(mi.instrument_code) = upper(:symbol)
+              and mi.instrument_type = 'STOCK'
+              and mph.interval_type = 'ONE_DAY'
+              and mph.source_name = :sourceName
+            """, nativeQuery = true)
+    Optional<LocalDate> findTopDateBySymbolAndSourceNameOrderByDateDesc(@Param("symbol") String symbol,
+                                                                        @Param("sourceName") String sourceName);
+
+    @Query(value = """
             select mph.*
             from market_price_history mph
             join market_instruments mi on mi.id = mph.instrument_id
@@ -140,6 +152,5 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
             @Param("intervalType")   IntervalType intervalType
     );
 }
-
 
 

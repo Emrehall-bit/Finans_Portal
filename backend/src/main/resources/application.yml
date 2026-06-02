@@ -136,8 +136,6 @@ market:
       cookie: >-
         ${YAHOO_COOKIE}
       crumb: ${YAHOO_CRUMB}
-    isyatirim:
-      base-url: https://www.isyatirim.com.tr
     bist:
       base-url: https://datastore.borsaistanbul.com
   scheduler:

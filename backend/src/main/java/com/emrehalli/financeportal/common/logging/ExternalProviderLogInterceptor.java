@@ -86,7 +86,6 @@ public class ExternalProviderLogInterceptor implements ClientHttpRequestIntercep
         if (host.contains("news.google")) return "GOOGLE_NEWS";
         if (host.contains("reuters")) return "REUTERS";
         if (host.contains("borsaistanbul")) return "BIST";
-        if (host.contains("isyatirim")) return "ISYATIRIM";
         if (host.contains("yahoo")) return "YAHOO";
         return host.toUpperCase(Locale.ROOT);
     }

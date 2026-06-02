@@ -12,6 +12,7 @@ import com.emrehalli.financeportal.market.provider.fx.tcmb.TcmbFxSeriesDefinitio
 import com.emrehalli.financeportal.market.provider.fx.tcmb.TcmbHistoricalFxProvider;
 import com.emrehalli.financeportal.market.provider.fx.tcmb.dto.TcmbHistoricalFxValue;
 import com.emrehalli.financeportal.market.provider.fx.tcmb.mapper.TcmbHistoricalFxMapper;
+import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisCacheEvictionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class TcmbFxHistoricalBackfillService {
     private final MarketInstrumentRepository marketInstrumentRepository;
     private final MarketPriceHistoryRepository marketPriceHistoryRepository;
     private final MarketProperties marketProperties;
+    private final TechnicalAnalysisCacheEvictionService technicalAnalysisCacheEvictionService;
 
     @Transactional
     public BackfillSummary backfillAll() {
@@ -168,6 +170,9 @@ public class TcmbFxHistoricalBackfillService {
         int totalParseOrNullSkips = Math.max(totalRows * definitions.size() - totalMappedValues, 0);
         log.info("TCMB FX historical backfill completed. rows={}, saved={}, duplicatesSkipped={}, parseOrNullSkipped={}, missingInstruments={}",
                 totalRows, totalSaved, totalDuplicates, totalParseOrNullSkips, totalMissingInstruments);
+        if (totalSaved > 0) {
+            technicalAnalysisCacheEvictionService.evictAllTechnicalCaches();
+        }
 
         return new BackfillSummary(
                 totalRows,

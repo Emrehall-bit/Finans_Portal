@@ -210,7 +210,10 @@
       "PowerShell($env:PGPASSWORD = \"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -f \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\analysis_guard.sql\" 2>&1)",
       "PowerShell($env:PGPASSWORD = \"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -f \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\analysis_gc.sql\" 2>&1)",
       "PowerShell($env:PGPASSWORD = \"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -f \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\analysis_gc2.sql\" 2>&1)",
-      "PowerShell($env:PGPASSWORD = \"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -f \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\analysis_guard2.sql\" 2>&1)"
+      "PowerShell($env:PGPASSWORD = \"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -f \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\analysis_guard2.sql\" 2>&1)",
+      "Bash(dir \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\")",
+      "Bash(findstr /i technical)",
+      "Bash(Get-ChildItem C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal *)"
     ]
   }
 }

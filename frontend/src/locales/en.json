@@ -647,8 +647,8 @@
         "groupLevels": "Levels",
         "groupTrend": "Trend Structure",
         "waiting": "Waiting",
-        "trend": "Short-Term Trend",
-        "rangeTrend": "Range trend",
+        "trend": "Technical Trend",
+        "rangeTrend": "Selected Range Performance",
         "insufficientData": "Insufficient data",
         "maAlignment": "MA Alignment",
         "volatility": "Volatility",
@@ -676,7 +676,7 @@
         "hideDetails": "Hide",
         "tooltip": {
           "rsi": "Shows whether the price has entered an overbought or oversold zone recently.",
-          "trend": "Overall directional interpretation based on price movement and technical indicators.",
+          "trend": "Shows the total price change percentage over the selected time range.",
           "momentum": "Shows the strength of recent price movement within the selected time range.",
           "closingVolatility": "Shows the volatility of daily changes in closing prices.",
           "maLayout": "Shows the positioning of short and medium-term moving averages relative to each other."
@@ -1728,7 +1728,7 @@
     "analysisLoading": "Loading analysis summaries...",
     "analysisEmptyTitle": "No analysis data found",
     "analysisEmptyDescription": "No technical summary was generated for this instrument.",
-    "trend": "Trend",
+    "trend": "Technical Trend",
     "latestPrice": "Latest price",
     "dailyChange": "Daily change",
     "dataPoints": "Data points",

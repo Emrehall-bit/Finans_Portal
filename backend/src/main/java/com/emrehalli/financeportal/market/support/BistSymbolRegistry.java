@@ -11,7 +11,7 @@ import java.util.List;
 public class BistSymbolRegistry {
 
     private static final List<String> BIST_30_SYMBOLS = List.of(
-            "AKBNK", "AKFEN", "AKGRT", "AKSA", "AKSEN", "ALARK", "ALBRK", "ALFAS", "ALKIM", "ANACM",
+            "AKBNK", "AKGRT", "AKSA", "AKSEN", "ALARK", "ALBRK", "ALFAS", "ALKIM", "ANACM",
             "ARCLK", "ARDYZ", "ASELS", "ASTOR", "AYDEM", "BERA", "BIMAS", "BIRCH", "BOBET", "BRYAT",
             "BTCIM", "BUCIM", "CANTE", "CCOLA", "CEMTS", "CIMSA", "CLEBI", "CWENE", "DOAS", "DOHOL",
             "DYOBY", "ECILC", "EGEEN", "EKGYO", "ENERY", "ENJSA", "ENKAI", "ERBOS", "EREGL", "EUPWR",

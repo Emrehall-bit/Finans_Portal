@@ -23,7 +23,6 @@ public class MarketProperties {
         private Provider ziraat = new Provider();
         private Provider binance = new Provider();
         private Provider yahoo = new Provider();
-        private Provider isyatirim = new Provider();
         private Provider bist = new Provider();
         private Provider tefas = new Provider();
     }
