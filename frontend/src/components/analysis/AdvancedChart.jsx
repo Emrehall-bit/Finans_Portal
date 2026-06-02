@@ -872,6 +872,21 @@ export default function AdvancedChart({
     setHoveredDrawingKey(nextHoverKey);
   }, []);
 
+  useEffect(() => {
+    drawings.trendLines.forEach((line) => {
+      if (!line.series) {
+        return;
+      }
+      const isHovered = hoveredDrawingKey === line.id;
+      const isSelected = selectedDrawingKey === line.id;
+      line.series.applyOptions({
+        lineWidth: isHovered && !isSelected ? 4 : isSelected ? 3 : 2,
+        pointMarkersVisible: true,
+        pointMarkersRadius: isHovered && !isSelected ? 6 : 4,
+      });
+    });
+  }, [drawings.trendLines, hoveredDrawingKey, selectedDrawingKey]);
+
   const openTrendPopover = useCallback((drawingKey) => {
     const drawing = findDrawingByKey(drawingsRef.current, drawingKey);
     if (drawing?.kind !== "trend" || !buildTrendPopoverModel(drawing)) {
@@ -1159,7 +1174,10 @@ export default function AdvancedChart({
       const hoverKey = resolveHoveredDrawingKey(param);
       setHoveredDrawingKey(hoverKey);
       if (priceContainerRef.current) {
-        priceContainerRef.current.style.cursor = hoverKey && activeToolRef.current === "cursor" ? "row-resize" : (activeToolRef.current === "cursor" ? "default" : "crosshair");
+        const hoveredDrawing = findDrawingByKey(drawingsRef.current, hoverKey);
+        priceContainerRef.current.style.cursor = hoverKey && activeToolRef.current === "cursor"
+          ? hoveredDrawing?.kind === "trend" ? "pointer" : "row-resize"
+          : (activeToolRef.current === "cursor" ? "default" : "crosshair");
       }
     };
 
@@ -1221,6 +1239,8 @@ export default function AdvancedChart({
           lineWidth: 2,
           priceLineVisible: false,
           lastValueVisible: false,
+          pointMarkersVisible: true,
+          pointMarkersRadius: 4,
         });
         trendSeries.setData(lineData);
 
@@ -2185,8 +2205,8 @@ const TrendDrawingPopover = memo(function TrendDrawingPopover({ model, onClose }
     <div className="trend-drawing-popover" role="dialog" aria-label="Trend Çizgisi">
       <div className="trend-drawing-popover-head">
         <strong>Trend Çizgisi</strong>
-        <button type="button" onClick={onClose} aria-label="Kapat">
-          <X size={13} strokeWidth={2.4} />
+        <button type="button" className="trend-drawing-popover-close" onClick={onClose} aria-label="Kapat">
+          ×
         </button>
       </div>
       <div className="trend-drawing-popover-grid">
@@ -2725,7 +2745,7 @@ function resolveHorizontalToolConfig(tool, t) {
     case "horizontal":
       return {
         label: t("analysis.chart.drawing.horizontal"),
-        color: "#e2e8f0",
+        color: "#94a3b8",
         lineStyle: 2,
       };
     case "support":
@@ -3257,9 +3277,11 @@ function buildChartDrawingFromApi(item, priceSeries, priceChart, t) {
 
     const trendSeries = priceChart.addSeries(LineSeries, {
       color: color || "#8b5cf6",
-      lineWidth: 1.5,
+      lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
+      pointMarkersVisible: true,
+      pointMarkersRadius: 4,
     });
     trendSeries.setData(lineData);
 
@@ -3437,6 +3459,14 @@ function buildTrendPopoverModel(trendLine) {
   const direction = end.price > start.price ? "Yükselen" : end.price < start.price ? "Düşen" : "Yatay";
 
   return {
+    startTime: start.time,
+    startPrice: start.price,
+    endTime: end.time,
+    endPrice: end.price,
+    dayCount,
+    totalChangePct,
+    dailySlopePct,
+    direction,
     rows: [
       { label: "Başlangıç tarihi", value: formatTooltipDate(start.time) },
       { label: "Başlangıç fiyatı", value: formatNumber(start.price, 2) },
@@ -3506,29 +3536,47 @@ function resolveDisplayCode(instrumentCode, quote) {
 function buildDrawingLines(drawings) {
   if (!drawings) return [];
   const lines = [];
-  const v = (n) => (n != null && Number.isFinite(Number(n)) ? Number(n).toFixed(2) : "-");
+  const v = (n) => (n != null && Number.isFinite(Number(n)) ? formatNumber(Number(n), 2) : "-");
 
+  drawings.horizontalLines?.forEach((line) => {
+    if (line.price == null) {
+      return;
+    }
+    lines.push(`${drawingNoteLabel(line.kind)}: ${v(line.price)}`);
+  });
   if (drawings.stopLoss?.price != null) {
     lines.push(`Stop-Loss: ${v(drawings.stopLoss.price)}`);
   }
   if (drawings.takeProfit?.price != null) {
     lines.push(`Take-Profit: ${v(drawings.takeProfit.price)}`);
   }
-  drawings.horizontalLines?.forEach((line) => {
-    if (line.price != null) {
-      lines.push(`${line.label || line.kind}: ${v(line.price)}`);
+
+  const trendLines = drawings.trendLines ?? [];
+  trendLines.forEach((line, index) => {
+    const model = buildTrendPopoverModel(line);
+    if (!model) {
+      return;
     }
-  });
-  drawings.trendLines?.forEach((line) => {
-    const d = line.data;
-    if (Array.isArray(d) && d.length >= 2) {
-      const p1 = d[0], p2 = d[d.length - 1];
-      const t1 = formatTooltipDate(p1.time);
-      const t2 = formatTooltipDate(p2.time);
-      lines.push(`Trend: ${v(p1.value)} (${t1}) → ${v(p2.value)} (${t2})`);
-    }
+    const title = trendLines.length > 1 ? `Trend Çizgisi ${index + 1}` : "Trend Çizgisi";
+    lines.push(`${title}: ${formatTooltipDate(model.startTime)} → ${formatTooltipDate(model.endTime)}`);
+    lines.push(`Fiyat: ${v(model.startPrice)} → ${v(model.endPrice)}`);
+    lines.push(`Çizgi değişimi: ${formatSignedPercent(model.totalChangePct)}`);
+    lines.push(`Günlük ortalama eğim: ${model.dailySlopePct == null ? "-" : formatSignedPercent(model.dailySlopePct)} / gün`);
+    lines.push(`Çizgi yönü: ${model.direction}`);
   });
   return lines;
+}
+
+function drawingNoteLabel(kind) {
+  switch (kind) {
+    case "support":
+      return "Destek";
+    case "resistance":
+      return "Direnç";
+    case "horizontal":
+    default:
+      return "Yatay çizgi";
+  }
 }
 
 function resolveHistoricalValues(noteDate, dataset) {
@@ -3653,7 +3701,7 @@ function buildAdvancedNoteContent({ instrumentCode, quote, activeRange, toDate, 
     indicatorLines.length > 0 ? "── Göstergeler ──" : null,
     ...indicatorLines,
     drawingLines.length > 0 ? "" : null,
-    drawingLines.length > 0 ? "── Çizimler ──" : null,
+    drawingLines.length > 0 ? "— Çizimler —" : null,
     ...drawingLines,
     "",
     `Tarih: ${date}`,

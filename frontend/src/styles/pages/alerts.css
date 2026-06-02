@@ -1,4 +1,4 @@
-.alerts-management-shell {
+﻿.alerts-management-shell {
   display: grid;
   gap: 16px;
 }
@@ -373,6 +373,27 @@ html:not([data-theme="dark"]) .alerts-management-shell {
   margin: 0;
 }
 
+.alerts-note-source-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: rgba(59, 130, 246, 0.09);
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.alerts-note-header-main {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
 .alerts-note-meta {
   display: flex;
   align-items: flex-end;
@@ -541,7 +562,7 @@ html[data-theme="dark"] .alerts-notes-empty {
   background: rgba(15, 23, 42, 0.48);
 }
 
-/* ── Not Kart Header ── */
+/* â”€â”€ Not Kart Header â”€â”€ */
 
 .alerts-note-header {
   display: flex;
@@ -578,7 +599,7 @@ html[data-theme="dark"] .alerts-notes-empty {
   border-color: rgba(37, 99, 235, 0.3);
 }
 
-/* ── Not Popup ── */
+/* â”€â”€ Not Popup â”€â”€ */
 
 .alerts-note-popup {
   width: min(520px, 92vw);

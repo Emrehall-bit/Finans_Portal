@@ -403,7 +403,12 @@ export default function AlertsPage() {
                     ) : (
                       <>
                         <div className="alerts-note-header">
-                          <p className="alerts-note-content">{note.content}</p>
+                          <div className="alerts-note-header-main">
+                            {isTechnicalAnalysisNote(note) ? (
+                              <span className="alerts-note-source-badge">{formatTechnicalAnalysisNoteLabel(t)}</span>
+                            ) : null}
+                            <p className="alerts-note-content">{note.content}</p>
+                          </div>
                           <button
                             type="button"
                             className="alerts-note-expand-btn"
@@ -644,6 +649,19 @@ function formatNoteDate(isoString) {
   } catch {
     return "";
   }
+}
+
+function isTechnicalAnalysisNote(note) {
+  if (note?.source === "technical-analysis") {
+    return true;
+  }
+  return /Teknik Analiz/i.test(String(note?.content || ""));
+}
+
+function formatTechnicalAnalysisNoteLabel(t) {
+  return t("alerts.notes.technicalAnalysisNote", {
+    defaultValue: "Teknik analiz notu",
+  });
 }
 
 function formatAlertInstrument(instrumentCode, source) {

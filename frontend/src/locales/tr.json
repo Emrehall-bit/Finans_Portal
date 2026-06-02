@@ -1509,7 +1509,8 @@
       "placeholder": "AKBNK bilançosunu incele\nUSD 50 olursa tekrar değerlendir\nTakip edilmesi gereken hisseler...",
       "saveError": "Not kaydedilemedi",
       "createdAt": "Oluşturuldu",
-      "updatedAt": "Güncellendi"
+      "updatedAt": "Güncellendi",
+      "technicalAnalysisNote": "Teknik analiz notu"
     }
   },
   "newsDetail": {

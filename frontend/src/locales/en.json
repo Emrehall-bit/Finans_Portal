@@ -1516,7 +1516,8 @@
       "placeholder": "Review AKBNK balance sheet\nRe-evaluate if USD hits 50\nStocks to keep an eye on...",
       "saveError": "Note could not be saved",
       "createdAt": "Created",
-      "updatedAt": "Updated"
+      "updatedAt": "Updated",
+      "technicalAnalysisNote": "Technical analysis note"
     }
   },
   "newsDetail": {

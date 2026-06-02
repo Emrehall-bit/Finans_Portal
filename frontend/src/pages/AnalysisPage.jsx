@@ -40,6 +40,8 @@ export default function AnalysisPage() {
   const [chartMode, setChartMode] = useState(() => (searchParams.get("tool") ? "advanced" : "simple"));
   const [fundamentalsOpen, setFundamentalsOpen] = useState(false);
   const [noteAdding, setNoteAdding] = useState(false);
+  const [notePreviewOpen, setNotePreviewOpen] = useState(false);
+  const [notePreviewContent, setNotePreviewContent] = useState("");
   const [watchlistItems, setWatchlistItems] = useState([]);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const initialHighlightTool = searchParams.get("tool") || null;
@@ -244,13 +246,24 @@ export default function AnalysisPage() {
       showToast("error", "Not eklemek için giriş yapmalısınız");
       return;
     }
+    setNotePreviewContent(content || "");
+    setNotePreviewOpen(true);
+  }
+
+  async function handleConfirmAddToNotes() {
+    if (!userId) {
+      showToast("error", "Not eklemek için giriş yapmalısınız");
+      return;
+    }
     if (noteAdding) return;
     setNoteAdding(true);
     try {
       const currentNotes = Array.isArray(user?.notes) ? user.notes : [];
       const newNote = {
         id: crypto.randomUUID(),
-        content,
+        content: notePreviewContent,
+        source: "technical-analysis",
+        sourceLabel: "Teknik analiz notu",
         createdAt: new Date().toISOString(),
         updatedAt: null,
       };
@@ -260,6 +273,8 @@ export default function AnalysisPage() {
         themePreference: user?.themePreference ?? null,
         notes: [...currentNotes, newNote],
       });
+      setNotePreviewOpen(false);
+      setNotePreviewContent("");
       showToast("success", "Analiz notlara eklendi");
     } catch {
       showToast("error", "Not eklenemedi");
@@ -281,6 +296,57 @@ export default function AnalysisPage() {
             ? <Check size={15} strokeWidth={2.5} className="toast-notify-icon" />
             : <X size={15} strokeWidth={2.5} className="toast-notify-icon" />}
           <span>{toast.message}</span>
+        </div>
+      ) : null}
+      {notePreviewOpen ? (
+        <div className="analysis-note-preview-backdrop" role="presentation">
+          <section className="analysis-note-preview-modal" role="dialog" aria-modal="true" aria-label="Not önizleme">
+            <div className="analysis-note-preview-head">
+              <div>
+                <span>Teknik Analiz Notu</span>
+                <strong>Önizle ve düzenle</strong>
+              </div>
+              <button
+                type="button"
+                className="analysis-note-preview-close"
+                onClick={() => {
+                  if (noteAdding) return;
+                  setNotePreviewOpen(false);
+                  setNotePreviewContent("");
+                }}
+                aria-label="Kapat"
+              >
+                ×
+              </button>
+            </div>
+            <textarea
+              className="analysis-note-preview-textarea"
+              value={notePreviewContent}
+              onChange={(event) => setNotePreviewContent(event.target.value)}
+              spellCheck={false}
+            />
+            <div className="analysis-note-preview-actions">
+              <button
+                type="button"
+                className="analysis-note-preview-btn analysis-note-preview-btn--ghost"
+                disabled={noteAdding}
+                onClick={() => {
+                  setNotePreviewOpen(false);
+                  setNotePreviewContent("");
+                }}
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                className="analysis-note-preview-btn analysis-note-preview-btn--primary"
+                disabled={noteAdding || !notePreviewContent.trim()}
+                onClick={handleConfirmAddToNotes}
+              >
+                {noteAdding ? "Kaydediliyor..." : "Notlara Kaydet"}
+              </button>
+            </div>
+          </section>
         </div>
       ) : null}
       {quotesLoading ? <LoadingSpinner label={t("analysis.quotesLoading")} /> : null}
