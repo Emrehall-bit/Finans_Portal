@@ -1,11 +1,16 @@
+function stable(params) {
+  if (params == null || typeof params !== "object") return params;
+  return Object.keys(params).sort().map((k) => `${k}=${params[k]}`).join("&");
+}
+
 export const marketKeys = {
   all: ["markets"],
   quotes: () => [...marketKeys.all, "quotes"],
   byType: (type) => [...marketKeys.all, "type", type],
-  screen: (params) => [...marketKeys.all, "screen", params],
+  screen: (params) => [...marketKeys.all, "screen", stable(params)],
   bySymbol: (symbol) => [...marketKeys.all, "symbol", symbol],
-  history: (symbol, params) => [...marketKeys.all, "history", symbol, params],
-  technicalAnalysis: (symbol, params) => [...marketKeys.all, "technical", symbol, params],
+  history: (symbol, params) => [...marketKeys.all, "history", symbol, stable(params)],
+  technicalAnalysis: (symbol, params) => [...marketKeys.all, "technical", symbol, stable(params)],
   tapeConfig: () => [...marketKeys.all, "tape-config"],
   search: (query) => [...marketKeys.all, "search", query],
 };

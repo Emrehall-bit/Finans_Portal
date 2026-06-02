@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Maximize2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { cancelAlert, createAlert, getUserAlerts } from "../api/alertApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import PageHeader from "../components/common/PageHeader";
-import SummaryCard from "../components/common/SummaryCard";
 import { useMarketQuotes } from "../hooks/useMarketQueries";
 import useToast from "../hooks/useToast";
 import { formatCurrency, formatDateTime, formatNumber } from "../utils/formatters";
@@ -37,6 +35,9 @@ export default function AlertsPage() {
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState("");
   const [notesSaving, setNotesSaving] = useState(false);
+  const [expandedNoteId, setExpandedNoteId] = useState(null);
+  const [popupEditMode, setPopupEditMode] = useState(false);
+  const [popupEditText, setPopupEditText] = useState("");
 
   useEffect(() => {
     if (userId) {
@@ -91,12 +92,13 @@ export default function AlertsPage() {
   }
 
   function selectInstrument(item) {
+    const displaySymbol = formatAlertInstrument(item.symbol, item.source).primary;
     setForm((current) => ({
       ...current,
       instrumentCode: item.symbol || "",
       targetPrice: current.targetPrice || item.price || "",
     }));
-    setSymbolSearch(item.symbol || "");
+    setSymbolSearch(displaySymbol === "-" ? item.symbol || "" : displaySymbol);
   }
 
   async function handleSubmit(event) {
@@ -192,6 +194,28 @@ export default function AlertsPage() {
     await saveNotes(updated);
   }
 
+  function closePopup() {
+    setExpandedNoteId(null);
+    setPopupEditMode(false);
+    setPopupEditText("");
+  }
+
+  function openPopupEdit(note) {
+    setPopupEditText(note.content);
+    setPopupEditMode(true);
+  }
+
+  async function confirmPopupEdit() {
+    const trimmed = popupEditText.trim();
+    if (!trimmed || notesSaving) return;
+    const updated = notes.map((n) =>
+      n.id === expandedNoteId ? { ...n, content: trimmed, updatedAt: new Date().toISOString() } : n,
+    );
+    setNotes(updated);
+    closePopup();
+    await saveNotes(updated);
+  }
+
   async function deleteNote(noteId) {
     if (notesSaving) return;
     const updated = notes.filter((n) => n.id !== noteId);
@@ -201,18 +225,17 @@ export default function AlertsPage() {
 
   return (
     <div className="dashboard-stack alerts-management-shell">
-      <PageHeader
-        title={t("alerts.title")}
-        description={t("alerts.description")}
-        eyebrow={t("alerts.eyebrow")}
-        actions={
-          <div className="actions-row">
-            <button type="button" onClick={openCreateModal}>
-              {t("alerts.create")}
-            </button>
-          </div>
-        }
-      />
+      <section className="alerts-hero-card">
+        <div className="alerts-hero-copy">
+          <p className="eyebrow">{t("alerts.eyebrow")}</p>
+          <h1>{t("alerts.title")}</h1>
+          <p>{t("alerts.description")}</p>
+        </div>
+        <button type="button" className="alerts-primary-action" onClick={openCreateModal}>
+          <Plus size={17} strokeWidth={2.5} />
+          <span>{t("alerts.create")}</span>
+        </button>
+      </section>
 
       {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
       {error ? <ErrorMessage message={error} /> : null}
@@ -220,15 +243,8 @@ export default function AlertsPage() {
 
       {!loading && !quotesLoading ? (
         <>
-          <section className="ticker-grid alerts-kpi-grid">
-            <SummaryCard title={t("alerts.cards.activeTitle")} value={formatNumber(activeAlerts.length, 0)} subtitle={t("alerts.cards.activeSubtitle")} tone="cool" />
-            <SummaryCard title={t("alerts.cards.triggeredTitle")} value={formatNumber(triggeredAlerts.length, 0)} subtitle={t("alerts.cards.triggeredSubtitle")} tone="warm" />
-            <SummaryCard title={t("alerts.cards.passiveTitle")} value={formatNumber(passiveAlerts.length, 0)} subtitle={t("alerts.cards.passiveSubtitle")} tone="neutral" />
-            <SummaryCard title={t("alerts.cards.symbolsTitle")} value={formatNumber(uniqueSymbolCount(rows), 0)} subtitle={t("alerts.cards.symbolsSubtitle")} tone="cool" />
-          </section>
-
           <section className="alerts-layout-grid">
-            <section className="panel-surface alerts-panel">
+            <section className="panel-surface alerts-panel alerts-active-panel">
               <div className="panel-head">
                 <div>
                   <p className="eyebrow">{t("alerts.activeEyebrow")}</p>
@@ -256,19 +272,19 @@ export default function AlertsPage() {
                       {activeAlerts.map((item) => (
                         <tr key={item.id}>
                           <td>
-                            <div className="portfolio-cell-stack">
-                              <strong>{item.instrumentCode || "-"}</strong>
-                              <span className="muted">{item.source || t("alerts.noSource")}</span>
+                            <div className="alerts-instrument-cell">
+                              <strong>{formatAlertInstrument(item.instrumentCode).primary}</strong>
+                              <span>{formatAlertInstrument(item.instrumentCode, item.source).secondary}</span>
                             </div>
                           </td>
                           <td>{formatCondition(item.conditionType, t)}</td>
-                          <td>{formatCurrency(item.targetPrice)}</td>
-                          <td>{formatCurrency(item.currentPrice)}</td>
+                          <td className="alerts-money-cell">{formatCurrency(item.targetPrice)}</td>
+                          <td className="alerts-money-cell">{formatCurrency(item.currentPrice)}</td>
                           <td>
                             <span className="portfolio-status-pill is-live">{t("alerts.status.active")}</span>
                           </td>
                           <td>
-                            <button type="button" className="danger-button" onClick={() => handleCancel(item.id)}>
+                            <button type="button" className="alerts-deactivate-button" onClick={() => handleCancel(item.id)}>
                               {t("alerts.deactivate")}
                             </button>
                           </td>
@@ -281,7 +297,7 @@ export default function AlertsPage() {
             </section>
 
             <aside className="alerts-side-stack">
-              <section className="panel-surface alerts-panel">
+              <section className="panel-surface alerts-panel alerts-notification-panel">
                 <div className="panel-head">
                   <div>
                     <p className="eyebrow">{t("alerts.notificationsEyebrow")}</p>
@@ -289,13 +305,21 @@ export default function AlertsPage() {
                   </div>
                 </div>
 
+                <div className="alerts-notification-section">
+                  <div className="alerts-subsection-head">
+                    <strong>{t("alerts.triggeredSectionTitle", "Son tetiklenenler")}</strong>
+                    <span>{formatNumber(triggeredAlerts.length, 0)}</span>
+                  </div>
                 {triggeredAlerts.length === 0 ? (
-                  <EmptyState title={t("alerts.emptyTriggeredTitle")} description={t("alerts.emptyTriggeredDescription")} />
+                  <div className="alerts-empty-soft">
+                    <strong>{t("alerts.emptyTriggeredTitle")}</strong>
+                    <p>{t("alerts.emptyTriggeredDescription")}</p>
+                  </div>
                 ) : (
                   <div className="finance-notification-list">
                     {triggeredAlerts.map((item) => (
                       <article key={item.id} className="finance-notification-card">
-                        <strong>{t("alerts.triggeredLabel", { symbol: item.instrumentCode })}</strong>
+                        <strong>{t("alerts.triggeredLabel", { symbol: formatAlertInstrument(item.instrumentCode).primary })}</strong>
                         <p>
                           {formatCondition(item.conditionType, t)} {formatCurrency(item.targetPrice)}
                         </p>
@@ -304,23 +328,23 @@ export default function AlertsPage() {
                     ))}
                   </div>
                 )}
-              </section>
-
-              <section className="panel-surface alerts-panel">
-                <div className="panel-head">
-                  <div>
-                    <p className="eyebrow">{t("alerts.passiveEyebrow")}</p>
-                    <h3>{t("alerts.passiveTitle")}</h3>
-                  </div>
                 </div>
 
+                <div className="alerts-notification-section">
+                  <div className="alerts-subsection-head">
+                    <strong>{t("alerts.passiveTitle")}</strong>
+                    <span>{formatNumber(passiveAlerts.length, 0)}</span>
+                  </div>
                 {passiveAlerts.length === 0 ? (
-                  <EmptyState title={t("alerts.emptyPassiveTitle")} description={t("alerts.emptyPassiveDescription")} />
+                  <div className="alerts-empty-soft">
+                    <strong>{t("alerts.emptyPassiveTitle")}</strong>
+                    <p>{t("alerts.emptyPassiveDescription")}</p>
+                  </div>
                 ) : (
                   <div className="alerts-archive-list">
                     {passiveAlerts.map((item) => (
                       <div key={item.id} className="alerts-archive-card">
-                        <strong>{item.instrumentCode}</strong>
+                        <strong>{formatAlertInstrument(item.instrumentCode).primary}</strong>
                         <p>
                           {formatCondition(item.conditionType, t)} {formatCurrency(item.targetPrice)}
                         </p>
@@ -329,6 +353,7 @@ export default function AlertsPage() {
                     ))}
                   </div>
                 )}
+                </div>
               </section>
             </aside>
           </section>
@@ -377,37 +402,20 @@ export default function AlertsPage() {
                       />
                     ) : (
                       <>
-                        <p className="alerts-note-content">{note.content}</p>
-                        <div className="alerts-note-meta">
-                          <span className="alerts-note-date">
-                            <span>{t("alerts.notes.createdAt", "Oluşturuldu")}: {formatNoteDate(note.createdAt)}</span>
-                            {note.updatedAt && note.updatedAt !== note.createdAt && (
-                              <span className="alerts-note-updated">
-                                {t("alerts.notes.updatedAt", "Güncellendi")}: {formatNoteDate(note.updatedAt)}
-                              </span>
-                            )}
-                          </span>
-                          <div className="alerts-note-actions">
-                            <button
-                              type="button"
-                              className="alerts-note-action-btn"
-                              onClick={() => startEdit(note)}
-                              disabled={notesSaving}
-                              title={t("common.edit", "Düzenle")}
-                            >
-                              <Pencil size={13} strokeWidth={2} />
-                            </button>
-                            <button
-                              type="button"
-                              className="alerts-note-action-btn alerts-note-action-btn--delete"
-                              onClick={() => deleteNote(note.id)}
-                              disabled={notesSaving}
-                              title={t("common.delete", "Sil")}
-                            >
-                              <Trash2 size={13} strokeWidth={2} />
-                            </button>
-                          </div>
+                        <div className="alerts-note-header">
+                          <p className="alerts-note-content">{note.content}</p>
+                          <button
+                            type="button"
+                            className="alerts-note-expand-btn"
+                            onClick={() => setExpandedNoteId(note.id)}
+                            title="Görüntüle / Düzenle"
+                          >
+                            <Maximize2 size={13} strokeWidth={2} />
+                          </button>
                         </div>
+                        <span className="alerts-note-date">
+                          {formatNoteDate(note.updatedAt && note.updatedAt !== note.createdAt ? note.updatedAt : note.createdAt)}
+                        </span>
                       </>
                     )}
                   </li>
@@ -432,6 +440,87 @@ export default function AlertsPage() {
           )}
         </section>
       ) : null}
+
+      {expandedNoteId && (() => {
+        const note = notes.find((n) => n.id === expandedNoteId);
+        if (!note) return null;
+        return (
+          <div className="modal-backdrop" role="presentation" onClick={closePopup}>
+            <div className="alerts-note-popup" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+
+              {/* Başlık */}
+              <div className="alerts-note-popup-head">
+                {popupEditMode ? (
+                  <span className="alerts-note-popup-edit-label">Düzenleniyor</span>
+                ) : (
+                  <div className="alerts-note-popup-dates">
+                    <span>{t("alerts.notes.createdAt", "Oluşturuldu")}: {formatNoteDate(note.createdAt)}</span>
+                    {note.updatedAt && note.updatedAt !== note.createdAt && (
+                      <span>{t("alerts.notes.updatedAt", "Güncellendi")}: {formatNoteDate(note.updatedAt)}</span>
+                    )}
+                  </div>
+                )}
+                <button type="button" className="alerts-note-popup-close" onClick={closePopup} aria-label="Kapat">
+                  <X size={16} strokeWidth={2} />
+                </button>
+              </div>
+
+              {/* İçerik — görüntüleme */}
+              {!popupEditMode && (
+                <>
+                  <p className="alerts-note-popup-content">{note.content}</p>
+                  <div className="alerts-note-popup-actions">
+                    <button
+                      type="button"
+                      className="secondary-button alerts-note-popup-btn"
+                      disabled={notesSaving}
+                      onClick={() => openPopupEdit(note)}
+                    >
+                      <Pencil size={14} strokeWidth={2} />
+                      <span>Düzenle</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="danger-button alerts-note-popup-btn"
+                      disabled={notesSaving}
+                      onClick={() => { deleteNote(note.id); closePopup(); }}
+                    >
+                      <Trash2 size={14} strokeWidth={2} />
+                      <span>Sil</span>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* İçerik — düzenleme */}
+              {popupEditMode && (
+                <div className="alerts-note-popup-edit-area">
+                  <textarea
+                    className="alerts-notes-textarea alerts-note-popup-textarea"
+                    value={popupEditText}
+                    onChange={(e) => setPopupEditText(e.target.value)}
+                    maxLength={1000}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
+                    autoFocus
+                  />
+                  <div className="alerts-notes-form-footer">
+                    <span className="alerts-notes-char-count">{popupEditText.length}/1000</span>
+                    <div className="actions-row">
+                      <button type="button" className="secondary-button" onClick={() => setPopupEditMode(false)} disabled={notesSaving}>
+                        İptal
+                      </button>
+                      <button type="button" onClick={confirmPopupEdit} disabled={notesSaving || !popupEditText.trim()}>
+                        {notesSaving ? "Kaydediliyor..." : "Kaydet"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        );
+      })()}
 
       {isModalOpen ? (
         <div className="modal-backdrop" role="presentation" onClick={closeCreateModal}>
@@ -468,8 +557,8 @@ export default function AlertsPage() {
                     className={`analysis-picker-card${normalizeCode(form.instrumentCode) === normalizeCode(item.symbol) ? " active" : ""}`}
                     onClick={() => selectInstrument(item)}
                   >
-                    <strong>{item.symbol}</strong>
-                    <span>{item.displayName || item.source || "-"}</span>
+                    <strong>{formatAlertInstrument(item.symbol, item.source).primary}</strong>
+                    <span>{formatAlertInstrument(item.symbol, item.source).secondary || item.displayName || "-"}</span>
                   </button>
                 ))}
               </div>
@@ -500,7 +589,7 @@ export default function AlertsPage() {
 
               <div className="alerts-selected-quote">
                 <span>{t("alerts.selectedSymbol")}</span>
-                <strong>{form.instrumentCode || "-"}</strong>
+                <strong>{formatAlertInstrument(form.instrumentCode, selectedQuote?.source).primary}</strong>
                 <p>{t("alerts.lastPrice")} {selectedQuote ? formatCurrency(selectedQuote.price, selectedQuote.currency || "TRY") : t("alerts.noData")}</p>
               </div>
 
@@ -524,14 +613,13 @@ function NoteEditForm({ value, onChange, onSave, onCancel, saving, placeholder, 
         className="alerts-notes-textarea"
         value={value}
         onChange={onChange}
-        maxLength={500}
+        maxLength={1000}
         rows={3}
         placeholder={placeholder ?? ""}
-        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus={autoFocus}
       />
       <div className="alerts-notes-form-footer">
-        <span className="alerts-notes-char-count">{value.length}/500</span>
+        <span className="alerts-notes-char-count">{value.length}/1000</span>
         <div className="actions-row">
           <button type="button" className="secondary-button" onClick={onCancel} disabled={saving}>
             İptal
@@ -558,6 +646,37 @@ function formatNoteDate(isoString) {
   }
 }
 
+function formatAlertInstrument(instrumentCode, source) {
+  const raw = String(instrumentCode || "").trim();
+  if (!raw) {
+    return { primary: "-", secondary: source || "-" };
+  }
+
+  const parts = raw.split(":").filter(Boolean);
+  if (parts.length >= 2) {
+    const provider = parts[0];
+    const currency = parts[1];
+    const side = parts[2];
+    return {
+      primary: currency.toUpperCase(),
+      secondary: [provider, side].filter(Boolean).join(" · "),
+    };
+  }
+
+  const compactFxMatch = raw.toUpperCase().match(/^(TCMB|AKBANK)([A-Z]{3})(BUY|SELL)$/);
+  if (compactFxMatch) {
+    return {
+      primary: compactFxMatch[2],
+      secondary: [compactFxMatch[1], compactFxMatch[3]].join(" · "),
+    };
+  }
+
+  return {
+    primary: raw.toUpperCase(),
+    secondary: source || "-",
+  };
+}
+
 function normalizeCode(value) {
   if (value == null) return "";
   const rawValue = String(value).trim();
@@ -567,8 +686,4 @@ function normalizeCode(value) {
 
 function formatCondition(value, t) {
   return { ABOVE: t("alerts.conditions.above"), BELOW: t("alerts.conditions.below") }[value] ?? value ?? "-";
-}
-
-function uniqueSymbolCount(rows) {
-  return new Set(rows.map((item) => item.instrumentCode).filter(Boolean)).size;
 }

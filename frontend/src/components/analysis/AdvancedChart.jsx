@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { CandlestickSeries, createChart, HistogramSeries, LineSeries } from "lightweight-charts";
 import {
   Activity,
+  BookmarkPlus,
   Check,
   ChevronDown,
   ChevronsUpDown,
@@ -18,7 +19,14 @@ import {
   X,
 } from "lucide-react";
 import { createAlert } from "../../api/alertApi";
-import { getAdvancedTechnical, getTechnicalCandles } from "../../api/analysisApi";
+import {
+  deleteDrawing,
+  getAdvancedTechnical,
+  getDrawings,
+  getTechnicalCandles,
+  saveDrawing,
+  updateDrawing,
+} from "../../api/analysisApi";
 import { getAiTechnicalAnalysis } from "../../api/aiApi";
 import { getMarketHistory } from "../../api/marketApi";
 import { extractErrorMessage } from "../../api/responseUtils";
@@ -117,6 +125,8 @@ export default function AdvancedChart({
   activeRange = null,
   rangePresets = null,
   onRangeChange = null,
+  onAddToNotes = null,
+  noteAdding = false,
 }) {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
@@ -147,6 +157,7 @@ export default function AdvancedChart({
   const drawingsRef = useRef(DEFAULT_DRAWINGS);
   const trendStartRef = useRef(null);
   const prevInstrumentRef = useRef(null);
+  const drawingSyncKeyRef = useRef(null);
   const pendingAutoFitRef = useRef(true);
   const dataPointCountRef = useRef(0);
   const syncLockRef = useRef(false);
@@ -164,6 +175,7 @@ export default function AdvancedChart({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [drawingSyncVersion, setDrawingSyncVersion] = useState(0);
   const [activeIndicators, setActiveIndicators] = useState(() => new Set());
   const [activeTool, setActiveTool] = useState(() => mapInitialTool(initialHighlightTool));
   const [drawings, setDrawings] = useState(DEFAULT_DRAWINGS);
@@ -178,6 +190,7 @@ export default function AdvancedChart({
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [techTab, setTechTab] = useState("rules");
   const [showStructureLines, setShowStructureLines] = useState(false);
+  const [noteDate, setNoteDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [aiData, setAiData] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(null);
@@ -229,6 +242,7 @@ export default function AdvancedChart({
     () => dateRange ?? buildDateRange(range),
     [dateRange, range],
   );
+  const drawingTimeframe = activeRange ?? range;
   const volumeVisible = Boolean(technicalSnapshot?.volumeVisible);
   const hasVolumeMaData = (technicalSnapshot?.volumeDataCount ?? 0) >= 20;
 
@@ -269,6 +283,87 @@ export default function AdvancedChart({
     setHoveredDrawingKey(null);
     clearTrendSelection();
   }, [clearTrendSelection]);
+
+  const persistDrawing = useCallback((drawing) => {
+    if (!isAuthenticated || !instrumentCode || !drawing) {
+      return;
+    }
+
+    const payload = serializeDrawingForApi(drawing, drawingTimeframe);
+    if (!payload) {
+      return;
+    }
+
+    const backendId = getDrawingBackendId(drawing);
+    const request = backendId
+      ? updateDrawing(backendId, payload)
+      : saveDrawing(instrumentCode, payload);
+
+    request
+      .then((saved) => {
+        const savedId = getDrawingBackendId(saved);
+        if (!savedId) {
+          return;
+        }
+        setDrawings((current) => attachBackendIdToDrawing(current, drawing, savedId));
+      })
+      .catch((err) => {
+        console.warn("Çizim kaydedilemedi:", err?.response?.status ?? err?.message);
+        showToast("error", "Çizim kaydedilemedi");
+      });
+  }, [drawingTimeframe, instrumentCode, isAuthenticated, showToast]);
+
+  const deletePersistedDrawing = useCallback((drawing) => {
+    const backendId = getDrawingBackendId(drawing);
+    if (!backendId || !isAuthenticated) {
+      return;
+    }
+
+    deleteDrawing(backendId).catch((err) => {
+      console.warn("Çizim silinemedi:", err?.response?.status ?? err?.message);
+      showToast("error", "Çizim silinemedi");
+    });
+  }, [isAuthenticated, showToast]);
+
+  const renderPersistedDrawings = useCallback((items) => {
+    const priceSeries = priceSeriesRef.current;
+    const priceChart = priceChartRef.current;
+    if (!priceSeries || !priceChart) {
+      return;
+    }
+
+    const nextDrawings = {
+      stopLoss: null,
+      takeProfit: null,
+      horizontalLines: [],
+      trendLines: [],
+    };
+
+    (Array.isArray(items) ? items : []).forEach((item) => {
+      const drawing = buildChartDrawingFromApi(item, priceSeries, priceChart, t);
+      if (!drawing) {
+        return;
+      }
+
+      if (drawing.kind === "stopLoss") {
+        nextDrawings.stopLoss = drawing;
+        return;
+      }
+      if (drawing.kind === "takeProfit") {
+        nextDrawings.takeProfit = drawing;
+        return;
+      }
+      if (drawing.kind === "trend") {
+        nextDrawings.trendLines.push(drawing);
+        return;
+      }
+      nextDrawings.horizontalLines.push(drawing);
+    });
+
+    setDrawings(nextDrawings);
+    setSelectedDrawingKey(null);
+    setHoveredDrawingKey(null);
+  }, [t]);
 
   const clearOverlaySeries = useCallback(() => {
     Object.entries(overlaySeriesRefs.current).forEach(([key, entry]) => {
@@ -726,6 +821,7 @@ export default function AdvancedChart({
 
     const isStopLoss = tool === "stopLoss";
     const existing = isStopLoss ? drawingsRef.current.stopLoss : drawingsRef.current.takeProfit;
+    const backendId = getDrawingBackendId(existing);
     if (existing?.priceLine) {
       try { priceSeries.removePriceLine(existing.priceLine); } catch { /* noop */ }
     }
@@ -748,13 +844,24 @@ export default function AdvancedChart({
         id,
         kind: id,
         label: title,
-        color,
-        price,
-        priceLine,
+      color,
+      price,
+      lineStyle: 0,
+      priceLine,
+      backendId,
       },
     }));
     setSelectedDrawingKey(id);
-  }, []);
+    persistDrawing({
+      id,
+      kind: id,
+      label: title,
+      color,
+      price,
+      lineStyle: 0,
+      backendId,
+    });
+  }, [persistDrawing]);
 
   const addHorizontalDrawing = useCallback((tool, price) => {
     const priceSeries = priceSeriesRef.current;
@@ -768,11 +875,12 @@ export default function AdvancedChart({
     }
 
     const existing = drawingsRef.current.horizontalLines.find((line) => line.kind === tool);
+    const backendId = getDrawingBackendId(existing);
     if (existing?.priceLine) {
       try { priceSeries.removePriceLine(existing.priceLine); } catch { /* noop */ }
     }
 
-    const id = `${tool}-${Date.now()}`;
+    const id = existing?.id ?? `${tool}-${Date.now()}`;
     const priceLine = priceSeries.createPriceLine({
       price,
       color: config.color,
@@ -792,12 +900,23 @@ export default function AdvancedChart({
           label: config.label,
           color: config.color,
           price,
+          lineStyle: config.lineStyle,
           priceLine,
+          backendId,
         },
       ],
     }));
     setSelectedDrawingKey(id);
-  }, [t]);
+    persistDrawing({
+      id,
+      kind: tool,
+      label: config.label,
+      color: config.color,
+      price,
+      lineStyle: config.lineStyle,
+      backendId,
+    });
+  }, [persistDrawing, t]);
 
   const updateHorizontalDrawingPrice = useCallback((drawingKey, nextPrice) => {
     const normalizedPrice = Number(nextPrice);
@@ -837,7 +956,7 @@ export default function AdvancedChart({
         horizontalLines: nextHorizontalLines,
       };
     });
-  }, [t]);
+  }, []);
 
   const removeDrawingByKey = useCallback((drawingKey) => {
     if (!drawingKey) {
@@ -845,6 +964,7 @@ export default function AdvancedChart({
     }
 
     if (drawingKey === "stopLoss") {
+      deletePersistedDrawing(drawingsRef.current.stopLoss);
       if (drawingsRef.current.stopLoss?.priceLine) {
         try { priceSeriesRef.current?.removePriceLine(drawingsRef.current.stopLoss.priceLine); } catch { /* noop */ }
       }
@@ -854,6 +974,7 @@ export default function AdvancedChart({
     }
 
     if (drawingKey === "takeProfit") {
+      deletePersistedDrawing(drawingsRef.current.takeProfit);
       if (drawingsRef.current.takeProfit?.priceLine) {
         try { priceSeriesRef.current?.removePriceLine(drawingsRef.current.takeProfit.priceLine); } catch { /* noop */ }
       }
@@ -864,6 +985,7 @@ export default function AdvancedChart({
 
     const horizontalLine = drawingsRef.current.horizontalLines.find((item) => item.id === drawingKey);
     if (horizontalLine) {
+      deletePersistedDrawing(horizontalLine);
       try { priceSeriesRef.current?.removePriceLine(horizontalLine.priceLine); } catch { /* noop */ }
       setDrawings((current) => ({
         ...current,
@@ -875,6 +997,7 @@ export default function AdvancedChart({
 
     const trendLine = drawingsRef.current.trendLines.find((item) => item.id === drawingKey);
     if (trendLine) {
+      deletePersistedDrawing(trendLine);
       try { priceChartRef.current?.removeSeries(trendLine.series); } catch { /* noop */ }
       setDrawings((current) => ({
         ...current,
@@ -882,7 +1005,7 @@ export default function AdvancedChart({
       }));
       setSelectedDrawingKey(null);
     }
-  }, []);
+  }, [deletePersistedDrawing]);
 
   const handleCreateAlert = useCallback(async (kind) => {
     const drawing = kind === "stopLoss" ? drawings.stopLoss : drawings.takeProfit;
@@ -917,16 +1040,20 @@ export default function AdvancedChart({
       return undefined;
     }
 
-    const priceChart = createChart(priceContainerRef.current, {
-      width: Math.max(priceContainerRef.current.clientWidth, 1),
+    const priceContainer = priceContainerRef.current;
+    const volumeContainer = volumeContainerRef.current;
+    const rsiContainer = rsiContainerRef.current;
+
+    const priceChart = createChart(priceContainer, {
+      width: Math.max(priceContainer.clientWidth, 1),
       height: PRICE_CHART_HEIGHT,
     });
-    const volumeChart = createChart(volumeContainerRef.current, {
-      width: Math.max(volumeContainerRef.current.clientWidth, 1),
+    const volumeChart = createChart(volumeContainer, {
+      width: Math.max(volumeContainer.clientWidth, 1),
       height: VOLUME_CHART_HEIGHT,
     });
-    const rsiChart = createChart(rsiContainerRef.current, {
-      width: Math.max(rsiContainerRef.current.clientWidth, 1),
+    const rsiChart = createChart(rsiContainer, {
+      width: Math.max(rsiContainer.clientWidth, 1),
       height: RSI_CHART_HEIGHT,
       localization: {
         priceFormatter: (value) => value.toFixed(0),
@@ -1033,19 +1160,21 @@ export default function AdvancedChart({
         trendSeries.setData(lineData);
 
         const id = `trend-${Date.now()}`;
+        const drawing = {
+          id,
+          kind: "trend",
+          label: t("analysis.chart.drawing.trend"),
+          color: "#8b5cf6",
+          series: trendSeries,
+          data: lineData,
+        };
         setDrawings((current) => ({
           ...current,
-          trendLines: [...current.trendLines, {
-            id,
-            kind: "trend",
-            label: t("analysis.chart.drawing.trend"),
-            color: "#8b5cf6",
-            series: trendSeries,
-            data: lineData,
-          }],
+          trendLines: [...current.trendLines, drawing],
         }));
         setSelectedDrawingKey(id);
         setTrendStart(null);
+        persistDrawing(drawing);
       }
     };
 
@@ -1065,6 +1194,7 @@ export default function AdvancedChart({
       }
       draggingRef.current = {
         drawingKey: hoveredKey,
+        lastPrice: price,
       };
       setSelectedDrawingKey(hoveredKey);
     };
@@ -1077,20 +1207,27 @@ export default function AdvancedChart({
       if (nextPrice == null) {
         return;
       }
+      draggingRef.current.lastPrice = nextPrice;
       updateHorizontalDrawingPrice(draggingRef.current.drawingKey, nextPrice);
     };
 
     const handleMouseUp = () => {
+      if (draggingRef.current?.drawingKey) {
+        const updatedDrawing = findDrawingByKey(drawingsRef.current, draggingRef.current.drawingKey);
+        if (updatedDrawing) {
+          persistDrawing({
+            ...updatedDrawing,
+            price: draggingRef.current.lastPrice ?? updatedDrawing.price,
+          });
+        }
+      }
       draggingRef.current = null;
     };
 
     const handleResize = () => {
-      if (!priceContainerRef.current || !volumeContainerRef.current || !rsiContainerRef.current) {
-        return;
-      }
-      const priceWidth = Math.max(priceContainerRef.current.clientWidth, 1);
-      const volumeWidth = Math.max(volumeContainerRef.current.clientWidth, 1);
-      const rsiWidth = Math.max(rsiContainerRef.current.clientWidth, 1);
+      const priceWidth = Math.max(priceContainer.clientWidth, 1);
+      const volumeWidth = Math.max(volumeContainer.clientWidth, 1);
+      const rsiWidth = Math.max(rsiContainer.clientWidth, 1);
       priceChart.applyOptions({ width: priceWidth });
       volumeChart.applyOptions({ width: volumeWidth });
       rsiChart.applyOptions({ width: rsiWidth });
@@ -1102,21 +1239,21 @@ export default function AdvancedChart({
         })
       : null;
 
-    resizeObserver?.observe(priceContainerRef.current);
-    resizeObserver?.observe(volumeContainerRef.current);
-    resizeObserver?.observe(rsiContainerRef.current);
+    resizeObserver?.observe(priceContainer);
+    resizeObserver?.observe(volumeContainer);
+    resizeObserver?.observe(rsiContainer);
 
     requestAnimationFrame(() => {
       handleResize();
     });
 
-    priceContainerRef.current.addEventListener("mousedown", handleMouseDown);
+    priceContainer.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("resize", handleResize);
 
     return () => {
-      priceContainerRef.current?.removeEventListener("mousedown", handleMouseDown);
+      priceContainer.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("resize", handleResize);
@@ -1143,9 +1280,12 @@ export default function AdvancedChart({
     };
   }, [
     addPriceLine,
+    addHorizontalDrawing,
     applyThemeOptions,
     ensureCoreSeries,
+    persistDrawing,
     syncVisibleRangeAcrossCharts,
+    t,
     updateHorizontalDrawingPrice,
     updateTooltip,
     updateRsiTooltip,
@@ -1205,6 +1345,11 @@ export default function AdvancedChart({
         });
         syncStructurePriceLinesRef.current(dataset.summary);
         syncIndicatorSeriesRef.current(dataset);
+        const syncKey = `${instrumentCode}:::${activeRange ?? range}`;
+        if (drawingSyncKeyRef.current !== syncKey) {
+          drawingSyncKeyRef.current = syncKey;
+          setDrawingSyncVersion((value) => value + 1);
+        }
 
         if (pendingAutoFitRef.current) {
           priceChartRef.current?.applyOptions({ timeScale: { barSpacing: rangeToBarSpacing(activeRange ?? range) } });
@@ -1238,6 +1383,7 @@ export default function AdvancedChart({
   }, [
     addPriceLine,
     addHorizontalDrawing,
+    activeRange,
     clearAllDrawings,
     ensureCoreSeries,
     initialHighlightTool,
@@ -1255,6 +1401,47 @@ export default function AdvancedChart({
     rangeDates,
     reloadToken,
     clearStructurePriceLines,
+    t,
+  ]);
+
+  useEffect(() => {
+    if (!drawingSyncVersion || !instrumentCode || !priceSeriesRef.current) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    clearAllDrawings();
+
+    if (!isAuthenticated) {
+      return undefined;
+    }
+
+    async function loadPersistedDrawings() {
+      try {
+        const savedDrawings = await getDrawings(instrumentCode, drawingTimeframe);
+        if (!cancelled) {
+          renderPersistedDrawings(savedDrawings);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.warn("Çizimler yüklenemedi:", err?.response?.status ?? err?.message);
+          showToast("error", "Çizimler yüklenemedi");
+        }
+      }
+    }
+
+    loadPersistedDrawings();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    clearAllDrawings,
+    drawingSyncVersion,
+    drawingTimeframe,
+    instrumentCode,
+    isAuthenticated,
+    renderPersistedDrawings,
+    showToast,
   ]);
 
   useEffect(() => {
@@ -1418,7 +1605,6 @@ export default function AdvancedChart({
               ))}
             </div>
           ) : null}
-
           <div className="advanced-chart-toolbar-actions">
             <div className="indicators-dropdown" ref={indicatorsRef}>
               <button
@@ -1754,6 +1940,43 @@ export default function AdvancedChart({
               />
             ) : null}
           </div>
+          {onAddToNotes ? (
+            <div className="advanced-note-add-wrap">
+              <div className="advanced-note-date-row">
+                <span className="advanced-note-date-label">Analiz tarihi:</span>
+                <input
+                  type="date"
+                  className="advanced-note-date-input"
+                  value={noteDate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setNoteDate(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className="simple-tech-add-note-btn"
+                disabled={noteAdding}
+                onClick={() => {
+                  const dataset = latestDatasetRef.current;
+                  const hist = resolveHistoricalValues(noteDate, dataset);
+                  onAddToNotes(buildAdvancedNoteContent({
+                    instrumentCode,
+                    quote,
+                    activeRange,
+                    toDate: noteDate,
+                    snapshot: effectiveTechnicalSnapshot,
+                    viewLabel: technicalView?.label,
+                    drawings,
+                    activeIndicators,
+                    historicalValues: hist,
+                  }));
+                }}
+              >
+                <BookmarkPlus size={15} strokeWidth={2.2} />
+                <span>{noteAdding ? "Ekleniyor..." : "Notlara Ekle"}</span>
+              </button>
+            </div>
+          ) : null}
             </>
           ) : (
             <AiTechPanel
@@ -2030,14 +2253,17 @@ function derivePercentChange(from, to) {
 
 function buildOverlayData(rows, closes, volumes) {
   const timeRows = rows.map((row) => row.time);
+  const sma7 = computeSimpleMovingAverageSeries(closes, 7);
+  const sma20 = computeSimpleMovingAverageSeries(closes, 20);
+  const sma50 = computeSimpleMovingAverageSeries(closes, 50);
   const ema20 = computeEmaSeries(closes, 20);
   const volumeMa20 = computeSimpleMovingAverageSeries(volumes, 20);
   const bollinger = computeBollingerSeries(closes, 20, 2);
 
   return {
-    sma7: mapSeries(rows, "sma7"),
-    sma20: mapSeries(rows, "sma20"),
-    sma50: mapSeries(rows, "sma50"),
+    sma7: mapSeriesWithFallback(rows, "sma7", timeRows, sma7),
+    sma20: mapSeriesWithFallback(rows, "sma20", timeRows, sma20),
+    sma50: mapSeriesWithFallback(rows, "sma50", timeRows, sma50),
     ema20: mapSeriesFromValues(timeRows, ema20),
     bollingerUpper: mapSeriesFromValues(timeRows, bollinger.upper),
     bollingerMiddle: mapSeriesFromValues(timeRows, bollinger.middle),
@@ -2046,10 +2272,13 @@ function buildOverlayData(rows, closes, volumes) {
   };
 }
 
-function mapSeries(rows, key) {
+function mapSeriesWithFallback(rows, key, times, fallbackValues) {
   return rows
-    .filter((row) => row[key] != null)
-    .map((row) => ({ time: row.time, value: row[key] }));
+    .map((row, index) => ({
+      time: times[index],
+      value: row[key] ?? fallbackValues[index],
+    }))
+    .filter((entry) => entry.time != null && entry.value != null);
 }
 
 function mapSeriesFromValues(times, values) {
@@ -2422,8 +2651,7 @@ function buildTooltipIndicators(dataset, time, activeIndicators) {
       color: indicator.color,
       value: findOverlayValueAtTime(dataset.overlayData[seriesKey], time),
       digits: indicator.pane === "volume" ? 0 : 2,
-    })))
-    .filter((item) => item.value != null);
+    })));
 }
 
 function findOverlayValueAtTime(series, time) {
@@ -2661,6 +2889,241 @@ function withAlpha(color, alpha) {
   return color;
 }
 
+function getDrawingBackendId(drawing) {
+  const id = Number(drawing?.backendId ?? drawing?.id);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function getDrawingPrice(drawing) {
+  const price = Number(drawing?.price ?? drawing?.points?.[0]?.price);
+  return Number.isFinite(price) && price > 0 ? price : null;
+}
+
+function toApiDrawingType(kind) {
+  switch (kind) {
+    case "stopLoss":
+      return "STOPLOSS_LINE";
+    case "takeProfit":
+      return "TAKEPROFIT_LINE";
+    case "support":
+      return "SUPPORT_LINE";
+    case "resistance":
+      return "RESISTANCE_LINE";
+    case "trend":
+      return "TREND_LINE";
+    case "horizontal":
+    default:
+      return "HORIZONTAL_LINE";
+  }
+}
+
+function fromApiDrawingType(type) {
+  switch (String(type || "").toUpperCase()) {
+    case "STOPLOSS_LINE":
+      return "stopLoss";
+    case "TAKEPROFIT_LINE":
+      return "takeProfit";
+    case "SUPPORT_LINE":
+      return "support";
+    case "RESISTANCE_LINE":
+      return "resistance";
+    case "TREND_LINE":
+      return "trend";
+    case "HORIZONTAL_LINE":
+    default:
+      return "horizontal";
+  }
+}
+
+function serializeDrawingForApi(drawing, timeframe) {
+  if (!drawing || !timeframe) {
+    return null;
+  }
+
+  const kind = drawing.kind;
+  const style = {
+    color: drawing.color,
+    lineStyle: drawing.lineStyle,
+  };
+
+  if (kind === "trend") {
+    const points = (drawing.data ?? [])
+      .map((point) => ({
+        time: normalizeChartTime(point.time),
+        price: Number(point.value ?? point.price),
+      }))
+      .filter((point) => point.time != null && Number.isFinite(point.price));
+
+    if (points.length < 2) {
+      return null;
+    }
+
+    return {
+      drawingType: toApiDrawingType(kind),
+      timeframe,
+      points,
+      style,
+      label: drawing.label,
+    };
+  }
+
+  const price = getDrawingPrice(drawing);
+  if (price == null) {
+    return null;
+  }
+
+  return {
+    drawingType: toApiDrawingType(kind),
+    timeframe,
+    points: [{ price }],
+    style,
+    label: drawing.label,
+  };
+}
+
+function attachBackendIdToDrawing(current, drawing, backendId) {
+  if (!drawing || !backendId) {
+    return current;
+  }
+
+  if (drawing.kind === "stopLoss" || drawing.kind === "takeProfit") {
+    const target = current[drawing.kind];
+    if (!target || target.id !== drawing.id) {
+      return current;
+    }
+    return {
+      ...current,
+      [drawing.kind]: { ...target, backendId },
+    };
+  }
+
+  if (drawing.kind === "trend") {
+    return {
+      ...current,
+      trendLines: current.trendLines.map((line) =>
+        line.id === drawing.id ? { ...line, backendId } : line,
+      ),
+    };
+  }
+
+  return {
+    ...current,
+    horizontalLines: current.horizontalLines.map((line) =>
+      line.id === drawing.id ? { ...line, backendId } : line,
+    ),
+  };
+}
+
+function findDrawingByKey(drawings, drawingKey) {
+  if (!drawings || !drawingKey) {
+    return null;
+  }
+
+  if (drawingKey === "stopLoss" || drawingKey === "takeProfit") {
+    return drawings[drawingKey] ?? null;
+  }
+
+  return (
+    drawings.horizontalLines?.find((line) => line.id === drawingKey) ??
+    drawings.trendLines?.find((line) => line.id === drawingKey) ??
+    null
+  );
+}
+
+function buildChartDrawingFromApi(item, priceSeries, priceChart, t) {
+  const kind = fromApiDrawingType(item?.drawingType);
+  const backendId = getDrawingBackendId(item);
+  const style = item?.style ?? {};
+  const color = style.color;
+  const lineStyle = Number.isFinite(Number(style.lineStyle)) ? Number(style.lineStyle) : undefined;
+
+  if (kind === "trend") {
+    const lineData = (item?.points ?? [])
+      .map((point) => ({
+        time: normalizeChartTime(point.time),
+        value: Number(point.price),
+      }))
+      .filter((point) => point.time != null && Number.isFinite(point.value))
+      .sort((left, right) => left.time - right.time);
+
+    if (lineData.length < 2) {
+      return null;
+    }
+
+    const trendSeries = priceChart.addSeries(LineSeries, {
+      color: color || "#8b5cf6",
+      lineWidth: 1.5,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    trendSeries.setData(lineData);
+
+    return {
+      id: `trend-${backendId ?? Date.now()}`,
+      backendId,
+      kind,
+      label: item?.label || t("analysis.chart.drawing.trend"),
+      color: color || "#8b5cf6",
+      series: trendSeries,
+      data: lineData,
+    };
+  }
+
+  const price = getDrawingPrice(item);
+  if (price == null) {
+    return null;
+  }
+
+  if (kind === "stopLoss" || kind === "takeProfit") {
+    const isStopLoss = kind === "stopLoss";
+    const label = item?.label || (isStopLoss ? "Stop-Loss" : "Take-Profit");
+    const resolvedColor = color || (isStopLoss ? "#ef4444" : "#22c55e");
+    const priceLine = priceSeries.createPriceLine({
+      price,
+      color: resolvedColor,
+      lineWidth: 2,
+      lineStyle: lineStyle ?? 0,
+      axisLabelVisible: true,
+      title: `${label} ${formatCompactPrice(price)}`,
+    });
+
+    return {
+      id: kind,
+      backendId,
+      kind,
+      label,
+      color: resolvedColor,
+      price,
+      lineStyle: lineStyle ?? 0,
+      priceLine,
+    };
+  }
+
+  const config = resolveHorizontalToolConfig(kind, t) ?? resolveHorizontalToolConfig("horizontal", t);
+  const label = item?.label || config.label;
+  const resolvedColor = color || config.color;
+  const resolvedLineStyle = lineStyle ?? config.lineStyle;
+  const priceLine = priceSeries.createPriceLine({
+    price,
+    color: resolvedColor,
+    lineWidth: 1,
+    lineStyle: resolvedLineStyle,
+    axisLabelVisible: true,
+    title: `${label}: ${formatCompactPrice(price)}`,
+  });
+
+  return {
+    id: `${kind}-${backendId ?? Date.now()}`,
+    backendId,
+    kind,
+    label,
+    color: resolvedColor,
+    price,
+    lineStyle: resolvedLineStyle,
+    priceLine,
+  };
+}
+
 function mapLegacyTimeframeToRange(value) {
   switch (String(value || "").toLowerCase()) {
     case "1h":
@@ -2693,5 +3156,170 @@ function rangeToBarSpacing(rangeKey) {
   if (key === "6m") return 3;
   if (key === "1y") return 2;
   return 1;
+}
+
+function resolveDisplayCode(instrumentCode, quote) {
+  if (quote?.code) return String(quote.code).toUpperCase();
+  const raw = String(instrumentCode || "");
+  // TCMB:AUD:SELL → AUD
+  const parts = raw.split(":");
+  return parts.length === 3 ? parts[1].toUpperCase() : raw.toUpperCase();
+}
+
+function buildDrawingLines(drawings) {
+  if (!drawings) return [];
+  const lines = [];
+  const v = (n) => (n != null && Number.isFinite(Number(n)) ? Number(n).toFixed(2) : "-");
+
+  if (drawings.stopLoss?.price != null) {
+    lines.push(`Stop-Loss: ${v(drawings.stopLoss.price)}`);
+  }
+  if (drawings.takeProfit?.price != null) {
+    lines.push(`Take-Profit: ${v(drawings.takeProfit.price)}`);
+  }
+  drawings.horizontalLines?.forEach((line) => {
+    if (line.price != null) {
+      lines.push(`${line.label || line.kind}: ${v(line.price)}`);
+    }
+  });
+  drawings.trendLines?.forEach((line) => {
+    const d = line.data;
+    if (Array.isArray(d) && d.length >= 2) {
+      const p1 = d[0], p2 = d[d.length - 1];
+      const t1 = formatTooltipDate(p1.time);
+      const t2 = formatTooltipDate(p2.time);
+      lines.push(`Trend: ${v(p1.value)} (${t1}) → ${v(p2.value)} (${t2})`);
+    }
+  });
+  return lines;
+}
+
+function resolveHistoricalValues(noteDate, dataset) {
+  if (!noteDate || !dataset) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  if (noteDate === today) return null;
+
+  const targetTime = toEpochSeconds(noteDate);
+  if (!targetTime) return null;
+
+  const atOrBefore = (series) => {
+    if (!Array.isArray(series) || !series.length) return null;
+    let result = null;
+    for (const point of series) {
+      if (point.time <= targetTime) result = point.value;
+      else break;
+    }
+    return result;
+  };
+
+  const closeAtDate = (() => {
+    const series = dataset.priceData;
+    if (!Array.isArray(series)) return null;
+    let result = null;
+    for (const point of series) {
+      if (point.time <= targetTime) {
+        result = dataset.mode === "candlestick" ? point.close : point.value;
+      } else break;
+    }
+    return result;
+  })();
+
+  const od = dataset.overlayData ?? {};
+  const sma20 = atOrBefore(od.sma20);
+  const sma50 = atOrBefore(od.sma50);
+  const rsiValue = atOrBefore(dataset.rsiData);
+
+  const maAlignmentKey = (() => {
+    if (sma20 == null || sma50 == null || sma50 === 0) return null;
+    const spread = (sma20 - sma50) / sma50;
+    if (spread > 0.002) return "bullish";
+    if (spread < -0.002) return "bearish";
+    return "mixed";
+  })();
+
+  const rsiRegimeKey = (() => {
+    if (rsiValue == null) return null;
+    if (rsiValue >= 70) return "overbought";
+    if (rsiValue <= 30) return "oversold";
+    return "neutral";
+  })();
+
+  return {
+    close: closeAtDate,
+    rsiValue,
+    rsiRegimeKey,
+    sma7: atOrBefore(od.sma7),
+    sma20,
+    sma50,
+    ema20: atOrBefore(od.ema20),
+    bollingerUpper: atOrBefore(od.bollingerUpper),
+    bollingerMiddle: atOrBefore(od.bollingerMiddle),
+    bollingerLower: atOrBefore(od.bollingerLower),
+    maAlignmentKey,
+  };
+}
+
+function buildAdvancedNoteContent({ instrumentCode, quote, activeRange, toDate, snapshot, viewLabel, drawings, activeIndicators, historicalValues }) {
+  const val = (v, digits = 2) =>
+    v == null || !Number.isFinite(Number(v)) ? "-" : Number(v).toFixed(digits);
+  const pct = (v) =>
+    v == null || !Number.isFinite(Number(v)) ? "-" : `${Number(v) >= 0 ? "+" : ""}${Number(v).toFixed(2)}%`;
+  const KEY_LABELS = {
+    trend:    { uptrend: "Yükseliş", downtrend: "Düşüş", sideways: "Yatay" },
+    rsi:      { overbought: "Aşırı alım", oversold: "Aşırı satım", neutral: "Nötr" },
+    momentum: { positive: "Pozitif", negative: "Negatif", neutral: "Nötr", awaiting: "-" },
+    vol:      { high: "Yüksek", medium: "Orta", low: "Düşük", awaiting: "-" },
+    ma:       { bullish: "Yukarı dizilim", bearish: "Aşağı dizilim", mixed: "Yatay", limited: "-" },
+  };
+  const label = (map, key) => map[key] ?? key ?? "-";
+  const isCloseBand = snapshot?.levelMode === "closeBand";
+  const dateObj = toDate ? new Date(toDate) : new Date();
+  const date = dateObj.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+  const symbol = resolveDisplayCode(instrumentCode, quote);
+  const drawingLines = buildDrawingLines(drawings);
+  const h = historicalValues;
+
+  const lastClose   = h?.close       ?? snapshot?.lastClose;
+  const rsiValue    = h?.rsiValue    ?? snapshot?.rsiValue;
+  const rsiKey      = h?.rsiRegimeKey ?? snapshot?.rsiRegimeKey;
+  const maAlignKey  = h?.maAlignmentKey ?? snapshot?.maAlignmentKey;
+
+  const has = (key) => activeIndicators?.has(key);
+  const indicatorLines = [];
+  if (has("sma7")  && (h?.sma7   ?? null) != null) indicatorLines.push(`MA 7:  ${val(h.sma7)}`);
+  if (has("sma20") && (h?.sma20  ?? snapshot?.sma20) != null) indicatorLines.push(`MA 20: ${val(h?.sma20 ?? snapshot?.sma20)}`);
+  if (has("sma50") && (h?.sma50  ?? snapshot?.sma50) != null) indicatorLines.push(`MA 50: ${val(h?.sma50 ?? snapshot?.sma50)}`);
+  if (has("ema20") && (h?.ema20  ?? null) != null) indicatorLines.push(`EMA 20: ${val(h.ema20)}`);
+  if (has("bollinger")) {
+    if ((h?.bollingerUpper  ?? null) != null) indicatorLines.push(`Bollinger Üst:  ${val(h.bollingerUpper)}`);
+    if ((h?.bollingerMiddle ?? null) != null) indicatorLines.push(`Bollinger Orta: ${val(h.bollingerMiddle)}`);
+    if ((h?.bollingerLower  ?? null) != null) indicatorLines.push(`Bollinger Alt:  ${val(h.bollingerLower)}`);
+  }
+
+  return [
+    `${symbol} - ${String(activeRange || "-").toUpperCase()} Teknik Analiz`,
+    "",
+    `Son fiyat: ${val(lastClose)}`,
+    `Günlük değişim: ${pct(snapshot?.latestChangePct)}`,
+    `Teknik görünüm: ${viewLabel ?? "-"}`,
+    `RSI: ${val(rsiValue)} (${label(KEY_LABELS.rsi, rsiKey)})`,
+    `Momentum: ${label(KEY_LABELS.momentum, snapshot?.momentumKey)}`,
+    `Volatilite: ${label(KEY_LABELS.vol, snapshot?.volatilityKey)}`,
+    `MA dizilimi: ${label(KEY_LABELS.ma, maAlignKey)}`,
+    snapshot?.supportLevel != null
+      ? `${isCloseBand ? "Aralık en düşük" : "Destek"}: ${val(snapshot.supportLevel)}`
+      : null,
+    snapshot?.resistanceLevel != null
+      ? `${isCloseBand ? "Aralık en yüksek" : "Direnç"}: ${val(snapshot.resistanceLevel)}`
+      : null,
+    indicatorLines.length > 0 ? "" : null,
+    indicatorLines.length > 0 ? "── Göstergeler ──" : null,
+    ...indicatorLines,
+    drawingLines.length > 0 ? "" : null,
+    drawingLines.length > 0 ? "── Çizimler ──" : null,
+    ...drawingLines,
+    "",
+    `Tarih: ${date}`,
+  ].filter((line) => line !== null).join("\n");
 }
 

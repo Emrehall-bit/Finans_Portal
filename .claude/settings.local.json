@@ -165,7 +165,8 @@
       "Bash(xargs grep -l \"score\\\\|Score\")",
       "Bash(Remove-Item \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\pages\\\\ReportsPage.jsx\" -Force)",
       "Bash(Remove-Item \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\styles\\\\pages\\\\reports.css\" -Force)",
-      "Bash(Write-Host \"Silindi\")"
+      "Bash(Write-Host \"Silindi\")",
+      "Bash(grep -B2 -A5 \"^\\\\+    quote,$\")"
     ]
   }
 }

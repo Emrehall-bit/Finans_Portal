@@ -45,6 +45,33 @@ const PRIORITY_SYMBOLS = [
 ];
 
 const USER_TAPE_SYMBOLS_STORAGE_PREFIX = "fp:market-tape:user-symbols:";
+const MARKET_TAPE_MIN_GROUP_ITEMS = 18;
+
+function normalizeTapeSymbol(value) {
+  return String(value ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function buildMarketTapeLoopGroup(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [];
+  }
+
+  const repeatCount = Math.max(1, Math.ceil(MARKET_TAPE_MIN_GROUP_ITEMS / items.length));
+  return Array.from({ length: repeatCount }, () => items).flat();
+}
+
+function formatMarketTapeSymbol(item) {
+  const rawSymbol = String(item?.code || item?.symbol || item?.displayName || "");
+  const providerFxMatch = rawSymbol.toUpperCase().match(/^(TCMB|AKBANK):?([A-Z]{3}):?(BUY|SELL)$/);
+
+  if (providerFxMatch) {
+    return providerFxMatch[2];
+  }
+
+  return rawSymbol;
+}
 
 function getInitials(user) {
   const source = user?.fullName || user?.email || "FP";
@@ -347,13 +374,12 @@ export default function AppLayout() {
 
     const configuredSymbols = marketTapeSymbols.length > 0 ? marketTapeSymbols : PRIORITY_SYMBOLS;
 
-    const findBySymbol = (symbol) =>
-      tickerQuotes.find(
-        (item) =>
-          item.symbol?.toUpperCase() === symbol ||
-          item.code?.toUpperCase() === symbol ||
-          item.displayName?.toUpperCase().replace(/[^A-Z0-9]/g, "") === symbol.replace(/[^A-Z0-9]/g, ""),
+    const findBySymbol = (symbol) => {
+      const normalizedSymbol = normalizeTapeSymbol(symbol);
+      return tickerQuotes.find((item) =>
+        [item.symbol, item.code, item.displayName].some((value) => normalizeTapeSymbol(value) === normalizedSymbol),
       );
+    };
 
     const configuredMatches = configuredSymbols
       .map(findBySymbol)
@@ -377,6 +403,8 @@ export default function AppLayout() {
 
     return unique.slice(0, 10);
   }, [marketTapeSymbols, tickerQuotes]);
+
+  const tapeLoopGroup = useMemo(() => buildMarketTapeLoopGroup(tapeItems), [tapeItems]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -557,9 +585,9 @@ export default function AppLayout() {
       <div className={`market-tape-shell${!tickerReady || tapeItems.length === 0 ? " market-tape-loading" : ""}`} aria-label={t("layout.liveTape")}>
         {tickerReady && tapeItems.length > 0 ? (
           <div className="market-tape-track">
-            {[...tapeItems, ...tapeItems].map((item, index) => (
+            {[...tapeLoopGroup, ...tapeLoopGroup].map((item, index) => (
               <div key={`${item.symbol}-${index}`} className="market-tape-item">
-                <span className="market-tape-symbol">{item.code || item.symbol}</span>
+                <span className="market-tape-symbol">{formatMarketTapeSymbol(item)}</span>
                 <strong>{formatNumber(item.price)}</strong>
                 <span className={Number(item.changeRate) >= 0 ? "market-up" : "market-down"}>
                   {formatTapeChange(item.changeRate)}

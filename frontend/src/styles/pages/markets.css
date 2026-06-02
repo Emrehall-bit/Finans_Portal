@@ -847,7 +847,7 @@
   align-items: center;
   gap: 20px;
   padding: 10px 0;
-  animation: marketTapeScroll 70s linear infinite;
+  animation: marketTapeScroll 150s linear infinite;
 }
 
 .market-tape-item {
@@ -874,7 +874,7 @@
 
 @media (max-width: 920px) {
   .market-tape-track {
-    animation-duration: 58s;
+    animation-duration: 122s;
   }
 }
 

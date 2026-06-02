@@ -2,6 +2,55 @@
   display: none;
 }
 
+.advanced-note-add-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.advanced-note-date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.advanced-note-date-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.advanced-note-date-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.advanced-note-date-input:focus {
+  outline: none;
+  border-color: #4f7cff;
+}
+
+[data-theme="dark"] .advanced-note-date-input {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(71, 85, 105, 0.5);
+  color: #e2e8f0;
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .advanced-note-date-label {
+  color: #94a3b8;
+}
+
 .analysis-currency-toggle {
   margin-top: 0;
   flex-shrink: 0;
@@ -2715,6 +2764,34 @@ html[data-theme] .analysis-chart-shell {
   border-left-color: rgba(96, 165, 250, 0.55);
 }
 .simple-sr-row--band strong { color: #334155; }
+
+.simple-tech-add-note-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  width: 100%;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 0.79rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.simple-tech-add-note-btn:hover:not(:disabled) {
+  background: var(--surface-muted);
+  color: var(--text-main);
+  border-color: var(--border);
+}
+
+.simple-tech-add-note-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .simple-tech-summary-cta {
   display: inline-flex;

@@ -25,7 +25,7 @@ const FundamentalAnalysis = lazy(() => import("../components/analysis/Fundamenta
 export default function AnalysisPage() {
   const { t, i18n } = useTranslation();
   const { convertAmount, currency } = useCurrency();
-  const { userId } = useAuth();
+  const { userId, user, updateUserProfile } = useAuth();
   const { toast, showToast } = useToast();
   const [searchParams] = useSearchParams();
   const routeInstrumentType = String(searchParams.get("type") || "").trim().toUpperCase();
@@ -39,6 +39,7 @@ export default function AnalysisPage() {
   const [comparisonMode, setComparisonMode] = useState("normalized");
   const [chartMode, setChartMode] = useState(() => (searchParams.get("tool") ? "advanced" : "simple"));
   const [fundamentalsOpen, setFundamentalsOpen] = useState(false);
+  const [noteAdding, setNoteAdding] = useState(false);
   const [watchlistItems, setWatchlistItems] = useState([]);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const initialHighlightTool = searchParams.get("tool") || null;
@@ -118,7 +119,7 @@ export default function AnalysisPage() {
       source: primaryQuote?.source,
       type: primaryQuote?.instrumentType,
     }),
-    [dateRange, primaryQuote],
+    [dateRange, primaryQuote?.source, primaryQuote?.instrumentType],
   );
   const { data: history = [], isLoading: historyLoading } = useMarketHistory(
     primaryApiSymbol,
@@ -238,6 +239,35 @@ export default function AnalysisPage() {
     }
   }
 
+  async function handleAddToNotes(content) {
+    if (!userId) {
+      showToast("error", "Not eklemek için giriş yapmalısınız");
+      return;
+    }
+    if (noteAdding) return;
+    setNoteAdding(true);
+    try {
+      const currentNotes = Array.isArray(user?.notes) ? user.notes : [];
+      const newNote = {
+        id: crypto.randomUUID(),
+        content,
+        createdAt: new Date().toISOString(),
+        updatedAt: null,
+      };
+      await updateUserProfile({
+        fullName: user?.fullName ?? "",
+        preferredLanguage: user?.preferredLanguage ?? null,
+        themePreference: user?.themePreference ?? null,
+        notes: [...currentNotes, newNote],
+      });
+      showToast("success", "Analiz notlara eklendi");
+    } catch {
+      showToast("error", "Not eklenemedi");
+    } finally {
+      setNoteAdding(false);
+    }
+  }
+
   function handleRangeChange(preset) {
     setActiveRange(preset.key);
     setDateRange(buildPresetRange(preset.days));
@@ -299,6 +329,8 @@ export default function AnalysisPage() {
                           analysis={analysis}
                           primaryContext={primaryContext}
                           onOpenAdvanced={() => setChartMode("advanced")}
+                          onAddToNotes={handleAddToNotes}
+                          noteAdding={noteAdding}
                         />
                     ) : (
                       <Suspense fallback={<LoadingSpinner label={t("analysis.chartLoading")} />}>
@@ -312,6 +344,8 @@ export default function AnalysisPage() {
                           activeRange={activeRange}
                           rangePresets={ANALYSIS_RANGE_PRESETS}
                           onRangeChange={handleRangeChange}
+                          onAddToNotes={handleAddToNotes}
+                          noteAdding={noteAdding}
                         />
                       </Suspense>
                     )}

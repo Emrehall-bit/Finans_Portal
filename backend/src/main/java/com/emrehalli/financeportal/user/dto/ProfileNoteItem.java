@@ -14,7 +14,7 @@ public class ProfileNoteItem {
     private String id;
 
     @NotBlank(message = "Note content cannot be blank")
-    @Size(max = 500, message = "Note content must be 500 characters or fewer")
+    @Size(max = 1000, message = "Note content must be 1000 characters or fewer")
     private String content;
 
     private String createdAt;

@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { AlertTriangle, ArrowRight, Check, Gauge, Info, Minus, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowRight, BookmarkPlus, Check, Gauge, Info, Minus, TrendingUp } from "lucide-react";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -40,6 +40,8 @@ export default function SimpleAnalysisChart({
   analysis,
   primaryContext,
   onOpenAdvanced,
+  onAddToNotes = null,
+  noteAdding = false,
 }) {
   const { t } = useTranslation();
   const { chartTheme } = useTheme();
@@ -310,6 +312,27 @@ export default function SimpleAnalysisChart({
                   <strong>{axisLabel}{formatNumber(supportResistance.support, 2)}</strong>
                 </div>
               </div>
+            ) : null}
+
+            {onAddToNotes ? (
+              <button
+                type="button"
+                className="simple-tech-add-note-btn"
+                disabled={noteAdding || loading}
+                onClick={() => onAddToNotes(buildAnalysisNoteContent({
+                  primaryContext,
+                  activeRange,
+                  lastPrice,
+                  rangeChangePct,
+                  summary,
+                  latestRsi,
+                  supportResistance,
+                  axisLabel,
+                }))}
+              >
+                <BookmarkPlus size={15} strokeWidth={2.2} />
+                <span>{noteAdding ? "Ekleniyor..." : "Notlara Ekle"}</span>
+              </button>
             ) : null}
 
             <button type="button" className="simple-tech-summary-cta" onClick={onOpenAdvanced}>
@@ -647,5 +670,32 @@ function sparkColor(tone) {
     default:
       return "#94a3b8";
   }
+}
+
+function buildAnalysisNoteContent({ primaryContext, activeRange, lastPrice, rangeChangePct, summary, latestRsi, supportResistance, axisLabel }) {
+  const val = (v, digits = 2) =>
+    v == null || !Number.isFinite(Number(v)) ? "-" : `${axisLabel}${Number(v).toFixed(digits)}`;
+  const pct = (v) =>
+    v == null || !Number.isFinite(Number(v)) ? "-" : `${Number(v) >= 0 ? "+" : ""}${Number(v).toFixed(2)}%`;
+  const str = (v) => (v != null && String(v).trim() ? String(v).trim() : "-");
+  const date = new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+  const symbol = str(primaryContext?.symbolLine);
+  const isCloseBand = supportResistance?.levelMode === "closeBand";
+
+  return [
+    `${symbol} - ${str(activeRange)} Teknik Analiz`,
+    "",
+    `Son fiyat: ${val(lastPrice)}`,
+    `Aralık değişimi: ${pct(rangeChangePct)}`,
+    `Teknik görünüm: ${str(summary?.scoreLabel)}`,
+    `RSI: ${latestRsi != null ? Number(latestRsi).toFixed(1) : "-"} (${str(summary?.rsiZoneLabel)})`,
+    `Momentum: ${str(summary?.momentumLabel)}`,
+    `Volatilite: ${str(summary?.volatilityLabel)}`,
+    `MA dizilimi: ${str(summary?.maPairLabel)}`,
+    supportResistance ? `${isCloseBand ? "Aralık en düşük" : "Destek"}: ${val(supportResistance.support)}` : null,
+    supportResistance ? `${isCloseBand ? "Aralık en yüksek" : "Direnç"}: ${val(supportResistance.resistance)}` : null,
+    "",
+    `Tarih: ${date}`,
+  ].filter((line) => line !== null).join("\n");
 }
 
