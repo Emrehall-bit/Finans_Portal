@@ -1812,17 +1812,14 @@ public class NewsService {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
             if (!categories.isEmpty()) {
                 predicates.add(cb.upper(root.get("category")).in(categories));
-                jakarta.persistence.criteria.Expression<String> normalizedTags =
-                        cb.upper(cb.coalesce(root.get("filterTags"), ""));
-                List<jakarta.persistence.criteria.Predicate> tagPredicates = categories.stream()
-                        .map(category -> cb.like(normalizedTags, "%" + category.toUpperCase(Locale.ROOT) + "%"))
-                        .toList();
-                predicates.add(cb.or(tagPredicates.toArray(jakarta.persistence.criteria.Predicate[]::new)));
             }
             if (!runtimeKeywords.isEmpty()) {
-                jakarta.persistence.criteria.Predicate noTagsStored = cb.or(
-                        cb.isNull(root.get("filterTags")),
-                        cb.equal(cb.coalesce(root.get("filterTags"), ""), "")
+                jakarta.persistence.criteria.Predicate noTagsStored = cb.and(
+                        cb.isNull(root.get("category")),
+                        cb.or(
+                                cb.isNull(root.get("filterTags")),
+                                cb.equal(cb.coalesce(root.get("filterTags"), ""), "")
+                        )
                 );
                 List<jakarta.persistence.criteria.Predicate> keywordPredicates = runtimeKeywords.stream()
                         .map(keyword -> {

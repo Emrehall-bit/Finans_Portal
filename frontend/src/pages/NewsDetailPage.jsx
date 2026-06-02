@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { buildMarketDetailPath } from "../api/marketApi";
 import AiNewsImpactCard from "../components/ai/AiNewsImpactCard";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -32,6 +32,10 @@ export default function NewsDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backTo = location.state?.newsListSearch
+    ? `/news${location.state.newsListSearch}`
+    : "/news";
   const [imageFailed, setImageFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
@@ -70,7 +74,7 @@ export default function NewsDetailPage() {
         title={item?.title || t("newsDetail.titleFallback")}
         description={sourceName || t("newsDetail.descriptionFallback")}
         actions={
-          <Link className="news-detail-back-link" to="/news">
+          <Link className="news-detail-back-link" to={backTo}>
             {t("newsDetail.back")}
           </Link>
         }

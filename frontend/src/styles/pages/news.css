@@ -1130,6 +1130,9 @@
 .news-detail-body {
   display: grid;
   gap: 1em;
+  max-height: 700px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 .news-detail-actions {

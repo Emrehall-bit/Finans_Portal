@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { SlidersHorizontal } from "lucide-react";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
@@ -38,20 +38,46 @@ const INITIAL_NEWS_PAGE = {
 export default function NewsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [filters, setFilters] = useState({ keyword: "", category: "", provider: "" });
-  const [appliedFilters, setAppliedFilters] = useState({ keyword: "", category: "", provider: "", language: "" });
-  const [sortBy, setSortBy] = useState("publishedAt");
-  const [appliedSortBy, setAppliedSortBy] = useState("publishedAt");
-  const [currentPage, setCurrentPage] = useState(0);
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [keyword, setKeyword] = useState(() => searchParams.get("q") || "");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [selectedProviders, setSelectedProviders] = useState([]);
-  const [selectedLanguages, setSelectedLanguages] = useState([]);
-  const [feedType, setFeedType] = useState("news");
+
+  const feedType = searchParams.get("tab") || "news";
+  const currentPage = Number(searchParams.get("page") || "0");
+  const sortBy = searchParams.get("sort") || "publishedAt";
+  const selectedCategory = searchParams.get("category") || "";
+  const selectedProvider = searchParams.get("provider") || "";
+  const selectedLanguage = searchParams.get("language") || "";
+  const selectedCategories = selectedCategory ? [selectedCategory] : [];
+  const selectedProviders = selectedProvider ? [selectedProvider] : [];
+  const selectedLanguages = selectedLanguage ? [selectedLanguage] : [];
+
+  function updateParams(updater) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        updater(next);
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   const newsQueryParams = useMemo(
-    () => buildNewsQueryParams(appliedFilters, currentPage, appliedSortBy, feedType),
-    [appliedFilters, currentPage, appliedSortBy, feedType],
+    () =>
+      buildNewsQueryParams(
+        {
+          keyword: searchParams.get("q") || "",
+          category: selectedCategory,
+          provider: selectedProvider,
+          language: selectedLanguage,
+        },
+        currentPage,
+        sortBy,
+        feedType,
+      ),
+    [searchParams, selectedCategory, selectedProvider, selectedLanguage, currentPage, sortBy, feedType],
   );
 
   const {
@@ -64,7 +90,7 @@ export default function NewsPage() {
 
   function handleOpen(item) {
     if (!item?.id) return;
-    navigate(`/news/${item.id}`);
+    navigate(`/news/${item.id}`, { state: { newsListSearch: location.search } });
   }
 
   const items = newsPage.content ?? [];
@@ -95,123 +121,107 @@ export default function NewsPage() {
     [languageOptions],
   );
 
-  const draftFilters = useMemo(
-    () => ({
-      keyword: filters.keyword,
-      category: selectedCategories[0] || "",
-      provider: selectedProviders[0] || "",
-      language: selectedLanguages.length === 1 ? selectedLanguages[0] : "",
-    }),
-    [filters.keyword, selectedCategories, selectedLanguages, selectedProviders],
-  );
-
   const activeFilters = useMemo(() => {
     const nextFilters = [];
-
-    if (draftFilters.category) {
-      nextFilters.push({
-        type: "category",
-        value: draftFilters.category,
-        label: getNewsCategoryFilterLabel(draftFilters.category, t),
-      });
+    if (selectedCategory) {
+      nextFilters.push({ type: "category", value: selectedCategory, label: getNewsCategoryFilterLabel(selectedCategory, t) });
     }
-
-    if (draftFilters.provider) {
-      nextFilters.push({
-        type: "provider",
-        value: draftFilters.provider,
-        label: getNewsProviderFilterLabel(draftFilters.provider, t),
-      });
+    if (selectedProvider) {
+      nextFilters.push({ type: "provider", value: selectedProvider, label: getNewsProviderFilterLabel(selectedProvider, t) });
     }
-
-    selectedLanguages.forEach((lang) => {
-      if (lang === "tr") {
-        nextFilters.push({ type: "language", value: "tr", label: t("common.turkish") });
-      } else if (lang === "en") {
-        nextFilters.push({ type: "language", value: "en", label: t("common.english") });
-      }
-    });
-
-    return nextFilters.filter((filter) => filter.label);
-  }, [draftFilters, selectedLanguages, t]);
+    if (selectedLanguage === "tr") nextFilters.push({ type: "language", value: "tr", label: t("common.turkish") });
+    if (selectedLanguage === "en") nextFilters.push({ type: "language", value: "en", label: t("common.english") });
+    return nextFilters.filter((f) => f.label);
+  }, [selectedCategory, selectedProvider, selectedLanguage, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setAppliedFilters((current) => {
-        const unchanged =
-          current.keyword === draftFilters.keyword &&
-          current.category === draftFilters.category &&
-          current.provider === draftFilters.provider &&
-          current.language === draftFilters.language;
-
-        if (unchanged) return current;
-
-        setCurrentPage(0);
-        return draftFilters;
+      updateParams((params) => {
+        if (keyword) {
+          params.set("q", keyword);
+        } else {
+          params.delete("q");
+        }
+        params.set("page", "0");
       });
     }, 250);
-
     return () => window.clearTimeout(timer);
-  }, [draftFilters]);
+  }, [keyword]);
 
   function handleToggleCategory(value) {
-    if (value === ALL_CATEGORY_OPTION_VALUE) {
-      setSelectedCategories([]);
-      return;
-    }
-    setSelectedCategories((current) => (current.includes(value) ? [] : [value]));
+    updateParams((params) => {
+      if (value === ALL_CATEGORY_OPTION_VALUE || params.get("category") === value) {
+        params.delete("category");
+      } else {
+        params.set("category", value);
+      }
+      params.set("page", "0");
+    });
   }
 
   function handleToggleProvider(value) {
-    setSelectedProviders((current) => (current.includes(value) ? [] : [value]));
+    updateParams((params) => {
+      if (params.get("provider") === value) {
+        params.delete("provider");
+      } else {
+        params.set("provider", value);
+      }
+      params.set("page", "0");
+    });
   }
 
   function handleToggleLanguage(value) {
-    setSelectedLanguages((current) => (current.includes(value) ? [] : [value]));
+    updateParams((params) => {
+      if (params.get("language") === value) {
+        params.delete("language");
+      } else {
+        params.set("language", value);
+      }
+      params.set("page", "0");
+    });
   }
 
   function handleResetFilters() {
-    setSelectedCategories([]);
-    setSelectedProviders([]);
-    setSelectedLanguages([]);
-    setFilters((prev) => ({ ...prev, category: "", provider: "" }));
+    setKeyword("");
+    updateParams((params) => {
+      params.delete("category");
+      params.delete("provider");
+      params.delete("language");
+      params.delete("q");
+      params.set("page", "0");
+    });
   }
 
   function handleSortChange(value) {
-    setSortBy(value);
-    setAppliedSortBy(value);
-    setCurrentPage(0);
+    updateParams((params) => {
+      params.set("sort", value);
+      params.set("page", "0");
+    });
   }
 
   function handleFeedTypeChange(nextFeedType) {
     if (nextFeedType === feedType) return;
-    setFeedType(nextFeedType);
-    setCurrentPage(0);
-    setSelectedCategories([]);
-    setSelectedProviders([]);
+    updateParams((params) => {
+      params.set("tab", nextFeedType);
+      params.set("page", "0");
+      params.delete("category");
+      params.delete("provider");
+    });
   }
 
   function handleRemoveActiveFilter(filter) {
     if (!filter?.type) return;
-
-    if (filter.type === "category") {
-      setSelectedCategories((current) => current.filter((item) => item !== filter.value));
-      return;
-    }
-
-    if (filter.type === "provider") {
-      setSelectedProviders((current) => current.filter((item) => item !== filter.value));
-      return;
-    }
-
-    if (filter.type === "language") {
-      setSelectedLanguages((current) => current.filter((item) => item !== filter.value));
-    }
+    updateParams((params) => {
+      if (filter.type === "category") params.delete("category");
+      else if (filter.type === "provider") params.delete("provider");
+      else if (filter.type === "language") params.delete("language");
+      params.set("page", "0");
+    });
   }
 
   function handlePageChange(page) {
     if (loading || page === currentPage || page < 0 || page >= newsPage.totalPages) return;
-    setCurrentPage(page);
+    updateParams((params) => params.set("page", String(page)));
   }
 
   function handlePreviousPage() {
@@ -255,8 +265,8 @@ export default function NewsPage() {
             <label className="news-search-field news-search-field-plain" htmlFor="news-search-input">
               <input
                 id="news-search-input"
-                value={filters.keyword}
-                onChange={(event) => setFilters((current) => ({ ...current, keyword: event.target.value }))}
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
                 placeholder={t("news.searchPlaceholder")}
               />
             </label>

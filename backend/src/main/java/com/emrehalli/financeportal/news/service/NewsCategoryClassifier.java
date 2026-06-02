@@ -98,12 +98,21 @@ public class NewsCategoryClassifier {
                 "bono", "yield", "getiri", "fed", "ecb", "fomc", "powell", "para politikasi", "baz puan"
         ));
         CATEGORY_KEYWORDS.put(FX, List.of(
-                "dolar tl", "dolar/tl", "euro tl", "euro/tl", "usd try", "eur try", "doviz", "forex",
-                "fx", "kur", "parite", "sterlin", "yen"
+                "dolar tl", "euro tl", "usd try", "eur try", "usdtry", "eurtry",
+                "doviz", "dovize", "dovizde", "dovizi", "dovizin",
+                "forex", "fx",
+                "kur", "kuru", "kurda", "kuruna", "kurdan", "kurunda",
+                "parite", "sterlin", "yen",
+                "doviz kuru", "exchange rate"
         ));
         CATEGORY_KEYWORDS.put(BANKING, List.of(
-                "bankacilik", "banka", "mevduat", "kredi", "loan", "deposit", "net interest margin",
-                "bankacilik hisseleri", "banka hisseleri"
+                "bankacilik", "banka", "bankasi", "bankalari", "bankaciligi",
+                "garanti bankasi", "is bankasi", "halkbank", "ziraat bankasi",
+                "akbank", "yapi kredi", "vakifbank", "finansbank",
+                "mevduat", "mevduati", "kredi", "krediye", "kredide", "kredisi",
+                "loan", "deposit",
+                "net interest margin", "net faiz marji",
+                "bankacilik hisseleri", "banka hisseleri", "takipteki kredi"
         ));
         CATEGORY_KEYWORDS.put(STOCKS, List.of(
                 "borsa istanbul", "borsa", "bist", "hisse", "hisseleri", "hisse senedi", "stock",
@@ -121,17 +130,24 @@ public class NewsCategoryClassifier {
                 "kripto", "crypto", "bitcoin", "ethereum", "btc", "eth", "stablecoin", "blockchain"
         ));
         CATEGORY_KEYWORDS.put(GEOPOLITICS, List.of(
-                "iran", "israil", "ukrayna", "rusya", "russia", "orta dogu", "middle east", "gerilim",
-                "tension", "savas", "war", "ateskes", "ceasefire", "nato", "yaptirim", "sanction",
-                "trade war", "tariff"
+                "orta dogu", "middle east", "gerilim", "tension",
+                "savas", "war", "ateskes", "ceasefire", "nato",
+                "yaptirim", "sanction", "trade war", "tariff"
         ));
         CATEGORY_KEYWORDS.put(GLOBAL_MARKETS, List.of(
-                "global markets", "kuresel piyasalar", "global piyasa", "wall street", "nasdaq", "dow",
-                "s&p", "sp500", "msci", "asian markets", "avrupa borsalari", "risk appetite"
+                "global markets",
+                "kuresel piyasalar", "kuresel piyasalarda", "kuresel piyasalara", "kuresel piyasalarin",
+                "global piyasa", "global piyasalarda",
+                "wall street", "nasdaq", "dow", "dow jones",
+                "sp500", "s p 500", "msci",
+                "asian markets", "avrupa borsalari", "risk appetite",
+                "dax", "ftse", "nikkei"
         ));
         CATEGORY_KEYWORDS.put(COMPANY, List.of(
-                "sirket", "company", "ceo", "earnings", "revenue", "guidance", "factory", "plant",
-                "investment plan", "anlasma", "agreement", "partnership", "merger", "acquisition"
+                "company", "ceo", "earnings", "revenue", "guidance",
+                "merger", "acquisition", "partnership", "agreement",
+                "temettu", "bilanco", "net kar", "kar aciklamasi",
+                "birlesme", "devralma", "geri alim", "sermaye artirimi"
         ));
         CATEGORY_KEYWORDS.put(GENERAL_ECONOMY, List.of(
                 "ekonomi", "economy", "enflasyon", "inflation", "buyume", "growth", "issizlik",
@@ -178,7 +194,8 @@ public class NewsCategoryClassifier {
         }
 
         if (hasFinancialContext || hasGeopoliticalContent) {
-            String primaryCategory = hasGeopoliticalContent ? GEOPOLITICS : GENERAL_ECONOMY;
+            boolean geopoliticsQualifies = hasGeopoliticalContent && hasFinancialContext;
+            String primaryCategory = geopoliticsQualifies ? GEOPOLITICS : GENERAL_ECONOMY;
             return ClassificationResult.accepted(primaryCategory, deriveTags(primaryCategory, combined, Set.of(primaryCategory)));
         }
 
@@ -323,8 +340,8 @@ public class NewsCategoryClassifier {
         if (strongFxContext) {
             addTag(tagReasons, FX, "currency-context");
         }
-        if (strongGoldContext || strongEnergyContext) {
-            addTag(tagReasons, GOLD_COMMODITY, strongGoldContext ? "gold-commodity-context" : "energy-mapped-to-commodity");
+        if (strongGoldContext) {
+            addTag(tagReasons, GOLD_COMMODITY, "gold-commodity-context");
         }
         if (strongEnergyContext) {
             addTag(tagReasons, ENERGY, "energy-supply-context");
@@ -343,9 +360,6 @@ public class NewsCategoryClassifier {
         }
         if (matchedCategories.contains(CRYPTO) || containsAny(combined, CATEGORY_KEYWORDS.getOrDefault(CRYPTO, List.of()))) {
             addTag(tagReasons, CRYPTO, "crypto-context");
-        }
-        if (matchedCategories.contains(GENERAL_ECONOMY) || containsAny(combined, CATEGORY_KEYWORDS.getOrDefault(GENERAL_ECONOMY, List.of()))) {
-            addTag(tagReasons, GENERAL_ECONOMY, "macro-context");
         }
         if (tagReasons.isEmpty()) {
             addTag(tagReasons, GENERAL_ECONOMY, "fallback");
