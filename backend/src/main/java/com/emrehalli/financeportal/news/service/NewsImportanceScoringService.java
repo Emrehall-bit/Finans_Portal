@@ -53,7 +53,7 @@ public class NewsImportanceScoringService {
 
         Duration duration = Duration.between(publishedAt, LocalDateTime.now(clock));
         if (duration.isNegative()) {
-            return 30;
+            return 0;
         }
 
         long minutes = duration.toMinutes();

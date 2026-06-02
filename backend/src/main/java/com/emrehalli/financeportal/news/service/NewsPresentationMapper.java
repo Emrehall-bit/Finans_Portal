@@ -78,20 +78,20 @@ public class NewsPresentationMapper {
     }
 
     private String resolveSourceName(News news) {
-        String source = normalizeText(news.getSource());
-        if (source != null) {
-            return source;
-        }
         String provider = normalizeText(news.getProvider());
-        if (provider == null) {
-            return "Unknown";
+        if (provider != null) {
+            String canonical = switch (provider.toUpperCase(Locale.ROOT)) {
+                case "AA_RSS" -> "Anadolu Ajansı";
+                case "CNBC_RSS" -> "CNBC";
+                case "KAP" -> "KAP";
+                default -> null;
+            };
+            if (canonical != null) {
+                return canonical;
+            }
         }
-        return switch (provider.toUpperCase(Locale.ROOT)) {
-            case "AA_RSS" -> "Anadolu Ajansi";
-            case "CNBC_RSS" -> "CNBC";
-            case "KAP" -> "KAP";
-            default -> provider;
-        };
+        String source = normalizeText(news.getSource());
+        return source != null ? source : (provider != null ? provider : "Unknown");
     }
 
     private String resolveContentPreview(News news, String normalizedSummary) {

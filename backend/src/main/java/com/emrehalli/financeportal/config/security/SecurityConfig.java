@@ -46,6 +46,7 @@ public class SecurityConfig {
                         // Admin endpoints
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/news/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/news/sync").hasRole("ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                         // Public endpoints

@@ -166,7 +166,8 @@
       "Bash(Remove-Item \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\pages\\\\ReportsPage.jsx\" -Force)",
       "Bash(Remove-Item \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\\\\styles\\\\pages\\\\reports.css\" -Force)",
       "Bash(Write-Host \"Silindi\")",
-      "Bash(grep -B2 -A5 \"^\\\\+    quote,$\")"
+      "Bash(grep -B2 -A5 \"^\\\\+    quote,$\")",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\frontend\\\\src\" -Recurse | Where-Object {$_.Name -match \"\\(ews|aber|ap\\)\" -and \\($_.Name.EndsWith\\(\".tsx\"\\) -or $_.Name.EndsWith\\(\".ts\"\\)\\)} | Select-Object FullName)"
     ]
   }
 }
