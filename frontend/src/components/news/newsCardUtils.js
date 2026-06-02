@@ -69,40 +69,6 @@ const CATEGORY_LABELS = {
   CAPITAL_INCREASE: "Sermaye Artırımı",
 };
 
-const TAG_FALLBACK_MAP = {
-  FX: "FX",
-  GOLD_COMMODITY: "GOLD_COMMODITY",
-  INTEREST_BONDS: "INTEREST_BONDS",
-  STOCKS: "STOCKS",
-  BANKING: "BANKING",
-  CRYPTO: "CRYPTO",
-  GLOBAL_MARKETS: "GLOBAL_MARKETS",
-  ENERGY: "ENERGY",
-  COMPANY: "STOCKS",
-  GEOPOLITICS: "GLOBAL_MARKETS",
-  GENERAL_ECONOMY: "GENERAL_ECONOMY",
-  ECONOMY: "GENERAL_ECONOMY",
-  GENERAL: "GENERAL_ECONOMY",
-  BUSINESS: "GENERAL_ECONOMY",
-  TOP_NEWS: "GLOBAL_MARKETS",
-  MARKETS: "GLOBAL_MARKETS",
-  FOREX: "FX",
-  CURRENCY: "FX",
-  DOVIZ: "FX",
-  STOCK: "STOCKS",
-  SHARES: "STOCKS",
-  EQUITY: "STOCKS",
-  INTEREST_RATE: "INTEREST_BONDS",
-  BOND: "INTEREST_BONDS",
-  TAHVIL: "INTEREST_BONDS",
-  FAIZ: "INTEREST_BONDS",
-  GOLD: "GOLD_COMMODITY",
-  COMMODITY: "GOLD_COMMODITY",
-  EMTIA: "GOLD_COMMODITY",
-  ALTIN: "GOLD_COMMODITY",
-  OIL: "ENERGY",
-  PETROL: "ENERGY",
-};
 
 export function getNewsProviderLabel(provider) {
   const normalized = provider?.toUpperCase?.() || "";
@@ -284,25 +250,6 @@ export function getImportanceLevelKey(score) {
   return "low";
 }
 
-function normalizeNewsTagValue(value) {
-  return value?.toUpperCase?.()?.replace(/[-\s]+/g, "_") || "";
-}
-
-function mapNewsTagValue(value) {
-  const normalized = normalizeNewsTagValue(value);
-  return TAG_FALLBACK_MAP[normalized] || null;
-}
-
-function resolveRawNewsTags(item) {
-  if (Array.isArray(item?.tags) && item.tags.length > 0) {
-    return item.tags;
-  }
-  if (item?.category) {
-    return [item.category];
-  }
-  return [];
-}
-
 const KAP_DISCLOSURE_GROUPS = [
   {
     key: "menkul-kiymet",
@@ -362,24 +309,3 @@ export function resolveKapDisclosureGroup(title) {
   };
 }
 
-export function getNewsDisplayTags(item, t, limit = Infinity) {
-  const seen = new Set();
-  const resolved = [];
-
-  for (const rawTag of resolveRawNewsTags(item)) {
-    const canonicalTag = mapNewsTagValue(rawTag);
-    if (!canonicalTag || seen.has(canonicalTag)) {
-      continue;
-    }
-    seen.add(canonicalTag);
-    resolved.push({
-      key: canonicalTag,
-      label: t(`news.tagLabels.${canonicalTag}`, { defaultValue: canonicalTag }),
-    });
-    if (resolved.length >= limit) {
-      break;
-    }
-  }
-
-  return resolved;
-}

@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import {
   buildNewsPlaceholderLabel,
   formatNewsPublishedAt,
-  getNewsDisplayTags,
   getNewsFallbackLogoUrl,
   getNewsPreviewText,
   getNewsProviderLabel,
@@ -56,7 +55,6 @@ function NewsCardContent({ item, onClick, assetKey }) {
   const previewText = getNewsPreviewText(item, t("news.previewMissing"));
   const sourceUrl = getNewsSourceUrl(item);
   const kapGroup = resolveKapDisclosureGroup(item?.title);
-  const displayTags = getNewsDisplayTags(item, t, 2);
 
   const shellClassName = `news-card news-card-shell${kapDisclosure ? " kap" : ""}`;
 
@@ -136,16 +134,6 @@ function NewsCardContent({ item, onClick, assetKey }) {
             <span className="news-card-dot" />
             <time dateTime={item?.publishedAt || item?.createdAt || item?.updatedAt || ""}>{publishedAtLabel}</time>
           </div>
-
-          {displayTags.length > 0 ? (
-            <div className="news-tag-chip-row" aria-label={t("news.tagsLabel")}>
-              {displayTags.map((tag) => (
-                <span key={tag.key} className="news-tag-chip">
-                  {tag.label}
-                </span>
-              ))}
-            </div>
-          ) : null}
 
           <h3 className="news-card-title">{item?.title || t("news.titleMissing")}</h3>
           <p className={`news-card-summary${item?.summary || item?.contentPreview ? "" : " is-fallback"}`}>{previewText}</p>

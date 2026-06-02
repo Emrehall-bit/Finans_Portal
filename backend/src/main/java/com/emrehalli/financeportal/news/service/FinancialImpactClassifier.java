@@ -135,6 +135,11 @@ public class FinancialImpactClassifier {
     private static final int GLOBAL_WEIGHT = 15;
     private static final int GLOBAL_CAP = 30;
 
+    // Short tokens that cause substring false positives on Turkish text (e.g. "KUR" in "küresel")
+    private static final Set<String> WORD_BOUNDARY_REQUIRED = Set.of(
+            "KUR", "TL", "FED", "ECB", "PPK", "EUR", "USD", "TRY"
+    );
+
     // --- Compound rule support ---
 
     /** Political tokens (alone are weak; need market context to qualify). */
@@ -209,7 +214,7 @@ public class FinancialImpactClassifier {
         boolean hasPoliticalToken = POLITICAL_TOKENS.stream().anyMatch(text::contains);
         if (hasPoliticalToken) {
             addMatchedFromList(text, POLITICAL_TOKENS, matched);
-            boolean hasMarketContext = MARKET_CONTEXT_TOKENS.stream().anyMatch(text::contains);
+            boolean hasMarketContext = MARKET_CONTEXT_TOKENS.stream().anyMatch(t -> containsToken(text, t));
             politicalScore = hasMarketContext ? 30 : 5;
         }
 
@@ -374,12 +379,19 @@ public class FinancialImpactClassifier {
     private int scoreGroup(String text, List<String> tokens, int weight, int cap, List<String> matched) {
         int total = 0;
         for (String token : tokens) {
-            if (text.contains(token)) {
+            if (containsToken(text, token)) {
                 total += weight;
                 matched.add(token);
             }
         }
         return Math.min(total, cap);
+    }
+
+    private boolean containsToken(String text, String token) {
+        if (WORD_BOUNDARY_REQUIRED.contains(token)) {
+            return (" " + text + " ").contains(" " + token + " ");
+        }
+        return text.contains(token);
     }
 
     private void addMatchedFromList(String text, List<String> tokens, List<String> matched) {

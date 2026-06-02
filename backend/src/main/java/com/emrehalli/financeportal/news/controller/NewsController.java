@@ -5,7 +5,6 @@ import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsAffectedInstrumentsAuditResponseDto;
-import com.emrehalli.financeportal.news.dto.response.NewsFilterTagsBackfillResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsPurgeResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
@@ -121,19 +120,6 @@ public class NewsController {
         NewsPurgeResponseDto response = newsService.purgeByProvider(provider);
 
         return ApiResponse.<NewsPurgeResponseDto>builder()
-                .success(true)
-                .data(response)
-                .message(appMessageSource.get("news.sync.completed"))
-                .build();
-    }
-
-    @PostMapping("/admin/backfill-filter-tags")
-    public ApiResponse<NewsFilterTagsBackfillResponseDto> backfillFilterTags(
-            @RequestParam(defaultValue = "500") int limit,
-            @RequestParam(defaultValue = "true") boolean dryRun) {
-        NewsFilterTagsBackfillResponseDto response = newsService.backfillFilterTags(limit, dryRun);
-
-        return ApiResponse.<NewsFilterTagsBackfillResponseDto>builder()
                 .success(true)
                 .data(response)
                 .message(appMessageSource.get("news.sync.completed"))

@@ -28,8 +28,6 @@ public class NewsFilterTagsBackfillResponseDto {
         private String title;
         private String oldCategory;
         private String newCategory;
-        private String oldTags;
-        private String newTags;
     }
 }
 

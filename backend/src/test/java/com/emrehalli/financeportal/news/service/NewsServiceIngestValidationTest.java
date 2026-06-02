@@ -257,121 +257,6 @@ class NewsServiceIngestValidationTest {
         assertThat(savedCaptor.getValue()).singleElement()
                 .extracting(News::getCategory)
                 .isEqualTo(NewsCategoryClassifier.INTEREST_BONDS);
-        assertThat(savedCaptor.getValue().get(0).getFilterTags())
-                .contains(NewsCategoryClassifier.INTEREST_BONDS)
-                .contains(NewsCategoryClassifier.FX)
-                .contains(NewsCategoryClassifier.BANKING)
-                .contains(NewsCategoryClassifier.STOCKS)
-                .contains(NewsCategoryClassifier.GENERAL_ECONOMY)
-                .doesNotContain(NewsCategoryClassifier.GLOBAL_MARKETS);
-    }
-
-    @Test
-    void backfillFilterTagsDryRunDoesNotPersistChanges() {
-        NewsRepository newsRepository = mock(NewsRepository.class);
-        NewsProviderSyncStateRepository syncStateRepository = mock(NewsProviderSyncStateRepository.class);
-        NewsService service = buildService(newsRepository, syncStateRepository, List.of());
-
-        News staleNews = News.builder()
-                .id(101L)
-                .externalId("AA-BACKFILL-1")
-                .title("TCMB faiz karari sonrasi kur hareketlendi")
-                .summary("Merkez bankasi karari sonrasi dolar/TL ve tahvil piyasasinda yeni fiyatlama olustu.")
-                .source("Anadolu Ajansi")
-                .provider(NewsProviderType.AA_RSS.name())
-                .language("tr")
-                .regionScope("TR")
-                .category("business")
-                .filterTags("GLOBAL_MARKETS,GOLD_COMMODITY")
-                .url("https://example.com/backfill-1")
-                .publishedAt(LocalDateTime.of(2026, 5, 22, 20, 0))
-                .isKapDisclosure(false)
-                .build();
-
-        when(newsRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(staleNews)));
-
-        var response = service.backfillFilterTags(500, true);
-
-        verify(newsRepository, never()).saveAll(anyList());
-        assertThat(response.getProcessedCount()).isEqualTo(1);
-        assertThat(response.getUpdatedCount()).isEqualTo(1);
-        assertThat(response.getSampleChanges()).hasSize(1);
-        assertThat(staleNews.getCategory()).isEqualTo("business");
-        assertThat(staleNews.getFilterTags()).isEqualTo("GLOBAL_MARKETS,GOLD_COMMODITY");
-    }
-
-    @Test
-    void backfillFilterTagsUpdatesChangedNewsWhenDryRunDisabled() {
-        NewsRepository newsRepository = mock(NewsRepository.class);
-        NewsProviderSyncStateRepository syncStateRepository = mock(NewsProviderSyncStateRepository.class);
-        NewsService service = buildService(newsRepository, syncStateRepository, List.of());
-
-        News staleNews = News.builder()
-                .id(102L)
-                .externalId("AA-BACKFILL-2")
-                .title("TCMB faiz karari sonrasi kur hareketlendi")
-                .summary("Merkez bankasi karari sonrasi dolar/TL ve tahvil piyasasinda yeni fiyatlama olustu.")
-                .source("Anadolu Ajansi")
-                .provider(NewsProviderType.AA_RSS.name())
-                .language("tr")
-                .regionScope("TR")
-                .category("business")
-                .filterTags("GLOBAL_MARKETS,GOLD_COMMODITY")
-                .url("https://example.com/backfill-2")
-                .publishedAt(LocalDateTime.of(2026, 5, 22, 20, 0))
-                .isKapDisclosure(false)
-                .build();
-
-        when(newsRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(staleNews)));
-        when(newsRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
-
-        var response = service.backfillFilterTags(500, false);
-        ArgumentCaptor<List<News>> savedCaptor = ArgumentCaptor.forClass(List.class);
-        verify(newsRepository).saveAll(savedCaptor.capture());
-
-        assertThat(response.getProcessedCount()).isEqualTo(1);
-        assertThat(response.getUpdatedCount()).isEqualTo(1);
-        assertThat(savedCaptor.getValue()).singleElement()
-                .extracting(News::getCategory)
-                .isEqualTo(NewsCategoryClassifier.INTEREST_BONDS);
-        assertThat(savedCaptor.getValue().get(0).getFilterTags())
-                .contains(NewsCategoryClassifier.INTEREST_BONDS)
-                .contains(NewsCategoryClassifier.FX)
-                .doesNotContain(NewsCategoryClassifier.GOLD_COMMODITY);
-    }
-
-    @Test
-    void backfillFilterTagsSkipsKapNews() {
-        NewsRepository newsRepository = mock(NewsRepository.class);
-        NewsProviderSyncStateRepository syncStateRepository = mock(NewsProviderSyncStateRepository.class);
-        NewsService service = buildService(newsRepository, syncStateRepository, List.of());
-
-        News kapNews = News.builder()
-                .id(103L)
-                .externalId("KAP-BACKFILL-1")
-                .title("KAP bildirimi")
-                .summary("Sirket ozel durum aciklamasi yapti.")
-                .source("KAP")
-                .provider(NewsProviderType.KAP.name())
-                .language("tr")
-                .regionScope("TR")
-                .category("DISCLOSURE")
-                .filterTags("COMPANY")
-                .url("https://kap.org.tr/tr/Bildirim/1")
-                .publishedAt(LocalDateTime.of(2026, 5, 22, 20, 0))
-                .isKapDisclosure(true)
-                .build();
-
-        when(newsRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(kapNews)));
-
-        var response = service.backfillFilterTags(500, false);
-
-        verify(newsRepository, never()).saveAll(anyList());
-        assertThat(response.getProcessedCount()).isEqualTo(1);
-        assertThat(response.getSkippedKapCount()).isEqualTo(1);
-        assertThat(response.getUpdatedCount()).isZero();
-        assertThat(kapNews.getCategory()).isEqualTo("DISCLOSURE");
-        assertThat(kapNews.getFilterTags()).isEqualTo("COMPANY");
     }
 
     @Test
@@ -415,9 +300,6 @@ class NewsServiceIngestValidationTest {
                     assertThat(news.getImageUrl()).isEqualTo("https://media.guim.co.uk/fed.jpg");
                     assertThat(news.getQualityStatus()).isEqualTo("FULL_CONTENT");
                     assertThat(news.getCategory()).isEqualTo(NewsCategoryClassifier.INTEREST_BONDS);
-                    assertThat(news.getFilterTags())
-                            .contains(NewsCategoryClassifier.INTEREST_BONDS)
-                            .contains(NewsCategoryClassifier.GLOBAL_MARKETS);
                 });
     }
 

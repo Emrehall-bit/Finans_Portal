@@ -8,7 +8,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -64,33 +63,10 @@ public class NewsCategoryClassifier {
             "tension", "savas", "war", "ateskes", "ceasefire", "nato", "yaptirim", "sanction",
             "trade war", "tariff", "abd cin", "us china"
     );
-    private static final List<String> MARKET_IMPACT_KEYWORDS = List.of(
-            "piyasa", "market", "borsa", "endeks", "index", "risk", "fiyatlama", "pricing", "yatirimci", "investor"
-    );
-    private static final List<String> FX_CONTEXT_KEYWORDS = List.of(
-            "dolar tl", "dolar/tl", "euro tl", "euro/tl", "usd try", "eur try", "parite", "kur",
-            "doviz", "forex", "fx", "sterlin", "yen", "currency pair"
-    );
-    private static final List<String> FX_CURRENCY_KEYWORDS = List.of(
-            "dolar", "usd", "euro", "eur", "sterlin", "gbp", "yen", "jpy", "tl", "try"
-    );
-    private static final List<String> GOLD_CONTEXT_KEYWORDS = List.of(
-            "altin", "gold", "ons", "gram altin", "gumus", "silver", "emtia", "commodity", "guvenli liman", "safe haven"
-    );
-    private static final List<String> ENERGY_CONTEXT_KEYWORDS = List.of(
-            "petrol", "oil", "brent", "opec", "dogalgaz", "natural gas", "lng", "enerji", "energy", "arz", "supply"
-    );
-    private static final List<String> STOCK_CONTEXT_KEYWORDS = List.of(
-            "borsa", "bist", "hisse", "hisseleri", "pay", "stock", "stocks", "shares", "equity", "endeks", "index", "halka acik", "halka arz"
-    );
-    private static final List<String> COMPANY_ONLY_KEYWORDS = List.of(
-            "sirket", "company", "ceo", "fabrika", "plant", "anlasma", "agreement", "yatirim plani", "investment plan"
-    );
     private static final LinkedHashMap<String, List<String>> CATEGORY_KEYWORDS = new LinkedHashMap<>();
     private static final Map<String, Set<String>> LEGACY_FILTER_MAPPING = createLegacyFilterMapping();
     private static final Map<String, String> CATEGORY_HINT_MAPPING = createCategoryHintMapping();
     private static final Map<String, List<String>> FILTER_CATEGORY_RUNTIME_KEYWORDS;
-    private static final Map<String, Set<String>> PRIMARY_CATEGORY_FILTER_TAGS = createPrimaryCategoryFilterTags();
 
     static {
         CATEGORY_KEYWORDS.put(INTEREST_BONDS, List.of(
@@ -185,18 +161,18 @@ public class NewsCategoryClassifier {
 
         if (!scores.isEmpty()) {
             String primaryCategory = selectHighestScore(scores);
-            return ClassificationResult.accepted(primaryCategory, deriveTags(primaryCategory, combined, scores.keySet()));
+            return ClassificationResult.accepted(primaryCategory);
         }
 
         String hintCategory = CATEGORY_HINT_MAPPING.get(normalizedHint);
         if (hintCategory != null) {
-            return ClassificationResult.accepted(hintCategory, deriveTags(hintCategory, combined, Set.of(hintCategory)));
+            return ClassificationResult.accepted(hintCategory);
         }
 
         if (hasFinancialContext || hasGeopoliticalContent) {
             boolean geopoliticsQualifies = hasGeopoliticalContent && hasFinancialContext;
             String primaryCategory = geopoliticsQualifies ? GEOPOLITICS : GENERAL_ECONOMY;
-            return ClassificationResult.accepted(primaryCategory, deriveTags(primaryCategory, combined, Set.of(primaryCategory)));
+            return ClassificationResult.accepted(primaryCategory);
         }
 
         return ClassificationResult.rejected("REJECT_CATEGORY_UNCLASSIFIED");
@@ -324,128 +300,6 @@ public class NewsCategoryClassifier {
         return normalized;
     }
 
-    private TagResolution deriveTags(String primaryCategory, String combined, Set<String> matchedCategories) {
-        LinkedHashMap<String, String> tagReasons = new LinkedHashMap<>();
-        addTag(tagReasons, primaryCategory, "primary-category");
-        for (String defaultTag : PRIMARY_CATEGORY_FILTER_TAGS.getOrDefault(primaryCategory, Set.of())) {
-            addTag(tagReasons, defaultTag, "primary-default");
-        }
-
-        boolean strongFxContext = hasStrongFxContext(combined, matchedCategories, primaryCategory);
-        boolean strongGoldContext = hasStrongGoldContext(combined, matchedCategories, primaryCategory);
-        boolean strongEnergyContext = hasStrongEnergyContext(combined, matchedCategories, primaryCategory);
-        boolean strongStockContext = hasStrongStockContext(combined, matchedCategories, primaryCategory);
-        boolean strongGlobalMarketContext = hasStrongGlobalMarketsContext(combined, matchedCategories, primaryCategory, strongFxContext, strongGoldContext, strongEnergyContext, strongStockContext);
-
-        if (strongFxContext) {
-            addTag(tagReasons, FX, "currency-context");
-        }
-        if (strongGoldContext) {
-            addTag(tagReasons, GOLD_COMMODITY, "gold-commodity-context");
-        }
-        if (strongEnergyContext) {
-            addTag(tagReasons, ENERGY, "energy-supply-context");
-        }
-        if (strongStockContext) {
-            addTag(tagReasons, STOCKS, "equity-market-context");
-        }
-        if (matchedCategories.contains(BANKING) || containsAny(combined, CATEGORY_KEYWORDS.getOrDefault(BANKING, List.of()))) {
-            addTag(tagReasons, BANKING, "banking-context");
-        }
-        if (matchedCategories.contains(INTEREST_BONDS) || containsAny(combined, CATEGORY_KEYWORDS.getOrDefault(INTEREST_BONDS, List.of()))) {
-            addTag(tagReasons, INTEREST_BONDS, "rates-bonds-context");
-        }
-        if (strongGlobalMarketContext) {
-            addTag(tagReasons, GLOBAL_MARKETS, "cross-market-impact");
-        }
-        if (matchedCategories.contains(CRYPTO) || containsAny(combined, CATEGORY_KEYWORDS.getOrDefault(CRYPTO, List.of()))) {
-            addTag(tagReasons, CRYPTO, "crypto-context");
-        }
-        if (tagReasons.isEmpty()) {
-            addTag(tagReasons, GENERAL_ECONOMY, "fallback");
-        }
-        return new TagResolution(new LinkedHashSet<>(tagReasons.keySet()), tagReasons);
-    }
-
-    private boolean hasStrongFxContext(String combined, Set<String> matchedCategories, String primaryCategory) {
-        if (FX.equals(primaryCategory) || matchedCategories.contains(FX)) {
-            return true;
-        }
-        int explicitFxHits = countMatches(combined, FX_CONTEXT_KEYWORDS);
-        int currencyHits = countMatches(combined, FX_CURRENCY_KEYWORDS);
-        boolean ratesDrivenFxContext = currencyHits >= 1
-                && containsAny(combined, List.of("faiz", "interest", "tahvil", "bond", "fed", "tcmb", "merkez bankasi"))
-                && containsAny(combined, List.of("piyasa", "piyasalar", "market", "markets", "kur", "doviz", "parite", "pricing", "fiyatlama"));
-        return explicitFxHits >= 1
-                || (currencyHits >= 2 && containsAny(combined, List.of("kur", "parite", "doviz", "tl", "try", "forex", "fx")))
-                || ratesDrivenFxContext;
-    }
-
-    private boolean hasStrongGoldContext(String combined, Set<String> matchedCategories, String primaryCategory) {
-        if (GOLD_COMMODITY.equals(primaryCategory) || matchedCategories.contains(GOLD_COMMODITY)) {
-            return true;
-        }
-        int goldHits = countMatches(combined, GOLD_CONTEXT_KEYWORDS);
-        boolean ratesAndCurrencyContext = containsAny(combined, List.of("faiz", "interest", "tahvil", "bond"))
-                && countMatches(combined, FX_CURRENCY_KEYWORDS) >= 1
-                && containsAny(combined, List.of("altin", "gold", "ons", "emtia", "commodity"));
-        boolean geopoliticsSafeHavenContext = containsAny(combined, GEOPOLITICAL_KEYWORDS)
-                && containsAny(combined, List.of("guvenli liman", "safe haven", "altin", "gold", "ons"));
-        return goldHits >= 2 || ratesAndCurrencyContext || geopoliticsSafeHavenContext;
-    }
-
-    private boolean hasStrongEnergyContext(String combined, Set<String> matchedCategories, String primaryCategory) {
-        if (ENERGY.equals(primaryCategory) || matchedCategories.contains(ENERGY)) {
-            return true;
-        }
-        int energyHits = countMatches(combined, ENERGY_CONTEXT_KEYWORDS);
-        boolean geopoliticsEnergyContext = containsAny(combined, GEOPOLITICAL_KEYWORDS)
-                && containsAny(combined, List.of("petrol", "oil", "brent", "enerji", "energy", "arz", "supply"));
-        return energyHits >= 2 || geopoliticsEnergyContext;
-    }
-
-    private boolean hasStrongStockContext(String combined, Set<String> matchedCategories, String primaryCategory) {
-        if (STOCKS.equals(primaryCategory) || BANKING.equals(primaryCategory) || matchedCategories.contains(STOCKS)) {
-            return true;
-        }
-        int stockHits = countMatches(combined, STOCK_CONTEXT_KEYWORDS);
-        boolean companyOnly = countMatches(combined, COMPANY_ONLY_KEYWORDS) > 0;
-        return stockHits >= 2 || (stockHits >= 1 && !companyOnly && containsAny(combined, List.of("borsa", "bist", "hisse", "endeks", "halka acik")));
-    }
-
-    private boolean hasStrongGlobalMarketsContext(
-            String combined,
-            Set<String> matchedCategories,
-            String primaryCategory,
-            boolean strongFxContext,
-            boolean strongGoldContext,
-            boolean strongEnergyContext,
-            boolean strongStockContext
-    ) {
-        if (GLOBAL_MARKETS.equals(primaryCategory) || GEOPOLITICS.equals(primaryCategory) || matchedCategories.contains(GLOBAL_MARKETS)) {
-            return true;
-        }
-        int crossAssetSignals = 0;
-        crossAssetSignals += strongFxContext ? 1 : 0;
-        crossAssetSignals += strongGoldContext ? 1 : 0;
-        crossAssetSignals += strongEnergyContext ? 1 : 0;
-        crossAssetSignals += strongStockContext ? 1 : 0;
-        crossAssetSignals += matchedCategories.contains(INTEREST_BONDS) || INTEREST_BONDS.equals(primaryCategory) ? 1 : 0;
-        boolean marketLanguage = containsAny(combined, MARKET_IMPACT_KEYWORDS) || containsAny(combined, CATEGORY_KEYWORDS.getOrDefault(GLOBAL_MARKETS, List.of()));
-        boolean geopoliticalMarketImpact = containsAny(combined, GEOPOLITICAL_KEYWORDS) && marketLanguage;
-        return geopoliticalMarketImpact || (marketLanguage && crossAssetSignals >= 2);
-    }
-
-    private int countMatches(String text, List<String> keywords) {
-        int matches = 0;
-        for (String keyword : keywords) {
-            if (containsKeyword(text, keyword)) {
-                matches++;
-            }
-        }
-        return matches;
-    }
-
     private boolean containsKeyword(String normalizedText, String keyword) {
         if (!hasText(normalizedText) || !hasText(keyword)) {
             return false;
@@ -457,12 +311,6 @@ public class NewsCategoryClassifier {
         String paddedText = " " + normalizedText + " ";
         String paddedKeyword = " " + normalizedKeyword + " ";
         return paddedText.contains(paddedKeyword);
-    }
-
-    private void addTag(Map<String, String> tagReasons, String tag, String reason) {
-        if (hasText(tag) && hasText(reason)) {
-            tagReasons.putIfAbsent(tag, reason);
-        }
     }
 
     private static Map<String, Set<String>> createLegacyFilterMapping() {
@@ -576,39 +424,14 @@ public class NewsCategoryClassifier {
         );
     }
 
-    private static Map<String, Set<String>> createPrimaryCategoryFilterTags() {
-        return Map.ofEntries(
-                Map.entry(GENERAL_ECONOMY, Set.of(GENERAL_ECONOMY)),
-                Map.entry(GLOBAL_MARKETS, Set.of(GLOBAL_MARKETS)),
-                Map.entry(FX, Set.of(FX)),
-                Map.entry(STOCKS, Set.of(STOCKS)),
-                Map.entry(INTEREST_BONDS, Set.of(INTEREST_BONDS)),
-                Map.entry(GOLD_COMMODITY, Set.of(GOLD_COMMODITY)),
-                Map.entry(BANKING, Set.of(BANKING)),
-                Map.entry(CRYPTO, Set.of(CRYPTO)),
-                Map.entry(ENERGY, Set.of()),
-                Map.entry(GEOPOLITICS, Set.of()),
-                Map.entry(COMPANY, Set.of())
-        );
-    }
-
-    public record ClassificationResult(String category, Set<String> tags, Map<String, String> tagReasons, boolean rejected, String rejectReason) {
-        public static ClassificationResult accepted(String category, TagResolution resolution) {
-            return new ClassificationResult(
-                    category,
-                    resolution == null || resolution.tags() == null ? Set.of() : resolution.tags().stream().filter(Objects::nonNull).collect(LinkedHashSet::new, Set::add, Set::addAll),
-                    resolution == null ? Map.of() : Map.copyOf(resolution.tagReasons()),
-                    false,
-                    null
-            );
+    public record ClassificationResult(String category, boolean rejected, String rejectReason) {
+        public static ClassificationResult accepted(String category) {
+            return new ClassificationResult(category, false, null);
         }
 
         public static ClassificationResult rejected(String rejectReason) {
-            return new ClassificationResult(null, Set.of(), Map.of(), true, rejectReason);
+            return new ClassificationResult(null, true, rejectReason);
         }
-    }
-
-    private record TagResolution(Set<String> tags, Map<String, String> tagReasons) {
     }
 }
 

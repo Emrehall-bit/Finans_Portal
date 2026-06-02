@@ -11,7 +11,6 @@ import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsAffectedInstrumentsAuditResponseDto;
-import com.emrehalli.financeportal.news.dto.response.NewsFilterTagsBackfillResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsPurgeResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncProviderResultDto;
 import com.emrehalli.financeportal.news.dto.response.RelatedInstrumentDto;
@@ -85,8 +84,6 @@ public class NewsService {
     private static final int MAX_NO_HIGH_CONFIDENCE_INSTRUMENTS = 3;
     private static final int RELATED_NEWS_RECENCY_HOURS = 72;
     private static final int MAX_AFFECTED_INSTRUMENT_AUDIT_LIMIT = 500;
-    private static final int MAX_BACKFILL_LIMIT = 5_000;
-    private static final int BACKFILL_SAMPLE_LIMIT = 10;
     private static final Pattern TOKEN_SPLIT_PATTERN = Pattern.compile("[^\\p{L}\\p{Nd}]+");
     private static final Set<String> TRACKING_QUERY_PARAMS = Set.of(
             "fbclid", "gclid", "mc_cid", "mc_eid", "ref", "ref_src", "spm", "igshid"
@@ -346,108 +343,6 @@ public class NewsService {
         return NewsPurgeResponseDto.builder()
                 .provider(providerType.name())
                 .deletedCount(deletedCount)
-                .build();
-    }
-
-    @Transactional
-    public NewsFilterTagsBackfillResponseDto backfillFilterTags(int limit, boolean dryRun) {
-        int validatedLimit = validateBackfillLimit(limit);
-        List<News> candidates = newsRepository.findAll(
-                PageRequest.of(0, validatedLimit, Sort.by(Sort.Direction.ASC, "id"))
-        ).getContent();
-
-        int processedCount = 0;
-        int updatedCount = 0;
-        int skippedKapCount = 0;
-        int unchangedCount = 0;
-        List<News> toUpdate = new ArrayList<>();
-        List<NewsFilterTagsBackfillResponseDto.SampleChangeDto> sampleChanges = new ArrayList<>();
-
-        for (News news : candidates) {
-            processedCount++;
-            if (Boolean.TRUE.equals(news.getIsKapDisclosure())) {
-                skippedKapCount++;
-                continue;
-            }
-
-            String oldCategory = normalizeNullable(news.getCategory());
-            String oldTags = normalizeTagString(news.getFilterTags());
-            String classificationPreview = deriveClassificationPreview(news);
-            NewsCategoryClassifier.ClassificationResult classificationResult = newsCategoryClassifier.classify(
-                    news.getTitle(),
-                    news.getSummary(),
-                    classificationPreview,
-                    news.getCategory()
-            );
-
-            String newCategory = oldCategory;
-            String newTags = null;
-            String classificationReason = classificationResult.rejected()
-                    ? classificationResult.rejectReason()
-                    : classificationResult.tagReasons().toString();
-
-            if (!classificationResult.rejected()) {
-                newCategory = normalizeNullable(classificationResult.category());
-                newTags = normalizeTagString(joinFilterTags(List.copyOf(classificationResult.tags())));
-            }
-
-            boolean changed = !java.util.Objects.equals(oldCategory, newCategory)
-                    || !java.util.Objects.equals(oldTags, newTags);
-            if (!changed) {
-                unchangedCount++;
-                continue;
-            }
-
-            updatedCount++;
-            if (sampleChanges.size() < BACKFILL_SAMPLE_LIMIT) {
-                sampleChanges.add(NewsFilterTagsBackfillResponseDto.SampleChangeDto.builder()
-                        .id(news.getId())
-                        .title(truncateForLog(news.getTitle()))
-                        .oldCategory(oldCategory)
-                        .newCategory(newCategory)
-                        .oldTags(oldTags)
-                        .newTags(newTags)
-                        .build());
-            }
-
-            logger.info(
-                    "News filter tag backfill change. newsId={}, dryRun={}, oldCategory={}, newCategory={}, oldTags={}, newTags={}, reason={}",
-                    news.getId(),
-                    dryRun,
-                    oldCategory,
-                    newCategory,
-                    oldTags,
-                    newTags,
-                    classificationReason
-            );
-
-            if (!dryRun) {
-                news.setCategory(newCategory);
-                news.setFilterTags(newTags);
-                toUpdate.add(news);
-            }
-        }
-
-        if (!dryRun && !toUpdate.isEmpty()) {
-            newsRepository.saveAll(toUpdate);
-        }
-
-        logger.info(
-                "News filter tag backfill completed. dryRun={}, limit={}, processedCount={}, updatedCount={}, skippedKapCount={}, unchangedCount={}",
-                dryRun,
-                validatedLimit,
-                processedCount,
-                updatedCount,
-                skippedKapCount,
-                unchangedCount
-        );
-
-        return NewsFilterTagsBackfillResponseDto.builder()
-                .processedCount(processedCount)
-                .updatedCount(updatedCount)
-                .skippedKapCount(skippedKapCount)
-                .unchangedCount(unchangedCount)
-                .sampleChanges(sampleChanges)
                 .build();
     }
 
@@ -984,11 +879,6 @@ public class NewsService {
                         existingNews.setCategory(item.getCategory().trim());
                         needsUpdate = true;
                     }
-                    String resolvedFilterTags = joinFilterTags(item.getClassificationTags());
-                    if (!hasText(existingNews.getFilterTags()) && hasText(resolvedFilterTags)) {
-                        existingNews.setFilterTags(resolvedFilterTags);
-                        needsUpdate = true;
-                    }
                     if (!Boolean.TRUE.equals(existingNews.getIsKapDisclosure()) && Boolean.TRUE.equals(item.getIsKapDisclosure())) {
                         existingNews.setIsKapDisclosure(true);
                         needsUpdate = true;
@@ -1035,15 +925,6 @@ public class NewsService {
                 continue;
             }
 
-            logger.debug(
-                    "Classified news item ready for persistence. provider: {}, primaryCategory: {}, filterTags: {}, tagReasons: {}, title: {}",
-                    providerName,
-                    item.getCategory(),
-                    item.getClassificationTags(),
-                    item.getClassificationTagReasons(),
-                    truncateForLog(item.getTitle())
-            );
-
             toSave.add(News.builder()
                     .externalId(externalId)
                     .title(item.getTitle().trim())
@@ -1062,7 +943,6 @@ public class NewsService {
                     .isKapDisclosure(Boolean.TRUE.equals(item.getIsKapDisclosure()))
                     .disclosureType(item.getDisclosureType())
                     .contentSections(item.getContentSections())
-                    .filterTags(joinFilterTags(item.getClassificationTags()))
                     .importanceScore(0)
                     .build());
         }
@@ -1195,8 +1075,6 @@ public class NewsService {
                 : item.getContentEnrichedAt() != null ? item.getContentEnrichedAt() : LocalDateTime.now();
         String normalizedCategory = hasText(item.getCategory()) ? item.getCategory().trim() : item.getCategory();
         String classificationRejectReason = null;
-        List<String> classificationTags = List.of();
-        Map<String, String> classificationTagReasons = Map.of();
         if (!isKapDisclosure) {
             NewsCategoryClassifier.ClassificationResult classificationResult = newsCategoryClassifier.classify(
                     item.getTitle(),
@@ -1208,8 +1086,6 @@ public class NewsService {
                 classificationRejectReason = classificationResult.rejectReason();
             } else {
                 normalizedCategory = classificationResult.category();
-                classificationTags = List.copyOf(classificationResult.tags());
-                classificationTagReasons = Map.copyOf(classificationResult.tagReasons());
             }
         }
         return NewsItemDto.builder()
@@ -1231,8 +1107,6 @@ public class NewsService {
                 .disclosureType(hasText(item.getDisclosureType()) ? item.getDisclosureType().trim() : item.getDisclosureType())
                 .contentSections(item.getContentSections())
                 .classificationRejectReason(classificationRejectReason)
-                .classificationTags(classificationTags)
-                .classificationTagReasons(classificationTagReasons)
                 .build();
     }
 
@@ -1298,42 +1172,6 @@ public class NewsService {
         return !newsCategoryClassifier.isPrimaryCategory(existingNews.getCategory());
     }
 
-    private String joinFilterTags(List<String> tags) {
-        if (tags == null || tags.isEmpty()) {
-            return null;
-        }
-        return tags.stream()
-                .filter(this::hasText)
-                .map(String::trim)
-                .distinct()
-                .collect(Collectors.joining(","));
-    }
-
-    private int validateBackfillLimit(int limit) {
-        if (limit <= 0) {
-            throw new BadRequestException("limit must be greater than 0");
-        }
-        if (limit > MAX_BACKFILL_LIMIT) {
-            throw new BadRequestException("limit must be less than or equal to " + MAX_BACKFILL_LIMIT);
-        }
-        return limit;
-    }
-
-    private String normalizeTagString(String tags) {
-        if (!hasText(tags)) {
-            return null;
-        }
-        LinkedHashSet<String> normalizedTags = new LinkedHashSet<>();
-        for (String token : tags.split(",")) {
-            if (hasText(token)) {
-                normalizedTags.add(token.trim());
-            }
-        }
-        if (normalizedTags.isEmpty()) {
-            return null;
-        }
-        return String.join(",", normalizedTags);
-    }
 
     private String normalizeNullable(String value) {
         return hasText(value) ? value.trim() : null;

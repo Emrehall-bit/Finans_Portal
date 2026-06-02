@@ -27,7 +27,7 @@ import {
   updateMarketTapeConfig,
   seedMockRatios,
 } from "../api/adminApi";
-import { auditAffectedInstruments, backfillFilterTags, syncNews } from "../api/newsApi";
+import { auditAffectedInstruments, syncNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { getNewsProviderLabel } from "../components/news/newsCardUtils";
 import EmptyState from "../components/common/EmptyState";
@@ -287,15 +287,6 @@ export default function AdminDataPage() {
         description: "KAP bildirim akışını senkronize eder.",
         actionLabel: `${getNewsProviderLabel("KAP")} sync`,
         onClick: () => runAction("news-sync-kap", () => syncNews({ provider: "KAP" })),
-      },
-      {
-        key: "news-backfill-tags",
-        group: "live",
-        eyebrow: "News Backfill",
-        title: "Filter Tags Yenile",
-        description: "Mevcut haberlerin filterTags alanını yeniden hesaplar (KAP bildirimleri atlanır). Limit: 5000 haber.",
-        actionLabel: "Filter Tags Backfill",
-        onClick: () => runAction("news-backfill-tags", () => backfillFilterTags({ limit: 5000, dryRun: false })),
       },
       {
         key: "news-affected-audit",
