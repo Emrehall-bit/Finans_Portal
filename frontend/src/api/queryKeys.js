@@ -31,6 +31,7 @@ export const newsKeys = {
   list: (params) => [...newsKeys.all, "list", params],
   detail: (id) => [...newsKeys.all, id],
   related: (id) => [...newsKeys.all, id, "related"],
+  favorites: (userId) => [...newsKeys.all, "favorites", userId],
 };
 
 export const watchlistKeys = {

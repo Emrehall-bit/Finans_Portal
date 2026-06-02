@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { Star } from "lucide-react";
 import {
   buildNewsPlaceholderLabel,
   formatNewsPublishedAt,
@@ -40,7 +41,47 @@ function Placeholder({ item, providerLabel, logoUrl, logoFailed, onLogoError }) 
   );
 }
 
-function NewsCardContent({ item, onClick, assetKey }) {
+function FavoriteButton({ active, busy, onToggle, t, size = 20 }) {
+  if (!onToggle) return null;
+  const btnRef = useRef(null);
+
+  useEffect(() => {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const svg = btn.querySelector('svg');
+    if (!svg) return;
+    // set inline styles with priority important to override stylesheet !important
+    svg.style.setProperty('width', `${size}px`, 'important');
+    svg.style.setProperty('height', `${size}px`, 'important');
+    svg.style.setProperty('transform', 'none', 'important');
+  }, [size]);
+
+  return (
+    <button
+      ref={btnRef}
+      type="button"
+      className={`news-card-favorite-btn${active ? " is-active" : ""}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle(event);
+      }}
+      disabled={busy}
+      aria-pressed={active}
+      aria-label={active ? t("news.removeFavorite") : t("news.addFavorite")}
+      title={active ? t("news.removeFavorite") : t("news.addFavorite")}
+    >
+      <Star
+        className="news-card-favorite-icon"
+        size={size}
+        strokeWidth={1.6}
+        fill={active ? "currentColor" : "none"}
+        aria-hidden="true"
+      />
+    </button>
+  );
+}
+
+function NewsCardContent({ item, onClick, assetKey, isFavorite, favoriteBusy, onFavoriteToggle }) {
   const { t } = useTranslation();
   const [imageFailed, setImageFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
@@ -81,6 +122,14 @@ function NewsCardContent({ item, onClick, assetKey }) {
             <time className="news-kap-date" dateTime={item?.publishedAt || item?.createdAt || item?.updatedAt || ""}>
               {publishedAtLabel}
             </time>
+
+            <FavoriteButton
+              active={isFavorite}
+              busy={favoriteBusy}
+              onToggle={onFavoriteToggle ? () => onFavoriteToggle(item) : null}
+              t={t}
+              size={18}
+            />
           </div>
 
           {item?.relatedSymbol ? (
@@ -97,7 +146,7 @@ function NewsCardContent({ item, onClick, assetKey }) {
 
           {sourceUrl ? (
             <a className="news-kap-cta-link" href={sourceUrl} target="_blank" rel="noreferrer">
-              KAP&apos;ta Görüntüle ↗
+              {t("news.viewOfficialKap")} &rarr;
             </a>
           ) : null}
         </div>
@@ -107,6 +156,12 @@ function NewsCardContent({ item, onClick, assetKey }) {
 
   return (
     <article className={shellClassName} key={assetKey}>
+      <FavoriteButton
+        active={isFavorite}
+        busy={favoriteBusy}
+        onToggle={onFavoriteToggle ? () => onFavoriteToggle(item) : null}
+        t={t}
+      />
       <button className="news-card-main" onClick={() => onClick(item)} type="button">
         <div className="news-card-media">
           {hasImage ? (
@@ -143,7 +198,7 @@ function NewsCardContent({ item, onClick, assetKey }) {
       {sourceUrl ? (
         <div className="news-card-secondary-action">
           <a href={sourceUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-            {t("news.readAtSource")} →
+            {t("news.readAtSource")} &rarr;
           </a>
         </div>
       ) : null}
@@ -151,7 +206,7 @@ function NewsCardContent({ item, onClick, assetKey }) {
   );
 }
 
-export default function NewsCard({ item, onClick }) {
+export default function NewsCard({ item, onClick, isFavorite = false, favoriteBusy = false, onFavoriteToggle }) {
   const assetKey = [
     item?.id,
     item?.thumbnailUrl,
@@ -162,5 +217,15 @@ export default function NewsCard({ item, onClick }) {
     item?.url,
   ].join("|");
 
-  return <NewsCardContent key={assetKey} item={item} onClick={onClick} assetKey={assetKey} />;
+  return (
+    <NewsCardContent
+      key={assetKey}
+      item={item}
+      onClick={onClick}
+      assetKey={assetKey}
+      isFavorite={isFavorite}
+      favoriteBusy={favoriteBusy}
+      onFavoriteToggle={onFavoriteToggle}
+    />
+  );
 }

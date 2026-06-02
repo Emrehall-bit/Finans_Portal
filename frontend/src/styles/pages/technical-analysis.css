@@ -2324,6 +2324,12 @@ html[data-theme] .analysis-chart-shell {
   background: rgba(195, 164, 93, 0.08);
 }
 
+.analysis-favorite-btn svg {
+  width: 40px !important;
+  height: 40px !important;
+  display: block;
+}
+
 .analysis-hero-meta {
   display: flex;
   align-items: center;

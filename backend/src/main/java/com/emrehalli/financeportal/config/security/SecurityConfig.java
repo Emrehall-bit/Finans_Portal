@@ -61,6 +61,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/markets/fx/tcmb/history/backfill/status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/stocks/fetch/status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/stocks/history/backfill/status").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/news/favorites").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/news/favorites/user/{userId}").access(resourceAccessManager::canAccessUserId)
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
                         .requestMatchers("/api/v1/technical-analysis/*/indicators").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
@@ -100,6 +102,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/portfolio-holdings/{portfolioId}").access(resourceAccessManager::canAccessPortfolioId)
                         .requestMatchers(HttpMethod.PUT, "/api/v1/portfolio-holdings/{portfolioId}/{holdingId}").access(resourceAccessManager::canAccessPortfolioId)
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/portfolio-holdings/{portfolioId}/{holdingId}").access(resourceAccessManager::canAccessPortfolioId)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/news/favorites/{newsId}").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/news/favorites/{newsId}").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/news/favorites/{userId}/{newsId}").access(resourceAccessManager::canAccessUserId)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/news/favorites/{userId}/{newsId}").access(resourceAccessManager::canAccessUserId)
                         .requestMatchers(HttpMethod.POST, "/api/v1/watchlist/{userId}").access(resourceAccessManager::canAccessUserId)
                         .requestMatchers(HttpMethod.GET, "/api/v1/watchlist/user/{userId}").access(resourceAccessManager::canAccessUserId)
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/watchlist/{id}").access(resourceAccessManager::canAccessWatchlistId)
@@ -108,6 +114,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/portfolio/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers("/api/v1/portfolios/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers("/api/v1/portfolio-holdings/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers("/api/v1/news/favorites/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers("/api/v1/watchlist/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers("/api/v1/alerts/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers("/api/v1/notifications/**").authenticated()
@@ -144,5 +151,3 @@ public class SecurityConfig {
         };
     }
 }
-
-

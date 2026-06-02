@@ -8,7 +8,7 @@ function FilterSection({ title, options, selectedValues, onToggle }) {
   return (
     <section className="news-sidebar-section">
       <div className="news-sidebar-section-head">
-        <h4>{title}</h4>
+        <h4>{title.toLocaleUpperCase("tr-TR")}</h4>
       </div>
 
       <div className="news-sidebar-checklist">
@@ -32,6 +32,38 @@ function FilterSection({ title, options, selectedValues, onToggle }) {
   );
 }
 
+function DateRangeSection({ title, dateFrom, dateTo, onDateFromChange, onDateToChange }) {
+  return (
+    <section className="news-sidebar-section">
+      <div className="news-sidebar-section-head">
+        <h4>{title.toLocaleUpperCase("tr-TR")}</h4>
+      </div>
+      <div className="news-sidebar-date-range">
+        <label className="news-sidebar-date-field">
+          <span className="news-sidebar-date-label">Başlangıç</span>
+          <input
+            type="date"
+            className="news-sidebar-date-input"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(e) => onDateFromChange(e.target.value)}
+          />
+        </label>
+        <label className="news-sidebar-date-field">
+          <span className="news-sidebar-date-label">Bitiş</span>
+          <input
+            type="date"
+            className="news-sidebar-date-input"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => onDateToChange(e.target.value)}
+          />
+        </label>
+      </div>
+    </section>
+  );
+}
+
 export default function NewsSidebarFilters({
   categoryOptions,
   providerOptions,
@@ -39,9 +71,13 @@ export default function NewsSidebarFilters({
   selectedCategories,
   selectedProviders,
   selectedLanguages,
+  dateFrom = "",
+  dateTo = "",
   onToggleCategory,
   onToggleProvider,
   onToggleLanguage,
+  onDateFromChange,
+  onDateToChange,
   onReset,
   loading,
   compact = false,
@@ -66,6 +102,14 @@ export default function NewsSidebarFilters({
         options={providerOptions}
         selectedValues={selectedProviders}
         onToggle={onToggleProvider}
+      />
+
+      <DateRangeSection
+        title={t("news.dateRange")}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={onDateFromChange}
+        onDateToChange={onDateToChange}
       />
 
       <FilterSection

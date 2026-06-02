@@ -55,6 +55,39 @@ test("builds KAP feed request when feed type is kap", () => {
       provider: "KAP",
       isKapDisclosure: true,
       page: 0,
+      size: 5,
+      sortBy: "publishedAt",
+      sortDirection: "desc",
+    },
+  );
+});
+
+test("builds favorites-only request", () => {
+  assert.deepEqual(
+    buildNewsQueryParams({ keyword: "", category: "", provider: "", language: "", favoritesOnly: true }, 0),
+    {
+      favoritesOnly: true,
+      isKapDisclosure: false,
+      page: 0,
+      size: 9,
+      sortBy: "publishedAt",
+      sortDirection: "desc",
+    },
+  );
+});
+
+test("builds request with multiple selected filters", () => {
+  assert.deepEqual(
+    buildNewsQueryParams(
+      { keyword: "", category: "FX,BANKING", provider: "AA_RSS,CNBC_RSS", language: "tr,en" },
+      0,
+    ),
+    {
+      category: "FX,BANKING",
+      provider: "AA_RSS,CNBC_RSS",
+      language: "tr,en",
+      isKapDisclosure: false,
+      page: 0,
       size: 9,
       sortBy: "publishedAt",
       sortDirection: "desc",

@@ -66,6 +66,21 @@ export async function getNewsRelated(id) {
   return normalizeApiResponse(response).data ?? { relatedInstruments: [], relatedNews: [] };
 }
 
+export async function getNewsFavorites() {
+  const response = await axiosClient.get(`${API_CONFIG.ENDPOINTS.news}/favorites`);
+  return normalizeApiResponse(response).data ?? [];
+}
+
+export async function addNewsFavorite(newsId) {
+  const response = await axiosClient.post(`${API_CONFIG.ENDPOINTS.news}/favorites/${newsId}`);
+  return normalizeApiResponse(response).data ?? null;
+}
+
+export async function removeNewsFavorite(newsId) {
+  const response = await axiosClient.delete(`${API_CONFIG.ENDPOINTS.news}/favorites/${newsId}`);
+  return normalizeApiResponse(response).data ?? null;
+}
+
 export async function syncNews(params = {}) {
   const response = await axiosClient.post(`${API_CONFIG.ENDPOINTS.news}/sync`, null, { params: compactParams(params) });
   return normalizeApiResponse(response).data ?? null;

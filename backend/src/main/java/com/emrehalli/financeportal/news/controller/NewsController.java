@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsCategoryRepairResponseDto;
+import com.emrehalli.financeportal.news.dto.response.NewsFavoriteResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsAffectedInstrumentsAuditResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsPurgeResponseDto;
@@ -14,6 +15,7 @@ import com.emrehalli.financeportal.news.service.NewsService;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,6 +46,8 @@ public class NewsController {
             @RequestParam(required = false) String scope,
             @RequestParam(required = false) String provider,
             @RequestParam(required = false) Boolean isKapDisclosure,
+            @RequestParam(required = false) Boolean favoritesOnly,
+            @RequestParam(required = false) Long favoriteUserId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(defaultValue = "0") int page,
@@ -59,6 +63,8 @@ public class NewsController {
                 .scope(scope)
                 .provider(provider)
                 .isKapDisclosure(isKapDisclosure)
+                .favoritesOnly(favoritesOnly)
+                .favoriteUserId(favoriteUserId)
                 .fromDate(fromDate)
                 .toDate(toDate)
                 .build();
@@ -91,6 +97,76 @@ public class NewsController {
                 .success(true)
                 .data(response)
                 .message(appMessageSource.get("news.detail.fetched"))
+                .build();
+    }
+
+    @PostMapping("/favorites/{newsId}")
+    public ApiResponse<NewsFavoriteResponseDto> addCurrentUserFavorite(@PathVariable Long newsId) {
+        NewsFavoriteResponseDto response = newsService.addFavoriteForCurrentUser(newsId);
+
+        return ApiResponse.<NewsFavoriteResponseDto>builder()
+                .success(true)
+                .data(response)
+                .message("News added to favorites")
+                .build();
+    }
+
+    @DeleteMapping("/favorites/{newsId}")
+    public ApiResponse<Void> removeCurrentUserFavorite(@PathVariable Long newsId) {
+        newsService.removeFavoriteForCurrentUser(newsId);
+
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .data(null)
+                .message("News removed from favorites")
+                .build();
+    }
+
+    @GetMapping("/favorites")
+    public ApiResponse<List<NewsFavoriteResponseDto>> getCurrentUserFavorites() {
+        List<NewsFavoriteResponseDto> response = newsService.getCurrentUserFavorites();
+
+        return ApiResponse.<List<NewsFavoriteResponseDto>>builder()
+                .success(true)
+                .data(response)
+                .message("News favorites fetched")
+                .build();
+    }
+
+    @PostMapping("/favorites/{userId}/{newsId}")
+    public ApiResponse<NewsFavoriteResponseDto> addFavorite(
+            @PathVariable Long userId,
+            @PathVariable Long newsId) {
+        NewsFavoriteResponseDto response = newsService.addFavorite(userId, newsId);
+
+        return ApiResponse.<NewsFavoriteResponseDto>builder()
+                .success(true)
+                .data(response)
+                .message("News added to favorites")
+                .build();
+    }
+
+    @DeleteMapping("/favorites/{userId}/{newsId}")
+    public ApiResponse<Void> removeFavorite(
+            @PathVariable Long userId,
+            @PathVariable Long newsId) {
+        newsService.removeFavorite(userId, newsId);
+
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .data(null)
+                .message("News removed from favorites")
+                .build();
+    }
+
+    @GetMapping("/favorites/user/{userId}")
+    public ApiResponse<List<NewsFavoriteResponseDto>> getUserFavorites(@PathVariable Long userId) {
+        List<NewsFavoriteResponseDto> response = newsService.getUserFavorites(userId);
+
+        return ApiResponse.<List<NewsFavoriteResponseDto>>builder()
+                .success(true)
+                .data(response)
+                .message("News favorites fetched")
                 .build();
     }
 
@@ -174,8 +250,6 @@ public class NewsController {
                 .build();
     }
 }
-
-
 
 
 

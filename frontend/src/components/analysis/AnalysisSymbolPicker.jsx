@@ -94,7 +94,7 @@ export default function AnalysisSymbolPicker({
               disabled={favoriteBusy}
               onClick={onFavoriteToggle}
             >
-              <Star size={19} strokeWidth={2} fill={isFavorite ? "#c3a45d" : "none"} color="#c3a45d" />
+              <Star size={40} strokeWidth={2} fill={isFavorite ? "#c3a45d" : "none"} color="#c3a45d" />
             </button>
           </div>
           {primaryContext?.title ? <div className="analysis-hero-meta"><span>{primaryContext.title}</span></div> : null}

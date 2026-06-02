@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { SlidersHorizontal } from "lucide-react";
+import { Check, SlidersHorizontal, Star, X } from "lucide-react";
+import { addNewsFavorite, removeNewsFavorite } from "../api/newsApi";
+import { newsKeys } from "../api/queryKeys";
 import { extractErrorMessage } from "../api/responseUtils";
+import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import PaginationControls from "../components/common/PaginationControls";
@@ -17,12 +21,14 @@ import {
   getNewsProviderFilterOptions,
 } from "../components/news/newsFilterOptions";
 import NewsSidebarFilters from "../components/news/NewsSidebarFilters";
-import { useNewsList } from "../hooks/useNewsQueries";
+import useToast from "../hooks/useToast";
+import { useNewsFavorites, useNewsList } from "../hooks/useNewsQueries";
 import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
 const REGULAR_PROVIDERS = ["AA_RSS", "CNBC_RSS", "GUARDIAN"];
 const KAP_PROVIDERS = ["KAP"];
+const MULTI_FILTER_SEPARATOR = ",";
 const INITIAL_NEWS_PAGE = {
   content: [],
   page: 0,
@@ -35,13 +41,39 @@ const INITIAL_NEWS_PAGE = {
   hasPrevious: false,
 };
 
+function parseMultiFilter(value) {
+  return String(value || "")
+    .split(MULTI_FILTER_SEPARATOR)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function writeMultiFilter(params, key, values) {
+  const normalized = [...new Set(values.filter(Boolean))];
+  if (normalized.length > 0) {
+    params.set(key, normalized.join(MULTI_FILTER_SEPARATOR));
+  } else {
+    params.delete(key);
+  }
+}
+
+function toggleMultiValue(currentValues, value) {
+  return currentValues.includes(value)
+    ? currentValues.filter((entry) => entry !== value)
+    : [...currentValues, value];
+}
+
 export default function NewsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isAuthenticated, login, userId } = useAuth();
+  const { toast, showToast } = useToast();
   const [keyword, setKeyword] = useState(() => searchParams.get("q") || "");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [favoriteBusyIds, setFavoriteBusyIds] = useState(() => new Set());
 
   const feedType = searchParams.get("tab") || "news";
   const currentPage = Number(searchParams.get("page") || "0");
@@ -49,11 +81,15 @@ export default function NewsPage() {
   const selectedCategory = searchParams.get("category") || "";
   const selectedProvider = searchParams.get("provider") || "";
   const selectedLanguage = searchParams.get("language") || "";
-  const selectedCategories = selectedCategory ? [selectedCategory] : [];
-  const selectedProviders = selectedProvider ? [selectedProvider] : [];
-  const selectedLanguages = selectedLanguage ? [selectedLanguage] : [];
+  const favoritesOnly = searchParams.get("favorites") === "1";
+  const dateFrom = searchParams.get("from") || "";
+  const dateTo = searchParams.get("to") || "";
+  const isKapFeed = feedType === "kap";
+  const selectedCategories = useMemo(() => parseMultiFilter(selectedCategory), [selectedCategory]);
+  const selectedProviders = useMemo(() => parseMultiFilter(selectedProvider), [selectedProvider]);
+  const selectedLanguages = useMemo(() => parseMultiFilter(selectedLanguage), [selectedLanguage]);
 
-  function updateParams(updater) {
+  const updateParams = useCallback((updater) => {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -62,7 +98,12 @@ export default function NewsPage() {
       },
       { replace: true },
     );
-  }
+  }, [setSearchParams]);
+
+  // Ref: effect'in yalnızca keyword değişince çalışması için updateParams'ı
+  // dep olarak almadan her render'da güncel tutuyoruz.
+  const updateParamsRef = useRef(updateParams);
+  updateParamsRef.current = updateParams;
 
   const newsQueryParams = useMemo(
     () =>
@@ -72,12 +113,15 @@ export default function NewsPage() {
           category: selectedCategory,
           provider: selectedProvider,
           language: selectedLanguage,
+          favoritesOnly: favoritesOnly && !isKapFeed && isAuthenticated && !!userId,
+          fromDate: dateFrom || undefined,
+          toDate: dateTo || undefined,
         },
         currentPage,
         sortBy,
         feedType,
       ),
-    [searchParams, selectedCategory, selectedProvider, selectedLanguage, currentPage, sortBy, feedType],
+    [searchParams, selectedCategory, selectedProvider, selectedLanguage, favoritesOnly, isKapFeed, isAuthenticated, userId, currentPage, sortBy, feedType, dateFrom, dateTo],
   );
 
   const {
@@ -86,7 +130,15 @@ export default function NewsPage() {
     error: newsError,
   } = useNewsList(newsQueryParams);
 
+  const { data: favorites = [] } = useNewsFavorites(userId, {
+    enabled: isAuthenticated && !!userId,
+  });
+
   const error = newsError ? extractErrorMessage(newsError, t("news.loadError")) : "";
+  const favoriteNewsIds = useMemo(
+    () => new Set((favorites ?? []).map((favorite) => favorite.newsId).filter(Boolean)),
+    [favorites],
+  );
 
   function handleOpen(item) {
     if (!item?.id) return;
@@ -94,7 +146,6 @@ export default function NewsPage() {
   }
 
   const items = newsPage.content ?? [];
-  const isKapFeed = feedType === "kap";
   const providerSeed = isKapFeed ? KAP_PROVIDERS : REGULAR_PROVIDERS;
 
   const providerOptions = useMemo(
@@ -123,20 +174,22 @@ export default function NewsPage() {
 
   const activeFilters = useMemo(() => {
     const nextFilters = [];
-    if (selectedCategory) {
-      nextFilters.push({ type: "category", value: selectedCategory, label: getNewsCategoryFilterLabel(selectedCategory, t) });
-    }
-    if (selectedProvider) {
-      nextFilters.push({ type: "provider", value: selectedProvider, label: getNewsProviderFilterLabel(selectedProvider, t) });
-    }
-    if (selectedLanguage === "tr") nextFilters.push({ type: "language", value: "tr", label: t("common.turkish") });
-    if (selectedLanguage === "en") nextFilters.push({ type: "language", value: "en", label: t("common.english") });
+    selectedCategories.forEach((category) => {
+      nextFilters.push({ type: "category", value: category, label: getNewsCategoryFilterLabel(category, t) });
+    });
+    selectedProviders.forEach((provider) => {
+      nextFilters.push({ type: "provider", value: provider, label: getNewsProviderFilterLabel(provider, t) });
+    });
+    selectedLanguages.forEach((language) => {
+      if (language === "tr") nextFilters.push({ type: "language", value: "tr", label: t("common.turkish") });
+      if (language === "en") nextFilters.push({ type: "language", value: "en", label: t("common.english") });
+    });
     return nextFilters.filter((f) => f.label);
-  }, [selectedCategory, selectedProvider, selectedLanguage, t]);
+  }, [selectedCategories, selectedProviders, selectedLanguages, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      updateParams((params) => {
+      updateParamsRef.current((params) => {
         if (keyword) {
           params.set("q", keyword);
         } else {
@@ -150,10 +203,10 @@ export default function NewsPage() {
 
   function handleToggleCategory(value) {
     updateParams((params) => {
-      if (value === ALL_CATEGORY_OPTION_VALUE || params.get("category") === value) {
+      if (value === ALL_CATEGORY_OPTION_VALUE) {
         params.delete("category");
       } else {
-        params.set("category", value);
+        writeMultiFilter(params, "category", toggleMultiValue(parseMultiFilter(params.get("category")), value));
       }
       params.set("page", "0");
     });
@@ -161,22 +214,30 @@ export default function NewsPage() {
 
   function handleToggleProvider(value) {
     updateParams((params) => {
-      if (params.get("provider") === value) {
-        params.delete("provider");
-      } else {
-        params.set("provider", value);
-      }
+      writeMultiFilter(params, "provider", toggleMultiValue(parseMultiFilter(params.get("provider")), value));
       params.set("page", "0");
     });
   }
 
   function handleToggleLanguage(value) {
     updateParams((params) => {
-      if (params.get("language") === value) {
-        params.delete("language");
-      } else {
-        params.set("language", value);
-      }
+      writeMultiFilter(params, "language", toggleMultiValue(parseMultiFilter(params.get("language")), value));
+      params.set("page", "0");
+    });
+  }
+
+  function handleDateFromChange(value) {
+    updateParams((params) => {
+      if (value) params.set("from", value);
+      else params.delete("from");
+      params.set("page", "0");
+    });
+  }
+
+  function handleDateToChange(value) {
+    updateParams((params) => {
+      if (value) params.set("to", value);
+      else params.delete("to");
       params.set("page", "0");
     });
   }
@@ -188,6 +249,8 @@ export default function NewsPage() {
       params.delete("provider");
       params.delete("language");
       params.delete("q");
+      params.delete("from");
+      params.delete("to");
       params.set("page", "0");
     });
   }
@@ -206,15 +269,20 @@ export default function NewsPage() {
       params.set("page", "0");
       params.delete("category");
       params.delete("provider");
+      params.delete("favorites");
     });
   }
 
   function handleRemoveActiveFilter(filter) {
     if (!filter?.type) return;
     updateParams((params) => {
-      if (filter.type === "category") params.delete("category");
-      else if (filter.type === "provider") params.delete("provider");
-      else if (filter.type === "language") params.delete("language");
+      if (filter.type === "category") {
+        writeMultiFilter(params, "category", parseMultiFilter(params.get("category")).filter((value) => value !== filter.value));
+      } else if (filter.type === "provider") {
+        writeMultiFilter(params, "provider", parseMultiFilter(params.get("provider")).filter((value) => value !== filter.value));
+      } else if (filter.type === "language") {
+        writeMultiFilter(params, "language", parseMultiFilter(params.get("language")).filter((value) => value !== filter.value));
+      }
       params.set("page", "0");
     });
   }
@@ -232,8 +300,81 @@ export default function NewsPage() {
     handlePageChange(currentPage + 1);
   }
 
+  function handleToggleFavoritesFilter() {
+    if (!isAuthenticated || !userId) {
+      showToast("error", t("news.favoriteLoginRequired"));
+      login?.();
+      return;
+    }
+    updateParams((params) => {
+      if (params.get("favorites") === "1") {
+        params.delete("favorites");
+      } else {
+        params.set("favorites", "1");
+      }
+      params.set("page", "0");
+    });
+  }
+
+  async function handleFavoriteToggle(item) {
+    if (!item?.id) return;
+    if (!isAuthenticated || !userId) {
+      showToast("error", t("news.favoriteLoginRequired"));
+      login?.();
+      return;
+    }
+    if (favoriteBusyIds.has(item.id)) return;
+
+    const wasFavorite = favoriteNewsIds.has(item.id);
+    setFavoriteBusyIds((prev) => new Set(prev).add(item.id));
+    try {
+      if (wasFavorite) {
+        await removeNewsFavorite(item.id);
+        showToast("success", t("news.favoriteRemoved"));
+      } else {
+        await addNewsFavorite(item.id);
+        showToast("success", t("news.favoriteAdded"));
+      }
+      await queryClient.invalidateQueries({ queryKey: newsKeys.favorites(userId) });
+      if (favoritesOnly) {
+        await queryClient.invalidateQueries({ queryKey: newsKeys.all });
+      }
+    } catch (favoriteError) {
+      showToast("error", extractErrorMessage(favoriteError, t("news.favoriteError")));
+    } finally {
+      setFavoriteBusyIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  }
+
+  const favoritesFilterButton = !isKapFeed ? (
+    <button
+      type="button"
+      className={`news-favorites-filter-btn${favoritesOnly ? " active" : ""}`}
+      onClick={handleToggleFavoritesFilter}
+      aria-pressed={favoritesOnly}
+    >
+      <Star size={15} strokeWidth={2.2} fill={favoritesOnly ? "currentColor" : "none"} aria-hidden="true" />
+      <span>{t("news.favoritesFilter")}</span>
+    </button>
+  ) : null;
+
   return (
     <div className="news-page-stack">
+      {toast ? (
+        <div key={toast.id} className={`toast-notify ${toast.type}`}>
+          {toast.type === "success" ? (
+            <Check size={15} strokeWidth={2.5} className="toast-notify-icon" />
+          ) : (
+            <X size={15} strokeWidth={2.5} className="toast-notify-icon" />
+          )}
+          <span>{toast.message}</span>
+        </div>
+      ) : null}
+
       <div className="news-page-header panel-surface">
         <div className="news-page-header-main">
           <div className="news-page-header-left">
@@ -319,9 +460,13 @@ export default function NewsPage() {
             selectedCategories={selectedCategories}
             selectedProviders={selectedProviders}
             selectedLanguages={selectedLanguages}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
             onToggleCategory={handleToggleCategory}
             onToggleProvider={handleToggleProvider}
             onToggleLanguage={handleToggleLanguage}
+            onDateFromChange={handleDateFromChange}
+            onDateToChange={handleDateToChange}
             onReset={handleResetFilters}
             loading={loading}
           />
@@ -341,6 +486,7 @@ export default function NewsPage() {
               onPrevious={handlePreviousPage}
               onNext={handleNextPage}
               onPageChange={handlePageChange}
+              beforeActions={favoritesFilterButton}
             />
           ) : null}
 
@@ -359,7 +505,14 @@ export default function NewsPage() {
           {!loading && !error && items.length > 0 ? (
             <section className={`news-grid news-grid-portal${isKapFeed ? " news-grid-kap" : ""}`}>
               {items.map((item) => (
-                <NewsCard key={item.id || item.externalId || item.url} item={item} onClick={handleOpen} />
+                <NewsCard
+                  key={item.id || item.externalId || item.url}
+                  item={item}
+                  onClick={handleOpen}
+                  isFavorite={favoriteNewsIds.has(item.id)}
+                  favoriteBusy={favoriteBusyIds.has(item.id)}
+                  onFavoriteToggle={handleFavoriteToggle}
+                />
               ))}
             </section>
           ) : null}
@@ -391,9 +544,13 @@ export default function NewsPage() {
         selectedCategories={selectedCategories}
         selectedProviders={selectedProviders}
         selectedLanguages={selectedLanguages}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
         onToggleCategory={handleToggleCategory}
         onToggleProvider={handleToggleProvider}
         onToggleLanguage={handleToggleLanguage}
+        onDateFromChange={handleDateFromChange}
+        onDateToChange={handleDateToChange}
         onReset={handleResetFilters}
         loading={loading}
       />

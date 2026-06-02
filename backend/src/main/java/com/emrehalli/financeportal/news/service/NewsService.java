@@ -8,6 +8,7 @@ import com.emrehalli.financeportal.common.logging.LoggingContext;
 import com.emrehalli.financeportal.news.config.NewsNotificationProperties;
 import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsCategoryRepairResponseDto;
+import com.emrehalli.financeportal.news.dto.response.NewsFavoriteResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
@@ -19,6 +20,7 @@ import com.emrehalli.financeportal.news.dto.response.RelatedNewsItemDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.entity.News;
+import com.emrehalli.financeportal.news.entity.NewsFavorite;
 import com.emrehalli.financeportal.news.entity.NewsProviderSyncState;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.enums.NewsScope;
@@ -28,7 +30,11 @@ import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnostics;
 import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnosticsAware;
 import com.emrehalli.financeportal.news.provider.common.NewsProvider;
 import com.emrehalli.financeportal.news.repository.NewsRepository;
+import com.emrehalli.financeportal.news.repository.NewsFavoriteRepository;
 import com.emrehalli.financeportal.news.repository.NewsProviderSyncStateRepository;
+import com.emrehalli.financeportal.user.entity.User;
+import com.emrehalli.financeportal.user.repository.UserRepository;
+import com.emrehalli.financeportal.user.service.UserService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
@@ -38,6 +44,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -131,6 +141,9 @@ public class NewsService {
     );
 
     private final NewsRepository newsRepository;
+    private final NewsFavoriteRepository newsFavoriteRepository;
+    private final UserRepository userRepository;
+    private final UserService userService;
     private final NewsProviderSyncStateRepository newsProviderSyncStateRepository;
     private final Map<String, NewsProvider> providerMap;
     private final NewsImportanceScoringService newsImportanceScoringService;
@@ -147,6 +160,9 @@ public class NewsService {
     @Autowired
     public NewsService(
             NewsRepository newsRepository,
+            NewsFavoriteRepository newsFavoriteRepository,
+            UserRepository userRepository,
+            UserService userService,
             NewsProviderSyncStateRepository newsProviderSyncStateRepository,
             List<NewsProvider> providers,
             NewsImportanceScoringService newsImportanceScoringService,
@@ -160,6 +176,9 @@ public class NewsService {
             FinancialImpactClassifier financialImpactClassifier
     ) {
         this.newsRepository = newsRepository;
+        this.newsFavoriteRepository = newsFavoriteRepository;
+        this.userRepository = userRepository;
+        this.userService = userService;
         this.newsProviderSyncStateRepository = newsProviderSyncStateRepository;
         this.newsImportanceScoringService = newsImportanceScoringService;
         this.notificationService = notificationService;
@@ -186,6 +205,7 @@ public class NewsService {
     ) {
         validateDateRange(request);
         validatePaging(page, size);
+        Long favoriteUserId = resolveFavoriteFilterUserId(request);
         QueryContext context = resolveQueryContext(request);
         String resolvedSortBy = resolveSortBy(sortBy);
         Sort.Direction resolvedSortDirection = resolveSortDirection(sortDirection);
@@ -194,7 +214,7 @@ public class NewsService {
                 size,
                 resolvePageableSort(resolvedSortBy, resolvedSortDirection)
         );
-        Specification<News> specification = buildSpecification(request, context, resolvedSortBy, resolvedSortDirection);
+        Specification<News> specification = buildSpecification(request, context, resolvedSortBy, resolvedSortDirection, favoriteUserId);
 
         return newsRepository.findAll(specification, pageable)
                 .map(this::toResponse);
@@ -252,6 +272,73 @@ public class NewsService {
         return NewsRelatedResponseDto.builder()
                 .relatedInstruments(relatedInstruments)
                 .relatedNews(relatedNews)
+                .build();
+    }
+
+    @Transactional
+    public NewsFavoriteResponseDto addFavoriteForCurrentUser(Long newsId) {
+        User user = userService.getCurrentAuthenticatedUserEntity();
+        return addFavorite(user.getId(), newsId);
+    }
+
+    @Transactional
+    public NewsFavoriteResponseDto addFavorite(Long userId, Long newsId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        News news = newsRepository.findById(newsId)
+                .orElseThrow(() -> new ResourceNotFoundException("News not found with id: " + newsId));
+
+        Optional<NewsFavorite> existing = newsFavoriteRepository.findByUserIdAndNewsId(userId, newsId);
+        if (existing.isPresent()) {
+            return toFavoriteResponse(existing.get());
+        }
+
+        NewsFavorite favorite = NewsFavorite.builder()
+                .user(user)
+                .news(news)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        return toFavoriteResponse(newsFavoriteRepository.save(favorite));
+    }
+
+    @Transactional
+    public void removeFavoriteForCurrentUser(Long newsId) {
+        User user = userService.getCurrentAuthenticatedUserEntity();
+        removeFavorite(user.getId(), newsId);
+    }
+
+    @Transactional
+    public void removeFavorite(Long userId, Long newsId) {
+        if (!newsFavoriteRepository.existsByUserIdAndNewsId(userId, newsId)) {
+            return;
+        }
+        newsFavoriteRepository.deleteByUserIdAndNewsId(userId, newsId);
+    }
+
+    @Transactional
+    public List<NewsFavoriteResponseDto> getCurrentUserFavorites() {
+        User user = userService.getCurrentAuthenticatedUserEntity();
+        return getUserFavorites(user.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<NewsFavoriteResponseDto> getUserFavorites(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found with id: " + userId);
+        }
+        return newsFavoriteRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::toFavoriteResponse)
+                .toList();
+    }
+
+    private NewsFavoriteResponseDto toFavoriteResponse(NewsFavorite favorite) {
+        return NewsFavoriteResponseDto.builder()
+                .id(favorite.getId())
+                .userId(favorite.getUser().getId())
+                .newsId(favorite.getNews().getId())
+                .createdAt(favorite.getCreatedAt())
                 .build();
     }
 
@@ -1338,7 +1425,8 @@ public class NewsService {
         String normalized = oldCategory.trim().toUpperCase(Locale.ROOT);
         return NewsCategoryClassifier.FX.equals(normalized)
                 || NewsCategoryClassifier.GEOPOLITICS.equals(normalized)
-                || NewsCategoryClassifier.ENERGY.equals(normalized);
+                || NewsCategoryClassifier.ENERGY.equals(normalized)
+                || NewsCategoryClassifier.INTEREST_BONDS.equals(normalized);
     }
 
     private boolean shouldUpdateCategory(News existingNews, NewsItemDto item) {
@@ -1716,6 +1804,52 @@ public class NewsService {
         }
     }
 
+    private Long resolveFavoriteFilterUserId(NewsSearchRequest request) {
+        if (!Boolean.TRUE.equals(request.getFavoritesOnly())) {
+            return null;
+        }
+        Long userId = request.getFavoriteUserId();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String keycloakId = extractKeycloakSubject(authentication);
+
+        if (userId == null) {
+            return keycloakId == null
+                    ? null
+                    : userRepository.findByKeycloakId(keycloakId)
+                    .map(User::getId)
+                    .orElse(null);
+        }
+
+        if (hasAuthority(authentication, "ROLE_ADMIN")) {
+            return userId;
+        }
+        boolean allowed = keycloakId != null
+                && userRepository.findById(userId)
+                .map(user -> keycloakId.equals(user.getKeycloakId()))
+                .orElse(false);
+        if (!allowed) {
+            throw new BadRequestException("favorites filter is only available for the authenticated user");
+        }
+        return userId;
+    }
+
+    private String extractKeycloakSubject(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        return principal instanceof Jwt jwt ? jwt.getSubject() : null;
+    }
+
+    private boolean hasAuthority(Authentication authentication, String authority) {
+        if (authentication == null || authentication.getAuthorities() == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority::equals);
+    }
+
     private String normalizeSymbol(String symbol) {
         if (!hasText(symbol)) {
             throw new BadRequestException("symbol cannot be blank");
@@ -1727,20 +1861,34 @@ public class NewsService {
         return value != null && !value.trim().isEmpty();
     }
 
+    private List<String> parseCsvValues(String value) {
+        if (!hasText(value)) {
+            return List.of();
+        }
+        return Pattern.compile(",")
+                .splitAsStream(value)
+                .map(String::trim)
+                .filter(this::hasText)
+                .toList();
+    }
+
     private String truncate(String value, int maxLength) {
         if (value == null) return null;
         return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 
     private QueryContext resolveQueryContext(NewsSearchRequest request) {
-        NewsProviderType provider = hasText(request.getProvider()) ? NewsProviderType.from(request.getProvider()) : null;
+        Set<NewsProviderType> providers = parseCsvValues(request.getProvider()).stream()
+                .map(NewsProviderType::from)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         NewsScope scope = NewsScope.from(request.getScope());
 
-        if (provider != null && !scope.providers().contains(provider)) {
+        boolean providerScopeMismatch = providers.stream().anyMatch(provider -> !scope.providers().contains(provider));
+        if (providerScopeMismatch) {
             throw new BadRequestException("Selected provider does not match selected scope");
         }
 
-        return new QueryContext(scope, provider);
+        return new QueryContext(scope, providers);
     }
 
     private String resolveSortBy(String sortBy) {
@@ -1775,7 +1923,8 @@ public class NewsService {
             NewsSearchRequest request,
             QueryContext context,
             String resolvedSortBy,
-            Sort.Direction resolvedSortDirection
+            Sort.Direction resolvedSortDirection,
+            Long favoriteUserId
     ) {
         return Specification.allOf(
                 byProvider(context),
@@ -1783,6 +1932,7 @@ public class NewsService {
                 byCategory(request),
                 byLanguage(request),
                 byKapDisclosure(request),
+                byFavorites(request, favoriteUserId),
                 bySymbol(request),
                 byKeyword(request),
                 byDateRange(request),
@@ -1791,10 +1941,13 @@ public class NewsService {
     }
 
     private Specification<News> byProvider(QueryContext context) {
-        if (context.provider == null) {
+        if (context.providers.isEmpty()) {
             return null;
         }
-        return (root, query, cb) -> cb.equal(root.get("provider"), context.provider.name());
+        Set<String> providers = context.providers.stream()
+                .map(NewsProviderType::name)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return (root, query, cb) -> root.get("provider").in(providers);
     }
 
     private Specification<News> byScope(QueryContext context) {
@@ -1813,7 +1966,9 @@ public class NewsService {
         if (!hasText(request.getCategory())) {
             return null;
         }
-        Set<String> categories = newsCategoryClassifier.resolveFilterCategories(request.getCategory());
+        Set<String> categories = parseCsvValues(request.getCategory()).stream()
+                .flatMap(category -> newsCategoryClassifier.resolveFilterCategories(category).stream())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         if (categories.isEmpty()) {
             return null;
         }
@@ -1824,8 +1979,13 @@ public class NewsService {
         if (!hasText(request.getLanguage())) {
             return null;
         }
-        String language = request.getLanguage().trim().toLowerCase(Locale.ROOT);
-        return (root, query, cb) -> cb.equal(cb.lower(root.get("language")), language);
+        Set<String> languages = parseCsvValues(request.getLanguage()).stream()
+                .map(language -> language.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (languages.isEmpty()) {
+            return null;
+        }
+        return (root, query, cb) -> cb.lower(root.get("language")).in(languages);
     }
 
     private Specification<News> byKapDisclosure(NewsSearchRequest request) {
@@ -1833,6 +1993,22 @@ public class NewsService {
             return null;
         }
         return (root, query, cb) -> cb.equal(root.get("isKapDisclosure"), request.getIsKapDisclosure());
+    }
+
+    private Specification<News> byFavorites(NewsSearchRequest request, Long favoriteUserId) {
+        if (!Boolean.TRUE.equals(request.getFavoritesOnly())) {
+            return null;
+        }
+        if (favoriteUserId == null) {
+            return (root, query, cb) -> cb.disjunction();
+        }
+        return (root, query, cb) -> {
+            var subquery = query.subquery(Long.class);
+            var favoriteRoot = subquery.from(NewsFavorite.class);
+            subquery.select(favoriteRoot.get("news").get("id"))
+                    .where(cb.equal(favoriteRoot.get("user").get("id"), favoriteUserId));
+            return root.get("id").in(subquery);
+        };
     }
 
     private Specification<News> bySymbol(NewsSearchRequest request) {
@@ -2922,7 +3098,7 @@ public class NewsService {
         );
     }
 
-    private record QueryContext(NewsScope scope, NewsProviderType provider) {
+    private record QueryContext(NewsScope scope, Set<NewsProviderType> providers) {
     }
 
     record InstrumentAlias(String symbol, String name, String instrumentType, Set<String> keywords) {

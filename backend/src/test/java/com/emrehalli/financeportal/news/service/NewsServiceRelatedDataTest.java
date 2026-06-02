@@ -630,6 +630,9 @@ class NewsServiceRelatedDataTest {
 
         return new NewsService(
                 newsRepository,
+                mock(com.emrehalli.financeportal.news.repository.NewsFavoriteRepository.class),
+                mock(com.emrehalli.financeportal.user.repository.UserRepository.class),
+                mock(com.emrehalli.financeportal.user.service.UserService.class),
                 syncStateRepository,
                 List.of(),
                 scoringService,

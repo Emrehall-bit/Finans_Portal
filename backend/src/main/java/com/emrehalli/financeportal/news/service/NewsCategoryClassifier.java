@@ -64,13 +64,42 @@ public class NewsCategoryClassifier {
             "yabanci para pozisyonu", "yabanci para pozisyon",
             "euro dolar", "eur usd", "usd eur"
     );
+    private static final List<String> BANKING_EARLY_SIGNALS = List.of(
+            "bankacilik", "banka", "bankasi", "bankalari", "bankaciligi",
+            "garanti bankasi", "is bankasi", "halkbank", "ziraat bankasi",
+            "akbank", "yapi kredi", "vakifbank", "finansbank",
+            "mevduat", "mevduati", "kredi", "krediye", "kredide", "kredisi",
+            "loan", "deposit", "net interest margin", "net faiz marji",
+            "bankacilik hisseleri", "banka hisseleri", "takipteki kredi"
+    );
+    private static final List<String> GOLD_COMMODITY_EARLY_SIGNALS = List.of(
+            "altin", "gold", "ons", "gram altin", "gumus", "silver",
+            "emtia", "commodity", "bakir", "copper",
+            "petrol", "oil", "brent", "opec", "dogalgaz", "natural gas", "lng", "rafineri",
+            "enerji", "energy"
+    );
+    // Core: anywhere in combined (Turkish + specific financial terms)
+    private static final List<String> INTEREST_BONDS_CORE_STRONG_SIGNALS = List.of(
+            "faiz", "tahvil", "bono", "tcmb", "ecb", "fomc", "para politikasi", "baz puan",
+            "politika faizi", "faiz karari", "tahvil getirisi", "yield", "getiri", "merkez bankasi"
+    );
+    // Title-only: count as strong ONLY if they appear in title (not summary/content boilerplate)
+    private static final List<String> INTEREST_BONDS_TITLE_ONLY_SIGNALS = List.of(
+            "rate hike", "rate cut", "rate cuts", "rate hikes"
+    );
+    // Weak: never produce IB alone; blocked when no strong signal present
+    private static final Set<String> INTEREST_BONDS_WEAK_KEYWORDS = Set.of(
+            "interest", "fed", "interest rate", "central bank", "powell"
+    );
     private static final LinkedHashMap<String, List<String>> CATEGORY_KEYWORDS = new LinkedHashMap<>();
     private static final Map<String, String> CATEGORY_HINT_MAPPING = createCategoryHintMapping();
 
     static {
         CATEGORY_KEYWORDS.put(INTEREST_BONDS, List.of(
-                "tcmb", "merkez bankasi", "central bank", "faiz", "interest rate", "interest", "tahvil",
-                "bono", "yield", "getiri", "fed", "ecb", "fomc", "powell", "para politikasi", "baz puan"
+                "tcmb", "merkez bankasi", "central bank", "faiz", "interest rate", "interest rates",
+                "interest", "tahvil", "bono", "yield", "getiri", "fed", "ecb", "fomc", "powell",
+                "para politikasi", "baz puan", "politika faizi", "faiz karari", "tahvil getirisi",
+                "rate hike", "rate cut", "rate cuts", "rate hikes"
         ));
         CATEGORY_KEYWORDS.put(FX, List.of(
                 "dolar tl", "euro tl", "usd try", "eur try", "usdtry", "eurtry",
@@ -193,8 +222,21 @@ public class NewsCategoryClassifier {
         if (FX.equals(category) && !containsAny(combined, FX_STRONG_CONTEXT_KEYWORDS)) {
             return 0;
         }
+        if (BANKING.equals(category)
+                && !isEarlySignalPresent(normalizedTitle, normalizedSummary, BANKING_EARLY_SIGNALS)) {
+            return 0;
+        }
+        if (GOLD_COMMODITY.equals(category)
+                && !isEarlySignalPresent(normalizedTitle, normalizedSummary, GOLD_COMMODITY_EARLY_SIGNALS)) {
+            return 0;
+        }
+        boolean ibWeakBlocked = INTEREST_BONDS.equals(category)
+                && !isIbStrongSignalPresent(normalizedTitle, normalizedSummary, combined);
         int score = 0;
         for (String keyword : keywords) {
+            if (ibWeakBlocked && INTEREST_BONDS_WEAK_KEYWORDS.contains(keyword)) {
+                continue;
+            }
             if (containsKeyword(normalizedTitle, keyword)) {
                 score += 4;
             }
@@ -222,6 +264,33 @@ public class NewsCategoryClassifier {
             }
         }
         return bestCategory != null ? bestCategory : GENERAL_ECONOMY;
+    }
+
+    private boolean isEarlySignalPresent(String normalizedTitle, String normalizedSummary, List<String> signals) {
+        String earlyWindow = normalizedSummary.length() > 400
+                ? normalizedSummary.substring(0, 400)
+                : normalizedSummary;
+        for (String signal : signals) {
+            if (containsKeyword(normalizedTitle, signal) || containsKeyword(earlyWindow, signal)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isIbStrongSignalPresent(String normalizedTitle, String normalizedSummary, String combined) {
+        if (containsAny(combined, INTEREST_BONDS_CORE_STRONG_SIGNALS)) {
+            return true;
+        }
+        if (containsAny(normalizedTitle, INTEREST_BONDS_TITLE_ONLY_SIGNALS)) {
+            return true;
+        }
+        // "interest rates": strong only in title or first 400 chars of summary
+        String earlyWindow = normalizedSummary.length() > 400
+                ? normalizedSummary.substring(0, 400)
+                : normalizedSummary;
+        return containsKeyword(normalizedTitle, "interest rates")
+                || containsKeyword(earlyWindow, "interest rates");
     }
 
     private boolean containsAny(String text, List<String> keywords) {

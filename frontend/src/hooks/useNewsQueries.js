@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getNews, getNewsDetail, getNewsRelated } from "../api/newsApi";
+import { getNews, getNewsDetail, getNewsFavorites, getNewsRelated } from "../api/newsApi";
 import { newsKeys } from "../api/queryKeys";
 
 export function useNewsList(params = {}, options = {}) {
@@ -27,6 +27,16 @@ export function useNewsRelated(id, options = {}) {
     queryFn: () => getNewsRelated(id),
     staleTime: 5 * 60_000,
     enabled: !!id,
+    ...options,
+  });
+}
+
+export function useNewsFavorites(userId, options = {}) {
+  return useQuery({
+    queryKey: newsKeys.favorites(userId),
+    queryFn: () => getNewsFavorites(),
+    staleTime: 2 * 60_000,
+    enabled: !!userId,
     ...options,
   });
 }

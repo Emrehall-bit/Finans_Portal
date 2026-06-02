@@ -63,6 +63,7 @@ export default function PaginationControls({
   onPrevious,
   onNext,
   onPageChange,
+  beforeActions = null,
   className = "",
   variant = "default",
 }) {
@@ -82,6 +83,7 @@ export default function PaginationControls({
         </div>
 
         <div className="news-pagination-top-actions">
+          {beforeActions}
           <button
             type="button"
             className="news-pagination-nav-btn"

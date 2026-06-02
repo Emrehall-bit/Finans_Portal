@@ -16,6 +16,8 @@ public class NewsSearchRequest {
     private String category;
     private String language;
     private Boolean isKapDisclosure;
+    private Boolean favoritesOnly;
+    private Long favoriteUserId;
     private LocalDate fromDate;
     private LocalDate toDate;
 }
