@@ -26,6 +26,6 @@ BEGIN
 
 END $$;
 
-DELETE FROM watchlist         WHERE instrument_code IN ('AKFEN', 'AKFIS');
-DELETE FROM alerts            WHERE instrument_code IN ('AKFEN', 'AKFIS');
+DELETE FROM watchlist          WHERE instrument_code IN ('AKFEN', 'AKFIS');
+DELETE FROM alerts             WHERE instrument_code IN ('AKFEN', 'AKFIS');
 DELETE FROM portfolio_holdings WHERE instrument_code IN ('AKFEN', 'AKFIS');

@@ -17,24 +17,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Mapper for Binance TRY trading pairs.
+ * Maps whitelisted Binance TRY trading pairs.
+ * Only base assets present in {@link CryptoWhitelist} are accepted.
  */
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class BinancePairMapper {
 
-    private static final Map<String, String> FALLBACK_SYMBOLS = Map.of(
-            "BTC", "BTCTRY",
-            "ETH", "ETHTRY",
-            "BNB", "BNBTRY",
-            "SOL", "SOLTRY",
-            "XRP", "XRPTRY"
-    );
+    private static final List<String> FALLBACK_BASE_ASSETS =
+            List.of("BTC", "ETH", "BNB", "SOL", "XRP", "USDT", "DOGE", "ADA", "AVAX", "DOT");
 
     private final MarketProperties props;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final CryptoWhitelist cryptoWhitelist;
 
     private final Map<String, String> symbolMap = new ConcurrentHashMap<>();
     private final AtomicBoolean loading = new AtomicBoolean(false);
@@ -48,13 +45,13 @@ public class BinancePairMapper {
         }
     }
 
-    @Scheduled(fixedRate = 30 * 60 * 1000)
+    // Binance parite delist/relist senaryolarına karşı periyodik yenileme.
+    // Whitelist statik olsa da Binance tarafındaki değişiklikler batch ticker isteğini bozabilir.
+    @Scheduled(initialDelay = 4 * 60 * 60 * 1000, fixedRate = 4 * 60 * 60 * 1000)
     public void scheduledReload() {
         if (loading.get()) {
-            log.debug("[BinancePairMapper] YÃ¼kleme devam ediyor, atlanÄ±yor.");
             return;
         }
-
         boolean loaded = tryLoadFromBinance();
         if (!loaded && symbolMap.isEmpty()) {
             applyFallback();
@@ -98,7 +95,6 @@ public class BinancePairMapper {
 
     private boolean tryLoadFromBinance() {
         if (!loading.compareAndSet(false, true)) {
-            log.debug("[BinancePairMapper] YÃ¼kleme devam ediyor, atlanÄ±yor.");
             return false;
         }
 
@@ -125,20 +121,21 @@ public class BinancePairMapper {
                     continue;
                 }
 
-                String displayCode = symbol.substring(0, symbol.length() - 3);
-                if (displayCode.isBlank()) {
+                String baseAsset = symbol.substring(0, symbol.length() - 3);
+                if (baseAsset.isBlank() || !cryptoWhitelist.isWhitelisted(baseAsset)) {
                     continue;
                 }
-                discoveredPairs.put(displayCode, symbol);
+                discoveredPairs.put(baseAsset, symbol);
             }
 
             if (discoveredPairs.isEmpty()) {
-                log.warn("[BinancePairMapper] Binance yanÄ±tÄ± geldi ama hiÃ§ TRY pariti bulunamadÄ±.");
+                log.warn("[BinancePairMapper] Binance yanitinda whitelist ile eslesen TRY pariti bulunamadi.");
                 return false;
             }
 
             symbolMap.clear();
             symbolMap.putAll(discoveredPairs);
+            log.info("[BinancePairMapper] {} adet whitelist TRY pariti yuklendi.", symbolMap.size());
             return true;
         } catch (Exception exception) {
             log.warn("[BinancePairMapper] Binance TRY pariteleri yuklenemedi.", exception);
@@ -150,17 +147,11 @@ public class BinancePairMapper {
 
     private void applyFallback() {
         symbolMap.clear();
-        symbolMap.putAll(FALLBACK_SYMBOLS);
-        log.info("[BinancePairMapper] Fallback semboller uygulandÄ±: {}", FALLBACK_SYMBOLS.keySet());
+        FALLBACK_BASE_ASSETS.forEach(base -> symbolMap.put(base, base + "TRY"));
+        log.info("[BinancePairMapper] Fallback semboller uygulandı: {}", symbolMap.keySet());
     }
 
     private boolean isTryPair(String symbol) {
-        return symbol != null
-                && symbol.endsWith("TRY")
-                && !symbol.endsWith("USTRY");
+        return symbol != null && symbol.endsWith("TRY");
     }
 }
-
-
-
-

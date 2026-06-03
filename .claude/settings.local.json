@@ -213,7 +213,13 @@
       "PowerShell($env:PGPASSWORD = \"postgres\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5433 -U postgres -d financeportaldb -f \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\analysis_guard2.sql\" 2>&1)",
       "Bash(dir \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\")",
       "Bash(findstr /i technical)",
-      "Bash(Get-ChildItem C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal *)"
+      "Bash(Get-ChildItem C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Directory | Where-Object { $_.Name -match \"news\" } | Select-Object -ExpandProperty FullName)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\java\\\\com\\\\emrehalli\\\\financeportal\\\\news\" -Directory | ForEach-Object { Write-Host \"\"; Write-Host \"=== Package: $\\($_.Name\\) ===\"; Get-ChildItem -Path $_.FullName -File -Name | Sort-Object | Select-Object -First 20 })",
+      "Bash(Get-ChildItem *)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\resources\\\\db\\\\migration\\\\V50__remove_akfen_akfis.sql\" -Force)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\\\\src\\\\main\\\\resources\\\\db\\\\migration\\\\V51__cleanup_non_whitelisted_crypto.sql\" -Force)",
+      "Bash(Select-String -Pattern \"\\(News|Kap|news|kap\\)\")"
     ]
   }
 }

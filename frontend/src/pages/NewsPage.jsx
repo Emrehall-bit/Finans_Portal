@@ -113,7 +113,7 @@ export default function NewsPage() {
           category: selectedCategory,
           provider: selectedProvider,
           language: selectedLanguage,
-          favoritesOnly: favoritesOnly && !isKapFeed && isAuthenticated && !!userId,
+          favoritesOnly: favoritesOnly && isAuthenticated && !!userId,
           fromDate: dateFrom || undefined,
           toDate: dateTo || undefined,
         },
@@ -350,7 +350,7 @@ export default function NewsPage() {
     }
   }
 
-  const favoritesFilterButton = !isKapFeed ? (
+  const favoritesFilterButton = (
     <button
       type="button"
       className={`news-favorites-filter-btn${favoritesOnly ? " active" : ""}`}
@@ -360,7 +360,7 @@ export default function NewsPage() {
       <Star size={15} strokeWidth={2.2} fill={favoritesOnly ? "currentColor" : "none"} aria-hidden="true" />
       <span>{t("news.favoritesFilter")}</span>
     </button>
-  ) : null;
+  );
 
   return (
     <div className="news-page-stack">
