@@ -27,6 +27,8 @@ public class MarketScreenCriteria {
     private BigDecimal minRevenueGrowth;
     private BigDecimal minNetProfitGrowth;
     private Boolean onlyWithFundamentals;
+    private String bistTier;
+    private String stockSector;
     private int page;
     private int size;
     private String sort;

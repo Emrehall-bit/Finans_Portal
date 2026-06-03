@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.market.api;
 
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.response.ApiResponse;
+import com.emrehalli.financeportal.market.domain.enums.BistTier;
 import com.emrehalli.financeportal.market.provider.stock.dto.StockHistoryDto;
 import com.emrehalli.financeportal.market.provider.stock.dto.StockPriceDto;
 import com.emrehalli.financeportal.market.service.StockService;
@@ -38,8 +39,9 @@ public class StockController {
 
     @GetMapping
     public ApiResponse<StockPageResponse> getAll(@RequestParam(defaultValue = "0") int page,
-                                                 @RequestParam(defaultValue = "20") int size) {
-        Page<StockPriceDto> result = stockService.getAll(PageRequest.of(page, size));
+                                                 @RequestParam(defaultValue = "20") int size,
+                                                 @RequestParam(required = false) BistTier bistTier) {
+        Page<StockPriceDto> result = stockService.getAll(PageRequest.of(page, size), bistTier);
         StockPageResponse data = StockPageResponse.builder()
                 .content(result.getContent())
                 .totalElements(result.getTotalElements())

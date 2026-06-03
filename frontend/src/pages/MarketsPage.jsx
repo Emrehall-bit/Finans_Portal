@@ -38,6 +38,27 @@ const DEFAULT_SORT_OPTIONS = [
   { value: "change_desc", label: "Günlük değişim yüksekten" },
   { value: "change_asc", label: "Günlük değişim düşükten" },
 ];
+const BIST_TIER_OPTIONS = [
+  { value: "",       label: "Tümü" },
+  { value: "BIST30", label: "BIST30" },
+  { value: "BIST50", label: "BIST50" },
+  { value: "BIST100", label: "BIST100" },
+];
+
+const STOCK_SECTOR_OPTIONS = [
+  { value: "",                     label: "Tümü" },
+  { value: "BANKING",              label: "Bankacılık" },
+  { value: "FINANCIALS",           label: "Mali Kuruluşlar" },
+  { value: "TECHNOLOGY_DEFENSE",   label: "Teknoloji & Savunma" },
+  { value: "TELECOM",              label: "Telekom" },
+  { value: "TRANSPORT_TOURISM",    label: "Ulaştırma & Turizm" },
+  { value: "HEALTH_SPORTS",        label: "Sağlık & Spor" },
+  { value: "ENERGY",               label: "Enerji" },
+  { value: "CHEMICALS_PETROLEUM",  label: "Kimya & Petrol" },
+  { value: "INDUSTRIAL",           label: "Sınai" },
+  { value: "FOOD_RETAIL",          label: "Gıda & Perakende" },
+];
+
 const STOCK_FILTER_PRESETS = [
   { key: "cheap", label: "Ucuz Hisseler", values: { maxPe: "10" } },
   { key: "low-pb", label: "Düşük PD/DD", values: { maxPb: "1.5" } },
@@ -99,6 +120,8 @@ export default function MarketsPage() {
   const [minRevenueGrowth, setMinRevenueGrowth] = useState("");
   const [minNetProfitGrowth, setMinNetProfitGrowth] = useState("");
   const [onlyWithFundamentals, setOnlyWithFundamentals] = useState(false);
+  const [bistTierFilter, setBistTierFilter] = useState("");
+  const [stockSectorFilter, setStockSectorFilter] = useState("");
   const [watchlistItems, setWatchlistItems] = useState([]);
   const [favoriteBusyKey, setFavoriteBusyKey] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
@@ -106,6 +129,13 @@ export default function MarketsPage() {
   const isFavoritesTab = categoryFilter === "FAVORITES";
   const isStockTab = categoryFilter === "STOCK";
   const isFxTab = categoryFilter === "FX";
+
+  useEffect(() => {
+    if (!isStockTab) {
+      setBistTierFilter("");
+      setStockSectorFilter("");
+    }
+  }, [isStockTab]);
 
   const { data: allQuotes = [], isLoading: loadingAll } = useMarketQuotes({ enabled: isFavoritesTab });
 
@@ -129,6 +159,8 @@ export default function MarketsPage() {
     minRevenueGrowth: isStockTab ? toFilterNumber(minRevenueGrowth) : undefined,
     minNetProfitGrowth: isStockTab ? toFilterNumber(minNetProfitGrowth) : undefined,
     onlyWithFundamentals: isStockTab ? onlyWithFundamentals : false,
+    bistTier: isStockTab ? (bistTierFilter || undefined) : undefined,
+    stockSector: isStockTab ? (stockSectorFilter || undefined) : undefined,
     page: 0,
     size: 500,
     sort: normalizeScreenSort(sortBy),
@@ -154,6 +186,8 @@ export default function MarketsPage() {
     minRevenueGrowth,
     minNetProfitGrowth,
     onlyWithFundamentals,
+    bistTierFilter,
+    stockSectorFilter,
     isStockTab,
     sortBy,
   ]);
@@ -299,9 +333,16 @@ export default function MarketsPage() {
     if (sectorFilter) chips.push({ key: "sector", label: `Sektör: ${sectorFilter}` });
     if (marketFilter) chips.push({ key: "market", label: `Pazar: ${marketFilter}` });
     if (onlyWithFundamentals) chips.push({ key: "onlyWithFundamentals", label: "Temel analiz var" });
+    if (bistTierFilter) chips.push({ key: "bistTier", label: `Endeks: ${bistTierFilter}` });
+    if (stockSectorFilter) {
+      const sectorLabel = STOCK_SECTOR_OPTIONS.find((o) => o.value === stockSectorFilter)?.label ?? stockSectorFilter;
+      chips.push({ key: "stockSector", label: `Sektör: ${sectorLabel}` });
+    }
     return chips;
   }, [
     isStockTab,
+    bistTierFilter,
+    stockSectorFilter,
     marketFilter,
     maxDebtToEquity,
     maxPb,
@@ -355,6 +396,8 @@ export default function MarketsPage() {
       case "sector": setSectorFilter(""); break;
       case "market": setMarketFilter(""); break;
       case "onlyWithFundamentals": setOnlyWithFundamentals(false); break;
+      case "bistTier": setBistTierFilter(""); break;
+      case "stockSector": setStockSectorFilter(""); break;
       default: break;
     }
   }
@@ -510,6 +553,42 @@ export default function MarketsPage() {
                 </button>
               </div>
             </div>
+            <div className="admin-import-field">
+              <span>BIST Endeksi</span>
+            </div>
+            <div className="market-category-pills" role="tablist" aria-label="BIST Endeks Filtresi">
+              {BIST_TIER_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={bistTierFilter === option.value}
+                  className={`market-tab ${bistTierFilter === option.value ? "active" : ""}`}
+                  onClick={() => setBistTierFilter(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="admin-import-field">
+              <span>Sektör</span>
+            </div>
+            <div className="market-category-pills" role="tablist" aria-label="Sektör Filtresi">
+              {STOCK_SECTOR_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={stockSectorFilter === option.value}
+                  className={`market-tab ${stockSectorFilter === option.value ? "active" : ""}`}
+                  onClick={() => setStockSectorFilter(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
             <div className="admin-import-field">
               <span>Hazır Filtreler</span>
             </div>
@@ -1060,6 +1139,8 @@ function mapScreenItem(item) {
     netProfitGrowth: item.netProfitGrowth,
     calculatedAt: item.calculatedAt,
     dataTimestamp: item.dataTimestamp,
+    bistTier: item.bistTier ?? null,
+    stockSector: item.stockSector ?? null,
   };
 }
 

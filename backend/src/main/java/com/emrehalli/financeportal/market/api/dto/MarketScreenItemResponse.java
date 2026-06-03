@@ -34,5 +34,7 @@ public class MarketScreenItemResponse {
     private BigDecimal netProfitGrowth;
     private OffsetDateTime calculatedAt;
     private LocalDateTime dataTimestamp;
+    private String bistTier;
+    private String stockSector;
 }
 

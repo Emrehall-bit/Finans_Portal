@@ -17,7 +17,9 @@ public record StockPriceDto(
         Long volume,
         String sourceName,
         Instant dataTimestamp,
-        BigDecimal openPrice
+        BigDecimal openPrice,
+        String bistTier,
+        String stockSector
 ) {
 }
 

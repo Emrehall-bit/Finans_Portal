@@ -156,7 +156,9 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
                         longValue(item, "regularMarketVolume"),
                         SourceName.YAHOO_FINANCE.name(),
                         timestamp,
-                        decimalValue(item, "regularMarketOpen")
+                        decimalValue(item, "regularMarketOpen"),
+                        null,
+                        null
                 ));
             }
 

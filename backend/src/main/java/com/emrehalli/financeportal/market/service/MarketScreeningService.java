@@ -99,7 +99,9 @@ public class MarketScreeningService {
                        lr.revenue_growth as revenue_growth,
                        lr.net_profit_growth as net_profit_growth,
                        lr.calculated_at as calculated_at,
-                       lp.price_timestamp as data_timestamp
+                       lp.price_timestamp as data_timestamp,
+                       mi.bist_tier as bist_tier,
+                       mi.stock_sector as stock_sector
                 """;
 
         String orderBy = resolveOrderBy(criteria, advancedFiltersUsed);
@@ -210,6 +212,24 @@ public class MarketScreeningService {
         if (criteria.getMinNetProfitGrowth() != null) {
             sql.append(" and lr.net_profit_growth is not null and lr.net_profit_growth >= :minNetProfitGrowth");
             params.put("minNetProfitGrowth", criteria.getMinNetProfitGrowth());
+        }
+
+        if (hasText(criteria.getBistTier())) {
+            String tier = criteria.getBistTier().trim().toUpperCase(Locale.ROOT);
+            switch (tier) {
+                case "BIST30"  -> sql.append(" and mi.instrument_type = 'STOCK' and mi.bist_tier = 'BIST30'");
+                case "BIST50"  -> sql.append(" and mi.instrument_type = 'STOCK' and mi.bist_tier in ('BIST30', 'BIST50')");
+                case "BIST100" -> sql.append(" and mi.instrument_type = 'STOCK' and mi.bist_tier in ('BIST30', 'BIST50', 'BIST100')");
+                default -> {}
+            }
+        }
+
+        if (hasText(criteria.getStockSector())) {
+            String sector = criteria.getStockSector().trim().toUpperCase(Locale.ROOT);
+            if (!sector.equals("OTHER")) {
+                sql.append(" and mi.instrument_type = 'STOCK' and mi.stock_sector = :stockSector");
+                params.put("stockSector", sector);
+            }
         }
     }
 
@@ -322,6 +342,8 @@ public class MarketScreeningService {
                 .netProfitGrowth(asBigDecimal(row[17]))
                 .calculatedAt(asOffsetDateTime(row[18]))
                 .dataTimestamp(asLocalDateTime(row[19]))
+                .bistTier(asString(row[20]))
+                .stockSector(asString(row[21]))
                 .build();
     }
 

@@ -1,7 +1,9 @@
 package com.emrehalli.financeportal.market.domain.entity;
 
+import com.emrehalli.financeportal.market.domain.enums.BistTier;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
+import com.emrehalli.financeportal.market.domain.enums.StockSector;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -52,6 +54,14 @@ public class MarketInstrument {
     @Enumerated(EnumType.STRING)
     @Column(name = "source_name", nullable = false, length = 50)
     private SourceName sourceName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "bist_tier", nullable = true, length = 10)
+    private BistTier bistTier;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stock_sector", nullable = true, length = 30)
+    private StockSector stockSector;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

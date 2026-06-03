@@ -74,7 +74,7 @@ public class MarketController {
         List<MarketQueryService.MarketSnapshot> cryptoSnapshots = macroIndicatorRequest ? List.of() : cryptoService.getAll();
         List<StockPriceDto> stockQuotes = macroIndicatorRequest
                 ? List.of()
-                : stockService.getAll(PageRequest.of(0, 500)).getContent();
+                : stockService.getAll(PageRequest.of(0, 500), null).getContent();
         List<FundNavDto> fundQuotes = macroIndicatorRequest ? List.of() : fundService.getAll();
         List<Object> crypto = new ArrayList<>(cryptoSnapshots);
         List<Object> stocks = new ArrayList<>(stockQuotes.stream()
@@ -121,6 +121,8 @@ public class MarketController {
             @RequestParam(name = "minRevenueGrowth", required = false) BigDecimal minRevenueGrowth,
             @RequestParam(name = "minNetProfitGrowth", required = false) BigDecimal minNetProfitGrowth,
             @RequestParam(name = "onlyWithFundamentals", defaultValue = "false") boolean onlyWithFundamentals,
+            @RequestParam(name = "bistTier", required = false) String bistTier,
+            @RequestParam(name = "stockSector", required = false) String stockSector,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "50") int size,
             @RequestParam(name = "sort", required = false) String sort
@@ -160,6 +162,8 @@ public class MarketController {
                         .minRevenueGrowth(minRevenueGrowth)
                         .minNetProfitGrowth(minNetProfitGrowth)
                         .onlyWithFundamentals(onlyWithFundamentals)
+                        .bistTier(bistTier)
+                        .stockSector(stockSector)
                         .page(page)
                         .size(size)
                         .sort(sort)

@@ -5,7 +5,9 @@ import com.emrehalli.financeportal.market.cache.CacheService;
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.domain.entity.MarketPrice;
 import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
+import com.emrehalli.financeportal.market.domain.enums.BistTier;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
+import com.emrehalli.financeportal.market.domain.enums.StockSector;
 import com.emrehalli.financeportal.market.domain.enums.IntervalType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.exception.InstrumentNotFoundException;
@@ -77,6 +79,8 @@ public class StockService {
                             .instrumentName(symbol)
                             .instrumentType(InstrumentType.STOCK)
                             .sourceName(sourceName)
+                            .bistTier(BistTier.OTHER)
+                            .stockSector(StockSector.OTHER)
                             .build()));
 
             marketPriceRepository.save(MarketPrice.builder()
@@ -105,6 +109,8 @@ public class StockService {
                         .instrumentName(normalizedSymbol)
                         .instrumentType(InstrumentType.STOCK)
                         .sourceName(SourceName.YAHOO_FINANCE)
+                        .bistTier(BistTier.OTHER)
+                        .stockSector(StockSector.OTHER)
                         .build()));
 
         for (StockHistoryDto item : history) {
@@ -143,15 +149,22 @@ public class StockService {
     }
 
     @Transactional(readOnly = true)
-    public Page<StockPriceDto> getAll(Pageable pageable) {
+    public Page<StockPriceDto> getAll(Pageable pageable, BistTier bistTier) {
         try {
+            List<BistTier> tiers = resolveFilterTiers(bistTier);
+            String tierClause = tiers != null ? "and mi.bistTier in :tiers " : "";
+
             TypedQuery<MarketInstrument> dataQuery = entityManager.createQuery(
                     "select mi from MarketInstrument mi " +
                             "where mi.instrumentType = :instrumentType " +
+                            tierClause +
                             "order by mi.instrumentCode asc",
                     MarketInstrument.class
             );
             dataQuery.setParameter("instrumentType", InstrumentType.STOCK);
+            if (tiers != null) {
+                dataQuery.setParameter("tiers", tiers);
+            }
             dataQuery.setFirstResult((int) pageable.getOffset());
             dataQuery.setMaxResults(pageable.getPageSize());
 
@@ -160,19 +173,35 @@ public class StockService {
                     .filter(Objects::nonNull)
                     .toList();
 
-            Long total = entityManager.createQuery(
-                            "select count(mi) from MarketInstrument mi " +
-                                    "where mi.instrumentType = :instrumentType",
-                            Long.class
-                    )
-                    .setParameter("instrumentType", InstrumentType.STOCK)
-                    .getSingleResult();
+            TypedQuery<Long> countQuery = entityManager.createQuery(
+                    "select count(mi) from MarketInstrument mi " +
+                            "where mi.instrumentType = :instrumentType " +
+                            tierClause,
+                    Long.class
+            );
+            countQuery.setParameter("instrumentType", InstrumentType.STOCK);
+            if (tiers != null) {
+                countQuery.setParameter("tiers", tiers);
+            }
+            Long total = countQuery.getSingleResult();
 
             return new PageImpl<>(content, pageable, total);
         } catch (Exception exception) {
             log.error("Failed to load paged stock data from database.", exception);
             return Page.empty(pageable);
         }
+    }
+
+    private List<BistTier> resolveFilterTiers(BistTier bistTier) {
+        if (bistTier == null) {
+            return null;
+        }
+        return switch (bistTier) {
+            case BIST30  -> List.of(BistTier.BIST30);
+            case BIST50  -> List.of(BistTier.BIST30, BistTier.BIST50);
+            case BIST100 -> List.of(BistTier.BIST30, BistTier.BIST50, BistTier.BIST100);
+            case OTHER   -> List.of(BistTier.OTHER);
+        };
     }
 
     @Transactional(readOnly = true)
@@ -251,7 +280,9 @@ public class StockService {
                 null,
                 latestPrice.getSourceName().name(),
                 latestPrice.getPriceTimestamp().toInstant(ZoneOffset.UTC),
-                null
+                null,
+                instrument.getBistTier() != null ? instrument.getBistTier().name() : null,
+                instrument.getStockSector() != null ? instrument.getStockSector().name() : null
         );
     }
 
@@ -271,7 +302,9 @@ public class StockService {
                 cachedSource != null ? cachedSource.volume() : null,
                 cachedSource != null ? cachedSource.sourceName() : SourceName.YAHOO_FINANCE.name(),
                 dataTimestamp != null ? dataTimestamp.toInstant(ZoneOffset.UTC) : Instant.now(),
-                cachedSource != null ? cachedSource.openPrice() : null
+                cachedSource != null ? cachedSource.openPrice() : null,
+                instrument.getBistTier() != null ? instrument.getBistTier().name() : null,
+                instrument.getStockSector() != null ? instrument.getStockSector().name() : null
         );
     }
 

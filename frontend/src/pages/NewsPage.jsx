@@ -27,7 +27,6 @@ import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
 const REGULAR_PROVIDERS = ["AA_RSS", "CNBC_RSS", "GUARDIAN"];
-const KAP_PROVIDERS = ["KAP"];
 const MULTI_FILTER_SEPARATOR = ",";
 const INITIAL_NEWS_PAGE = {
   content: [],
@@ -146,11 +145,9 @@ export default function NewsPage() {
   }
 
   const items = newsPage.content ?? [];
-  const providerSeed = isKapFeed ? KAP_PROVIDERS : REGULAR_PROVIDERS;
-
   const providerOptions = useMemo(
-    () => getNewsProviderFilterOptions(providerSeed, t),
-    [providerSeed, t],
+    () => isKapFeed ? [] : getNewsProviderFilterOptions(REGULAR_PROVIDERS, t),
+    [isKapFeed, t],
   );
 
   const categoryOptions = useMemo(
