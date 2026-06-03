@@ -953,3 +953,84 @@
     width: 100%;
   }
 }
+
+/* ── KAP Management Admin Section ──────────────────────────────────── */
+
+.kap-ticker-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.kap-ticker-input {
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.kap-preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kap-preset-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.kap-preset-chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.kap-preset-chip.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.kap-preset-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.kap-debug-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.kap-debug-input {
+  width: 140px;
+}
+
+.kap-actions-grid {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 920px) {
+  .kap-ticker-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kap-ticker-input,
+  .kap-debug-input {
+    width: 100%;
+  }
+
+  .kap-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

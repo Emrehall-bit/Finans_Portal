@@ -1,0 +1,103 @@
+.portfolio-page-v3 .portfolio-activity-modal {
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(72vh, 680px);
+  display: grid;
+  gap: 14px;
+}
+
+.portfolio-page-v3 .portfolio-activity-modal-body {
+  display: grid;
+  gap: 10px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.portfolio-page-v3 .portfolio-inline-empty {
+  padding: 10px 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.portfolio-page-v3 .portfolio-heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  overflow: auto;
+}
+
+.portfolio-page-v3 .portfolio-heatmap-tile {
+  min-height: 72px;
+  padding: 9px;
+  border-radius: 16px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(126, 153, 207, 0.12);
+}
+
+.portfolio-page-v3 .portfolio-heatmap-tile.is-strong-up {
+  background: linear-gradient(180deg, rgba(19, 167, 111, 0.22), rgba(19, 167, 111, 0.08));
+}
+
+.portfolio-page-v3 .portfolio-heatmap-tile.is-up {
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.18), rgba(34, 197, 94, 0.06));
+}
+
+.portfolio-page-v3 .portfolio-heatmap-tile.is-strong-down {
+  background: linear-gradient(180deg, rgba(220, 38, 38, 0.22), rgba(220, 38, 38, 0.08));
+}
+
+.portfolio-page-v3 .portfolio-heatmap-tile.is-down {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.06));
+}
+
+.portfolio-page-v3 .portfolio-heatmap-tile.is-neutral {
+  background: linear-gradient(180deg, rgba(76, 127, 255, 0.14), rgba(76, 127, 255, 0.04));
+}
+
+.portfolio-page-v3 .portfolio-heatmap-head,
+.portfolio-page-v3 .portfolio-heatmap-body {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.portfolio-page-v3 .portfolio-heatmap-empty {
+  min-height: 92px;
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 1280px) {
+  .portfolio-page-v3 .portfolio-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1200px) {
+  .portfolio-page-v3 .portfolio-management-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-page-v3 .portfolio-list-rail--compact {
+    max-width: none;
+  }
+}
+
+@media (max-width: 1040px) {
+  .portfolio-page-v3 .portfolio-widget-action,
+  .portfolio-page-v3 .portfolio-widget-toolbar {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .portfolio-page-v3 .portfolio-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portfolio-page-v3 .portfolio-allocation-shell--pro,
+  .portfolio-page-v3 .portfolio-heatmap-grid {
+    grid-template-columns: 1fr;
+  }
+}

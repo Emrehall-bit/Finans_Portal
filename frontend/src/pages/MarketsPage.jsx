@@ -2,14 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
-import { LayoutGrid, Star, TrendingDown, TrendingUp } from "lucide-react";
+import { Star } from "lucide-react";
 import { buildMarketDetailPath } from "../api/marketApi";
 import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../api/watchlistApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
-import LoadingSpinner from "../components/common/LoadingSpinner";
 import useToast from "../hooks/useToast";
 import { useMarketQuotes, useMarketScreen } from "../hooks/useMarketQueries";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
@@ -19,18 +18,6 @@ import { getCountryCodeForInstrument } from "../utils/currencyToCountryMap";
 
 const CATEGORY_OPTIONS = ["FX", "CRYPTO", "STOCK", "FUND", "FUTURES", "BOND", "INDEX", "COMMODITY", "FAVORITES"];
 const CURRENCY_CONVERTIBLE_CATEGORIES = new Set(["STOCK", "FUND", "COMMODITY", "INDEX", "FUTURES"]);
-const STOCK_SCREEN_SORT_OPTIONS = [
-  { value: "name", label: "Ada göre" },
-  { value: "price_desc", label: "Fiyat yüksekten" },
-  { value: "price_asc", label: "Fiyat düşükten" },
-  { value: "change_desc", label: "Günlük değişim yüksekten" },
-  { value: "change_asc", label: "Günlük değişim düşükten" },
-  { value: "pe_asc", label: "F/K düşükten" },
-  { value: "pe_desc", label: "F/K yüksekten" },
-  { value: "pb_asc", label: "PD/DD düşükten" },
-  { value: "pb_desc", label: "PD/DD yüksekten" },
-  { value: "roe_desc", label: "ROE yüksekten" },
-];
 const DEFAULT_SORT_OPTIONS = [
   { value: "name", label: "Ada göre" },
   { value: "price_desc", label: "Fiyat yüksekten" },
@@ -39,34 +26,26 @@ const DEFAULT_SORT_OPTIONS = [
   { value: "change_asc", label: "Günlük değişim düşükten" },
 ];
 const BIST_TIER_OPTIONS = [
-  { value: "",       label: "Tümü" },
+  { value: "", label: "Tümü" },
   { value: "BIST30", label: "BIST30" },
   { value: "BIST50", label: "BIST50" },
   { value: "BIST100", label: "BIST100" },
 ];
 
 const STOCK_SECTOR_OPTIONS = [
-  { value: "",                     label: "Tümü" },
-  { value: "BANKING",              label: "Bankacılık" },
-  { value: "FINANCIALS",           label: "Mali Kuruluşlar" },
-  { value: "TECHNOLOGY_DEFENSE",   label: "Teknoloji & Savunma" },
-  { value: "TELECOM",              label: "Telekom" },
-  { value: "TRANSPORT_TOURISM",    label: "Ulaştırma & Turizm" },
-  { value: "HEALTH_SPORTS",        label: "Sağlık & Spor" },
-  { value: "ENERGY",               label: "Enerji" },
-  { value: "CHEMICALS_PETROLEUM",  label: "Kimya & Petrol" },
-  { value: "INDUSTRIAL",           label: "Sınai" },
-  { value: "FOOD_RETAIL",          label: "Gıda & Perakende" },
+  { value: "", label: "Tümü" },
+  { value: "BANKING", label: "Bankacılık" },
+  { value: "FINANCIALS", label: "Mali Kuruluşlar" },
+  { value: "TECHNOLOGY_DEFENSE", label: "Teknoloji & Savunma" },
+  { value: "TELECOM", label: "Telekom" },
+  { value: "TRANSPORT_TOURISM", label: "Ulaştırma & Turizm" },
+  { value: "HEALTH_SPORTS", label: "Sağlık & Spor" },
+  { value: "ENERGY", label: "Enerji" },
+  { value: "CHEMICALS_PETROLEUM", label: "Kimya & Petrol" },
+  { value: "INDUSTRIAL", label: "Sınai" },
+  { value: "FOOD_RETAIL", label: "Gıda & Perakende" },
 ];
 
-const STOCK_FILTER_PRESETS = [
-  { key: "cheap", label: "Ucuz Hisseler", values: { maxPe: "10" } },
-  { key: "low-pb", label: "Düşük PD/DD", values: { maxPb: "1.5" } },
-  { key: "high-roe", label: "Yüksek ROE", values: { minRoe: "15" } },
-  { key: "low-debt", label: "Düşük Borçluluk", values: { maxDebtToEquity: "1" } },
-  { key: "growth", label: "Büyüyen Şirketler", values: { minRevenueGrowth: "20" } },
-  { key: "profitable-growth", label: "Kârlı Büyüme", values: { maxPe: "15", minRoe: "15", minRevenueGrowth: "10" } },
-];
 const STOCK_RANK_SORT_OPTIONS = [
   { value: "change_desc", label: "En Çok Yükselen" },
   { value: "change_asc", label: "En Çok Düşen" },
@@ -103,6 +82,7 @@ export default function MarketsPage() {
   const [sourceFilter, setSourceFilter] = useState("");
   const [fxSourceMode, setFxSourceMode] = useState("TCMB");
   const [viewMode, setViewMode] = useState("table");
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState("name");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -130,6 +110,7 @@ export default function MarketsPage() {
   const isStockTab = categoryFilter === "STOCK";
   const isFxTab = categoryFilter === "FX";
 
+
   useEffect(() => {
     if (!isStockTab) {
       setBistTierFilter("");
@@ -137,7 +118,7 @@ export default function MarketsPage() {
     }
   }, [isStockTab]);
 
-  const { data: allQuotes = [], isLoading: loadingAll } = useMarketQuotes({ enabled: isFavoritesTab });
+  const { data: allQuotes = [], isLoading: loadingAll } = useMarketQuotes({ enabled: true });
 
   const screenParams = useMemo(() => ({
     type: categoryFilter,
@@ -289,12 +270,6 @@ export default function MarketsPage() {
   );
 
   const displayedCount = isFxTab && fxSourceMode === "COMPARE" ? fxComparisonRows.length : visibleQuotes.length;
-  const marketPulse = useMemo(() => ({
-    visible: displayedCount,
-    positive: visibleQuotes.filter((item) => Number(item.changeRate) >= 0).length,
-    negative: visibleQuotes.filter((item) => Number(item.changeRate) < 0).length,
-  }), [displayedCount, visibleQuotes]);
-
   const sourceOptions = useMemo(() => {
     const sourceItems = isFavoritesTab ? allQuotes : screenedQuotes;
     const sourceSet = new Set(
@@ -305,85 +280,100 @@ export default function MarketsPage() {
     return [...sourceSet].sort();
   }, [allQuotes, isFavoritesTab, screenedQuotes]);
 
-  const sectorOptions = useMemo(() => {
-    const sectorSet = new Set(screenedQuotes.map((item) => item.sector).filter(Boolean));
-    return [...sectorSet].sort((left, right) => left.localeCompare(right, "tr"));
-  }, [screenedQuotes]);
-
-  const marketOptions = useMemo(() => {
-    const marketSet = new Set(screenedQuotes.map((item) => item.market).filter(Boolean));
-    return [...marketSet].sort((left, right) => left.localeCompare(right, "tr"));
-  }, [screenedQuotes]);
-
   const activeAdvancedFilterChips = useMemo(() => {
     if (!isStockTab) {
       return [];
     }
 
     const chips = [];
-    if (minPe) chips.push({ key: "minPe", label: `F/K > ${minPe}` });
-    if (maxPe) chips.push({ key: "maxPe", label: `F/K < ${maxPe}` });
-    if (minPb) chips.push({ key: "minPb", label: `PD/DD > ${minPb}` });
-    if (maxPb) chips.push({ key: "maxPb", label: `PD/DD < ${maxPb}` });
-    if (minRoe) chips.push({ key: "minRoe", label: `ROE > ${minRoe}` });
-    if (minRoa) chips.push({ key: "minRoa", label: `ROA > ${minRoa}` });
-    if (maxDebtToEquity) chips.push({ key: "maxDebtToEquity", label: `Borç/Özkaynak < ${maxDebtToEquity}` });
-    if (minRevenueGrowth) chips.push({ key: "minRevenueGrowth", label: `Hasılat büyümesi > ${minRevenueGrowth}` });
-    if (minNetProfitGrowth) chips.push({ key: "minNetProfitGrowth", label: `Net kâr büyümesi > ${minNetProfitGrowth}` });
-    if (sectorFilter) chips.push({ key: "sector", label: `Sektör: ${sectorFilter}` });
-    if (marketFilter) chips.push({ key: "market", label: `Pazar: ${marketFilter}` });
+    if (minPrice) chips.push({ key: "minPrice", label: "Fiyat > " + minPrice });
+    if (maxPrice) chips.push({ key: "maxPrice", label: "Fiyat < " + maxPrice });
+    if (minChangePercent) chips.push({ key: "minChangePercent", label: "Günlük > " + minChangePercent + "%" });
+    if (maxChangePercent) chips.push({ key: "maxChangePercent", label: "Günlük < " + maxChangePercent + "%" });
+    if (minPe) chips.push({ key: "minPe", label: "F/K > " + minPe });
+    if (maxPe) chips.push({ key: "maxPe", label: "F/K < " + maxPe });
+    if (minPb) chips.push({ key: "minPb", label: "PD/DD > " + minPb });
+    if (maxPb) chips.push({ key: "maxPb", label: "PD/DD < " + maxPb });
+    if (minRoe) chips.push({ key: "minRoe", label: "ROE > " + minRoe });
+    if (minRoa) chips.push({ key: "minRoa", label: "ROA > " + minRoa });
+    if (maxDebtToEquity) chips.push({ key: "maxDebtToEquity", label: "Borç/Özkaynak < " + maxDebtToEquity });
+    if (minRevenueGrowth) chips.push({ key: "minRevenueGrowth", label: "Hasılat büyümesi > " + minRevenueGrowth });
+    if (minNetProfitGrowth) chips.push({ key: "minNetProfitGrowth", label: "Net kâr büyümesi > " + minNetProfitGrowth });
+    if (sectorFilter) chips.push({ key: "sector", label: "Sektör: " + sectorFilter });
+    if (marketFilter) chips.push({ key: "market", label: "Pazar: " + marketFilter });
     if (onlyWithFundamentals) chips.push({ key: "onlyWithFundamentals", label: "Temel analiz var" });
-    if (bistTierFilter) chips.push({ key: "bistTier", label: `Endeks: ${bistTierFilter}` });
+    if (bistTierFilter) chips.push({ key: "bistTier", label: "Endeks: " + bistTierFilter });
     if (stockSectorFilter) {
       const sectorLabel = STOCK_SECTOR_OPTIONS.find((o) => o.value === stockSectorFilter)?.label ?? stockSectorFilter;
-      chips.push({ key: "stockSector", label: `Sektör: ${sectorLabel}` });
+      chips.push({ key: "stockSector", label: "Sektör: " + sectorLabel });
     }
     return chips;
   }, [
     isStockTab,
     bistTierFilter,
-    stockSectorFilter,
-    marketFilter,
+    maxChangePercent,
     maxDebtToEquity,
     maxPb,
     maxPe,
+    maxPrice,
+    minChangePercent,
     minNetProfitGrowth,
     minPb,
     minPe,
+    minPrice,
     minRevenueGrowth,
     minRoa,
     minRoe,
     onlyWithFundamentals,
     sectorFilter,
+    stockSectorFilter,
+    marketFilter,
   ]);
 
   const hasAdvancedFilters = activeAdvancedFilterChips.length > 0;
-  const activeSortLabel = useMemo(() => {
-    const options = isStockTab ? STOCK_RANK_SORT_OPTIONS : DEFAULT_SORT_OPTIONS;
-    return options.find((option) => option.value === sortBy)?.label ?? "Ada göre";
-  }, [isStockTab, sortBy]);
-
-  function applyStockPreset(values) {
-    setMinPe(values.minPe ?? "");
-    setMaxPe(values.maxPe ?? "");
-    setMinPb(values.minPb ?? "");
-    setMaxPb(values.maxPb ?? "");
-    setMinRoe(values.minRoe ?? "");
-    setMinRoa(values.minRoa ?? "");
-    setMaxDebtToEquity(values.maxDebtToEquity ?? "");
-    setMinRevenueGrowth(values.minRevenueGrowth ?? "");
-    setMinNetProfitGrowth(values.minNetProfitGrowth ?? "");
-    setSectorFilter(values.sector ?? "");
-    setMarketFilter(values.market ?? "");
-    setOnlyWithFundamentals(values.onlyWithFundamentals ?? false);
+  const hasTopBarFilters = Boolean(
+    search.trim()
+    || sourceFilter
+    || (isFxTab && fxSourceMode !== "TCMB")
+    || sortBy !== "name"
+    || (isStockTab && (bistTierFilter || stockSectorFilter))
+  );
+  const hasAnyFilters = hasTopBarFilters || hasAdvancedFilters;
+  function clearAllAdvancedFilters() {
+    setMinPrice("");
+    setMaxPrice("");
+    setMinChangePercent("");
+    setMaxChangePercent("");
+    setBistTierFilter("");
+    setStockSectorFilter("");
+    setMinPe("");
+    setMaxPe("");
+    setMinPb("");
+    setMaxPb("");
+    setMinRoe("");
+    setMinRoa("");
+    setMaxDebtToEquity("");
+    setMinRevenueGrowth("");
+    setMinNetProfitGrowth("");
+    setSectorFilter("");
+    setMarketFilter("");
+    setOnlyWithFundamentals(false);
   }
 
-  function clearAllAdvancedFilters() {
-    applyStockPreset({});
+  function clearAllMarketFilters() {
+    setSearch("");
+    setSourceFilter("");
+    setFxSourceMode("TCMB");
+    setSortBy("name");
+    clearAllAdvancedFilters();
   }
 
   function clearAdvancedFilter(key) {
     switch (key) {
+      case "minPrice": setMinPrice(""); break;
+      case "maxPrice": setMaxPrice(""); break;
+      case "minChangePercent": setMinChangePercent(""); break;
+      case "maxChangePercent": setMaxChangePercent(""); break;
       case "minPe": setMinPe(""); break;
       case "maxPe": setMaxPe(""); break;
       case "minPb": setMinPb(""); break;
@@ -432,467 +422,229 @@ export default function MarketsPage() {
   }
 
   return (
-    <div className="dashboard-stack market-terminal-page market-terminal-page-v2">
-      {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
+    <div className="dashboard-stack market-terminal-page market-dashboard-page market-dashboard-page-v2">
+      {toast ? <div className={"status-box " + toast.type}>{toast.message}</div> : null}
 
-      <section className="market-page-hero panel-surface">
-        <p className="eyebrow">{t("markets.eyebrow")}</p>
-        <h1>{t("markets.title")}</h1>
-        <p className="page-description">{t("markets.description")}</p>
-
-        <div className="market-category-pills" role="tablist" aria-label={t("markets.category")}>
-          {CATEGORY_OPTIONS.map((category) => {
-            const isActive = categoryFilter === category;
-            return (
-              <button
-                key={category}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                className={`market-tab ${isActive ? "active" : ""}`}
-                onClick={() => setCategoryFilter(category)}
-              >
-                {formatCategoryLabel(category, t)}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="market-toolbar panel-surface">
-        <div className="panel-head">
-          <div>
-            <p className="eyebrow">Filtreler</p>
-            <h3>Basit Filtreler</h3>
+      <div className="market-dashboard-layout">
+        <section className="market-main-panel panel-surface">
+          <div className="market-panel-head">
+            <div className="market-dashboard-title">
+              <p className="eyebrow">Piyasa Takip</p>
+              <h1>PİYASA VERİLERİ</h1>
+              <p>Gerçek zamanlı piyasa verileri ve fiyatlamalar</p>
+            </div>
+            <div className="market-dashboard-actions">
+              {CURRENCY_CONVERTIBLE_CATEGORIES.has(categoryFilter) ? <CurrencyToggle className="analysis-currency-toggle" /> : null}
+              <div className="markets-view-toggle" role="tablist" aria-label={t("markets.listTitle")}>
+                <button type="button" role="tab" aria-selected={viewMode === "table"} className={"market-segmented-tab " + (viewMode === "table" ? "active" : "")} onClick={() => setViewMode("table")}>{t("markets.tableView")}</button>
+                <button type="button" role="tab" aria-selected={viewMode === "cards"} className={"market-segmented-tab " + (viewMode === "cards" ? "active" : "")} onClick={() => setViewMode("cards")}>{t("markets.cardView")}</button>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="market-toolbar-grid">
-          <label className="market-filter-field">
-            <span>{t("markets.searchLabel")}</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("markets.searchPlaceholder")} />
-          </label>
-
-          {!isFxTab ? <label className="market-filter-field">
-            <span>Enstrüman tipi</span>
-            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-              {CATEGORY_OPTIONS.filter((item) => item !== "FAVORITES").map((category) => (
-                <option key={category} value={category}>{formatCategoryLabel(category, t)}</option>
-              ))}
-            </select>
-          </label> : null}
-
-          {isFxTab ? (
-            <label className="market-filter-field">
-              <span>{t("markets.columns.source")}</span>
-              <select value={fxSourceMode} onChange={(event) => setFxSourceMode(event.target.value)}>
-                {FX_SOURCE_MODES.map((mode) => (
-                  <option key={mode.value} value={mode.value}>{mode.label}</option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-
-          {!isFxTab ? <label className="market-filter-field">
-            <span>{t("markets.columns.source")}</span>
-            <select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>
-              <option value="">Tümü</option>
-              {sourceOptions.map((source) => (
-                <option key={source} value={source}>{source}</option>
-              ))}
-            </select>
-          </label> : null}
-
-          <label className="market-filter-field">
-            <span>{isStockTab ? "Sırala" : t("markets.sorting")}</span>
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-              {(isStockTab ? STOCK_RANK_SORT_OPTIONS : DEFAULT_SORT_OPTIONS).map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="market-filter-field">
-            <span>Fiyat min</span>
-            <input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} inputMode="decimal" />
-          </label>
-
-          <label className="market-filter-field">
-            <span>Fiyat max</span>
-            <input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} inputMode="decimal" />
-          </label>
-
-          <label className="market-filter-field">
-            <span>Günlük değişim min %</span>
-            <input value={minChangePercent} onChange={(event) => setMinChangePercent(event.target.value)} inputMode="decimal" />
-          </label>
-
-          <label className="market-filter-field">
-            <span>Günlük değişim max %</span>
-            <input value={maxChangePercent} onChange={(event) => setMaxChangePercent(event.target.value)} inputMode="decimal" />
-          </label>
-
-          {CURRENCY_CONVERTIBLE_CATEGORIES.has(categoryFilter) ? (
-            <div className="market-filter-field market-currency-toggle-wrap">
-              <span>Para Birimi</span>
-              <CurrencyToggle className="analysis-currency-toggle" />
-            </div>
-          ) : null}
-        </div>
-
-        {isStockTab ? (
-          <>
-            <div className="panel-head" style={{ marginTop: 16 }}>
-              <div>
-                <p className="eyebrow">Filtreler</p>
-                <h3>İleri Filtreler</h3>
-              </div>
-              <div className="market-inline-actions">
-                <button type="button" className="market-inline-button" onClick={clearAllAdvancedFilters}>
-                  Tüm filtreleri temizle
-                </button>
-              </div>
-            </div>
-            <div className="admin-import-field">
-              <span>BIST Endeksi</span>
-            </div>
-            <div className="market-category-pills" role="tablist" aria-label="BIST Endeks Filtresi">
-              {BIST_TIER_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={bistTierFilter === option.value}
-                  className={`market-tab ${bistTierFilter === option.value ? "active" : ""}`}
-                  onClick={() => setBistTierFilter(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="admin-import-field">
-              <span>Sektör</span>
-            </div>
-            <div className="market-category-pills" role="tablist" aria-label="Sektör Filtresi">
-              {STOCK_SECTOR_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={stockSectorFilter === option.value}
-                  className={`market-tab ${stockSectorFilter === option.value ? "active" : ""}`}
-                  onClick={() => setStockSectorFilter(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="admin-import-field">
-              <span>Hazır Filtreler</span>
-            </div>
-            <div className="market-preset-row">
-              {STOCK_FILTER_PRESETS.map((preset) => (
-                <button
-                  key={preset.key}
-                  type="button"
-                  className="terminal-badge muted market-preset-chip"
-                  onClick={() => applyStockPreset(preset.values)}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-            <div className="market-toolbar-grid">
-              <label className="market-filter-field">
-                <span>F/K min</span>
-                <input value={minPe} onChange={(event) => setMinPe(event.target.value)} inputMode="decimal" />
-              </label>
-              <label className="market-filter-field">
-                <span>F/K max</span>
-                <input value={maxPe} onChange={(event) => setMaxPe(event.target.value)} inputMode="decimal" />
-              </label>
-              <label className="market-filter-field">
-                <span>PD/DD min</span>
-                <input value={minPb} onChange={(event) => setMinPb(event.target.value)} inputMode="decimal" />
-              </label>
-              <label className="market-filter-field">
-                <span>PD/DD max</span>
-                <input value={maxPb} onChange={(event) => setMaxPb(event.target.value)} inputMode="decimal" />
-              </label>
-              <label className="market-filter-field">
-                <span>ROE min</span>
-                <input value={minRoe} onChange={(event) => setMinRoe(event.target.value)} inputMode="decimal" />
-              </label>
-              <label className="market-filter-field">
-                <span>ROA min</span>
-                <input value={minRoa} onChange={(event) => setMinRoa(event.target.value)} inputMode="decimal" />
-              </label>
-              <label className="market-filter-field">
-                <span>Borç/Özkaynak max</span>
-                <input value={maxDebtToEquity} onChange={(event) => setMaxDebtToEquity(event.target.value)} inputMode="decimal" />
-              </label>
-              <label className="market-filter-field">
-                <span>Hasılat büyümesi min</span>
-                <input value={minRevenueGrowth} onChange={(event) => setMinRevenueGrowth(event.target.value)} inputMode="decimal" />
-              </label>
-              <label className="market-filter-field">
-                <span>Net kâr büyümesi min</span>
-                <input value={minNetProfitGrowth} onChange={(event) => setMinNetProfitGrowth(event.target.value)} inputMode="decimal" />
-              </label>
-              <label className="market-filter-field">
-                <span>Sektör</span>
-                <select value={sectorFilter} onChange={(event) => setSectorFilter(event.target.value)}>
-                  <option value="">Tümü</option>
-                  {sectorOptions.map((sector) => (
-                    <option key={sector} value={sector}>{sector}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="market-filter-field">
-                <span>Pazar</span>
-                <select value={marketFilter} onChange={(event) => setMarketFilter(event.target.value)}>
-                  <option value="">Tümü</option>
-                  {marketOptions.map((market) => (
-                    <option key={market} value={market}>{market}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="market-filter-field market-filter-field-checkbox">
-                <span>Sadece temel analiz verisi olanlar</span>
-                <input
-                  type="checkbox"
-                  checked={onlyWithFundamentals}
-                  onChange={(event) => setOnlyWithFundamentals(event.target.checked)}
-                />
-              </label>
-            </div>
-            {hasAdvancedFilters ? (
-              <div className="market-active-filter-row">
-                {activeAdvancedFilterChips.map((chip) => (
-                  <button
-                    key={chip.key}
-                    type="button"
-                    className="market-active-filter-chip"
-                    onClick={() => clearAdvancedFilter(chip.key)}
-                  >
-                    <span>{chip.label}</span>
-                    <span aria-hidden>x</span>
+          <div className="market-top-filter-row">
+            <div className="market-category-tabs" role="tablist" aria-label={t("markets.category")}>
+              {CATEGORY_OPTIONS.map((category) => {
+                const isActive = categoryFilter === category;
+                return (
+                  <button key={category} type="button" role="tab" aria-selected={isActive} className={"market-tab " + (isActive ? "active" : "")} onClick={() => setCategoryFilter(category)}>
+                    {category === "FAVORITES" ? "Favoriler" : formatCategoryLabel(category, t)}
                   </button>
-                ))}
+                );
+              })}
+            </div>
+            <label className="market-search-box"><span className="sr-only">{t("markets.searchLabel")}</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("markets.searchPlaceholder")} /></label>
+            <div className="market-toolbar-actions">
+              <button type="button" className="market-advanced-toggle" aria-expanded={advancedFiltersOpen} onClick={() => setAdvancedFiltersOpen((value) => !value)}>Gelişmiş Filtreler</button>
+              {hasAnyFilters ? <button type="button" className="market-inline-button" onClick={clearAllMarketFilters}>Temizle</button> : null}
+            </div>
+          </div>
+
+          <div className="market-advanced-shell">
+            {advancedFiltersOpen ? (
+              <div className="market-advanced-grid">
+                {isStockTab ? <div className="market-filter-segment" role="tablist" aria-label="BIST Endeks Filtresi">{BIST_TIER_OPTIONS.map((option) => (<button key={option.value} type="button" role="tab" aria-selected={bistTierFilter === option.value} className={"market-filter-segment-button " + (bistTierFilter === option.value ? "active" : "")} onClick={() => setBistTierFilter(option.value)}>{option.label}</button>))}</div> : null}
+                {isStockTab ? <label className="market-filter-field"><span>Sektör</span><select value={stockSectorFilter} onChange={(event) => setStockSectorFilter(event.target.value)}>{STOCK_SECTOR_OPTIONS.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}</select></label> : null}
+                {isFxTab ? <label className="market-filter-field"><span>{t("markets.columns.source")}</span><select value={fxSourceMode} onChange={(event) => setFxSourceMode(event.target.value)}>{FX_SOURCE_MODES.map((mode) => (<option key={mode.value} value={mode.value}>{mode.label}</option>))}</select></label> : <label className="market-filter-field"><span>{t("markets.columns.source")}</span><select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}><option value="">Tümü</option>{sourceOptions.map((source) => (<option key={source} value={source}>{source}</option>))}</select></label>}
+                <label className="market-filter-field"><span>{isStockTab ? "Sırala" : t("markets.sorting")}</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>{(isStockTab ? STOCK_RANK_SORT_OPTIONS : DEFAULT_SORT_OPTIONS).map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}</select></label>
               </div>
             ) : null}
-          </>
-        ) : null}
-      </section>
+          </div>
 
-      <div className="market-pulse-row market-pulse-row-v2">
-        <div className="market-pulse-card">
-          <div className="market-pulse-card-head">
-            <span>{t("markets.visibleData")}</span>
-            <LayoutGrid className="market-pulse-icon neutral" size={18} strokeWidth={1.75} aria-hidden />
+          {hasAdvancedFilters ? <div className="market-active-filter-row market-active-filter-row--inline">{activeAdvancedFilterChips.map((chip) => (<button key={chip.key} type="button" className="market-active-filter-chip" onClick={() => clearAdvancedFilter(chip.key)}><span>{chip.label}</span><span aria-hidden>x</span></button>))}</div> : null}
+
+          <div className="market-table-region">
+            {loading ? (viewMode === "cards" ? <MarketCardSkeleton /> : <MarketTableSkeleton />) : null}
+            {error ? <ErrorMessage message={error} /> : null}
+            {!loading && !error && displayedCount === 0 ? <div className="market-contained-empty"><EmptyState title={isFavoritesTab && userId ? t("markets.favoritesEmptyTitle") : t("markets.emptyTitle")} description={isFavoritesTab && userId ? t("markets.favoritesEmptyDescription") : t("markets.emptyDescription")} /></div> : null}
+            {!loading && !error && isFxTab && fxSourceMode === "COMPARE" && fxComparisonRows.length > 0 ? <MarketFxComparisonTable rows={fxComparisonRows} navigate={navigate} formatRateConverted={formatRateConverted} /> : null}
+            {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteTable quotes={visibleQuotes} isFxTab={isFxTab} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
+            {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteCards quotes={visibleQuotes} isFxTab={isFxTab} isStockTab={isStockTab} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
           </div>
-          <strong>{marketPulse.visible}</strong>
-        </div>
-        <div className="market-pulse-card up">
-          <div className="market-pulse-card-head">
-            <span>{t("markets.positive")}</span>
-            <TrendingUp className="market-pulse-icon up" size={18} strokeWidth={1.75} aria-hidden />
-          </div>
-          <strong>{marketPulse.positive}</strong>
-        </div>
-        <div className="market-pulse-card down">
-          <div className="market-pulse-card-head">
-            <span>{t("markets.negative")}</span>
-            <TrendingDown className="market-pulse-icon down" size={18} strokeWidth={1.75} aria-hidden />
-          </div>
-          <strong>{marketPulse.negative}</strong>
-        </div>
+        </section>
       </div>
+    </div>
+  );
+}
 
-      <section className="panel-surface market-watchlist-column market-list-main">
-        <div className="panel-head market-instrument-panel-head">
-          <div className="market-instrument-panel-head-title">
-            <p className="eyebrow">{t("markets.listEyebrow")}</p>
-            <h3>{formatCategoryLabel(categoryFilter, t)}</h3>
-            <div className="market-result-meta">
-              <span>{displayedCount} sonuç bulundu</span>
-              {isStockTab && hasAdvancedFilters ? <span className="terminal-badge muted">İleri filtre aktif</span> : null}
-              {isStockTab ? <span className="terminal-badge muted">Sıralama: {activeSortLabel}</span> : null}
-            </div>
-          </div>
-          <div className="markets-view-controls">
-            <span className="terminal-badge muted">{t("common.records", { count: displayedCount })}</span>
-            <div className="markets-view-toggle" role="tablist" aria-label={t("markets.listTitle")}>
-              <button type="button" role="tab" aria-selected={viewMode === "table"} className={`market-segmented-tab ${viewMode === "table" ? "active" : ""}`} onClick={() => setViewMode("table")}>
-                {t("markets.tableView")}
-              </button>
-              <button type="button" role="tab" aria-selected={viewMode === "cards"} className={`market-segmented-tab ${viewMode === "cards" ? "active" : ""}`} onClick={() => setViewMode("cards")}>
-                {t("markets.cardView")}
-              </button>
-            </div>
-          </div>
-        </div>
+function MarketTableSkeleton() {
+  return (
+    <div className="market-table-skeleton">
+      {Array.from({ length: 8 }).map((_, index) => <div key={index} className="market-skeleton-row"><span /><span /><span /><span /><span /></div>)}
+    </div>
+  );
+}
 
-        {loading ? <LoadingSpinner label={t("markets.loading")} /> : null}
-        {error ? <ErrorMessage message={error} /> : null}
+function MarketCardSkeleton() {
+  return (
+    <div className="market-card-grid">
+      {Array.from({ length: 6 }).map((_, index) => <div key={index} className="market-quote-card market-card-skeleton"><span /><span /><span /></div>)}
+    </div>
+  );
+}
 
-        {!loading && !error && displayedCount === 0 ? (
-          <EmptyState
-            title={isFavoritesTab && userId ? t("markets.favoritesEmptyTitle") : t("markets.emptyTitle")}
-            description={isFavoritesTab && userId ? t("markets.favoritesEmptyDescription") : t("markets.emptyDescription")}
-          />
-        ) : null}
+function MarketFxComparisonTable({ rows, navigate, formatRateConverted }) {
+  return (
+    <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap">
+      <table className="finance-market-table">
+        <thead>
+          <tr>
+            <th>Döviz</th>
+            <th>TCMB Alış</th>
+            <th>TCMB Satış</th>
+            <th>AKBANK Alış</th>
+            <th>AKBANK Satış</th>
+            <th>Satış Farkı %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.code}>
+              <td>
+                <button type="button" className="finance-table-row-button" onClick={() => navigate(buildMarketDetailPath(row.detailSymbol, "FX"))}>
+                  <strong>{row.code}</strong>
+                </button>
+              </td>
+              <td>{formatRateConverted(row.tcmb?.buyRate)}</td>
+              <td>{formatRateConverted(row.tcmb?.sellRate ?? row.tcmb?.price)}</td>
+              <td>{formatRateConverted(row.akbank?.buyRate)}</td>
+              <td>{formatRateConverted(row.akbank?.sellRate ?? row.akbank?.price)}</td>
+              <td className={getChangeToneClass(row.sellDiffPct)}>{formatMarketChange(row.sellDiffPct)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-        {!loading && !error && isFxTab && fxSourceMode === "COMPARE" && fxComparisonRows.length > 0 ? (
-          <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap">
-            <table className="finance-market-table">
-              <thead>
-                <tr>
-                  <th>Döviz</th>
-                  <th>TCMB Alış</th>
-                  <th>TCMB Satış</th>
-                  <th>AKBANK Alış</th>
-                  <th>AKBANK Satış</th>
-                  <th>Satış Farkı %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fxComparisonRows.map((row) => (
-                  <tr key={row.code}>
-                    <td>
-                      <button type="button" className="finance-table-row-button" onClick={() => navigate(buildMarketDetailPath(row.detailSymbol, "FX"))}>
-                        <strong>{row.code}</strong>
-                      </button>
-                    </td>
-                    <td>{formatRateConverted(row.tcmb?.buyRate)}</td>
-                    <td>{formatRateConverted(row.tcmb?.sellRate ?? row.tcmb?.price)}</td>
-                    <td>{formatRateConverted(row.akbank?.buyRate)}</td>
-                    <td>{formatRateConverted(row.akbank?.sellRate ?? row.akbank?.price)}</td>
-                    <td className={getChangeToneClass(row.sellDiffPct)}>{formatMarketChange(row.sellDiffPct)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-
-        {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !(isFxTab && fxSourceMode === "COMPARE") ? (
-          <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap">
-            <table className="finance-market-table">
-              <thead>
-                <tr>
-                  <th className="col-favorite" scope="col">
-                    <span className="sr-only">{t("markets.columns.favorite")}</span>
-                  </th>
-                  <th>{t("markets.columns.instrument")}</th>
-                  {isFxTab ? <th>Alis</th> : <th>{t("markets.columns.lastPrice")}</th>}
-                  {isFxTab ? <th>Satis</th> : <th>{t("markets.columns.change")}</th>}
-                  {isFxTab ? <th>{t("markets.columns.change")}</th> : null}
-                  <th>{t("markets.columns.source")}</th>
-                  {isStockTab ? <th>Oran Özeti</th> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {visibleQuotes.map((item) => {
-                  const sym = getMarketActionSymbol(item);
-                  const busyKey = `${sym}-${item.source ?? ""}`;
-                  return (
-                    <tr key={`${item.symbol}-${item.source}-${item.marketCategory}`}>
-                      <td className="col-favorite">
-                        <FavoriteStarButton
-                          active={isOnWatchlist(watchlistItems, sym)}
-                          disabled={!sym || favoriteBusyKey === busyKey}
-                          onToggle={() => handleFavoriteToggle(item)}
-                        />
-                      </td>
-                      <td>
-                        <button type="button" className="finance-table-row-button" onClick={() => navigate(buildMarketDetailPath(getMarketActionSymbol(item), item.instrumentType))}>
-                          <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="table" />
-                        </button>
-                      </td>
-                      {isFxTab ? <td>{formatRateConverted(item.buyRate)}</td> : <td>{formatRateConverted(item.buyRate ?? item.sellRate ?? item.price)}</td>}
-                      {isFxTab ? <td>{formatRateConverted(item.sellRate ?? item.price)}</td> : <td className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</td>}
-                      {isFxTab ? <td className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</td> : null}
-                      <td>{item.source || "-"}</td>
-                      {isStockTab ? <td>{renderFundamentalSummary(item)}</td> : null}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-
-        {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && !(isFxTab && fxSourceMode === "COMPARE") ? (
-          <div className="market-card-grid markets-card-scroll-wrap">
-            {visibleQuotes.map((item) => {
-              const sym = getMarketActionSymbol(item);
-              const busyKey = `${sym}-${item.source ?? ""}`;
-              return (
-                <div key={`${item.symbol}-${item.source}-${item.marketCategory}-card`} className="market-quote-card-wrap">
-                  <button type="button" className="market-quote-card" onClick={() => navigate(buildMarketDetailPath(getMarketActionSymbol(item), item.instrumentType))}>
-                    <div className="market-quote-card-top">
-                      <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="card" />
-                      <span className="terminal-badge muted">{item.source || "-"}</span>
-                    </div>
-
-                    <div className="market-quote-card-body">
-                      {isFxTab ? (
-                        <>
-                          <div>
-                            <span className="eyebrow">Alis</span>
-                            <strong>{formatRateConverted(item.buyRate)}</strong>
-                          </div>
-                          <div>
-                            <span className="eyebrow">Satis</span>
-                            <strong>{formatRateConverted(item.sellRate ?? item.price)}</strong>
-                          </div>
-                          <div>
-                            <span className="eyebrow">{t("markets.columns.change")}</span>
-                            <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            <span className="eyebrow">{t("markets.columns.lastPrice")}</span>
-                            <strong>{formatRateConverted(item.buyRate ?? item.sellRate ?? item.price)}</strong>
-                          </div>
-                          <div>
-                            <span className="eyebrow">{t("markets.columns.change")}</span>
-                            <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {isStockTab ? (
-                      <div className="market-quote-card-foot">
-                        {renderFundamentalSummary(item)}
-                      </div>
-                    ) : (
-                      <div className="market-quote-card-foot">
-                        <span>{formatCategoryLabel(item.marketCategory, t)}</span>
-                        <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
-                      </div>
-                    )}
+function MarketQuoteTable({ quotes, isFxTab, watchlistItems, favoriteBusyKey, onFavoriteToggle, navigate, formatRateConverted, t }) {
+  return (
+    <div className="table-wrap finance-market-table-wrap market-data-table-wrap">
+      <table className={"finance-market-table market-data-table " + (isFxTab ? "market-data-table--fx" : "market-data-table--compact")}>
+        <thead>
+          <tr>
+            <th className="col-favorite" scope="col"><span className="sr-only">{t("markets.columns.favorite")}</span></th>
+            <th>Enstrüman</th>
+            <th>Son Fiyat</th>
+            <th>Değişim</th>
+            {isFxTab ? <th>Alış</th> : null}
+            {isFxTab ? <th>Satış</th> : null}
+          </tr>
+        </thead>
+        <tbody>
+          {quotes.map((item) => {
+            const sym = getMarketActionSymbol(item);
+            const busyKey = `${sym}-${item.source ?? ""}`;
+            return (
+              <tr key={`${item.symbol}-${item.source}-${item.marketCategory}`}>
+                <td className="col-favorite">
+                  <FavoriteStarButton active={isOnWatchlist(watchlistItems, sym)} disabled={!sym || favoriteBusyKey === busyKey} onToggle={() => onFavoriteToggle(item)} />
+                </td>
+                <td>
+                  <button type="button" className="finance-table-row-button" onClick={() => navigate(buildMarketDetailPath(getMarketActionSymbol(item), item.instrumentType))}>
+                    <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="table" />
                   </button>
+                </td>
+                <td className="market-number-cell">{formatRateConverted(resolveLastPrice(item))}</td>
+                <td className={"market-change-cell " + getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</td>
+                {isFxTab ? <td className="market-number-cell">{formatRateConverted(item.buyRate)}</td> : null}
+                {isFxTab ? <td className="market-number-cell">{formatRateConverted(item.sellRate)}</td> : null}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-                  <div className="market-quote-card-floating-star">
-                    <FavoriteStarButton
-                      active={isOnWatchlist(watchlistItems, sym)}
-                      disabled={!sym || favoriteBusyKey === busyKey}
-                      onToggle={() => handleFavoriteToggle(item)}
-                    />
-                  </div>
+function MarketQuoteCards({ quotes, isFxTab, isStockTab, watchlistItems, favoriteBusyKey, onFavoriteToggle, navigate, formatRateConverted, t }) {
+  return (
+    <div className="market-card-grid markets-card-scroll-wrap">
+      {quotes.map((item) => {
+        const sym = getMarketActionSymbol(item);
+        const busyKey = `${sym}-${item.source ?? ""}`;
+        return (
+          <div key={`${item.symbol}-${item.source}-${item.marketCategory}-card`} className="market-quote-card-wrap">
+            <button type="button" className="market-quote-card" onClick={() => navigate(buildMarketDetailPath(getMarketActionSymbol(item), item.instrumentType))}>
+              <div className="market-quote-card-top">
+                <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="card" />
+                <span className="terminal-badge muted">{item.source || "-"}</span>
+              </div>
+
+              <div className="market-quote-card-body">
+                {isFxTab ? (
+                  <>
+                    <div>
+                      <span className="eyebrow">Alış</span>
+                      <strong>{formatRateConverted(item.buyRate)}</strong>
+                    </div>
+                    <div>
+                      <span className="eyebrow">Satış</span>
+                      <strong>{formatRateConverted(item.sellRate ?? item.price)}</strong>
+                    </div>
+                    <div>
+                      <span className="eyebrow">{t("markets.columns.change")}</span>
+                      <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <span className="eyebrow">{t("markets.columns.lastPrice")}</span>
+                      <strong>{formatRateConverted(item.buyRate ?? item.sellRate ?? item.price)}</strong>
+                    </div>
+                    <div>
+                      <span className="eyebrow">{t("markets.columns.change")}</span>
+                      <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {isStockTab ? (
+                <div className="market-quote-card-foot">
+                  {renderFundamentalSummary(item)}
                 </div>
-              );
-            })}
+              ) : (
+                <div className="market-quote-card-foot">
+                  <span>{formatCategoryLabel(item.marketCategory, t)}</span>
+                  <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
+                </div>
+              )}
+            </button>
+
+            <div className="market-quote-card-floating-star">
+              <FavoriteStarButton
+                active={isOnWatchlist(watchlistItems, sym)}
+                disabled={!sym || favoriteBusyKey === busyKey}
+                onToggle={() => onFavoriteToggle(item)}
+              />
+            </div>
           </div>
-        ) : null}
-      </section>
+        );
+      })}
     </div>
   );
 }
@@ -909,9 +661,9 @@ function MarketInstrumentLabel({ item, categoryFilter, variant = "table" }) {
     flexShrink: 0,
   };
 
-  if (variant === "card") {
+  if (variant === "card" || variant === "watch") {
     return (
-      <div className="market-instrument-card-root">
+      <div className={"market-instrument-card-root " + (variant === "watch" ? "market-instrument-card-root--watch" : "")}>
         <div className="market-instrument-flag-row">
           {countryCode ? <ReactCountryFlag countryCode={countryCode} svg style={flagStyle} title={countryCode} alt="" /> : null}
           <div className="market-instrument-card-text">
@@ -956,7 +708,7 @@ function FavoriteStarButton({ active, disabled, onToggle }) {
 
 function renderFundamentalSummary(item) {
   if (!hasFundamentals(item)) {
-    return <span className="terminal-badge muted">Temel analiz yok</span>;
+    return <span className="market-fundamental-empty">Temel analiz yok</span>;
   }
 
   return (
@@ -1013,6 +765,10 @@ function peSortGroup(value) {
   if (Number.isFinite(numeric) && numeric > 0) return 0;
   if (Number.isFinite(numeric)) return 1;
   return 2;
+}
+
+function resolveLastPrice(item) {
+  return item?.price ?? item?.lastPrice ?? item?.buyRate ?? item?.sellRate ?? null;
 }
 
 function formatCategoryLabel(value, t) {

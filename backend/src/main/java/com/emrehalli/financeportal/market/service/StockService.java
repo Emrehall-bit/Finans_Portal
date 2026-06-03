@@ -282,7 +282,8 @@ public class StockService {
                 latestPrice.getPriceTimestamp().toInstant(ZoneOffset.UTC),
                 null,
                 instrument.getBistTier() != null ? instrument.getBistTier().name() : null,
-                instrument.getStockSector() != null ? instrument.getStockSector().name() : null
+                instrument.getStockSector() != null ? instrument.getStockSector().name() : null,
+                null
         );
     }
 
@@ -304,7 +305,8 @@ public class StockService {
                 dataTimestamp != null ? dataTimestamp.toInstant(ZoneOffset.UTC) : Instant.now(),
                 cachedSource != null ? cachedSource.openPrice() : null,
                 instrument.getBistTier() != null ? instrument.getBistTier().name() : null,
-                instrument.getStockSector() != null ? instrument.getStockSector().name() : null
+                instrument.getStockSector() != null ? instrument.getStockSector().name() : null,
+                null
         );
     }
 

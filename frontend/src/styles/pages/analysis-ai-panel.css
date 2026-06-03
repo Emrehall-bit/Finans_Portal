@@ -1,0 +1,573 @@
+﻿/* ── Tech panel tab bar ─────────────────────────────────────────────────── */
+
+.advanced-tech-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.tech-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.tech-tab-btn:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: #475569;
+}
+
+.tech-tab-btn.active {
+  background: rgba(59, 130, 246, 0.09);
+  color: #2563eb;
+}
+
+/* ── AI panel — gate states ─────────────────────────────────────────────── */
+
+.tech-ai-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 10px;
+  text-align: center;
+}
+
+.tech-ai-gate-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.tech-ai-gate-icon--premium {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+}
+
+.tech-ai-gate-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.tech-ai-gate-desc {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.tech-ai-gate-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: transparent;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.tech-ai-gate-btn:hover {
+  background: rgba(100, 116, 139, 0.08);
+}
+
+.tech-ai-gate-btn--premium {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border-color: transparent;
+  color: #fff;
+}
+
+.tech-ai-gate-btn--premium:hover {
+  background: linear-gradient(135deg, #6d28d9, #9333ea);
+}
+
+.tech-ai-blur-preview {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 6px;
+  filter: blur(4px);
+  opacity: 0.35;
+  pointer-events: none;
+  user-select: none;
+}
+
+.tech-ai-blur-line {
+  height: 10px;
+  border-radius: 4px;
+  background: rgba(100, 116, 139, 0.25);
+}
+
+.tech-ai-blur-line--short {
+  width: 65%;
+}
+
+/* ── AI panel — loading skeleton ────────────────────────────────────────── */
+
+.tech-ai-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.tech-ai-skel-badge {
+  width: 72px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.15);
+  animation: tech-ai-pulse 1.4s ease-in-out infinite;
+}
+
+.tech-ai-skel-line {
+  height: 10px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.12);
+  animation: tech-ai-pulse 1.4s ease-in-out infinite;
+}
+
+.tech-ai-skel-line--short { width: 60%; }
+
+.tech-ai-skel-sep {
+  height: 1px;
+  background: rgba(148, 163, 184, 0.1);
+  margin: 4px 0;
+}
+
+@keyframes tech-ai-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* ── AI panel — error ───────────────────────────────────────────────────── */
+
+.tech-ai-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.tech-ai-error p {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.tech-ai-retry-btn {
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: transparent;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tech-ai-retry-btn:hover {
+  background: rgba(100, 116, 139, 0.08);
+}
+
+/* ── AI panel — content ─────────────────────────────────────────────────── */
+
+.tech-ai-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.tech-ai-badges {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.tech-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tech-ai-badge--positive {
+  background: rgba(22, 163, 74, 0.1);
+  color: #15803d;
+}
+
+.tech-ai-badge--negative {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.tech-ai-badge--warning {
+  background: rgba(217, 119, 6, 0.1);
+  color: #b45309;
+}
+
+.tech-ai-badge--neutral {
+  background: rgba(100, 116, 139, 0.1);
+  color: #475569;
+}
+
+.tech-ai-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tech-ai-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+.tech-ai-section-text {
+  font-size: 11.5px;
+  color: #334155;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.tech-ai-disclaimer {
+  margin: 4px 0 0;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: rgba(148, 163, 184, 0.07);
+  font-size: 9.5px;
+  color: #94a3b8;
+  line-height: 1.45;
+  font-style: italic;
+}
+
+.tech-ai-meta {
+  font-size: 9px;
+  color: #cbd5e1;
+  text-align: right;
+  margin-top: 2px;
+}
+
+/* ── Dark mode for AI panel ─────────────────────────────────────────────── */
+
+html[data-theme="dark"] .tech-tab-btn {
+  color: #475569;
+}
+
+html[data-theme="dark"] .tech-tab-btn:hover {
+  background: rgba(71, 85, 105, 0.15);
+  color: #64748b;
+}
+
+html[data-theme="dark"] .tech-tab-btn.active {
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+}
+
+html[data-theme="dark"] .advanced-tech-tabs {
+  border-bottom-color: rgba(51, 65, 85, 0.35);
+}
+
+html[data-theme="dark"] .tech-ai-gate-icon {
+  background: rgba(71, 85, 105, 0.2);
+  color: #475569;
+}
+
+html[data-theme="dark"] .tech-ai-gate-title {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .tech-ai-gate-desc {
+  color: #475569;
+}
+
+html[data-theme="dark"] .tech-ai-section-text {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .tech-ai-section-label {
+  color: #475569;
+}
+
+html[data-theme="dark"] .tech-ai-disclaimer {
+  background: rgba(51, 65, 85, 0.2);
+  color: #475569;
+}
+
+html[data-theme="dark"] .tech-ai-meta {
+  color: #334155;
+}
+
+.analysis-toolbar-sep {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: rgba(148, 163, 184, 0.2);
+  flex-shrink: 0;
+}
+
+/* ── Time range: segmented look ─────────────────────────────────────────── */
+
+.chart-timeframes {
+  display: inline-flex;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 999px;
+  overflow: hidden;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.chart-tf-btn {
+  height: 36px;
+  min-width: 54px;
+  padding: 0 16px;
+  border: none;
+  border-right: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  letter-spacing: 0.01em;
+}
+
+.chart-tf-btn:last-child {
+  border-right: none;
+}
+
+.chart-tf-btn:hover {
+  background: rgba(248, 250, 252, 0.98);
+  color: #334155;
+}
+
+.chart-tf-btn.active {
+  background: rgba(59, 130, 246, 0.08);
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+/* ── Indicators dropdown ────────────────────────────────────────────────── */
+
+.indicators-dropdown {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.indicators-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  min-width: 132px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.94);
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.indicators-trigger:hover {
+  background: rgba(248, 250, 252, 0.98);
+  color: #334155;
+}
+
+.indicators-trigger.has-active {
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #2563eb;
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.indicators-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 0 3px;
+  margin-left: auto;
+}
+
+.indicators-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: auto;
+  width: 220px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.99);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.indicators-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+
+.indicators-item:hover {
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.indicators-item.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.indicators-item.is-disabled:hover {
+  background: transparent;
+}
+
+.indicators-item input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  accent-color: #2563eb;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.indicators-item input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.indicators-item-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--indicator-color, #94a3b8);
+  flex-shrink: 0;
+}
+
+.indicators-item-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  flex: 1;
+}
+
+/* ── Dark mode ──────────────────────────────────────────────────────────── */
+
+
+html[data-theme="dark"] .chart-timeframes {
+  border-color: rgba(71, 85, 105, 0.4);
+  background: rgba(15, 23, 42, 0.92);
+}
+
+html[data-theme="dark"] .chart-tf-btn {
+  border-right-color: rgba(71, 85, 105, 0.25);
+  color: #64748b;
+}
+
+html[data-theme="dark"] .chart-tf-btn:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .chart-tf-btn.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .indicators-trigger {
+  border-color: rgba(71, 85, 105, 0.4);
+  background: rgba(15, 23, 42, 0.92);
+  color: #64748b;
+}
+
+html[data-theme="dark"] .indicators-trigger:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .indicators-trigger.has-active {
+  border-color: rgba(96, 165, 250, 0.4);
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+html[data-theme="dark"] .indicators-menu {
+  background: rgba(15, 23, 42, 0.98);
+  border-color: rgba(51, 65, 85, 0.6);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .indicators-item:hover {
+  background: rgba(30, 41, 59, 0.7);
+}
+
+html[data-theme="dark"] .indicators-item.is-disabled:hover {
+  background: transparent;
+}
+
+html[data-theme="dark"] .indicators-item-label {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .analysis-toolbar-sep {
+  background: rgba(71, 85, 105, 0.35);
+}
+
+/* 2026 simple workspace refresh */
+

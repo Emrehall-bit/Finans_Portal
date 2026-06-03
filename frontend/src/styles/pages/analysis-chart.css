@@ -1,0 +1,606 @@
+
+/* ── Drawing tools dropdown ─────────────────────────────────────────────── */
+
+.draw-tools-dropdown {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.draw-tools-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 118px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.94);
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.draw-tools-toggle:hover {
+  background: rgba(248, 250, 252, 0.98);
+  color: #334155;
+}
+
+.draw-tools-toggle.is-active {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(96, 165, 250, 0.42);
+  color: #2563eb;
+}
+
+.draw-tools-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 220px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.99);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.draw-tools-menu .draw-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  justify-content: flex-start;
+  transition: background 0.12s, color 0.12s;
+  user-select: none;
+}
+
+.draw-tools-menu .draw-tool-btn:hover {
+  background: rgba(248, 250, 252, 0.9);
+  color: #1e293b;
+}
+
+.draw-tools-menu .draw-tool-btn.active {
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+  border: none;
+}
+
+/* ── Tech panel — core rows (always visible) ────────────────────────────── */
+
+.advanced-tech-core {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0;
+}
+
+.tech-core-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 0;
+  min-height: 36px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.tech-core-row:last-child {
+  border-bottom: none;
+}
+
+.tech-core-row > span {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.tech-core-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.tech-core-val--wrap {
+  font-size: 11px;
+  font-weight: 600;
+  max-width: 160px;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.tech-core-val--positive { color: #15803d; }
+.tech-core-val--negative { color: #dc2626; }
+.tech-core-val--warning  { color: #b45309; }
+.tech-core-val--neutral  { color: #475569; }
+
+/* ── Details accordion ──────────────────────────────────────────────────── */
+
+.tech-details-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 0 4px;
+  border: none;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  background: transparent;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s;
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tech-details-toggle:hover {
+  color: #64748b;
+}
+
+.tech-details-toggle svg {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tech-details-toggle.is-open svg {
+  transform: rotate(180deg);
+}
+
+.tech-details-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 5px;
+}
+
+/* ── Comparison panel — compact empty state ─────────────────────────────── */
+
+.comparison-empty-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 0 0;
+}
+
+.comparison-empty-compact > p {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* ── Dark mode overrides for new components ─────────────────────────────── */
+
+html[data-theme="dark"] .draw-tools-menu {
+  background: rgba(15, 23, 42, 0.98);
+  border-color: rgba(51, 65, 85, 0.6);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .draw-tools-menu .draw-tool-btn {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .draw-tools-menu .draw-tool-btn:hover {
+  background: rgba(30, 41, 59, 0.7);
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .draw-tools-menu .draw-tool-btn.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .draw-tools-toggle {
+  border-color: rgba(71, 85, 105, 0.4);
+  background: rgba(15, 23, 42, 0.92);
+  color: #64748b;
+}
+
+html[data-theme="dark"] .draw-tools-toggle:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .draw-tools-toggle.is-active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(96, 165, 250, 0.4);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .tech-core-row {
+  border-bottom-color: rgba(51, 65, 85, 0.25);
+}
+
+html[data-theme="dark"] .tech-core-row > span {
+  color: #475569;
+}
+
+html[data-theme="dark"] .tech-core-val {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .tech-details-toggle {
+  border-top-color: rgba(51, 65, 85, 0.35);
+  color: #475569;
+}
+
+html[data-theme="dark"] .tech-details-toggle:hover {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .comparison-empty-compact > p {
+  color: #475569;
+}
+
+.advanced-chart-workspace {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 520px;
+  border-right: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.advanced-chart-toolbar {
+  display: grid;
+  gap: 8px;
+  padding: 4px 0 6px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+  background: transparent;
+}
+
+.advanced-chart-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+  padding: 0 12px 0 0;
+}
+
+.advanced-chart-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.advanced-chart-active-indicators {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 28px;
+}
+
+.advanced-chart-indicator-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.advanced-chart-indicator-chip:hover {
+  background: rgba(248, 250, 252, 0.98);
+  border-color: rgba(148, 163, 184, 0.45);
+  color: #0f172a;
+}
+
+.advanced-chart-indicator-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--indicator-color, #94a3b8);
+}
+
+.advanced-chart-stack {
+  display: grid;
+  gap: 8px;
+  padding: 4px 12px 0 0;
+  background: transparent;
+  min-width: 0;
+  min-height: 520px;
+  align-content: start;
+}
+
+.advanced-chart-stack.drawing-mode {
+  cursor: crosshair;
+}
+
+.advanced-chart-canvas-shell {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.58);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.44);
+  box-shadow: none;
+}
+
+.advanced-chart-canvas-shell--price {
+  min-height: 520px;
+}
+
+.price-scale-drag-hint {
+  position: absolute;
+  top: 14px;
+  right: 6px;
+  width: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.advanced-chart-canvas-shell--price:hover .price-scale-drag-hint {
+  opacity: 0.85;
+}
+
+.advanced-chart-canvas-shell--volume {
+  min-height: 0;
+  grid-template-rows: auto 48px;
+}
+
+.advanced-chart-canvas-shell--rsi {
+  min-height: 0;
+  grid-template-rows: auto 170px;
+}
+
+.advanced-chart-canvas--price {
+  width: 100%;
+  min-width: 0;
+  height: 680px;
+}
+
+.advanced-chart-canvas--volume {
+  height: 48px;
+}
+
+.advanced-chart-canvas--rsi {
+  height: 170px;
+}
+
+.advanced-chart-canvas.is-hidden {
+  display: none;
+}
+
+.advanced-chart-subpanel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.advanced-chart-subpanel-head--rsi {
+  padding-bottom: 6px;
+}
+
+.advanced-chart-rsi-head-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rsi-info-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  cursor: help;
+  color: #94a3b8;
+  transition: color 0.15s;
+}
+.rsi-info-btn:hover { color: #64748b; }
+
+.advanced-chart-rsi-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.advanced-chart-rsi-marker {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  cursor: help;
+  box-shadow: 0 0 0 4px transparent;
+  transition: box-shadow 0.16s ease;
+}
+
+.advanced-chart-rsi-marker:hover {
+  box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.12);
+}
+
+.advanced-chart-rsi-marker--overbought {
+  background: #ef4444;
+}
+
+.advanced-chart-rsi-marker--oversold {
+  background: #22c55e;
+}
+
+.advanced-chart-rsi-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  cursor: help;
+}
+
+.advanced-chart-rsi-legend-dot--overbought {
+  background: #ef4444;
+}
+
+.advanced-chart-rsi-legend-dot--neutral {
+  background: #94a3b8;
+  display: none;
+}
+
+.advanced-chart-rsi-legend-dot--oversold {
+  background: #22c55e;
+}
+
+.advanced-chart-rsi-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(248, 250, 252, 0.98);
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.advanced-chart-rsi-guides {
+  position: absolute;
+  inset: 32px 26px 0 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.advanced-chart-rsi-guide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.advanced-chart-rsi-guide::before {
+  content: none;
+}
+
+.advanced-chart-rsi-guide--overbought {
+  top: 0 !important;
+  height: 33%;
+  background: rgba(239, 68, 68, 0.07);
+}
+
+.advanced-chart-rsi-guide--neutral {
+  top: 33% !important;
+  height: 34%;
+  background: transparent;
+}
+
+.advanced-chart-rsi-guide--oversold {
+  top: 67% !important;
+  height: 33%;
+  background: rgba(34, 197, 94, 0.07);
+}
+
+.advanced-chart-rsi-axis {
+  position: absolute;
+  top: 32px;
+  right: 6px;
+  bottom: 0;
+  width: 22px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.advanced-chart-rsi-axis-label {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  color: #94a3b8;
+  letter-spacing: 0;
+}
+
+.chart-toolbar-sep {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: rgba(100, 116, 139, 0.25);
+  margin: 0 3px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.draw-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 5px;
+  border: 1px solid rgba(100, 116, 139, 0.22);
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+
+.draw-tool-btn:hover {
+  background: rgba(100, 116, 139, 0.08);
+  color: #334155;
+}
+
+.draw-tool-btn.active {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.45);
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.chart-trend-hint {
+  padding: 4px 12px;
+  font-size: 10px;
+  color: #475569;
+  background: rgba(234, 179, 8, 0.07);
+  border-top: 1px solid rgba(234, 179, 8, 0.18);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.18);
+}
+

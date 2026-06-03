@@ -39,6 +39,11 @@
   gap: 18px;
 }
 
+.finance-dashboard-shell .finance-dashboard-panel.panel-surface:hover {
+  transform: none;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+
 .hero-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
@@ -240,3 +245,207 @@
   font-size: 1rem;
   line-height: 1.2;
 }
+
+/* Dashboard widget overrides */
+/* ── Alerts KPI card: clickable link card ────────────────────────── */
+.finance-dashboard-kpis a.summary-card {
+  text-decoration: none;
+  color: inherit;
+  display: grid;
+}
+
+.alerts-kpi-nearest {
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--text-main);
+}
+
+/* ── Dashboard KPI cards: consistent with portfolio KPI style ─────────── */
+.finance-dashboard-kpis .summary-card {
+  border: 1px solid color-mix(in srgb, var(--panel-border) 85%, transparent);
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--text-main) 4%, transparent);
+  transition: box-shadow 0.18s ease, transform 0.14s ease;
+}
+
+.finance-dashboard-kpis .summary-card:hover {
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--text-main) 7%, transparent);
+  transform: translateY(-1px);
+}
+
+/* PnL tone: positive (green) — color on h3 is enough, no heavy border */
+.summary-card-positive {
+  background: #ffffff;
+}
+
+.summary-card-positive h3 {
+  color: #16a567;
+}
+
+.summary-card-positive .summary-chip {
+  background: rgba(22, 165, 103, 0.10);
+  color: #0d8a57;
+}
+
+/* PnL tone: negative (red) */
+.summary-card-negative {
+  background: #ffffff;
+}
+
+.summary-card-negative h3 {
+  color: #d65252;
+}
+
+.summary-card-negative .summary-chip {
+  background: rgba(214, 82, 82, 0.10);
+  color: #b73e3e;
+}
+
+/* Icon in card title row */
+.summary-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.summary-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.summary-card-icon--cool {
+  background: rgba(47, 99, 216, 0.10);
+  color: #2f63d8;
+}
+
+.summary-card-icon--positive {
+  background: rgba(22, 165, 103, 0.10);
+  color: #16a567;
+}
+
+.summary-card-icon--negative {
+  background: rgba(214, 82, 82, 0.10);
+  color: #d65252;
+}
+
+.summary-card-icon--neutral {
+  background: rgba(111, 125, 158, 0.10);
+  color: #6f7d9e;
+}
+
+.summary-card-icon--warm {
+  background: rgba(245, 158, 11, 0.10);
+  color: #d97706;
+}
+
+/* Accent bar */
+.summary-card-bar {
+  width: 100%;
+  height: 8px;
+  margin-top: auto;
+  border-radius: 999px;
+}
+
+.summary-card-bar--cool {
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.30), rgba(37, 99, 235, 0.08));
+}
+
+.summary-card-bar--positive {
+  background: linear-gradient(90deg, rgba(22, 165, 103, 0.08), rgba(22, 165, 103, 0.30), rgba(22, 165, 103, 0.08));
+}
+
+.summary-card-bar--negative {
+  background: linear-gradient(90deg, rgba(214, 82, 82, 0.08), rgba(214, 82, 82, 0.30), rgba(214, 82, 82, 0.08));
+}
+
+.summary-card-bar--neutral {
+  background: linear-gradient(90deg, rgba(111, 125, 158, 0.07), rgba(111, 125, 158, 0.24), rgba(111, 125, 158, 0.07));
+}
+
+.summary-card-bar--warm {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.07), rgba(245, 158, 11, 0.26), rgba(245, 158, 11, 0.07));
+}
+
+/* "Portföy Ekle" CTA link */
+.summary-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent, #2f63d8);
+  text-decoration: none;
+  padding: 2px 0;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s ease;
+}
+
+.summary-card-cta:hover {
+  opacity: 0.72;
+  text-decoration: underline;
+}
+
+/* Dark mode overrides */
+html[data-theme="dark"] .finance-dashboard-kpis .summary-card {
+  background: rgba(15, 23, 42, 0.92);
+  border-color: rgba(71, 85, 105, 0.40);
+}
+
+html[data-theme="dark"] .summary-card-positive {
+  background: rgba(15, 23, 42, 0.92);
+}
+
+html[data-theme="dark"] .summary-card-positive h3 {
+  color: #34d399;
+}
+
+html[data-theme="dark"] .summary-card-positive .summary-chip {
+  background: rgba(52, 211, 153, 0.12);
+  color: #6ee7b7;
+}
+
+html[data-theme="dark"] .summary-card-negative {
+  background: rgba(15, 23, 42, 0.92);
+}
+
+html[data-theme="dark"] .summary-card-negative h3 {
+  color: #f87171;
+}
+
+html[data-theme="dark"] .summary-card-negative .summary-chip {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+}
+
+html[data-theme="dark"] .summary-card-icon--cool {
+  background: rgba(96, 165, 250, 0.12);
+  color: #60a5fa;
+}
+
+html[data-theme="dark"] .summary-card-icon--positive {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+}
+
+html[data-theme="dark"] .summary-card-icon--negative {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}
+
+html[data-theme="dark"] .summary-card-icon--neutral {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .summary-card-icon--warm {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+

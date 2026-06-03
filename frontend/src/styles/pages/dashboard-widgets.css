@@ -1,0 +1,543 @@
+/* ── Dashboard Watchlist Widget ────────────────────────────────── */
+.dash-watchlist-count {
+  margin-left: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  letter-spacing: 0;
+}
+
+.dash-watchlist-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--panel-border) 88%, transparent);
+  overflow: hidden;
+}
+
+.dash-watchlist-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 14px;
+  text-decoration: none;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--secondary-bg) 38%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 72%, transparent);
+  transition: background 0.13s ease, box-shadow 0.13s ease;
+  cursor: pointer;
+}
+
+.dash-watchlist-row:last-child {
+  border-bottom: 0;
+}
+
+.dash-watchlist-row:hover {
+  background: color-mix(in srgb, var(--accent-soft) 48%, var(--secondary-bg) 52%);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.dash-watchlist-symbol-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.dash-watchlist-code {
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-watchlist-name {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.dash-watchlist-price-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.dash-watchlist-price {
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-main);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.dash-watchlist-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-watchlist-arrow {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* Dark mode */
+html[data-theme="dark"] .dash-watchlist-list {
+  border-color: rgba(71, 85, 105, 0.45);
+}
+
+html[data-theme="dark"] .dash-watchlist-row {
+  background: rgba(30, 41, 59, 0.55);
+  border-bottom-color: rgba(71, 85, 105, 0.32);
+}
+
+html[data-theme="dark"] .dash-watchlist-row:hover {
+  background: rgba(96, 165, 250, 0.07);
+  box-shadow: inset 3px 0 0 rgba(96, 165, 250, 0.35);
+}
+
+/* ── Dashboard Portfolio Widget ─────────────────────────────────── */
+.dash-portfolio-widget {
+  padding: 0;
+  overflow: hidden;
+}
+
+.dash-portfolio-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: background 0.13s ease;
+  user-select: none;
+}
+.dash-portfolio-header:hover {
+  background: color-mix(in srgb, var(--accent-soft) 28%, transparent);
+}
+
+.dash-portfolio-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.dash-portfolio-header-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dash-portfolio-header-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.dash-portfolio-name {
+  font-size: 0.76rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.dash-portfolio-select {
+  font-size: 0.74rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: var(--secondary-bg, #f1f5fe);
+  color: var(--text-main);
+  cursor: pointer;
+  max-width: 120px;
+}
+
+.dash-portfolio-header-right {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.dash-portfolio-total {
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-main);
+}
+
+.dash-portfolio-chevron {
+  transition: transform 0.25s ease;
+  color: var(--text-soft);
+  flex-shrink: 0;
+}
+.dash-portfolio-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.dash-portfolio-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.32s ease;
+}
+.dash-portfolio-body.is-open {
+  max-height: 560px;
+}
+
+.dash-portfolio-empty {
+  padding: 18px 16px;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+  border-top: 1px solid var(--panel-border);
+}
+
+.dash-portfolio-holdings {
+  border-top: 1px solid var(--panel-border);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.dash-portfolio-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 55%, transparent);
+  transition: background 0.12s ease;
+}
+.dash-portfolio-row:last-child {
+  border-bottom: none;
+}
+.dash-portfolio-row:hover {
+  background: color-mix(in srgb, var(--secondary-bg, #f1f5fe) 50%, transparent);
+}
+
+.dash-portfolio-symbol-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dash-portfolio-symbol-col strong {
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-portfolio-symbol-col span {
+  font-size: 0.72rem;
+  color: var(--text-soft);
+}
+
+.dash-portfolio-value-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.dash-portfolio-value-col > span:first-child {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.dash-portfolio-value-col > span:last-child {
+  font-size: 0.73rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-portfolio-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--panel-border);
+  background: color-mix(in srgb, var(--secondary-bg, #f1f5fe) 35%, transparent);
+}
+.dash-portfolio-cta {
+  font-size: 0.81rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+.dash-portfolio-cta:hover {
+  text-decoration: underline;
+}
+
+/* Dark mode */
+html[data-theme="dark"] .dash-portfolio-header:hover {
+  background: rgba(96, 165, 250, 0.06);
+}
+html[data-theme="dark"] .dash-portfolio-select {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(71, 85, 105, 0.5);
+}
+html[data-theme="dark"] .dash-portfolio-row {
+  border-bottom-color: rgba(71, 85, 105, 0.28);
+}
+html[data-theme="dark"] .dash-portfolio-row:hover {
+  background: rgba(30, 41, 59, 0.45);
+}
+html[data-theme="dark"] .dash-portfolio-footer {
+  background: rgba(30, 41, 59, 0.3);
+}
+html[data-theme="dark"] .dash-portfolio-holdings {
+  border-top-color: rgba(71, 85, 105, 0.4);
+}
+html[data-theme="dark"] .dash-portfolio-empty {
+  border-top-color: rgba(71, 85, 105, 0.4);
+}
+
+/* ── Dashboard widget: consistent heading typography ────────────────── */
+.finance-dashboard-panel .panel-head {
+  margin-bottom: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 60%, transparent);
+}
+
+.finance-dashboard-panel .panel-head h3,
+.finance-dashboard-panel .dashboard-section-title {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  line-height: 1.3;
+}
+
+/* Watchlist count badge aligned to title */
+.finance-dashboard-panel .panel-head h3 .dash-watchlist-count {
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Market tabs inside panel: less vertical margin */
+.finance-dashboard-panel .market-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.finance-dashboard-panel .market-tab {
+  border: 1px solid #d9e4ff;
+  background: #f7faff;
+  color: #5f6f92;
+  padding: 5px 9px;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  min-height: 30px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.finance-dashboard-panel .market-tab:hover {
+  border-color: #7da2ff;
+  background: #eef4ff;
+  color: #4f6fd6;
+}
+
+.finance-dashboard-panel .market-tab.active {
+  background: #2f63d8;
+  border-color: #2f63d8;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.finance-dashboard-panel .market-tab.active:hover {
+  color: #ffffff;
+}
+
+.dashboard-market-heading {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-market-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dashboard-market-filter {
+  border: 1px solid rgba(124, 145, 183, 0.22);
+  background: rgba(255, 255, 255, 0.84);
+  color: #5a6d8d;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dashboard-market-filter:hover,
+.dashboard-market-filter:focus-visible {
+  border-color: rgba(72, 104, 170, 0.34);
+  background: rgba(241, 246, 255, 0.96);
+  color: #34528a;
+}
+
+.dashboard-market-filter.active {
+  border-color: rgba(47, 99, 216, 0.22);
+  background: rgba(47, 99, 216, 0.08);
+  color: #254c9b;
+  box-shadow: inset 0 0 0 1px rgba(47, 99, 216, 0.06);
+}
+
+/* "Tümünü Gör" / "Tüm Haberler" links in panel header */
+.panel-text-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent, #2f63d8);
+  text-decoration: none;
+  white-space: nowrap;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.panel-text-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* dashboard-section-title outside panel-head (e.g. standalone) */
+.dashboard-section-title {
+  margin-bottom: 0;
+}
+
+/* Icon background: match portfolio's softer tone */
+.summary-card-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+
+/* Accent bars: slightly lighter */
+.summary-card-bar--cool {
+  background: linear-gradient(90deg, rgba(47, 99, 216, 0.05), rgba(47, 99, 216, 0.22), rgba(47, 99, 216, 0.05));
+}
+
+.summary-card-bar--positive {
+  background: linear-gradient(90deg, rgba(22, 165, 103, 0.05), rgba(22, 165, 103, 0.22), rgba(22, 165, 103, 0.05));
+}
+
+.summary-card-bar--negative {
+  background: linear-gradient(90deg, rgba(214, 82, 82, 0.05), rgba(214, 82, 82, 0.22), rgba(214, 82, 82, 0.05));
+}
+
+.summary-card-bar--neutral {
+  background: linear-gradient(90deg, rgba(111, 125, 158, 0.04), rgba(111, 125, 158, 0.18), rgba(111, 125, 158, 0.04));
+}
+
+.summary-card-bar--warm {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.05), rgba(245, 158, 11, 0.20), rgba(245, 158, 11, 0.05));
+}
+
+/* Watchlist rows: less blue tint */
+.dash-watchlist-row {
+  background: transparent;
+}
+
+.dash-watchlist-row:hover {
+  background: color-mix(in srgb, var(--accent-soft) 30%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.dash-watchlist-list {
+  border-color: color-mix(in srgb, var(--panel-border) 70%, transparent);
+  margin-top: 12px;
+}
+
+/* News list: consistent spacing */
+.dashboard-news-list .news-rail-item {
+  border-radius: 10px;
+  border-color: color-mix(in srgb, var(--panel-border) 60%, transparent);
+}
+
+/* Market summary table: reduce bottom padding on panel */
+.finance-dashboard-panel .finance-market-table-wrap {
+  margin-top: 2px;
+}
+
+/* Dark mode: panel-head separator */
+html[data-theme="dark"] .finance-dashboard-panel .panel-head {
+  border-bottom-color: rgba(71, 85, 105, 0.32);
+}
+
+html[data-theme="dark"] .dashboard-market-filter {
+  border-color: rgba(71, 85, 105, 0.7);
+  background: rgba(15, 23, 42, 0.62);
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .dashboard-market-filter:hover,
+html[data-theme="dark"] .dashboard-market-filter:focus-visible {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(30, 41, 59, 0.88);
+  color: #eff6ff;
+}
+
+html[data-theme="dark"] .dashboard-market-filter.active {
+  border-color: rgba(96, 165, 250, 0.32);
+  background: rgba(37, 99, 235, 0.16);
+  color: #bfdbfe;
+}
+
+html[data-theme="dark"] .panel-text-link {
+  color: #93c5fd;
+  opacity: 0.9;
+}
+
+html[data-theme="dark"] .finance-dashboard-panel .market-tab {
+  background: rgba(30, 41, 59, 0.9);
+  color: #dbeafe;
+  border-color: rgba(147, 197, 253, 0.18);
+}
+
+html[data-theme="dark"] .finance-dashboard-panel .market-tab.active {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .dash-watchlist-row {
+  background: transparent;
+}
+
+html[data-theme="dark"] .dash-watchlist-row:hover {
+  background: rgba(96, 165, 250, 0.06);
+}

@@ -1,29 +1,89 @@
+/* ═══════════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════════ */
 @import "./base/reset.css";
 @import "./base/variables.css";
 @import "./base/typography.css";
-@import "./base/theme.css";
 
+/* ═══════════════════════════════════════════════
+   COMPONENTS
+   ═══════════════════════════════════════════════ */
 @import "./components/cards.css";
 @import "./components/buttons.css";
 @import "./components/forms.css";
 @import "./components/tables.css";
 @import "./components/modals.css";
 @import "./components/tabs.css";
+@import "./components/chart.css";
+@import "./components/toast.css";
+@import "./components/kap.css";
+@import "./components/financials.css";
+@import "./components/ai.css";
 
-@import "./pages/news.css";
-@import "./pages/portfolio.css";
-@import "./pages/markets.css";
-@import "./pages/simulation.css";
-@import "./pages/economy.css";
-@import "./pages/technical-analysis.css";
-@import "./pages/company.css";
-@import "./pages/profile.css";
-@import "./pages/alerts.css";
-@import "./pages/admin.css";
-@import "./pages/dashboard.css";
-
+/* ═══════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════ */
 @import "./utilities/layout.css";
-@import "./utilities/spacing.css";
 @import "./utilities/animations.css";
 
+/* ═══════════════════════════════════════════════
+   GLOBAL OVERRIDES
+   ═══════════════════════════════════════════════ */
 @import "./global.css";
+
+/* ═══════════════════════════════════════════════
+   PAGES
+   ═══════════════════════════════════════════════ */
+
+/* News */
+@import "./pages/news.css";
+@import "./pages/news-filters.css";
+@import "./pages/news-card.css";
+@import "./pages/news-detail.css";
+
+/* Portfolio */
+@import "./pages/portfolio.css";
+@import "./pages/portfolio-detail.css";
+@import "./pages/portfolio-heatmap.css";
+@import "./pages/portfolio-v4-layout.css";
+@import "./pages/portfolio-v4-analytics.css";
+@import "./pages/portfolio-v4-holdings.css";
+@import "./pages/portfolio-v2-widgets.css";
+@import "./pages/portfolio-kpi.css";
+@import "./pages/portfolio-analytics.css";
+
+/* Markets */
+@import "./pages/markets.css";
+@import "./pages/markets-detail.css";
+@import "./pages/markets-terminal.css";
+@import "./pages/markets-fund.css";
+
+/* Simulation */
+@import "./pages/simulation.css";
+
+/* Economy */
+@import "./pages/economy.css";
+
+/* Technical Analysis */
+@import "./pages/analysis-toolbar.css";
+@import "./pages/analysis-chart.css";
+@import "./pages/analysis-drawings.css";
+@import "./pages/analysis-ai-panel.css";
+@import "./pages/analysis-terminal.css";
+@import "./pages/analysis-panel.css";
+@import "./pages/analysis-comparison.css";
+
+/* Profile */
+@import "./pages/profile.css";
+
+/* Alerts */
+@import "./pages/alerts.css";
+
+/* Admin */
+@import "./pages/admin.css";
+
+/* Dashboard */
+@import "./pages/dashboard.css";
+@import "./pages/dashboard-widgets.css";
+@import "./pages/dashboard-panels.css";
+@import "./pages/dashboard-news.css";

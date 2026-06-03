@@ -18,8 +18,3 @@ body {
     border-color 0.2s ease,
     box-shadow 0.2s ease;
 }
-
-body {
-  background:
-    radial-gradient(circle at top left, #eef4ff 0%, #e9eef9 35%, #e5ebf7 100%);
-}

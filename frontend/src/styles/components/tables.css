@@ -4,6 +4,8 @@
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
+  overflow-x: auto;
+  padding: 8px;
 }
 
 .table-chip-button {
@@ -22,11 +24,6 @@
   background: linear-gradient(135deg, #2f5ec7, #4b7eff);
   border-color: transparent;
   color: white;
-}
-
-.table-wrap {
-  overflow-x: auto;
-  padding: 8px;
 }
 
 table {
@@ -69,5 +66,9 @@ html[data-theme] th {
 }
 
 html[data-theme] td {
+  border-color: var(--table-border);
+}
+
+html[data-theme] tr {
   border-color: var(--table-border);
 }

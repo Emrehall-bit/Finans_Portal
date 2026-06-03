@@ -1,0 +1,95 @@
+﻿.chart-tooltip {
+  min-width: 170px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(17, 33, 73, 0.94);
+  color: #f3f7ff;
+  box-shadow: 0 18px 42px rgba(16, 28, 64, 0.28);
+}
+
+.chart-tooltip strong {
+  display: block;
+}
+
+.chart-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+html[data-theme] .terminal-tooltip {
+  background: var(--chart-tooltip-bg);
+  border-color: var(--chart-tooltip-border);
+  color: var(--chart-tooltip-text);
+}
+
+.compare-chart-shell {
+  min-height: 340px;
+}
+
+.rsi-chart-shell {
+  min-height: 250px;
+}
+
+.terminal-chart-shell {
+  background: var(--chart-surface);
+  border-color: var(--chart-surface-border);
+}
+
+.terminal-chart-shell .recharts-default-legend,
+.terminal-chart-shell .recharts-cartesian-axis-tick-value {
+  color: var(--chart-axis);
+}
+
+.terminal-chart-shell .recharts-text {
+  fill: var(--chart-axis);
+}
+
+.terminal-chart-shell .panel-head h3 {
+  color: inherit;
+}
+
+.terminal-tooltip {
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(96, 165, 250, 0.16);
+}
+
+/* Fundamental Analysis chart tooltip */
+.fa-chart-tooltip {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(100, 116, 139, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+}
+
+.fa-ct-period {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.fa-ct-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fa-no-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 120px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+html[data-theme="dark"] .fa-chart-tooltip {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(51, 65, 85, 0.5);
+}
+
+html[data-theme="dark"] .fa-ct-period { color: #e2e8f0; }

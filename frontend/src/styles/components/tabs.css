@@ -9,6 +9,11 @@
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
+html[data-theme] .theme-switcher {
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  border-color: color-mix(in srgb, var(--panel-border) 72%, transparent);
+}
+
 .theme-switcher-in-menu {
   width: 100%;
   justify-content: stretch;
@@ -43,6 +48,10 @@
     transform 180ms ease;
 }
 
+html[data-theme] .theme-switcher-button {
+  color: var(--text-soft);
+}
+
 .theme-switcher-button:hover {
   background: color-mix(in srgb, var(--surface-muted) 70%, transparent);
   color: var(--text-main);
@@ -53,6 +62,10 @@
   border-color: var(--panel-border);
   color: var(--text-main);
   transform: translateY(-1px);
+}
+
+html[data-theme] .theme-switcher-button.active {
+  color: var(--text-main);
 }
 
 @media (max-width: 920px) {

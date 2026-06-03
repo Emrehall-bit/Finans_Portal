@@ -284,7 +284,7 @@ public class CompanyRatioService {
                                              BigDecimal peRatio) {
         if (peRatio != null) {
             if (peRatio.compareTo(BigDecimal.ZERO) < 0) {
-                return new RatioFieldStatus(PE_STATUS_NEGATIVE_EARNINGS, "negative earnings");
+                return new RatioFieldStatus(PE_STATUS_NEGATIVE_EARNINGS, null);
             }
             return new RatioFieldStatus(PE_STATUS_POSITIVE_EARNINGS, null);
         }

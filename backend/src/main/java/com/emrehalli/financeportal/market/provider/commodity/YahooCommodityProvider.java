@@ -64,6 +64,7 @@ public class YahooCommodityProvider implements MarketDataProvider {
                         now,
                         null,
                         null,
+                        null,
                         null
                 ));
             }

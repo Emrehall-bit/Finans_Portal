@@ -24,6 +24,7 @@ import {
   triggerCommodityHistoryBackfill,
   triggerIndexHistoryBackfill,
   updateMarketTapeConfig,
+  importCompanyFinancialCsv,
 } from "../api/adminApi";
 import { auditAffectedInstruments, repairNewsCategories, syncNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -77,6 +78,11 @@ export default function AdminDataPage() {
   const [marketTapeLoaded, setMarketTapeLoaded] = useState(false);
   const [jobProgress, setJobProgress] = useState(null);
   const [completedJobKey, setCompletedJobKey] = useState(null);
+  const [financialImportFile, setFinancialImportFile] = useState(null);
+  const [financialImportDryRun, setFinancialImportDryRun] = useState(true);
+  const [financialImportReplace, setFinancialImportReplace] = useState(true);
+  const [financialImportRecalc, setFinancialImportRecalc] = useState(true);
+  const [financialImportResult, setFinancialImportResult] = useState(null);
   const pollingRef = useRef(null);
   const actionsLockedRef = useRef(false);
   const dragStateRef = useRef(null);
@@ -565,6 +571,28 @@ export default function AdminDataPage() {
       setError(extractErrorMessage(err, t("admin.actionError")));
     } finally {
       setBusyKey((c) => (c === "macro-all" ? null : c));
+      unlockActions();
+    }
+  };
+
+  const handleFinancialImport = async () => {
+    if (!financialImportFile || !lockActions()) return;
+    setBusyKey("financial-import");
+    setError("");
+    setFinancialImportResult(null);
+    try {
+      const response = await importCompanyFinancialCsv({
+        file: financialImportFile,
+        dryRun: financialImportDryRun,
+        replaceExisting: financialImportReplace,
+        recalculateRatios: financialImportRecalc,
+        overwriteShareCount: false,
+      });
+      setFinancialImportResult(response?.data ?? null);
+    } catch (err) {
+      setError(extractErrorMessage(err, "Finansal import hatası."));
+    } finally {
+      setBusyKey((c) => (c === "financial-import" ? null : c));
       unlockActions();
     }
   };
@@ -1178,6 +1206,146 @@ export default function AdminDataPage() {
               <span className="admin-console-button-glow" />
               <span>{isBusy("macro-all") ? t("admin.running") : t("admin.cards.macroSyncAll.action")}</span>
             </button>
+          </article>
+        </div>
+      </section>
+
+      <section className="admin-section panel-surface">
+        <div className="admin-section-head">
+          <div>
+            <p className="eyebrow">Şirket Finansalları</p>
+            <h3>Finansal Veri İmport</h3>
+            <p className="admin-console-copy">
+              KAP "Finansal Tablo Kalem Sorgulama" XLSX veya manuel CSV dosyasını yükleyin.
+              Format otomatik algılanır. Önce <strong>Dry-run</strong> ile sonuçları önizleyin.
+            </p>
+          </div>
+        </div>
+
+        <div className="admin-console-grid admin-grid">
+          <article className="admin-console-card admin-operation-card panel-surface">
+            <div className="admin-console-card-copy">
+              <div className="admin-operation-card-head">
+                <p className="eyebrow">XLSX / CSV</p>
+              </div>
+              <h3>Finansal Tablo İmport</h3>
+              <p>
+                KAP XLSX veya manual CSV. Import sonrası <em>recalculateRatios=true</em> ise
+                gerçek oranlar hesaplanır ve Temel Analiz sekmesi güncellenir.
+              </p>
+            </div>
+
+            <div className="admin-console-form-grid">
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="admin-console-input"
+                onChange={(e) => setFinancialImportFile(e.target.files?.[0] ?? null)}
+                disabled={controlsDisabled}
+              />
+              <label className="admin-console-label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <input
+                  type="checkbox"
+                  checked={financialImportDryRun}
+                  onChange={(e) => setFinancialImportDryRun(e.target.checked)}
+                  disabled={controlsDisabled}
+                />
+                Dry-run (kaydetme, sadece say)
+              </label>
+              <label className="admin-console-label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <input
+                  type="checkbox"
+                  checked={financialImportReplace}
+                  onChange={(e) => setFinancialImportReplace(e.target.checked)}
+                  disabled={controlsDisabled}
+                />
+                Mevcut değerleri güncelle
+              </label>
+              <label className="admin-console-label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <input
+                  type="checkbox"
+                  checked={financialImportRecalc}
+                  onChange={(e) => setFinancialImportRecalc(e.target.checked)}
+                  disabled={controlsDisabled}
+                />
+                Import sonrası oranları hesapla
+              </label>
+            </div>
+
+            <button
+              type="button"
+              className="admin-console-button"
+              disabled={controlsDisabled || !financialImportFile}
+              onClick={handleFinancialImport}
+            >
+              <span className="admin-console-button-glow" />
+              <span>
+                {isBusy("financial-import")
+                  ? t("admin.running")
+                  : financialImportDryRun
+                  ? "Dry-run Başlat"
+                  : "Import Et"}
+              </span>
+            </button>
+
+            {financialImportResult && (
+              <div className="admin-console-job-status">
+                {financialImportResult.dryRun && (
+                  <p className="admin-console-copy"><strong>DRY-RUN — veri kaydedilmedi</strong></p>
+                )}
+                <div className="admin-audit-metrics" style={{ flexWrap: "wrap" }}>
+                  <div className="admin-console-metric-card">
+                    <span>Yeni Rapor</span>
+                    <strong>{financialImportResult.createdReports ?? 0}</strong>
+                  </div>
+                  <div className="admin-console-metric-card">
+                    <span>Güncellenen Rapor</span>
+                    <strong>{financialImportResult.updatedReports ?? 0}</strong>
+                  </div>
+                  <div className="admin-console-metric-card">
+                    <span>Yeni Değer</span>
+                    <strong>{financialImportResult.createdValues ?? 0}</strong>
+                  </div>
+                  <div className="admin-console-metric-card">
+                    <span>Güncellenen Değer</span>
+                    <strong>{financialImportResult.updatedValues ?? 0}</strong>
+                  </div>
+                  <div className="admin-console-metric-card">
+                    <span>Oran Hesaplanan</span>
+                    <strong>{financialImportResult.recalculatedTickers?.length ?? 0}</strong>
+                  </div>
+                  <div className="admin-console-metric-card">
+                    <span>Hata</span>
+                    <strong>{financialImportResult.validationErrors?.length ?? 0}</strong>
+                  </div>
+                </div>
+                {Array.isArray(financialImportResult.recalculatedTickers) && financialImportResult.recalculatedTickers.length > 0 && (
+                  <p className="admin-console-copy">
+                    Oran hesaplanan: {financialImportResult.recalculatedTickers.join(", ")}
+                  </p>
+                )}
+                {Array.isArray(financialImportResult.missingShareCountWarnings) && financialImportResult.missingShareCountWarnings.length > 0 && (
+                  <p className="admin-console-copy" style={{ color: "var(--color-warning, #f59e0b)" }}>
+                    ⚠ Hisse sayısı eksik (oranlar eksik kalabilir):{" "}
+                    {financialImportResult.missingShareCountWarnings.join(", ")}
+                  </p>
+                )}
+                {Array.isArray(financialImportResult.validationErrors) && financialImportResult.validationErrors.length > 0 && (
+                  <ul className="admin-audit-reasons">
+                    {financialImportResult.validationErrors.slice(0, 10).map((err, i) => (
+                      <li key={i}>
+                        {err.lineNumber ? `Satır ${err.lineNumber}: ` : ""}
+                        {err.tickerCode ? `[${err.tickerCode}] ` : ""}
+                        {err.message}
+                      </li>
+                    ))}
+                    {financialImportResult.validationErrors.length > 10 && (
+                      <li>... ve {financialImportResult.validationErrors.length - 10} hata daha</li>
+                    )}
+                  </ul>
+                )}
+              </div>
+            )}
           </article>
         </div>
       </section>

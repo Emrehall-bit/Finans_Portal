@@ -56,6 +56,47 @@
   --radius-xl: 28px;
   --radius-lg: 22px;
   --radius-md: 16px;
+  /* ── Missing tokens (previously undefined) ──────────────── */
+  --border-subtle: rgba(148, 163, 184, 0.18);
+  --border-soft: rgba(214, 222, 241, 0.72);
+  --border: rgba(201, 211, 232, 0.68);
+  --surface-elevated: #ffffff;
+  --text-primary: #14213f;
+  --text-secondary: #55637f;
+  /* ── Button primary ──────────────────────────────────────── */
+  --button-primary-bg: linear-gradient(135deg, #2e63d8, #4d7fec);
+  --button-primary-text: #ffffff;
+}
+
+/* ── Dashboard theme override — flatter, cleaner design tokens ─────── */
+/* These replace the glassmorphism defaults above for the main app shell */
+:root {
+  --app-bg: linear-gradient(180deg, #f5f7fb 0%, #edf1f7 100%);
+  --sidebar-start: #123f96;
+  --sidebar-end: #0a2e76;
+  --panel: #ffffff;
+  --panel-strong: #ffffff;
+  --panel-border: rgba(185, 198, 220, 0.7);
+  --text-main: #16213d;
+  --text-soft: #6f7d9e;
+  --accent: #2f63d8;
+  --accent-soft: rgba(47, 99, 216, 0.10);
+  --secondary-bg: rgba(238, 244, 255, 0.6);
+  --secondary-border: rgba(195, 210, 238, 0.55);
+  --input-bg: #ffffff;
+  --input-border: #dce5f3;
+  --input-text: #21335f;
+  --input-placeholder: #8da0c7;
+  --shadow-md: 0 2px 12px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 8px 28px rgba(15, 23, 42, 0.10);
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --border-subtle: rgba(185, 198, 220, 0.32);
+  --border-soft: rgba(214, 222, 241, 0.72);
+  --border: rgba(185, 198, 220, 0.70);
+  --surface-elevated: #ffffff;
+  --text-primary: #16213d;
+  --text-secondary: #6f7d9e;
 }
 
 html[data-theme="dark"] {
@@ -110,4 +151,10 @@ html[data-theme="dark"] {
   --warning: #fbbf24;
   --shadow-lg: 0 26px 64px rgba(2, 6, 23, 0.42);
   --shadow-md: 0 14px 30px rgba(2, 6, 23, 0.36);
+  --border-subtle: rgba(51, 65, 85, 0.42);
+  --border-soft: rgba(71, 85, 105, 0.52);
+  --border: rgba(51, 65, 85, 0.82);
+  --surface-elevated: rgba(15, 23, 42, 0.96);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
 }

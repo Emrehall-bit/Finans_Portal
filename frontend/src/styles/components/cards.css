@@ -1,5 +1,8 @@
 .summary-card h3 {
   margin: 0;
+  font-size: 1.95rem;
+  letter-spacing: -0.025em;
+  color: var(--text-main);
 }
 
 .summary-card-subtitle {
@@ -7,14 +10,55 @@
   color: var(--text-soft);
 }
 
+.list {
+  display: grid;
+  gap: 12px;
+}
+
+.summary-sparkline {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  align-items: end;
+  height: 42px;
+}
+
+.summary-sparkline span {
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(89, 137, 255, 0.28), rgba(89, 137, 255, 0.86));
+}
+
+.summary-sparkline span:nth-child(1) { height: 30%; }
+.summary-sparkline span:nth-child(2) { height: 56%; }
+.summary-sparkline span:nth-child(3) { height: 44%; }
+.summary-sparkline span:nth-child(4) { height: 82%; }
+.summary-sparkline span:nth-child(5) { height: 100%; }
+
 .card,
 .summary-card,
-.list-item {
+.list-item,
+.finance-warning-card,
+.finance-notification-card {
   background: var(--panel);
   backdrop-filter: blur(18px);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
+}
+
+.panel-surface {
+  background: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--panel-border) 82%, transparent);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.03);
+  border-radius: var(--radius-lg, 22px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel-surface:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.10), 0 4px 12px rgba(15, 23, 42, 0.06);
 }
 
 .page-shell {
@@ -30,6 +74,11 @@
   gap: 16px;
   align-items: center;
   padding: 24px;
+  border-radius: 16px;
+}
+
+.hero-card {
+  border-radius: 16px;
 }
 
 .panel-head {
@@ -58,18 +107,19 @@
 }
 
 .summary-card {
-  padding: 18px;
+  padding: 16px 18px;
   display: grid;
-  gap: 10px;
-  min-height: 176px;
+  gap: 6px;
+  min-height: 116px;
+  border-radius: 16px;
 }
 
 .summary-card-cool {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(238, 244, 255, 0.95));
+  background: #ffffff;
 }
 
 .summary-card-warm {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 247, 231, 0.95));
+  background: #ffffff;
 }
 
 .summary-card-top {
@@ -83,11 +133,6 @@
   margin: 0;
   color: var(--text-soft);
   font-size: 0.85rem;
-}
-
-.summary-card h3 {
-  font-size: 1.95rem;
-  color: var(--text-main);
 }
 
 .cards-grid {
@@ -115,13 +160,29 @@
   color: var(--accent);
 }
 
+html[data-theme] .status-box.loading,
+html[data-theme] .status-box.empty {
+  background: var(--status-loading-bg);
+  color: var(--status-loading-text);
+}
+
 .status-box.error {
   background: rgba(249, 92, 92, 0.1);
   color: #be3131;
 }
 
+html[data-theme] .status-box.error {
+  background: var(--status-error-bg);
+  color: var(--status-error-text);
+}
+
 .status-box.success {
   background: rgba(34, 176, 125, 0.12);
+  color: var(--success);
+}
+
+html[data-theme] .status-box.success {
+  background: var(--status-success-bg);
   color: var(--success);
 }
 
@@ -136,6 +197,61 @@
 .list-item.active {
   border-color: rgba(76, 127, 255, 0.4);
   background: rgba(240, 244, 255, 0.92);
+}
+
+html[data-theme="dark"] .summary-card {
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  color: #e5eefc;
+}
+
+html[data-theme="dark"] .summary-card h1,
+html[data-theme="dark"] .summary-card h2,
+html[data-theme="dark"] .summary-card h3,
+html[data-theme="dark"] .summary-card strong {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .summary-card p,
+html[data-theme="dark"] .summary-card span {
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .summary-card-cool,
+html[data-theme="dark"] .summary-card-warm,
+html[data-theme="dark"] .summary-card-neutral {
+  background: rgba(15, 23, 42, 0.92);
+}
+
+html[data-theme="dark"] .metric-card {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(148, 163, 184, 0.18);
+  color: #e5eefc;
+}
+
+html[data-theme="dark"] .metric-card h3,
+html[data-theme="dark"] .metric-card strong,
+html[data-theme="dark"] .metric-card .metric-value {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .metric-card p,
+html[data-theme="dark"] .metric-card span {
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .metric-card .metric-badge {
+  background: rgba(37, 99, 235, 0.22);
+  color: #bfdbfe;
+}
+
+html[data-theme="dark"] .metric-card-line {
+  background: linear-gradient(
+    90deg,
+    rgba(96, 165, 250, 0.16),
+    rgba(96, 165, 250, 0.52),
+    rgba(96, 165, 250, 0.16)
+  );
 }
 
 @media (max-width: 920px) {

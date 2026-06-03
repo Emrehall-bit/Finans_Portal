@@ -9,7 +9,6 @@ import "./i18n";
 import { ThemeProvider } from "./theme/ThemeContext.jsx";
 import { CurrencyProvider } from "./currency/CurrencyContext.jsx";
 import "./styles/index.css";
-import "./styles/dashboard-theme.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

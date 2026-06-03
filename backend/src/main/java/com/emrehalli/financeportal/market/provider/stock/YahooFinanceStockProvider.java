@@ -84,7 +84,7 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
                 .queryParam("symbols", yahooSymbols.stream().collect(Collectors.joining(",")))
                 .queryParam(
                         "fields",
-                        "regularMarketPrice,regularMarketChangePercent,regularMarketPreviousClose,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,regularMarketOpen"
+                        "regularMarketPrice,regularMarketChangePercent,regularMarketPreviousClose,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,regularMarketOpen,sharesOutstanding,marketCap"
                 )
                 .queryParam("crumb", crumb)
                 .build()
@@ -145,6 +145,15 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
                     continue;
                 }
 
+                // sharesOutstanding: doğrudan al, yoksa marketCap/fiyat'tan türet
+                BigDecimal sharesOutstanding = decimalValue(item, "sharesOutstanding");
+                if (sharesOutstanding == null || sharesOutstanding.compareTo(BigDecimal.ZERO) <= 0) {
+                    BigDecimal marketCap = decimalValue(item, "marketCap");
+                    if (marketCap != null && marketCap.compareTo(BigDecimal.ZERO) > 0) {
+                        sharesOutstanding = marketCap.divide(price, 0, java.math.RoundingMode.HALF_UP);
+                    }
+                }
+
                 prices.add(new StockPriceDto(
                         symbol,
                         yahooSymbol,
@@ -158,7 +167,8 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
                         timestamp,
                         decimalValue(item, "regularMarketOpen"),
                         null,
-                        null
+                        null,
+                        sharesOutstanding
                 ));
             }
 

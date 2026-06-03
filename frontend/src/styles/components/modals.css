@@ -228,7 +228,12 @@ html[data-theme] .auth-modal {
 }
 
 .notification-menu-item-meta {
-  color: #6f80a4;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  color: var(--text-soft);
+  font-size: 0.8rem;
 }
 
 .notification-menu-item:not(.unread) .notification-menu-item-meta {
@@ -264,8 +269,7 @@ html[data-theme] .auth-modal {
   background: rgba(240, 245, 255, 0.98);
 }
 
-.notification-menu-item-top,
-.notification-menu-item-meta {
+.notification-menu-item-top {
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -287,7 +291,6 @@ html[data-theme] .auth-modal {
 }
 
 .notification-menu-item p,
-.notification-menu-item-meta,
 .notification-menu-type {
   color: var(--text-soft);
 }
@@ -328,10 +331,6 @@ html[data-theme] .auth-modal {
   letter-spacing: 0.05em;
   background: rgba(96, 165, 250, 0.15);
   color: #bfdbfe;
-}
-
-.notification-menu-item-meta {
-  font-size: 0.8rem;
 }
 
 .topbar-user-menu-item {

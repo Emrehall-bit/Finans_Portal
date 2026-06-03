@@ -6,6 +6,10 @@
   padding: 3px;
 }
 
+html[data-theme="dark"] .currency-toggle {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .currency-toggle-btn {
   padding: 5px 14px;
   border-radius: 999px;
@@ -35,12 +39,21 @@
 }
 
 input,
-select {
+select,
+textarea {
   border: 1px solid var(--input-border);
   border-radius: 14px;
   padding: 10px 14px;
   color: var(--input-text);
   background: var(--input-bg);
+}
+
+html[data-theme] input,
+html[data-theme] select,
+html[data-theme] textarea {
+  background: var(--input-bg);
+  border-color: var(--input-border);
+  color: var(--input-text);
 }
 
 input::placeholder,

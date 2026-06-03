@@ -39,6 +39,7 @@ public class CompanyFinancialImportService {
     private final CompanyRatioService ratioService;
     private final ManualFinancialCsvReader csvReader;
     private final ManualFinancialExcelReader excelReader;
+    private final KapFinancialExcelParser kapParser;
     private final FinancialReportUpsertSupport upsertSupport;
 
     public CompanyFinancialImportService(CompanyProfileRepository profileRepository,
@@ -47,6 +48,7 @@ public class CompanyFinancialImportService {
                                          CompanyRatioService ratioService,
                                          ManualFinancialCsvReader csvReader,
                                          ManualFinancialExcelReader excelReader,
+                                         KapFinancialExcelParser kapParser,
                                          FinancialReportUpsertSupport upsertSupport) {
         this.profileRepository = profileRepository;
         this.reportRepository = reportRepository;
@@ -54,9 +56,16 @@ public class CompanyFinancialImportService {
         this.ratioService = ratioService;
         this.csvReader = csvReader;
         this.excelReader = excelReader;
+        this.kapParser = kapParser;
         this.upsertSupport = upsertSupport;
     }
 
+    /**
+     * Dosya formatını otomatik tespit ederek uygun parser'a yönlendirir:
+     *  - .xlsx/.xls → KAP formatı kontrolü yapılır; KAP ise KapFinancialExcelParser,
+     *                  değilse ManualFinancialExcelReader kullanılır.
+     *  - .csv veya diğer → ManualFinancialCsvReader kullanılır.
+     */
     @Transactional
     public ManualFinancialImportResponse importFile(MultipartFile file,
                                                     boolean dryRun,
@@ -66,7 +75,12 @@ public class CompanyFinancialImportService {
         String filename = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase(Locale.ROOT) : "";
         ManualFinancialCsvReader.CsvReadResult readResult;
         if (filename.endsWith(".xlsx") || filename.endsWith(".xls")) {
-            readResult = excelReader.read(file);
+            KapFinancialExcelParser.KapParseAttempt attempt = kapParser.tryParse(file);
+            if (attempt.recognized()) {
+                readResult = attempt.result();
+            } else {
+                readResult = excelReader.read(file);
+            }
         } else {
             readResult = csvReader.read(file);
         }
@@ -90,9 +104,6 @@ public class CompanyFinancialImportService {
                                                      boolean recalculateRatios,
                                                      boolean overwriteShareCount) {
         List<ManualFinancialImportError> validationErrors = new ArrayList<>(readErrors);
-        if (!validationErrors.isEmpty()) {
-            return emptyResponse(dryRun, validationErrors);
-        }
 
         ImportPreparation preparation = prepare(rows, validationErrors, overwriteShareCount);
         ImportCounters counters = new ImportCounters(

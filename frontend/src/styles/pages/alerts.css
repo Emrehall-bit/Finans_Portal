@@ -1,4 +1,4 @@
-﻿.alerts-management-shell {
+.alerts-management-shell {
   display: grid;
   gap: 16px;
 }
@@ -562,7 +562,7 @@ html[data-theme="dark"] .alerts-notes-empty {
   background: rgba(15, 23, 42, 0.48);
 }
 
-/* â”€â”€ Not Kart Header â”€â”€ */
+/* ── Not Kart Header ── */
 
 .alerts-note-header {
   display: flex;
@@ -599,7 +599,7 @@ html[data-theme="dark"] .alerts-notes-empty {
   border-color: rgba(37, 99, 235, 0.3);
 }
 
-/* â”€â”€ Not Popup â”€â”€ */
+/* ── Not Popup ── */
 
 .alerts-note-popup {
   width: min(520px, 92vw);

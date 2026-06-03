@@ -1,0 +1,147 @@
+/* ── Fund Market Table ──────────────────────────────────────────────── */
+
+.fund-market-table-wrap {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-strong) 94%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
+}
+
+.fund-market-table th,
+.fund-market-table td {
+  white-space: nowrap;
+}
+
+.fund-market-table td:first-child,
+.fund-market-table th:first-child,
+.fund-market-table td:nth-child(2),
+.fund-market-table th:nth-child(2) {
+  white-space: normal;
+}
+
+.fund-table-symbol,
+.fund-table-type-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.fund-table-type-cell strong {
+  font-size: 0.92rem;
+}
+
+.fund-table-type-cell span {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+}
+
+.fund-price-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.fund-price-cell strong {
+  font-size: 0.95rem;
+}
+
+/* ── Fund Risk Badge ─────────────────────────────────────────────────── */
+
+.fund-risk-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  min-height: 32px;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.fund-risk-badge.low {
+  color: #166534;
+  background: rgba(187, 247, 208, 0.84);
+  border-color: rgba(34, 197, 94, 0.18);
+}
+
+.fund-risk-badge.medium {
+  color: #9a3412;
+  background: rgba(254, 215, 170, 0.84);
+  border-color: rgba(249, 115, 22, 0.18);
+}
+
+.fund-risk-badge.high {
+  color: #991b1b;
+  background: rgba(254, 202, 202, 0.9);
+  border-color: rgba(239, 68, 68, 0.22);
+}
+
+.fund-risk-badge.neutral {
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--surface-muted) 74%, transparent);
+  border-color: color-mix(in srgb, var(--table-border) 80%, transparent);
+}
+
+/* ── Fund Quote Cards ────────────────────────────────────────────────── */
+
+.fund-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.fund-quote-card {
+  gap: 16px;
+  align-content: start;
+}
+
+.fund-quote-card-top {
+  align-items: start;
+}
+
+.fund-quote-card-meta {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.fund-quote-card-meta span {
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+}
+
+.fund-quote-card-meta strong {
+  font-size: 0.96rem;
+}
+
+.fund-quote-card-body {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fund-return-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fund-return-grid-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-muted) 86%, transparent);
+  text-align: left;
+}
+
+.fund-return-grid-item span {
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+}
+
+.fund-return-grid-item strong {
+  font-size: 0.92rem;
+}
+
+@media (max-width: 920px) {
+  .fund-return-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

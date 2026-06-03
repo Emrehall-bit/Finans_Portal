@@ -1,17 +1,18 @@
 button {
-  border: 1px solid var(--input-border);
+  border: 1px solid transparent;
   border-radius: 9px;
   padding: 6px 12px;
   font-size: 0.82rem;
-  color: var(--input-text);
-  background: var(--input-bg);
-}
-
-button {
-  background: linear-gradient(135deg, #2f5ec7, #4b7eff);
-  color: white;
+  color: var(--button-primary-text);
+  background: var(--button-primary-bg);
   cursor: pointer;
   box-shadow: none;
+}
+
+html[data-theme] button {
+  background: var(--input-bg);
+  border-color: var(--input-border);
+  color: var(--input-text);
 }
 
 .secondary-button {
@@ -43,9 +44,6 @@ button:disabled {
   border-radius: 12px;
   display: grid;
   place-items: center;
-}
-
-.icon-button {
   border: none;
   box-shadow: none;
   background: rgba(76, 127, 255, 0.12);
@@ -112,4 +110,11 @@ button:hover,
 button:focus-visible {
   transform: none;
   filter: brightness(1.05);
+}
+
+.secondary-button:hover,
+.secondary-button:focus-visible,
+.icon-button:hover,
+.icon-button:focus-visible {
+  transform: translateY(-1px);
 }

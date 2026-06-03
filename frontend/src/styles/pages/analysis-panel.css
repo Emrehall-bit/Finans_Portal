@@ -1,0 +1,581 @@
+/* ── Teknik görünüm checklist ─────────────────────────────────────────── */
+.simple-tech-checklist {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.simple-tech-check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.simple-tech-check-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.simple-tech-check-item--positive .simple-tech-check-icon { background: rgba(34, 197, 94, 0.12); color: #16a34a; }
+.simple-tech-check-item--negative .simple-tech-check-icon { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+.simple-tech-check-item--warning .simple-tech-check-icon  { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+.simple-tech-check-item--neutral .simple-tech-check-icon  { background: rgba(148, 163, 184, 0.14); color: #64748b; }
+
+/* ── Kompakt metrik grid ──────────────────────────────────────────────── */
+.simple-tech-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.simple-tech-metric-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  background: rgba(248, 250, 252, 0.6);
+  min-width: 0;
+}
+
+.simple-tech-metric-cell-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.simple-tech-metric-cell-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.simple-tech-metric-cell-sub {
+  font-size: 10px;
+  font-weight: 500;
+  color: #94a3b8;
+  line-height: 1.2;
+}
+
+.simple-tech-tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  vertical-align: middle;
+  color: #94a3b8;
+  cursor: help;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.simple-tech-tooltip-anchor:hover,
+.simple-tech-tooltip-anchor:focus-visible {
+  color: #64748b;
+}
+
+.simple-tech-tooltip-box {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  z-index: 200;
+  width: 200px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.93);
+  color: #f1f5f9;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+  pointer-events: none;
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  font-style: normal;
+}
+
+/* Sol sütun hücreleri (1., 3., 5.) → tooltip ikona göre sağa açılır */
+.simple-tech-metrics-grid .simple-tech-metric-cell:nth-child(odd) .simple-tech-tooltip-box {
+  left: -4px;
+  right: auto;
+}
+
+/* Sağ sütun hücreleri (2., 4.) → tooltip ikona göre sola açılır */
+.simple-tech-metrics-grid .simple-tech-metric-cell:nth-child(even) .simple-tech-tooltip-box {
+  left: auto;
+  right: -4px;
+}
+
+/* ── Destek / Direnç mini kart ────────────────────────────────────────── */
+.simple-sr-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+}
+
+.simple-sr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+
+.simple-sr-row span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.simple-sr-row strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.simple-sr-row--resistance { background: rgba(239, 68, 68, 0.06); border-left-color: #ef4444; }
+.simple-sr-row--resistance strong { color: #dc2626; }
+.simple-sr-row--support { background: rgba(34, 197, 94, 0.06); border-left-color: #22c55e; }
+.simple-sr-row--support strong { color: #16a34a; }
+.simple-sr-row--band {
+  background: rgba(59, 130, 246, 0.045);
+  border-left-color: rgba(96, 165, 250, 0.55);
+}
+.simple-sr-row--band strong { color: #334155; }
+
+.simple-tech-add-note-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  width: 100%;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 0.79rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.simple-tech-add-note-btn:hover:not(:disabled) {
+  background: var(--surface-muted);
+  color: var(--text-main);
+  border-color: var(--border);
+}
+
+.simple-tech-add-note-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.analysis-note-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(8px);
+}
+
+.analysis-note-preview-modal {
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  display: grid;
+  grid-template-rows: auto minmax(280px, 1fr) auto;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+}
+
+.analysis-note-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.analysis-note-preview-head span {
+  display: block;
+  margin-bottom: 3px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analysis-note-preview-head strong {
+  display: block;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.analysis-note-preview-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.analysis-note-preview-textarea {
+  width: 100%;
+  min-height: 320px;
+  resize: vertical;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(203, 213, 225, 0.92);
+  background: rgba(248, 250, 252, 0.78);
+  color: #0f172a;
+  font: 600 13px/1.55 "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  outline: none;
+}
+
+.analysis-note-preview-textarea:focus {
+  border-color: rgba(37, 99, 235, 0.46);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+}
+
+.analysis-note-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.analysis-note-preview-btn {
+  min-width: 120px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.analysis-note-preview-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.analysis-note-preview-btn--ghost {
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  background: #fff;
+  color: #475569;
+}
+
+.analysis-note-preview-btn--primary {
+  border: 1px solid rgba(37, 99, 235, 0.45);
+  background: #2563eb;
+  color: #fff;
+}
+
+html[data-theme="dark"] .analysis-note-preview-modal {
+  border-color: rgba(51, 65, 85, 0.78);
+  background: rgba(15, 23, 42, 0.98);
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .analysis-note-preview-head span {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .analysis-note-preview-head strong {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .analysis-note-preview-textarea {
+  border-color: rgba(51, 65, 85, 0.82);
+  background: rgba(2, 6, 23, 0.7);
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .analysis-note-preview-btn--ghost {
+  border-color: rgba(71, 85, 105, 0.75);
+  background: rgba(15, 23, 42, 0.86);
+  color: #cbd5e1;
+}
+
+.simple-tech-summary-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  height: 34px;
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #1d4ed8;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.analysis-inline-compare-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.analysis-compare-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px 0 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgba(248, 250, 252, 0.92);
+  color: #0f1f4d;
+  font-size: 0.76rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.analysis-chip-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: linear-gradient(180deg, #f59e0b, #d97706);
+}
+
+.analysis-chip-avatar { background: linear-gradient(180deg, #60a5fa, #2563eb); }
+
+.analysis-compare-popover {
+  width: 320px;
+  top: calc(100% + 12px);
+  left: auto;
+  right: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
+}
+
+.analysis-compare-option {
+  border-radius: 12px;
+}
+
+.analysis-comparison-section {
+  margin-top: 16px;
+  padding: 14px 16px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(226, 232, 240, 0.78);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+}
+
+.analysis-comparison-section .panel-head {
+  margin-bottom: 10px;
+}
+
+.analysis-comparison-section .analysis-chart-shell {
+  padding: 10px 0 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+html[data-theme="dark"] .simple-chart-scale-btn {
+  color: #94a3b8;
+  border-color: rgba(71, 85, 105, 0.6);
+}
+
+html[data-theme="dark"] .simple-chart-scale-btn:hover {
+  background: rgba(30, 41, 59, 0.7);
+  color: #cbd5e1;
+  border-color: rgba(100, 116, 139, 0.7);
+}
+
+html[data-theme="dark"] .simple-chart-scale-btn--reset {
+  color: #818cf8;
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+html[data-theme="dark"] .simple-chart-scale-btn--reset:hover {
+  background: rgba(99, 102, 241, 0.22);
+}
+
+html[data-theme="dark"] .analysis-terminal-shell,
+html[data-theme="dark"] .analysis-comparison-section,
+html[data-theme="dark"] .simple-analysis-chart-card,
+html[data-theme="dark"] .simple-tech-summary-card,
+html[data-theme="dark"] .simple-analysis-metric,
+html[data-theme="dark"] .analysis-switcher-field select,
+html[data-theme="dark"] .analysis-header-compare-btn {
+  background: #0f172a;
+  border-color: rgba(51, 65, 85, 0.48);
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .analysis-hero-symbol-row h1,
+html[data-theme="dark"] .simple-analysis-metric strong {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .simple-analysis-metric.simple-analysis-metric--positive strong:not(.is-placeholder) {
+  color: #4ade80;
+}
+
+html[data-theme="dark"] .simple-analysis-metric.simple-analysis-metric--negative strong:not(.is-placeholder) {
+  color: #f87171;
+}
+
+html[data-theme="dark"] .simple-analysis-metric.simple-analysis-metric--warning strong:not(.is-placeholder) {
+  color: #fbbf24;
+}
+
+html[data-theme="dark"] .simple-tech-metric-cell-sub {
+  color: #475569;
+}
+
+html[data-theme="dark"] .simple-tech-tooltip-anchor {
+  color: #475569;
+}
+
+html[data-theme="dark"] .simple-tech-tooltip-anchor:hover,
+html[data-theme="dark"] .simple-tech-tooltip-anchor:focus-visible {
+  color: #64748b;
+}
+
+html[data-theme="dark"] .simple-tech-tooltip-box {
+  background: rgba(30, 41, 59, 0.97);
+  color: #e2e8f0;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(71, 85, 105, 0.45);
+}
+
+html[data-theme="dark"] .simple-tech-summary-label { color: #f8fafc; }
+
+html[data-theme="dark"] .simple-tech-metric-cell {
+  background: rgba(15, 23, 42, 0.5);
+  border-color: rgba(51, 65, 85, 0.5);
+}
+html[data-theme="dark"] .simple-tech-metric-cell-value { color: #e2e8f0; }
+html[data-theme="dark"] .simple-tech-check-item { color: #94a3b8; }
+
+html[data-theme="dark"] .analysis-hero-meta,
+html[data-theme="dark"] .simple-analysis-metric span {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .analysis-mode-toggle,
+html[data-theme="dark"] .currency-toggle.analysis-currency-toggle,
+html[data-theme="dark"] .simple-analysis-ranges {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(51, 65, 85, 0.5);
+}
+
+.analysis-fundamentals-shell {
+  margin-top: 18px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(226, 232, 240, 0.88);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.045);
+}
+
+.analysis-fundamentals-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 18px 20px;
+  border: none;
+  background: transparent;
+  color: #0f1f4d;
+  text-align: left;
+}
+
+.analysis-fundamentals-toggle > div {
+  display: grid;
+  gap: 6px;
+}
+
+.analysis-fundamentals-toggle strong {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.analysis-fundamentals-toggle span {
+  font-size: 0.88rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.analysis-fundamentals-chevron {
+  color: #64748b;
+  transition: transform 0.2s ease;
+}
+
+.analysis-fundamentals-toggle.is-open .analysis-fundamentals-chevron {
+  transform: rotate(180deg);
+}
+
+.analysis-fundamentals-collapse.is-open {
+  padding: 0 0 6px;
+}
+
+.analysis-fundamentals-collapse .fa-card {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+html[data-theme="dark"] .analysis-fundamentals-shell {
+  background: #0f172a;
+  border-color: rgba(51, 65, 85, 0.48);
+}
+
+html[data-theme="dark"] .analysis-fundamentals-toggle {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .analysis-fundamentals-toggle span,
+html[data-theme="dark"] .analysis-fundamentals-chevron {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .analysis-comparison-section {
+  background: rgba(15, 23, 42, 0.42);
+  border-color: rgba(51, 65, 85, 0.42);
+}
+

@@ -19,7 +19,8 @@ public record StockPriceDto(
         Instant dataTimestamp,
         BigDecimal openPrice,
         String bistTier,
-        String stockSector
+        String stockSector,
+        BigDecimal sharesOutstanding
 ) {
 }
 
