@@ -10,7 +10,6 @@ import com.emrehalli.financeportal.company.dto.importcsv.ManualFinancialImportRe
 import com.emrehalli.financeportal.company.persistence.CompanyFinancialReportRepository;
 import com.emrehalli.financeportal.company.persistence.CompanyFinancialValueRepository;
 import com.emrehalli.financeportal.company.persistence.CompanyProfileRepository;
-import com.emrehalli.financeportal.company.persistence.CompanyRatioRepository;
 import com.emrehalli.financeportal.company.service.CompanyRatioService;
 import com.emrehalli.financeportal.company.support.FinancialReportUpsertSupport;
 import org.springframework.stereotype.Service;
@@ -37,25 +36,41 @@ public class CompanyFinancialImportService {
     private final CompanyProfileRepository profileRepository;
     private final CompanyFinancialReportRepository reportRepository;
     private final CompanyFinancialValueRepository valueRepository;
-    private final CompanyRatioRepository ratioRepository;
     private final CompanyRatioService ratioService;
     private final ManualFinancialCsvReader csvReader;
+    private final ManualFinancialExcelReader excelReader;
     private final FinancialReportUpsertSupport upsertSupport;
 
     public CompanyFinancialImportService(CompanyProfileRepository profileRepository,
                                          CompanyFinancialReportRepository reportRepository,
                                          CompanyFinancialValueRepository valueRepository,
-                                         CompanyRatioRepository ratioRepository,
                                          CompanyRatioService ratioService,
                                          ManualFinancialCsvReader csvReader,
+                                         ManualFinancialExcelReader excelReader,
                                          FinancialReportUpsertSupport upsertSupport) {
         this.profileRepository = profileRepository;
         this.reportRepository = reportRepository;
         this.valueRepository = valueRepository;
-        this.ratioRepository = ratioRepository;
         this.ratioService = ratioService;
         this.csvReader = csvReader;
+        this.excelReader = excelReader;
         this.upsertSupport = upsertSupport;
+    }
+
+    @Transactional
+    public ManualFinancialImportResponse importFile(MultipartFile file,
+                                                    boolean dryRun,
+                                                    boolean replaceExisting,
+                                                    boolean recalculateRatios,
+                                                    boolean overwriteShareCount) {
+        String filename = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase(Locale.ROOT) : "";
+        ManualFinancialCsvReader.CsvReadResult readResult;
+        if (filename.endsWith(".xlsx") || filename.endsWith(".xls")) {
+            readResult = excelReader.read(file);
+        } else {
+            readResult = csvReader.read(file);
+        }
+        return importRows(readResult.rows(), readResult.errors(), dryRun, replaceExisting, recalculateRatios, overwriteShareCount);
     }
 
     @Transactional
@@ -182,12 +197,7 @@ public class CompanyFinancialImportService {
                         .thenComparing(PreparedReportImport::periodQuarter))
                 .toList();
 
-        List<String> preservedRealRatios = resolvePreservedRealRatios(allReportImports);
-        Set<String> preservedTickerSet = new LinkedHashSet<>(preservedRealRatios);
-        List<String> skippedExisting = new ArrayList<>(preservedRealRatios);
-        List<PreparedReportImport> reportImports = allReportImports.stream()
-                .filter(reportImport -> !preservedTickerSet.contains(reportImport.company().getTickerCode()))
-                .toList();
+        List<PreparedReportImport> reportImports = allReportImports;
 
         int createdReports = 0;
         int updatedReports = 0;
@@ -239,9 +249,6 @@ public class CompanyFinancialImportService {
         }
 
         for (ShareCountDecision decision : shareCountDecisions.values()) {
-            if (preservedTickerSet.contains(decision.company().getTickerCode())) {
-                continue;
-            }
             if (decision.firstValidValue() != null) {
                 BigDecimal existing = decision.company().getSharesOutstanding();
                 if (existing == null) {
@@ -280,8 +287,8 @@ public class CompanyFinancialImportService {
                 updatedValues,
                 deletedStaleValues,
                 new ArrayList<>(affectedTickers),
-                preservedRealRatios,
-                skippedExisting,
+                List.of(),
+                List.of(),
                 shareCountUpdates,
                 updatedShareCounts,
                 skippedShareCounts,
@@ -488,21 +495,6 @@ public class CompanyFinancialImportService {
             }
         }
         return recalculatedTickers;
-    }
-
-    private List<String> resolvePreservedRealRatios(List<PreparedReportImport> reportImports) {
-        List<String> preserved = new ArrayList<>();
-        Set<String> seen = new LinkedHashSet<>();
-        for (PreparedReportImport reportImport : reportImports) {
-            String ticker = reportImport.company().getTickerCode();
-            if (!seen.add(ticker)) {
-                continue;
-            }
-            if (ratioRepository.findTopByCompanyTickerCodeIgnoreCaseOrderByCalculatedAtDesc(ticker).isPresent()) {
-                preserved.add(ticker);
-            }
-        }
-        return preserved;
     }
 
     private void applyShareCountUpdates(List<ShareCountUpdate> shareCountUpdates) {

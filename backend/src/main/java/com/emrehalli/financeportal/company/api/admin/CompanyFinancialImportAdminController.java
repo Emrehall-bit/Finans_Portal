@@ -25,11 +25,11 @@ public class CompanyFinancialImportAdminController {
                                                                        @RequestParam(defaultValue = "true") boolean replaceExisting,
                                                                        @RequestParam(defaultValue = "true") boolean recalculateRatios,
                                                                        @RequestParam(defaultValue = "false") boolean overwriteShareCount) {
-        ManualFinancialImportResponse result = importService.importCsv(file, dryRun, replaceExisting, recalculateRatios, overwriteShareCount);
+        ManualFinancialImportResponse result = importService.importFile(file, dryRun, replaceExisting, recalculateRatios, overwriteShareCount);
         return ApiResponse.<ManualFinancialImportResponse>builder()
                 .success(true)
                 .data(result)
-                .message(dryRun ? "CSV import dry-run tamamlandi." : "CSV import tamamlandi.")
+                .message(dryRun ? "Finansal import dry-run tamamlandi." : "Finansal import tamamlandi.")
                 .build();
     }
 }

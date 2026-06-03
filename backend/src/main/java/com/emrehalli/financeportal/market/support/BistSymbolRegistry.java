@@ -11,9 +11,10 @@ import java.util.List;
 public class BistSymbolRegistry {
 
     private static final List<String> BIST_30_SYMBOLS = List.of(
-            "AKBNK", "AKGRT", "AKSA", "AKSEN", "ALARK", "ALBRK", "ALFAS", "ALKIM", "ANACM",
+            "AEFES", "AKBNK", "AKGRT", "AKSA", "AKSEN", "ALARK", "ALBRK", "ALFAS", "ALKIM", "ANACM",
             "ARCLK", "ARDYZ", "ASELS", "ASTOR", "AYDEM", "BERA", "BIMAS", "BIRCH", "BOBET", "BRYAT",
             "BTCIM", "BUCIM", "CANTE", "CCOLA", "CEMTS", "CIMSA", "CLEBI", "CWENE", "DOAS", "DOHOL",
+            "DSTKF",
             "DYOBY", "ECILC", "EGEEN", "EKGYO", "ENERY", "ENJSA", "ENKAI", "ERBOS", "EREGL", "EUPWR",
             "FAVOR", "FENER", "FLAP", "FROTO", "GARAN", "GENIL", "GESAN", "GLYHO", "GMTAS", "GOODY",
             "GUBRF", "GWIND", "HALKB", "HEKTS", "HLGYO", "ISCTR", "ISGYO", "ISMEN", "IZENR", "JANTS",
@@ -21,7 +22,7 @@ public class BistSymbolRegistry {
             "KRDMD", "KRONT", "KTLEV", "LOGO", "MAVI", "MGROS", "MIATK", "MPARK", "NETAS", "NTTUR",
             "ODAS", "ONCSM", "ORGE", "OTKAR", "OYAKC", "PEHOL", "PETKM", "PGSUS", "QUAGR", "RAYSG",
             "SAHOL", "SASA", "SAYAS", "SISE", "SKBNK", "SNPAM", "SOKM", "SRVGY", "TAVHL", "TCELL",
-            "THYAO", "TKFEN", "TOASO", "TRGYO", "TTKOM", "TTRAK", "TSKB", "TUPRS", "TURSG", "ULKER",
+            "THYAO", "TKFEN", "TOASO", "TRALT", "TRGYO", "TTKOM", "TTRAK", "TSKB", "TUPRS", "TURSG", "ULKER",
             "VAKBN", "VERUS", "VESTL", "YKBNK", "YYLGD", "ZOREN"
     );
 
@@ -39,7 +40,6 @@ public class BistSymbolRegistry {
         return bistSymbol + ".IS";
     }
 }
-
 
 
 

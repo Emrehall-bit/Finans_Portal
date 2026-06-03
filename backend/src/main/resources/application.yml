@@ -129,6 +129,10 @@ news:
     mode: conservative
     legacy-enabled: false
 
+company:
+  features:
+    mock-ratio-seed-enabled: false
+
 market:
   providers:
     yahoo:

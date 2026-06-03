@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.company.api.admin;
 
+import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.company.dto.response.BasicProfileSeedResponse;
 import com.emrehalli.financeportal.company.dto.response.MockRatioSeedResponse;
@@ -7,6 +8,7 @@ import com.emrehalli.financeportal.company.dto.response.ShareCountImportResponse
 import com.emrehalli.financeportal.company.service.CompanyMockRatioSeedService;
 import com.emrehalli.financeportal.company.service.CompanyProfileAdminService;
 import com.emrehalli.financeportal.company.service.CompanyShareCountImportService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,6 +21,9 @@ public class CompanyAdminController {
     private final CompanyProfileAdminService companyProfileAdminService;
     private final CompanyShareCountImportService companyShareCountImportService;
     private final CompanyMockRatioSeedService companyMockRatioSeedService;
+
+    @Value("${company.features.mock-ratio-seed-enabled:false}")
+    private boolean mockRatioSeedEnabled;
 
     public CompanyAdminController(CompanyProfileAdminService companyProfileAdminService,
                                   CompanyShareCountImportService companyShareCountImportService,
@@ -41,6 +46,9 @@ public class CompanyAdminController {
 
     @PostMapping("/seed-mock-ratios")
     public ApiResponse<MockRatioSeedResponse> seedMockRatios() {
+        if (!mockRatioSeedEnabled) {
+            throw new BadRequestException("Mock ratio seed bu ortamda devre disi.");
+        }
         MockRatioSeedResponse result = companyMockRatioSeedService.seedMockRatios();
         return ApiResponse.<MockRatioSeedResponse>builder()
                 .success(true)
