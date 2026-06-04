@@ -567,10 +567,10 @@ export default function InstrumentDetailPage() {
           <div className="instrument-detail-main-column">
             {activeTab === "overview" ? (
               <section className="instrument-overview-stack">
-                {supportsTechnicalAi(resolvedInstrumentType) ? (
+                {resolvedInstrumentType === "STOCK" ? (
                   <AiUnifiedAnalysisCard
                     symbol={displaySymbol}
-                    instrumentType={resolvedInstrumentType}
+                    instrumentType="STOCK"
                   />
                 ) : null}
 

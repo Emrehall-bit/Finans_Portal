@@ -6,11 +6,8 @@ import org.springframework.stereotype.Component;
 /**
  * Builds the LLM prompt for the unified analysis endpoint.
  *
- * Design principles:
- * - No raw numbers in the prompt â€” only pre-interpreted natural language strings.
- * - Structured insight blocks give the LLM enough context to reason about
- *   technical / fundamental alignment without hallucinating data.
- * - Anti-hallucination rules are stated explicitly at the top.
+ * Design: Uses pre-interpreted text from technical and fundamental analyses
+ * (no raw numbers), so the LLM synthesizes rather than re-derives meaning.
  */
 @Component
 public class UnifiedAnalysisPromptBuilder implements AiPromptBuilder {
@@ -18,55 +15,56 @@ public class UnifiedAnalysisPromptBuilder implements AiPromptBuilder {
     public String build(UnifiedAnalysisContext ctx) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("Sen Finance Portal'Ä±n kÄ±demli finansal analistisysen. ");
-        sb.append("AÅŸaÄŸÄ±daki teknik ve temel analiz bloklarÄ±nÄ± doÄŸal, profesyonel TÃ¼rkÃ§e finans diliyle sentezleyeceksin.\n\n");
+        sb.append("Sen Finance Portal'in kıdemli finansal analistisysin. ");
+        sb.append("Asagidaki teknik ve temel analiz bloklarini dogal, profesyonel Turkce finans diliyle sentezleyeceksin.\n\n");
 
-        sb.append("DAVRANIÅ KURALLARI:\n");
-        sb.append("- Ham sayÄ± veya yÃ¼zde listeleme yapma; yorumlama yap.\n");
+        sb.append("DAVRANIS KURALLARI:\n");
+        sb.append("- Ham sayi veya yuzde listeleme yapma; yorumlama yap.\n");
         sb.append("- Kesin fiyat hedefi verme.\n");
-        sb.append("- 'al', 'sat', 'tut' gibi yatÄ±rÄ±m tavsiyesi verme.\n");
-        sb.append("- 'gÃ¶rÃ¼nÃ¼yor', 'iÅŸaret ediyor olabilir', 'mevcut verilere gÃ¶re' gibi kontrollÃ¼ dil kullan.\n");
-        sb.append("- Sana verilmeyen veri iÃ§in tahmin yÃ¼rÃ¼tme veya uydurma.\n");
-        sb.append("- Maksimum 3 highlight ve 2 risk maddesi Ã¼ret.\n");
-        sb.append("- Her madde tek cÃ¼mle olsun; liste deÄŸil yorum yap.\n\n");
+        sb.append("- 'al', 'sat', 'tut' gibi yatirim tavsiyesi verme.\n");
+        sb.append("- 'gorunuyor', 'isaret ediyor olabilir', 'mevcut verilere gore' gibi kontrollu dil kullan.\n");
+        sb.append("- Sana verilmeyen veri icin tahmin yurutme veya uydurma.\n");
+        sb.append("- Maksimum 3 highlight ve 2 risk maddesi uret.\n");
+        sb.append("- Her madde tek cumle olsun; liste degil yorum yap.\n\n");
 
         sb.append("SEMBOL: ").append(ctx.symbol()).append("\n\n");
 
-        // â”€â”€ Technical block â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        sb.append("=== TEKNÄ°K GÃ–RÃœNÃœM ===\n");
+        // ── Technical block ──────────────────────────────────────────────────
+        sb.append("=== TEKNIK GORUNUM ===\n");
         appendIfPresent(sb, "Genel", ctx.technicalSummary());
         appendIfPresent(sb, "Trend", ctx.trendObservation());
         appendIfPresent(sb, "Momentum", ctx.momentumObservation());
         appendIfPresent(sb, "Sinyal", ctx.technicalSignal());
         sb.append("\n");
 
-        // â”€â”€ Fundamental block (only for STOCK) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Fundamental block (only for STOCK) ───────────────────────────────
         if (ctx.hasFundamentals()) {
-            sb.append("=== TEMEL GÃ–RÃœNÃœM ===\n");
-            appendIfPresent(sb, "Finansal saÄŸlÄ±k", ctx.financialHealthLabel());
+            sb.append("=== TEMEL GORUNUM ===\n");
+            appendIfPresent(sb, "Finansal saglik", ctx.financialHealthLabel());
             appendIfPresent(sb, "Genel", ctx.fundamentalSummary());
             if (!ctx.strengths().isEmpty()) {
-                sb.append("GÃ¼Ã§lÃ¼ yanlar: ").append(String.join(" | ", ctx.strengths())).append("\n");
+                sb.append("Guclu yanlar: ").append(String.join(" | ", ctx.strengths())).append("\n");
             }
             if (!ctx.weaknesses().isEmpty()) {
-                sb.append("ZayÄ±f yanlar: ").append(String.join(" | ", ctx.weaknesses())).append("\n");
+                sb.append("Zayif yanlar: ").append(String.join(" | ", ctx.weaknesses())).append("\n");
             }
             if (!ctx.fundamentalRisks().isEmpty()) {
                 sb.append("Riskler: ").append(String.join(" | ", ctx.fundamentalRisks())).append("\n");
             }
-            appendIfPresent(sb, "BÃ¼yÃ¼me", ctx.growthObservation());
+            appendIfPresent(sb, "Buyume", ctx.growthObservation());
             sb.append("\n");
         }
 
-        // â”€â”€ Alignment reasoning â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        sb.append("=== BÃœTÃœNLEÅÄ°K YORUM NOTU ===\n");
+        // ── Alignment reasoning ──────────────────────────────────────────────
+        sb.append("=== BUTUNLESIK YORUM NOTU ===\n");
         sb.append(ctx.conflictNote()).append("\n\n");
 
-        // â”€â”€ Output format â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        sb.append("YanÄ±tÄ±nÄ± YALNIZCA ÅŸu JSON formatÄ±nda ver â€” baÅŸka hiÃ§bir ÅŸey ekleme:\n");
-        sb.append("{\"summary\": \"<2-3 cÃ¼mle genel deÄŸerlendirme>\", ");
-        sb.append("\"highlights\": [\"<Ã¶ne Ã§Ä±kan 1>\", \"<Ã¶ne Ã§Ä±kan 2>\", \"<Ã¶ne Ã§Ä±kan 3>\"], ");
-        sb.append("\"risks\": [\"<risk 1>\", \"<risk 2>\"]}");
+        // ── Output format ────────────────────────────────────────────────────
+        sb.append("Yanitini YALNIZCA su JSON formatinda ver - baska hicbir sey ekleme:\n");
+        sb.append("{\"summary\": \"<2-3 cumle genel degerlendirme>\", ");
+        sb.append("\"highlights\": [\"<one cikan 1>\", \"<one cikan 2>\", \"<one cikan 3>\"], ");
+        sb.append("\"risks\": [\"<risk 1>\", \"<risk 2>\"], ");
+        sb.append("\"alignment\": \"<ALIGNED | DIVERGING | TECHNICAL_ONLY>\"}");
 
         return sb.toString();
     }
@@ -77,7 +75,3 @@ public class UnifiedAnalysisPromptBuilder implements AiPromptBuilder {
         }
     }
 }
-
-
-
-

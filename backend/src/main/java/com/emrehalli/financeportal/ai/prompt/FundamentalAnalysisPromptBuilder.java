@@ -36,51 +36,44 @@ public class FundamentalAnalysisPromptBuilder implements AiPromptBuilder {
         String neutral    = block(insights, FinancialInsight.Category.NEUTRAL);
 
         return """
-                Sen Finance Portal'Ä±n uzman temel analiz asistanÄ±sÄ±n. %s ÅŸirketi iÃ§in aÅŸaÄŸÄ±daki \
-                Ã¶nceden yorumlanmÄ±ÅŸ finansal sinyalleri sentezleyerek kÄ±sa ve profesyonel bir analiz yaz.
-                TÃ¼rkÃ§e yaz. Sinyalleri birebir tekrar etme; sentezle ve birleÅŸtir.
-                Finansal analist dili kullan. "BakÄ±labilir", "incelenebilir" ifadesi kullanma; direkt yorum yap.
+                Sen Finance Portal'ın uzman temel analiz asistanısın. %s şirketi için aşağıdaki \
+                önceden yorumlanmış finansal sinyalleri sentezleyerek kısa ve profesyonel bir analiz yaz.
+                Türkçe yaz. Sinyalleri birebir tekrar etme; sentezle ve birleştir.
+                Finansal analist dili kullan. "Bakılabilir", "incelenebilir" ifadesi kullanma; direkt yorum yap.
 
-                Ã–NCEDEn YORUMLANMÄ±ÅŸ FÄ°NANSAL SÄ°NYALLER:
-                [GÃœÃ‡]     %s
+                ÖNCEDEn YORUMLANMIŞ FİNANSAL SİNYALLER:
+                [GÜÇ]     %s
                 [ZAYIF]   %s
-                [RÄ°SK]    %s
-                [BÃœYÃœME]  %s
-                [DEÄER]   %s
-                [NÃ–TR]    %s
+                [RİSK]    %s
+                [BÜYÜME]  %s
+                [DEĞER]   %s
+                [NÖTR]    %s
 
-                HAM VERÄ°LER (Ã§apraz doÄŸrulama iÃ§in â€” sinyal metinlerini birebir tekrar etme):
-                DÃ¶nem: %s | HasÄ±lat: %s TL | Net KÃ¢r: %s TL
-                ROE: %s | ROA: %s | Net Marj: %s | BrÃ¼t Marj: %s
-                F/K: %s | PD/DD: %s | D/E: %s
-                HasÄ±lat bÃ¼yÃ¼mesi: %s (%s) | Net kÃ¢r bÃ¼yÃ¼mesi: %s (%s)
+                BAĞLAM (doğrulama için — sinyalleri tekrar etme):
+                Dönem: %s | Hasılat: %s TL | Net Kâr: %s TL
 
-                ANTÄ°-HALÃœSÄ°NASYON:
-                - YalnÄ±zca yukarÄ±daki verileri kullan. DeÄŸeri "-" olan alanlar iÃ§in sayÄ± uydurma.
-                - Åirketin sektÃ¶rÃ¼nÃ¼ veya haberlerini ekleme.
+                ANTİ-HALÜSÜNASYON:
+                - Yalnızca yukarıdaki verileri kullan. Değeri "-" olan alanlar için sayı uydurma.
+                - Şirketin sektörünü veya haberlerini ekleme.
                 - Olmayan veriyi tahminen belirtme.
 
-                Ã‡IKTI YAPISI â€” altÄ± bÃ¶lÃ¼m, tek JSON nesnesi:
-                1. summary: 2-3 cÃ¼mle genel finansal gÃ¶rÃ¼nÃ¼m
-                2. strengths: 2-3 madde, rakamla destekli, spesifik
-                3. weaknesses: 1-2 madde, spesifik oran ile destekli
-                4. risks: 1-2 madde, veri destekli
-                5. growthComment: 2-3 cÃ¼mle bÃ¼yÃ¼me yorumu
+                ÇIKTI YAPISI — altı bölüm, tek JSON nesnesi:
+                1. summary: 2-3 cümle genel finansal görünüm — sayıları tekrar etme, finansal tablonun hikayesini anlat
+                2. strengths: 2-3 madde — şirketin içsel güçlü dinamikleri (kârlılık, büyüme, verimlilik);
+                   gerekirse bir sayı kullan ama asıl amaç finansal anlamı açıklamak
+                3. weaknesses: 1-2 madde — şirket içindeki zayıf noktalar (yüksek değerleme, marj baskısı, yavaş büyüme)
+                4. risks: 1-2 madde — bilanço kırılganlığı, dış faktörler veya sürdürülebilirlik belirsizliği;
+                   strengths/weaknesses ile tekrar etme
+                5. growthComment: 2-3 cümle büyüme yorumu — sadece oranları listeleme, büyümenin kalitesini yorumla
                 6. financialHealth: STRONG | STABLE | WATCH | RISKY
 
-                YANIT FORMATI â€” sadece bu JSON, baÅŸka hiÃ§bir ÅŸey:
+                YANIT FORMATI — sadece bu JSON, başka hiçbir şey:
                 {"summary":"...","strengths":["...","..."],"weaknesses":["..."],"risks":["..."],"growthComment":"...","financialHealth":"STABLE"}
                 """.formatted(
                 symbol,
                 strengths, weaknesses, risks, growth, valuation, neutral,
                 ns(fundamentals.getLatestReportPeriod()),
-                val(revenue), val(netProfit),
-                val(fundamentals.getRoe()),      val(fundamentals.getRoa()),
-                val(fundamentals.getNetMargin()), val(fundamentals.getGrossMargin()),
-                val(fundamentals.getPeRatio()),   val(fundamentals.getPbRatio()),
-                val(fundamentals.getDebtToEquity()),
-                val(fundamentals.getRevenueGrowth()),    ns(fundamentals.getRevenueGrowthLabel()),
-                val(fundamentals.getNetProfitGrowth()),  ns(fundamentals.getNetProfitGrowthLabel())
+                val(revenue), val(netProfit)
         );
     }
 
@@ -100,7 +93,3 @@ public class FundamentalAnalysisPromptBuilder implements AiPromptBuilder {
         return s != null ? s : "-";
     }
 }
-
-
-
-

@@ -68,8 +68,11 @@ class NewsImpactAnalysisTest {
                 .thenReturn(new AiResponseCacheService.LookupResult<>(
                         new NewsImpactResponse(
                                 "42",
-                                "ozet",
-                                "etki",
+                                "finansal baglam",
+                                "kisa vadeli etki",
+                                "kisa vadeli etki",
+                                "orta vadeli etki",
+                                "belirsizlik",
                                 List.of(),
                                 "NEUTRAL",
                                 "LOW",
@@ -94,8 +97,11 @@ class NewsImpactAnalysisTest {
     void serviceReturnsMetadataWhenLlmSucceeds() {
         String llmJson = """
                 {
-                  "summary": "Haberin piyasa etkisi sinirli ama izlenmeli.",
-                  "marketImpact": "Piyasa etkisi karisik olabilir.",
+                  "financialContext": "Bu haber merkez bankasi kararinin etkisini yansıtiyor.",
+                  "shortTermImpact": "Piyasa etkisi karisik olabilir; faiz hassas sektorler baskiyla karsilasabilir.",
+                  "mediumTermImpact": "Orta vadede enflasyon beklentileri belirleyici olacak.",
+                  "affectedAssets": ["Bankacılık", "Gayrimenkul"],
+                  "uncertainty": "Kararın yansımaları henüz tam netleşmemiş.",
                   "highlights": ["Kalem 1", "Kalem 2"]
                 }
                 """;
@@ -119,6 +125,8 @@ class NewsImpactAnalysisTest {
         assertThat(result.metadata().aiEnhanced()).isTrue();
         assertThat(result.metadata().deterministicFallbackUsed()).isFalse();
         assertThat(result.metadata().cacheHit()).isFalse();
+        assertThat(result.shortTermImpact()).isNotBlank();
+        assertThat(result.summary()).isNotBlank();
     }
 
     @Test
@@ -154,7 +162,3 @@ class NewsImpactAnalysisTest {
                 .build();
     }
 }
-
-
-
-

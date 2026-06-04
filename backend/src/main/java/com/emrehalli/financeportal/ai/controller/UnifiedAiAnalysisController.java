@@ -27,14 +27,15 @@ public class UnifiedAiAnalysisController {
     /**
      * GET /api/v1/ai/unified/{symbol}?type=STOCK  [PREMIUM]
      *
-     * Returns a single premium unified analysis that merges technical and
-     * (for STOCK instruments) fundamental insights.
+     * Returns a unified analysis combining technical and (for STOCK) fundamental insights.
+     * The {@code type} parameter is required from the caller — omitting it results in a
+     * not-applicable response rather than silently defaulting to STOCK.
      * Cache key: ai:unified:{SYMBOL}, TTL 12 h from LLM / 30 min from fallback.
      */
     @GetMapping("/unified/{symbol}")
     public ResponseEntity<UnifiedAnalysisResponse> getUnifiedAnalysis(
             @PathVariable String symbol,
-            @RequestParam(required = false, defaultValue = "STOCK") String type) {
+            @RequestParam(required = false) String type) {
         featureAccessService.logAccess(AiFeatureType.UNIFIED_ANALYSIS);
         return ResponseEntity.ok(unifiedAiAnalysisService.getUnifiedAnalysis(symbol, type));
     }

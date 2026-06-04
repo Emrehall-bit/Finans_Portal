@@ -245,19 +245,21 @@ public class AiFundamentalAnalysisService {
                                 CompanyFundamentalsResponse fundamentals,
                                 LatestFinancials latestFinancials,
                                 FinancialHealth health) {
-        String netProfitPhrase = latestFinancials.netProfit() == null
-                ? "net kÃ¢r verisi sÄ±nÄ±rlÄ±"
+        String netProfitContext = latestFinancials.netProfit() == null
+                ? "net kâr verisi yetersiz"
                 : latestFinancials.netProfit().compareTo(BigDecimal.ZERO) < 0
-                ? "son net kÃ¢r negatif"
-                : "son net kÃ¢r pozitif";
+                ? "kârlılık baskı altında"
+                : "kârlılık destekleyici görünüyor";
 
-        return symbol + " iÃ§in rule-based finansal saÄŸlÄ±k gÃ¶rÃ¼nÃ¼mÃ¼ " + health + ". "
-                + "ROE " + formatPercent(fundamentals.getRoe())
-                + ", ROA " + formatPercent(fundamentals.getRoa())
-                + ", F/K " + formatRatio(fundamentals.getPeRatio())
-                + ", PD/DD " + formatRatio(fundamentals.getPbRatio())
-                + ", borÃ§/Ã¶zkaynak " + formatRatio(fundamentals.getDebtToEquity())
-                + ". " + netProfitPhrase + "; bÃ¼yÃ¼me ve marjlar bu yorumu belirleyen ana girdiler.";
+        String healthContext = switch (health) {
+            case STRONG -> "finansal göstergeler genel olarak güçlü";
+            case STABLE -> "finansal tablo dengeli seyrediyor";
+            case WATCH  -> "bazı göstergeler yakın takip gerektiriyor";
+            case RISKY  -> "finansal tabloda risk sinyalleri öne çıkıyor";
+        };
+
+        return symbol + " için kural tabanlı temel analiz: " + healthContext + "; " + netProfitContext + ". "
+                + "Büyüme, kârlılık ve borçluluk verileri bu değerlendirmenin temel girdilerini oluşturuyor.";
     }
 
     private LatestFinancials extractLatestFinancials(List<CompanyFinancialReportResponse> reports) {

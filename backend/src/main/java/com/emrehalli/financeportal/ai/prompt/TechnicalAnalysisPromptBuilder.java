@@ -22,49 +22,48 @@ public class TechnicalAnalysisPromptBuilder implements AiPromptBuilder {
         TechnicalInsight insight = insightGenerator.generate(symbol, analysis);
         String insightBlock = formatSignals(insight);
 
-        BigDecimal rsi  = analysis.indicatorValues().get(IndicatorType.RSI14);
-        BigDecimal sma7  = analysis.indicatorValues().get(IndicatorType.SMA7);
-        BigDecimal sma20 = analysis.indicatorValues().get(IndicatorType.SMA20);
-        BigDecimal sma50 = analysis.indicatorValues().get(IndicatorType.SMA50);
+        BigDecimal rsi   = analysis.indicatorValues().get(IndicatorType.RSI14);
+        BigDecimal price = analysis.latestPrice();
 
         return """
-                Sen Finance Portal'Ä±n uzman teknik analiz asistanÄ±sÄ±n. %s hissesi iÃ§in aÅŸaÄŸÄ±daki \
-                Ã¶nceden yorumlanmÄ±ÅŸ sinyalleri bir araya getirerek kÄ±sa ve profesyonel bir analiz yaz.
-                TÃ¼rkÃ§e yaz. Sinyalleri birebir tekrar etme; sentezle ve birbirine baÄŸla.
-                Finansal analist dili kullan. "BakÄ±labilir", "incelenebilir" gibi muÄŸlak ifade kullanma.
+                Sen Finance Portal'ın uzman teknik analiz asistanısın. %s hissesi için aşağıdaki \
+                önceden yorumlanmış sinyalleri bir araya getirerek kısa ve profesyonel bir analiz yaz.
+                Türkçe yaz. Sinyalleri birebir tekrar etme; sentezle ve birbirine bağla.
+                Finansal analist dili kullan. "Bakılabilir", "incelenebilir" gibi muğlak ifade kullanma.
+                Hareketli ortalama değerlerini zaten yorumladık; sadece anlamını pekiştir.
 
-                Ã–NCEDEn YORUMLANMÄ±ÅŸ SÄ°NYALLER:
+                ÖNCEDEn YORUMLANMIŞ SİNYALLER:
                 %s
 
-                TREND Ã–ZETÄ°: %s
-                MOMENTUM Ã–ZETÄ°: %s
+                TREND ÖZETİ: %s
+                MOMENTUM ÖZETİ: %s
 
-                HAM VERÄ°LER (Ã§apraz doÄŸrulama iÃ§in â€” tekrar etme):
-                Fiyat: %s TL | Trend: %s | RSI(14): %s | SMA7: %s | SMA20: %s | SMA50: %s
+                BAĞLAM (çapraz doğrulama için — sinyal metinlerini tekrar etme):
+                Fiyat: %s TL | RSI(14): %s
 
-                ANTÄ°-HALÃœSÄ°NASYON:
-                - YalnÄ±zca yukarÄ±daki verileri kullan; ÅŸirketin haberlerini veya bilinmeyen bilgilerini ekleme.
+                ANTİ-HALÜSÜNASYON:
+                - Yalnızca yukarıdaki verileri kullan; şirketin haberlerini veya bilinmeyen bilgilerini ekleme.
                 - Spesifik fiyat hedefi verme.
                 - Veri yoksa ("-") o konuya girme.
 
-                YANIT FORMATI â€” sadece bu JSON, baÅŸka hiÃ§bir ÅŸey:
-                {"summary":"2-3 cÃ¼mle: fiyat-trend durumu + Ã¶ne Ã§Ä±kan sinyal + kÄ±sa vadeli risk veya fÄ±rsat",\
-                "trendComment":"1-2 cÃ¼mle: hareketli ortalamalarla iliÅŸki (rakam kullan)",\
-                "momentumComment":"1-2 cÃ¼mle: RSI yorumu ve trend ile tutarlÄ±lÄ±ÄŸÄ±",\
+                YANIT FORMATI — sadece bu JSON, başka hiçbir şey:
+                {"summary":"2-3 cümle: fiyat-trend durumu + öne çıkan sinyal + kısa vadeli risk veya fırsat",\
+                "trendComment":"1-2 cümle: hareketli ortalamalarla ilişkinin ne anlama geldiği (gerekirse bir sayı)",\
+                "momentumComment":"1-2 cümle: RSI yorumu ve trend ile tutarlılığı",\
+                "keyObservation":"Bu enstrüman için şu an en kritik teknik gözlem nedir? Tek, net cümle.",\
                 "riskLevel":"LOW veya MEDIUM veya HIGH","signal":"POSITIVE veya NEUTRAL veya NEGATIVE veya RISKY"}
                 """.formatted(
                 symbol,
                 insightBlock,
                 insight.trendSummary(),
                 insight.momentumSummary(),
-                val(analysis.latestPrice()),
-                analysis.trendDirection(),
-                val(rsi), val(sma7), val(sma20), val(sma50)
+                val(price),
+                val(rsi)
         );
     }
 
     private String formatSignals(TechnicalInsight insight) {
-        if (insight.signals().isEmpty()) return "Yeterli sinyal Ã¼retilemedi.";
+        if (insight.signals().isEmpty()) return "Yeterli sinyal üretilemedi.";
         StringBuilder sb = new StringBuilder();
         for (FinancialInsight fi : insight.signals()) {
             String tag = switch (fi.category()) {
@@ -82,7 +81,3 @@ public class TechnicalAnalysisPromptBuilder implements AiPromptBuilder {
         return v == null ? "-" : v.stripTrailingZeros().toPlainString();
     }
 }
-
-
-
-

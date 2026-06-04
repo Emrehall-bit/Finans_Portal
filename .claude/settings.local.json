@@ -280,7 +280,8 @@
       "Bash(sort -t: -k2 -rn)",
       "Bash(python3 *)",
       "Bash([ -d \"$FDIR\" ])",
-      "Bash(ls \"C:\\\\\\\\Users\\\\\\\\ehall\\\\\\\\Desktop\\\\\\\\Finans-Portal\\\\\\\\frontend\\\\\\\\src\\\\\\\\styles\\\\\\\\components\\\\\\\\\")"
+      "Bash(ls \"C:\\\\\\\\Users\\\\\\\\ehall\\\\\\\\Desktop\\\\\\\\Finans-Portal\\\\\\\\frontend\\\\\\\\src\\\\\\\\styles\\\\\\\\components\\\\\\\\\")",
+      "PowerShell(Get-Command *)"
     ]
   }
 }

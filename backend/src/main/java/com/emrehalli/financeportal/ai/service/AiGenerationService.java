@@ -58,6 +58,7 @@ public class AiGenerationService {
         String providerLabel = providerLabel(aiResponse);
         try {
             JsonNode root = parseJson(aiResponse.content());
+            String keyObs = root.path("keyObservation").asText(null);
             AiTechnicalAnalysisResponse result = new AiTechnicalAnalysisResponse(
                     fallback.symbol(),
                     postProcessor.process(textOrFallback(root, "summary", fallback.summary()), AiTaskType.TECHNICAL_ANALYSIS),
@@ -66,7 +67,10 @@ public class AiGenerationService {
                     enumOrFallback(root, "riskLevel", RiskLevel.class, fallback.riskLevel()),
                     enumOrFallback(root, "signal", AiSignal.class, fallback.signal()),
                     fallback.disclaimer(),
-                    AiResponseMetadata.fromAiResponse(aiResponse, fallback.metadata() != null ? fallback.metadata().dataQuality() : "FULL")
+                    AiResponseMetadata.fromAiResponse(aiResponse, fallback.metadata() != null ? fallback.metadata().dataQuality() : "FULL"),
+                    keyObs != null && !keyObs.isBlank()
+                            ? postProcessor.process(keyObs.trim(), AiTaskType.TECHNICAL_ANALYSIS)
+                            : null
             );
             logger.info("LLM technical parse succeeded. provider={}, fallback={}, summaryPreview={}",
                     providerLabel, aiResponse.fallbackUsed(), summaryPreview(result.summary()));

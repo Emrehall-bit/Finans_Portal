@@ -32,7 +32,7 @@ public class AiFallbackExecutor {
                         request.taskType(), primary.getType(), response.model(), response.durationMs());
                 return Optional.of(response);
             } catch (Exception e) {
-                logger.warn("AI primary failed. task={}, provider={}, reason={}. Attempting fallback.",
+                logger.warn("[PROVIDER_FALLBACK] AI primary failed. task={}, primaryProvider={}, reason={}. Attempting fallback.",
                         request.taskType(), primary.getType(), e.getMessage());
             }
         } else {
@@ -53,12 +53,12 @@ public class AiFallbackExecutor {
         try {
             AiResponse response = fallback.generate(request);
             AiResponse withFallback = response.withFallback();
-            logger.info("AI fallback success. task={}, provider={}, fallback=true, model={}, durationMs={}",
-                    request.taskType(), fallback.getType(), withFallback.model(), withFallback.durationMs());
+            logger.info("[PROVIDER_FALLBACK_RECOVERED] AI fallback success. task={}, failedProvider={}, fallbackProvider={}, model={}, durationMs={}",
+                    request.taskType(), primary != null ? primary.getType() : "none", fallback.getType(), withFallback.model(), withFallback.durationMs());
             return Optional.of(withFallback);
         } catch (Exception e) {
-            logger.error("AI fallback also failed. task={}, provider={}, reason={}",
-                    request.taskType(), fallback.getType(), e.getMessage());
+            logger.error("[PROVIDER_BOTH_FAILED] AI fallback also failed. task={}, primaryProvider={}, fallbackProvider={}, reason={}",
+                    request.taskType(), primary != null ? primary.getType() : "none", fallback.getType(), e.getMessage());
             return Optional.empty();
         }
     }

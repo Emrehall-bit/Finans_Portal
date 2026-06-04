@@ -39,7 +39,7 @@ export default function AiNewsImpactCard({ newsId }) {
       setHasLoaded(true);
     } catch {
       setData(null);
-      setError("AI etki analizi su anda uretilemedi.");
+      setError("AI etki analizi şu anda üretilemedi.");
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,7 @@ export default function AiNewsImpactCard({ newsId }) {
     return (
       <AiLockedCard
         featureName="AI Etki Analizi"
-        description="Bu haberin finansal ve sektorel AI yorumunu gormek icin giris yapin."
+        description="Bu haberin finansal ve sektörel AI yorumunu görmek için giriş yapın."
       />
     );
   }
@@ -58,7 +58,7 @@ export default function AiNewsImpactCard({ newsId }) {
     return (
       <AiLockedCard
         featureName="AI Etki Analizi"
-        description="Haberin finansal, sektorel ve piyasa etkisini yorumlayan gelismis AI analizi premium uyelere ozeldir."
+        description="Haberin finansal, sektörel ve piyasa etkisini yorumlayan gelişmiş AI analizi premium üyelere özeldir."
         requiresPremium
       />
     );
@@ -74,8 +74,8 @@ export default function AiNewsImpactCard({ newsId }) {
             {hasLoaded ? <Brain size={17} /> : <Sparkles size={17} />}
           </span>
           <div>
-            <h3>{hasLoaded ? "AI Etki Analizi" : "Yapay Zeka Etki Analizini Baslat"}</h3>
-            <p>{hasLoaded ? "Analiz hazir, detaylari goruntuleyebilirsiniz." : "AI ile analiz et"}</p>
+            <h3>{hasLoaded ? "AI Etki Analizi" : "Yapay Zeka Etki Analizini Başlat"}</h3>
+            <p>{hasLoaded ? "Analiz hazır, detayları görüntüleyebilirsiniz." : "AI ile analiz et"}</p>
           </div>
         </div>
 
@@ -104,7 +104,7 @@ export default function AiNewsImpactCard({ newsId }) {
 
         <p className="ai-disclaimer">
           <Info size={13} aria-hidden="true" />
-          <span>Bu yorum yatirim tavsiyesi degildir; yalnizca mevcut verilerin otomatik analizidir.</span>
+          <span>Bu yorum yatırım tavsiyesi değildir; yalnızca mevcut verilerin otomatik analizidir.</span>
         </p>
       </div>
     </section>
@@ -112,9 +112,23 @@ export default function AiNewsImpactCard({ newsId }) {
 }
 
 function ImpactContent({ data }) {
-  const hasHighlights = Array.isArray(data.highlights) && data.highlights.length > 0;
-  const hasSectors = Array.isArray(data.affectedSectors) && data.affectedSectors.length > 0;
-  const hasMarketImpact = data.marketImpact && data.marketImpact.trim().length > 0;
+  // Prefer new fields; fall back to legacy fields for backward compat
+  const financialContext = data.financialContext || data.summary;
+  const shortTermImpact  = data.shortTermImpact  || data.marketImpact;
+  const mediumTermImpact = data.mediumTermImpact;
+  const uncertainty      = data.uncertainty;
+
+  // Prefer LLM-generated affected assets; fall back to rule-based sectors
+  const assetsToShow =
+    Array.isArray(data.affectedAssets) && data.affectedAssets.length > 0
+      ? data.affectedAssets
+      : Array.isArray(data.affectedSectors) && data.affectedSectors.length > 0
+      ? data.affectedSectors
+      : [];
+
+  const hasAssets      = assetsToShow.length > 0;
+  const hasHighlights  = Array.isArray(data.highlights) && data.highlights.length > 0;
+  const hasUncertainty = uncertainty && uncertainty.trim().length > 0;
 
   return (
     <>
@@ -123,27 +137,45 @@ function ImpactContent({ data }) {
         <RiskBadge riskLevel={data.riskLevel} />
       </div>
 
-      {data.summary ? <p className="ai-impact-summary">{data.summary}</p> : null}
-
-      {hasMarketImpact ? (
+      {financialContext ? (
         <div className="ai-impact-section">
           <div className="ai-impact-section-head">
-            <TrendingUp size={14} aria-hidden="true" />
-            <strong>Piyasa Etkisi</strong>
+            <Info size={14} aria-hidden="true" />
+            <strong>Finansal Bağlam</strong>
           </div>
-          <p className="ai-impact-text">{data.marketImpact}</p>
+          <p className="ai-impact-text">{financialContext}</p>
         </div>
       ) : null}
 
-      {hasSectors ? (
+      {shortTermImpact ? (
+        <div className="ai-impact-section">
+          <div className="ai-impact-section-head">
+            <TrendingUp size={14} aria-hidden="true" />
+            <strong>Kısa Vadeli Etki</strong>
+          </div>
+          <p className="ai-impact-text">{shortTermImpact}</p>
+        </div>
+      ) : null}
+
+      {mediumTermImpact ? (
+        <div className="ai-impact-section">
+          <div className="ai-impact-section-head">
+            <TrendingUp size={14} aria-hidden="true" />
+            <strong>Orta Vadeli Etki</strong>
+          </div>
+          <p className="ai-impact-text">{mediumTermImpact}</p>
+        </div>
+      ) : null}
+
+      {hasAssets ? (
         <div className="ai-impact-section">
           <div className="ai-impact-section-head">
             <AlertTriangle size={14} aria-hidden="true" />
-            <strong>Etkilenebilecek Sektorler</strong>
+            <strong>Etkilenebilecek Varlıklar</strong>
           </div>
           <div className="ai-sector-chips">
-            {data.affectedSectors.map((sector, i) => (
-              <span key={i} className="ai-sector-chip">{sector}</span>
+            {assetsToShow.map((item, i) => (
+              <span key={i} className="ai-sector-chip">{item}</span>
             ))}
           </div>
         </div>
@@ -153,13 +185,23 @@ function ImpactContent({ data }) {
         <div className="ai-impact-section">
           <div className="ai-impact-section-head">
             <Newspaper size={14} aria-hidden="true" />
-            <strong>One Cikanlar</strong>
+            <strong>Öne Çıkanlar</strong>
           </div>
           <ul className="ai-insight-list">
             {data.highlights.map((item, i) => (
               <li key={i}>{item}</li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {hasUncertainty ? (
+        <div className="ai-impact-section">
+          <div className="ai-impact-section-head">
+            <Info size={14} aria-hidden="true" />
+            <strong>Belirsizlikler</strong>
+          </div>
+          <p className="ai-impact-text">{uncertainty}</p>
         </div>
       ) : null}
     </>
@@ -171,7 +213,7 @@ function SentimentBadge({ sentiment }) {
     POSITIVE: { label: "Olumlu", cls: "positive" },
     NEGATIVE: { label: "Olumsuz", cls: "negative" },
     MIXED: { label: "Karma", cls: "mixed" },
-    NEUTRAL: { label: "Notr", cls: "neutral" },
+    NEUTRAL: { label: "Nötr", cls: "neutral" },
   };
   const { label, cls } = map[sentiment] ?? { label: sentiment, cls: "neutral" };
   const Icon = sentiment === "POSITIVE" ? TrendingUp
@@ -187,9 +229,9 @@ function SentimentBadge({ sentiment }) {
 
 function RiskBadge({ riskLevel }) {
   const map = {
-    LOW: { label: "Dusuk Risk", cls: "low" },
+    LOW: { label: "Düşük Risk", cls: "low" },
     MEDIUM: { label: "Orta Risk", cls: "medium" },
-    HIGH: { label: "Yuksek Risk", cls: "high" },
+    HIGH: { label: "Yüksek Risk", cls: "high" },
   };
   const { label, cls } = map[riskLevel] ?? { label: riskLevel, cls: "medium" };
   return (
@@ -201,7 +243,7 @@ function RiskBadge({ riskLevel }) {
 
 function ImpactSkeleton() {
   return (
-    <div className="ai-unified-skeleton" aria-busy="true" aria-label="AI etki analizi hazirlaniyor">
+    <div className="ai-unified-skeleton" aria-busy="true" aria-label="AI etki analizi hazırlanıyor">
       <div className="ai-skeleton-line ai-skeleton-line--narrow" style={{ width: "40%", marginBottom: "0.75rem" }} />
       <div className="ai-skeleton-line ai-skeleton-line--wide" />
       <div className="ai-skeleton-line" />

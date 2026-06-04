@@ -68,7 +68,7 @@ public class NewsImpactAnalysisService {
     }
 
     public NewsImpactResponse getNewsImpactAnalysis(Long newsId) {
-        // Eagerly resolve â€” propagates ResourceNotFoundException (â†’ 404) before cache lookup
+        // Eagerly resolve — propagates ResourceNotFoundException (→ 404) before cache lookup
         NewsResponseDto news = newsService.getNewsById(newsId);
         String cacheKey = "ai:news-impact:" + newsId;
         try {
@@ -86,7 +86,7 @@ public class NewsImpactAnalysisService {
         }
     }
 
-    // â”€â”€ Computation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Computation ──────────────────────────────────────────────────────────
 
     private CachedValue<NewsImpactResponse> compute(Long newsId, NewsResponseDto news) {
         NewsCategory category = categoryDetector.detect(news.getTitle(), news.getSummary(), news.getCategory());
@@ -124,7 +124,7 @@ public class NewsImpactAnalysisService {
         }
     }
 
-    // â”€â”€ JSON parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── JSON parsing ─────────────────────────────────────────────────────────
 
     private CachedValue<NewsImpactResponse> parseResponse(Long newsId, AiResponse aiResponse,
                                                           NewsImpactContext context) throws Exception {
@@ -141,16 +141,21 @@ public class NewsImpactAnalysisService {
         }
         JsonNode root = objectMapper.readTree(cleaned.substring(first, last + 1));
 
-        String summary      = postProcessor.process(root.path("summary").asText(""),      AiTaskType.NEWS_IMPACT_ANALYSIS);
-        String marketImpact = postProcessor.process(root.path("marketImpact").asText(""), AiTaskType.NEWS_IMPACT_ANALYSIS);
+        String financialContext = postProcessor.process(root.path("financialContext").asText(""), AiTaskType.NEWS_IMPACT_ANALYSIS);
+        String shortTermImpact  = postProcessor.process(root.path("shortTermImpact").asText(""),  AiTaskType.NEWS_IMPACT_ANALYSIS);
+        String mediumTermImpact = postProcessor.process(root.path("mediumTermImpact").asText(""), AiTaskType.NEWS_IMPACT_ANALYSIS);
+        String uncertainty      = postProcessor.process(root.path("uncertainty").asText(""),      AiTaskType.NEWS_IMPACT_ANALYSIS);
         List<String> highlights = parseList(root.path("highlights"));
 
         String provider = aiResponse.provider().name().toLowerCase(Locale.ROOT);
         return new CachedValue<>(
                 new NewsImpactResponse(
                         String.valueOf(newsId),
-                        summary,
-                        marketImpact,
+                        financialContext,    // summary — geriye dönük uyumluluk
+                        shortTermImpact,     // marketImpact — geriye dönük uyumluluk
+                        shortTermImpact,
+                        mediumTermImpact,
+                        uncertainty,
                         context.affectedSectors(),
                         context.initialSentiment(),
                         context.initialRiskLevel(),
@@ -175,16 +180,19 @@ public class NewsImpactAnalysisService {
         return List.copyOf(items);
     }
 
-    // â”€â”€ Fallbacks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Fallbacks ─────────────────────────────────────────────────────────────
 
     private NewsImpactResponse deterministicFallback(Long newsId, NewsImpactContext context) {
         String categoryLabel = context.detectedCategory().name().replace("_", " ").toLowerCase(Locale.ROOT);
-        String summary = "Bu haber " + categoryLabel +
-                " kategorisinde deÄŸerlendirilebilir. Piyasa etkisi iÃ§in ek veri takip edilmeli.";
+        String financialContext = "Bu haber " + categoryLabel
+                + " kategorisinde değerlendirilebilir; piyasa üzerindeki gerçek etkisi için ek veri takip edilmeli.";
         return new NewsImpactResponse(
                 String.valueOf(newsId),
-                summary,
-                "Piyasa etkisi mevcut verilerle sÄ±nÄ±rlÄ± deÄŸerlendirilebilir.",
+                financialContext,
+                "Piyasa etkisi mevcut verilerle sınırlı değerlendirilebilir.",
+                "Piyasa etkisi mevcut verilerle sınırlı değerlendirilebilir.",
+                "",
+                "AI analizi üretilemedi; sektör tespiti kural tabanlı yapıldı.",
                 context.affectedSectors(),
                 context.initialSentiment(),
                 context.initialRiskLevel(),
@@ -198,7 +206,10 @@ public class NewsImpactAnalysisService {
     private NewsImpactResponse emptyFallback(Long newsId) {
         return new NewsImpactResponse(
                 String.valueOf(newsId),
-                "Haber etki analizi ÅŸu an hazÄ±rlanamÄ±yor.",
+                "Haber etki analizi şu an hazırlanamıyor.",
+                "",
+                "",
+                "",
                 "",
                 List.of(),
                 "NEUTRAL",
@@ -221,6 +232,9 @@ public class NewsImpactAnalysisService {
                 response.newsId(),
                 response.summary(),
                 response.marketImpact(),
+                response.shortTermImpact(),
+                response.mediumTermImpact(),
+                response.uncertainty(),
                 response.affectedSectors(),
                 response.sentiment(),
                 response.riskLevel(),
@@ -231,7 +245,3 @@ public class NewsImpactAnalysisService {
         );
     }
 }
-
-
-
-

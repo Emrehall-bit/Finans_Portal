@@ -82,10 +82,15 @@ export default function AiUnifiedAnalysisCard({ symbol, instrumentType = "STOCK"
       <div className="ai-card-body">
         {loading ? <UnifiedSkeleton /> : null}
         {!loading && error ? <p className="ai-state-message error">{error}</p> : null}
-        {!loading && !error && data ? <UnifiedContent data={data} /> : null}
+        {!loading && !error && data && hasContent(data) ? <UnifiedContent data={data} /> : null}
+        {!loading && !error && data && !hasContent(data) ? (
+          <p className="ai-state-message">Birlesik analiz icin yeterli temel veri bulunmuyor.</p>
+        ) : null}
       </div>
 
-      {data ? <div className="ai-card-footer"><AiResponseMeta metadata={data.metadata} /></div> : null}
+      {data && hasContent(data) ? (
+        <div className="ai-card-footer"><AiResponseMeta metadata={data.metadata} /></div>
+      ) : null}
 
       <p className="ai-disclaimer">
         <Info size={13} aria-hidden="true" />
@@ -131,6 +136,14 @@ function UnifiedContent({ data }) {
         </div>
       ) : null}
     </>
+  );
+}
+
+function hasContent(data) {
+  return (
+    Boolean(data?.summary) ||
+    (Array.isArray(data?.highlights) && data.highlights.length > 0) ||
+    (Array.isArray(data?.risks) && data.risks.length > 0)
   );
 }
 

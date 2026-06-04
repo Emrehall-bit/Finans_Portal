@@ -89,6 +89,14 @@ public class UnifiedAiAnalysisService {
     // â”€â”€ Computation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private CachedValue<UnifiedAnalysisResponse> compute(String symbol, String instrumentType) {
+        // Unified analysis only makes sense for STOCK: it requires both technical AND fundamental data.
+        // For FX, CRYPTO, FUTURES, BOND, FUND, INDEX — no fundamental data exists, so the LLM
+        // would produce nothing more than a rephrased technical analysis. Skip to avoid wasted cost.
+        if (!"STOCK".equalsIgnoreCase(instrumentType)) {
+            logger.debug("Unified AI: skipped — not a STOCK instrument. symbol={}, type={}", symbol, instrumentType);
+            return new CachedValue<>(notApplicableFallback(symbol), FALLBACK_CACHE_TTL);
+        }
+
         AiTechnicalAnalysisResponse technical;
         try {
             technical = technicalService.getTechnicalComment(symbol);
@@ -97,13 +105,23 @@ public class UnifiedAiAnalysisService {
             return new CachedValue<>(emptyFallback(symbol), FALLBACK_CACHE_TTL);
         }
 
-        AiFundamentalAnalysisResponse fundamental = null;
-        if ("STOCK".equalsIgnoreCase(instrumentType)) {
-            try {
-                fundamental = fundamentalService.getFundamentalComment(symbol);
-            } catch (Exception e) {
-                logger.debug("Unified AI: fundamental fetch skipped (non-critical). symbol={}", symbol);
-            }
+        AiFundamentalAnalysisResponse fundamental;
+        try {
+            fundamental = fundamentalService.getFundamentalComment(symbol);
+        } catch (Exception e) {
+            logger.warn("Unified AI: fundamental fetch failed. symbol={}, reason={}", symbol, e.getMessage());
+            return new CachedValue<>(emptyFallback(symbol), FALLBACK_CACHE_TTL);
+        }
+
+        // If fundamental data is insufficient (no financials in DB), unified analysis has no basis.
+        if (fundamental == null
+                || fundamental.metadata() == null
+                || "INSUFFICIENT".equals(fundamental.metadata().dataQuality())
+                || "LOW".equals(fundamental.metadata().dataQuality())) {
+            logger.info("Unified AI: skipped — fundamental data insufficient. symbol={}, quality={}",
+                    symbol, fundamental != null && fundamental.metadata() != null
+                            ? fundamental.metadata().dataQuality() : "null");
+            return new CachedValue<>(notApplicableFallback(symbol), FALLBACK_CACHE_TTL);
         }
 
         UnifiedAnalysisContext context = assembler.assemble(symbol, technical, fundamental);
@@ -146,6 +164,7 @@ public class UnifiedAiAnalysisService {
         String summary    = postProcessor.process(root.path("summary").asText(""), AiTaskType.PAGE_ANALYSIS);
         List<String> highlights = parseList(root.path("highlights"));
         List<String> risks      = parseList(root.path("risks"));
+        String alignment  = root.path("alignment").asText(null);
 
         String provider = aiResponse.provider().name().toLowerCase(Locale.ROOT);
         return new CachedValue<>(
@@ -154,6 +173,7 @@ public class UnifiedAiAnalysisService {
                         summary,
                         highlights,
                         risks,
+                        alignment != null && !alignment.isBlank() ? alignment.trim() : null,
                         provider,
                         aiResponse.fallbackUsed(),
                         AiResponseMetadata.fromAiResponse(aiResponse, "COMPLETE")
@@ -184,15 +204,29 @@ public class UnifiedAiAnalysisService {
         List<String> risks = ctx.fundamentalRisks().isEmpty()
                 ? List.of()
                 : ctx.fundamentalRisks().subList(0, Math.min(2, ctx.fundamentalRisks().size()));
-        return new UnifiedAnalysisResponse(symbol, summary, List.of(), risks, null, false, AiResponseMetadata.deterministic("PARTIAL"));
+        return new UnifiedAnalysisResponse(symbol, summary, List.of(), risks, null, null, false, AiResponseMetadata.deterministic("PARTIAL"));
+    }
+
+    private UnifiedAnalysisResponse notApplicableFallback(String symbol) {
+        return new UnifiedAnalysisResponse(
+                symbol,
+                null,
+                List.of(),
+                List.of(),
+                null,
+                null,
+                false,
+                AiResponseMetadata.deterministic("LOW")
+        );
     }
 
     private UnifiedAnalysisResponse emptyFallback(String symbol) {
         return new UnifiedAnalysisResponse(
                 symbol,
-                "BirleÅŸik AI analizi ÅŸu an hazÄ±rlanamÄ±yor; teknik ve temel analiz kartlarÄ±nÄ± ayrÄ± inceleyebilirsiniz.",
+                "Birleşik AI analizi şu an hazırlanamıyor; teknik ve temel analiz kartlarını ayrı inceleyebilirsiniz.",
                 List.of(),
                 List.of(),
+                null,
                 null,
                 false,
                 AiResponseMetadata.deterministic("LOW")
@@ -211,6 +245,7 @@ public class UnifiedAiAnalysisService {
                 response.summary(),
                 response.highlights(),
                 response.risks(),
+                response.alignment(),
                 response.provider(),
                 response.fallbackUsed(),
                 metadata

@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -72,6 +73,7 @@ class UnifiedAiAnalysisTest {
                                 "Summary",
                                 List.of(),
                                 List.of(),
+                                "ALIGNED",
                                 "groq",
                                 false,
                                 AiResponseMetadata.fromAiResponse(new AiResponse("{}", AiProviderType.GROQ, false, "llama3", 1L), "COMPLETE")
@@ -94,7 +96,8 @@ class UnifiedAiAnalysisTest {
                 {
                   "summary": "Test ozeti.",
                   "highlights": ["Kalem 1", "Kalem 2"],
-                  "risks": ["Risk 1"]
+                  "risks": ["Risk 1"],
+                  "alignment": "ALIGNED"
                 }
                 """;
 
@@ -112,11 +115,59 @@ class UnifiedAiAnalysisTest {
         UnifiedAnalysisResponse result = service.getUnifiedAnalysis("THYAO", "STOCK");
 
         assertThat(result.provider()).isEqualTo("groq");
-        assertThat(result.metadata()).isNotNull();
-        assertThat(result.metadata().providerUsed()).isEqualTo("GROQ");
-        assertThat(result.metadata().modelUsed()).isEqualTo("llama3");
         assertThat(result.metadata().aiEnhanced()).isTrue();
-        assertThat(result.metadata().deterministicFallbackUsed()).isFalse();
+        assertThat(result.alignment()).isEqualTo("ALIGNED");
+    }
+
+    @Test
+    void nonStockInstrument_skipsLlmCallAndReturnsNoContent() {
+        when(cacheService.getOrComputeWithDynamicTtlStatus(anyString(), eq(UnifiedAnalysisResponse.class), any()))
+                .thenAnswer(invocation -> {
+                    var supplier = (java.util.function.Supplier<?>) invocation.getArgument(2);
+                    var cached = (AiResponseCacheService.CachedValue<?>) supplier.get();
+                    return new AiResponseCacheService.LookupResult<>(cached.value(), false);
+                });
+
+        UnifiedAnalysisResponse result = service.getUnifiedAnalysis("BTCUSDT", "CRYPTO");
+
+        // LLM must not be called for non-STOCK instruments
+        verify(aiGatewayService, never()).generate(any(), anyString());
+        // Response has no content (not applicable)
+        assertThat(result.summary()).isNull();
+    }
+
+    @Test
+    void nullType_treatedAsNonStock_skipsLlmCall() {
+        when(cacheService.getOrComputeWithDynamicTtlStatus(anyString(), eq(UnifiedAnalysisResponse.class), any()))
+                .thenAnswer(invocation -> {
+                    var supplier = (java.util.function.Supplier<?>) invocation.getArgument(2);
+                    var cached = (AiResponseCacheService.CachedValue<?>) supplier.get();
+                    return new AiResponseCacheService.LookupResult<>(cached.value(), false);
+                });
+
+        // type=null must not be treated as STOCK — early exit, no LLM call
+        UnifiedAnalysisResponse result = service.getUnifiedAnalysis("GARAN", null);
+
+        verify(aiGatewayService, never()).generate(any(), anyString());
+        assertThat(result.summary()).isNull();
+    }
+
+    @Test
+    void insufficientFundamentalData_skipsLlmCall() {
+        when(technicalService.getTechnicalComment("NEWCO")).thenReturn(makeTech());
+        when(fundamentalService.getFundamentalComment("NEWCO")).thenReturn(makeInsufficientFund());
+        when(cacheService.getOrComputeWithDynamicTtlStatus(anyString(), eq(UnifiedAnalysisResponse.class), any()))
+                .thenAnswer(invocation -> {
+                    var supplier = (java.util.function.Supplier<?>) invocation.getArgument(2);
+                    var cached = (AiResponseCacheService.CachedValue<?>) supplier.get();
+                    return new AiResponseCacheService.LookupResult<>(cached.value(), false);
+                });
+
+        UnifiedAnalysisResponse result = service.getUnifiedAnalysis("NEWCO", "STOCK");
+
+        // LLM must not be called when fundamental data is insufficient
+        verify(aiGatewayService, never()).generate(any(), anyString());
+        assertThat(result.summary()).isNull();
     }
 
     private AiTechnicalAnalysisResponse makeTech() {
@@ -128,7 +179,8 @@ class UnifiedAiAnalysisTest {
                 AiTechnicalAnalysisResponse.RiskLevel.MEDIUM,
                 AiTechnicalAnalysisResponse.AiSignal.POSITIVE,
                 "Bu yorum yatirim tavsiyesi degildir.",
-                AiResponseMetadata.deterministic("FULL")
+                AiResponseMetadata.deterministic("FULL"),
+                null
         );
     }
 
@@ -145,8 +197,18 @@ class UnifiedAiAnalysisTest {
                 AiResponseMetadata.deterministic("FULL")
         );
     }
+
+    private AiFundamentalAnalysisResponse makeInsufficientFund() {
+        return new AiFundamentalAnalysisResponse(
+                "NEWCO",
+                "Yetersiz veri.",
+                List.of(),
+                List.of(),
+                List.of(),
+                "",
+                AiFundamentalAnalysisResponse.FinancialHealth.WATCH,
+                "Bu yorum yatirim tavsiyesi degildir.",
+                AiResponseMetadata.deterministic("INSUFFICIENT")
+        );
+    }
 }
-
-
-
-

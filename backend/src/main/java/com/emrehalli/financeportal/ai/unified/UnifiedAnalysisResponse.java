@@ -9,11 +9,8 @@ public record UnifiedAnalysisResponse(
         String summary,
         List<String> highlights,
         List<String> risks,
+        String alignment,
         String provider,
         boolean fallbackUsed,
         AiResponseMetadata metadata
 ) {}
-
-
-
-

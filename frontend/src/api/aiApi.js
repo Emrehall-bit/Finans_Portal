@@ -23,7 +23,7 @@ export function getAiFundamentalAnalysis(symbol) {
   );
 }
 
-export function getAiUnifiedAnalysis(symbol, type = "STOCK") {
+export function getAiUnifiedAnalysis(symbol, type) {
   return deduplicate(
     `unified:${symbol}`,
     () => axiosClient

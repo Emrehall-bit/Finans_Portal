@@ -8,7 +8,8 @@ public record AiTechnicalAnalysisResponse(
         RiskLevel riskLevel,
         AiSignal signal,
         String disclaimer,
-        AiResponseMetadata metadata
+        AiResponseMetadata metadata,
+        String keyObservation
 ) {
     public enum RiskLevel {
         LOW,
@@ -23,7 +24,3 @@ public record AiTechnicalAnalysisResponse(
         RISKY
     }
 }
-
-
-
-
