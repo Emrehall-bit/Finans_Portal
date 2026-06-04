@@ -41,7 +41,7 @@
   },
   "nav": {
     "mainMenu": "Ana Menü",
-    "dashboard": "Dashboard",
+    "dashboard": "Ana Sayfa",
     "markets": "Piyasa Takip",
     "portfolio": "Portföy Yönetimi",
     "analysis": "Teknik Analiz",
@@ -53,7 +53,7 @@
     "adminData": "Veri İşlemleri",
     "adminUsers": "Kullanıcı Yönetimi",
     "authBadge": "Giriş",
-    "economy": "Ekonomi"
+    "economy": "Makroekonomi"
   },
   "layout": {
     "brandEyebrow": "Market Terminal",
@@ -1592,6 +1592,8 @@
     },
     "createAlert": {
       "eyebrow": "Alarm oluştur",
+      "newAlert": "Yeni Alarm",
+      "symbol": "Enstrüman",
       "condition": "Koşul",
       "above": "Fiyat bunun üstüne çıkınca",
       "below": "Fiyat bunun altına inince",

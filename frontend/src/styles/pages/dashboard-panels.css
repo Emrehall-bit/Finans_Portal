@@ -125,17 +125,77 @@ html[data-theme="dark"] .guest-lock-hint {
   color: #6a7c98;
 }
 
-.dash-portfolio-lock-badge {
-  display: inline-flex;
+/* Portfolio kartı: blur overlay + merkezi kilit */
+.dashboard-portfolio-guest-lock .guest-lock-content {
+  filter: blur(3px);
+  opacity: 0.55;
+}
+
+.dashboard-portfolio-guest-lock .guest-lock-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, -50%);
+  width: auto;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.dashboard-portfolio-guest-lock .guest-lock-badge:hover {
+  background: none;
+  box-shadow: none;
+  opacity: 0.8;
+}
+
+.dashboard-portfolio-guest-lock .guest-lock-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(188, 202, 228, 0.9);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  color: #60a5fa;
+}
+
+.dashboard-portfolio-guest-lock .guest-lock-icon svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+.dashboard-portfolio-guest-lock .guest-lock-hint {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #1e40af;
+  letter-spacing: 0.01em;
+}
+
+html[data-theme="dark"] .dashboard-portfolio-guest-lock .guest-lock-badge {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .dashboard-portfolio-guest-lock .guest-lock-icon {
+  color: #60a5fa;
+}
+
+html[data-theme="dark"] .dashboard-portfolio-guest-lock .guest-lock-hint {
+  color: #93c5fd;
+}
+
+/* Eski küçük badge stili (artık kullanılmıyor) */
+.dash-portfolio-lock-badge {
+  display: none;
 }
 
 html[data-theme="dark"] .dashboard-kpi-lock-badge {
@@ -189,9 +249,9 @@ html[data-theme="dark"] .dash-portfolio-lock-badge {
   }
 }
 
-/* ── Dashboard 12-col grid: 8 + 4 split ────────────────────────── */
+/* ── Dashboard grid: sol (piyasa+portföy) dar, sağ (haberler) geniş ── */
 .finance-dashboard-grid {
-  grid-template-columns: minmax(0, 2fr) minmax(256px, 1fr);
+  grid-template-columns: minmax(0, 11fr) minmax(320px, 9fr);
   gap: 20px;
   align-items: start;
 }
@@ -207,12 +267,12 @@ html[data-theme="dark"] .dash-portfolio-lock-badge {
 
 @media (max-width: 1200px) {
   .finance-dashboard-grid {
-    grid-template-columns: minmax(0, 1.7fr) minmax(240px, 1fr);
+    grid-template-columns: minmax(0, 9fr) minmax(280px, 11fr);
     gap: 16px;
   }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1100px) {
   .finance-dashboard-grid {
     grid-template-columns: 1fr;
   }

@@ -11,6 +11,7 @@ export default function CreateAlertModal({ isOpen, onClose, symbol, displaySymbo
   const [form, setForm] = useState({
     conditionType: "GREATER_THAN",
     targetPrice: currentPrice ?? "",
+    symbolInput: "",
   });
 
   useEffect(() => {
@@ -20,6 +21,7 @@ export default function CreateAlertModal({ isOpen, onClose, symbol, displaySymbo
       setForm({
         conditionType: "GREATER_THAN",
         targetPrice: currentPrice ?? "",
+        symbolInput: "",
       });
     }
   }, [isOpen, currentPrice]);
@@ -34,7 +36,7 @@ export default function CreateAlertModal({ isOpen, onClose, symbol, displaySymbo
       setSubmitting(true);
       setError("");
       await createAlert(userId, {
-        instrumentCode: symbol,
+        instrumentCode: symbol || form.symbolInput.trim().toUpperCase(),
         conditionType: form.conditionType,
         targetPrice: Number(form.targetPrice),
       });
@@ -53,7 +55,7 @@ export default function CreateAlertModal({ isOpen, onClose, symbol, displaySymbo
         <div className="instrument-action-modal-head">
           <div>
             <p className="eyebrow">{t("marketDetail.createAlert.eyebrow")}</p>
-            <h3>{displaySymbol || symbol}</h3>
+            <h3>{displaySymbol || symbol || form.symbolInput || t("marketDetail.createAlert.newAlert")}</h3>
           </div>
           <button type="button" className="secondary-button" onClick={onClose}>
             {t("common.close")}
@@ -63,6 +65,18 @@ export default function CreateAlertModal({ isOpen, onClose, symbol, displaySymbo
         {error ? <ErrorMessage message={error} /> : null}
 
         <form className="instrument-action-form" onSubmit={handleSubmit}>
+          {!symbol && (
+            <label className="portfolio-field">
+              <span>{t("marketDetail.createAlert.symbol")}</span>
+              <input
+                type="text"
+                placeholder="GARAN, BIST100..."
+                required
+                value={form.symbolInput}
+                onChange={(e) => setForm((c) => ({ ...c, symbolInput: e.target.value.toUpperCase() }))}
+              />
+            </label>
+          )}
           <label className="portfolio-field">
             <span>{t("marketDetail.createAlert.condition")}</span>
             <select

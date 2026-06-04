@@ -148,7 +148,7 @@
 
 .finance-dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.8fr);
+  grid-template-columns: minmax(0, 11fr) minmax(320px, 9fr);
   gap: 18px;
   align-items: start;
 }
@@ -203,8 +203,11 @@
   color: var(--text-soft);
 }
 
-@media (max-width: 1320px) {
-  .finance-dashboard-grid,
+@media (max-width: 1100px) {
+  .finance-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
   .finance-dashboard-subgrid {
     grid-template-columns: 1fr;
   }

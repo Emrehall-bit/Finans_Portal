@@ -1599,6 +1599,8 @@
     },
     "createAlert": {
       "eyebrow": "Create Alert",
+      "newAlert": "New Alert",
+      "symbol": "Instrument",
       "condition": "Condition",
       "above": "When price moves above this level",
       "below": "When price moves below this level",

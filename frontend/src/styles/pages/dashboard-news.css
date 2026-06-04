@@ -65,10 +65,14 @@ html[data-theme="dark"] .dash-news-item {
 .dashboard-page .finance-dashboard-kpis .summary-card,
 .dashboard-page .finance-dashboard-kpis a.summary-card,
 .dashboard-page .finance-dashboard-kpis .summary-card-interactive {
-  min-height: 88px;
+  min-height: 100px;
   height: 100%;
-  padding: 12px 14px;
-  gap: 4px;
+  padding: 14px 16px;
+  gap: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
 }
 
 .dashboard-page .finance-dashboard-kpis .summary-card-interactive {
@@ -79,8 +83,31 @@ html[data-theme="dark"] .dash-news-item {
   background: transparent;
 }
 
-.dashboard-page .finance-dashboard-kpis .summary-card-top {
-  align-items: flex-start;
+.dashboard-page .finance-dashboard-kpis .kpi-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 26px;
+}
+
+.dashboard-page .finance-dashboard-kpis .kpi-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-page .finance-dashboard-kpis .kpi-card-badge-slot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 24px;
+}
+
+.dashboard-page .finance-dashboard-kpis .kpi-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .dashboard-page .finance-dashboard-kpis .alerts-kpi-nearest,
@@ -399,13 +426,36 @@ html[data-theme="dark"] .dash-news-item {
 
 .dash-news-item {
   display: grid;
-  gap: 8px;
-  padding: 12px 14px;
+  grid-template-columns: 1fr;
+  gap: 0;
+  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--panel-border) 68%, transparent);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 250, 255, 0.92));
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
   text-decoration: none;
+}
+
+.dash-news-item.has-image {
+  grid-template-columns: 100px 1fr;
+}
+
+.dash-news-thumb {
+  width: 100px;
+  height: 100%;
+  min-height: 76px;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+  border-radius: 11px 8px 8px 11px;
+  flex-shrink: 0;
+}
+
+.dash-news-content {
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
 }
 
 .dash-news-item:hover,
@@ -490,6 +540,10 @@ html[data-theme="dark"] .dash-news-item:focus-visible {
   border-color: rgba(96, 165, 250, 0.22);
   background: linear-gradient(180deg, rgba(20, 31, 50, 0.96), rgba(18, 29, 48, 0.92));
   box-shadow: 0 4px 12px rgba(2, 6, 23, 0.24);
+}
+
+html[data-theme="dark"] .dash-news-thumb {
+  opacity: 0.88;
 }
 
 html[data-theme="dark"] .dash-news-source-badge {

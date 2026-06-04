@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Bell, Eye, ShieldAlert, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, BarChart2, Bell, Bitcoin, Eye, Globe, LineChart, Package, ShieldAlert, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import CreateAlertModal from "../components/market-detail/CreateAlertModal";
 import { Link } from "react-router-dom";
 import { useQueries } from "@tanstack/react-query";
 import { buildMarketDetailPath } from "../api/marketApi";
@@ -22,6 +24,46 @@ import { buildNewsPlaceholderLabel } from "../components/news/newsCardUtils";
 import GuestLockOverlay from "../components/common/GuestLockOverlay";
 import AiLockedCard from "../components/ai/AiLockedCard";
 import { getDashboardAiAnalysis } from "../api/aiApi";
+
+const DASHBOARD_CHART_COLORS = ["#2563eb", "#0f9d58", "#f59e0b", "#dc2626", "#7c3aed"];
+
+function PortfolioDonutChart({ data, totalValue }) {
+  const [hovering, setHovering] = useState(false);
+
+  return (
+    <div className="dash-portfolio-dist-chart">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="label"
+            outerRadius={70}
+            innerRadius={42}
+            onMouseEnter={() => setHovering(true)}
+            onMouseLeave={() => setHovering(false)}
+          >
+            {data.map((entry) => (
+              <Cell key={entry.key} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip
+            formatter={(value, name) => [formatCurrency(value), name]}
+            contentStyle={{ fontSize: "0.78rem", borderRadius: "8px", border: "1px solid rgba(214,222,241,0.7)", boxShadow: "0 4px 12px rgba(15,23,42,0.10)" }}
+            itemStyle={{ color: "#1e293b" }}
+            labelStyle={{ fontWeight: 700, color: "#0f172a", marginBottom: 2 }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      {!hovering && (
+        <div className="dash-portfolio-dist-center">
+          <span>Toplam</span>
+          <strong>{formatCurrency(totalValue)}</strong>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { t, i18n } = useTranslation();
@@ -59,7 +101,7 @@ export default function DashboardPage() {
   const [aiAnalysisRetryKey, setAiAnalysisRetryKey] = useState(0);
   const [isWatchlistPopoverOpen, setWatchlistPopoverOpen] = useState(false);
   const [isAuthRequiredModalOpen, setAuthRequiredModalOpen] = useState(false);
-  const [marketCategoryFilter, setMarketCategoryFilter] = useState("all");
+  const [alertModal, setAlertModal] = useState({ isOpen: false, symbol: null, displaySymbol: null, currentPrice: null });
   const watchlistPopoverRef = useRef(null);
 
   const effectiveWidgetPortfolioId = selectedWidgetPortfolioId ?? portfolios[0]?.portfolioId ?? null;
@@ -122,6 +164,23 @@ export default function DashboardPage() {
     0,
   );
   const hasPortfolio = portfolioSnapshots.length > 0 && portfolioValue > 0;
+
+  const portfolioDistributionData = useMemo(() => {
+    const holdings = widgetHoldings?.length ? widgetHoldings : (portfolioSnapshots?.[0]?.holdings ?? []);
+    const items = holdings
+      .map((h) => ({ h, val: toNumber(h?.currentValue ?? h?.marketValue) }))
+      .filter((x) => x.val > 0)
+      .slice(0, 5);
+    const total = items.reduce((s, x) => s + x.val, 0);
+    return items.map(({ h, val }, idx) => ({
+      key: h?.instrumentCode ?? String(idx),
+      label: getDashboardPortfolioHoldingLabel(h),
+      value: val,
+      weight: total > 0 ? (val / total) * 100 : 0,
+      color: DASHBOARD_CHART_COLORS[idx % DASHBOARD_CHART_COLORS.length],
+    }));
+  }, [widgetHoldings, portfolioSnapshots]);
+
   const dailyProfitLoss = portfolioSnapshots.reduce(
     (sum, snapshot) => sum + toNumber(snapshot?.summary?.dailyProfitLoss),
     0,
@@ -147,7 +206,7 @@ export default function DashboardPage() {
     {
       key: "daily-pnl",
       title: t("dashboard.cards.dailyPnLTitle"),
-      value: formatCurrency(dailyProfitLoss),
+      value: formatDashboardPnL(dailyProfitLoss),
       subtitle: dailyProfitLossPercentLabel ? null : t("dashboard.cards.dailyPnLSubtitle"),
       trend: dailyProfitLossPercentLabel,
       tone: pnlTone,
@@ -197,20 +256,25 @@ export default function DashboardPage() {
     });
   })();
 
-  const [marketTab, setMarketTab] = useState("gainers");
-  const marketRows = useMemo(() => {
-    return [...marketQuotes]
-      .filter((item) => matchesDashboardMarketCategory(item, marketCategoryFilter))
-      .filter((item) => Number.isFinite(Number(item.changeRate)))
-      .sort((left, right) => {
-        if (marketTab === "losers") {
-          return toNumber(left.changeRate) - toNumber(right.changeRate);
-        }
+  const MARKET_CATEGORY_GROUPS = [
+    { type: "STOCK",     label: "Hisse"  },
+    { type: "CRYPTO",    label: "Kripto" },
+    { type: "FUND",      label: "Fon"    },
+    { type: "FX",        label: "Döviz"  },
+    { type: "INDEX",     label: "Endeks" },
+    { type: "COMMODITY", label: "Emtia"  },
+  ];
 
-        return toNumber(right.changeRate) - toNumber(left.changeRate);
-      })
-      .slice(0, 5);
-  }, [marketQuotes, marketCategoryFilter, marketTab]);
+  const marketCategorySummary = useMemo(() => {
+    return MARKET_CATEGORY_GROUPS.map(({ type, label }) => {
+      const items = marketQuotes.filter(
+        (q) => normalizeDashboardInstrumentType(q?.instrumentType) === type && Number.isFinite(Number(q?.changeRate))
+      );
+      const up   = items.filter((q) => toNumber(q.changeRate) >= 0).length;
+      const down = items.filter((q) => toNumber(q.changeRate) <  0).length;
+      return { type, label, up, down, total: items.length };
+    }).filter((c) => c.total > 0);
+  }, [marketQuotes]);
 
   const marketParams = useMemo(() => {
     const changedRows = marketQuotes.filter((item) => Number.isFinite(Number(item?.changeRate)));
@@ -335,26 +399,42 @@ export default function DashboardPage() {
             {orderedOverviewCardKeys.map((cardKey) => {
               if (cardKey === "alerts") {
                 return isAuthenticated ? (
-                  <Link key="alerts" to="/alerts" className={`summary-card summary-card-${alertTone} summary-card-alerts alerts-kpi-card`}>
-                    <div className="summary-card-top">
-                      <div className="summary-card-title-row">
-                        <span className={`summary-card-icon summary-card-icon--${alertTone}`}><Bell size={18} /></span>
+                  <Link key="alerts" to="/alerts" className={`summary-card summary-card-${alertTone} summary-card-alerts alerts-kpi-card summary-card--secondary`}>
+                    <div className="kpi-card-header">
+                      <div className="kpi-card-title-row">
+                        <button
+                          type="button"
+                          className={`summary-card-icon summary-card-icon--${alertTone} dash-kpi-bell-btn`}
+                          title="Hızlı alarm kur"
+                          aria-label="Hızlı alarm kur"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setAlertModal({ isOpen: true, symbol: null, displaySymbol: null, currentPrice: null });
+                          }}
+                        >
+                          <Bell size={18} />
+                        </button>
                         <p className="summary-card-title">{t("dashboard.cards.alertsTitle")}</p>
                       </div>
-                      {hasTriggeredAlert ? <span className="summary-chip">{t("dashboard.cards.alertsTrend")}</span> : null}
+                      <div className="kpi-card-badge-slot">
+                        {hasTriggeredAlert ? <span className="summary-chip">{t("dashboard.cards.alertsTrend")}</span> : null}
+                      </div>
                     </div>
-                    <h3>{formatNumber(activeAlertCount, 0)}</h3>
-                    {activeAlertCount === 0 ? (
-                      <span className="summary-card-cta">{t("dashboard.cards.addAlert")}</span>
-                    ) : nearestAlert ? (
-                      <p className="summary-card-subtitle alerts-kpi-nearest">
-                        {formatInstrumentCode(nearestAlert.instrumentCode)}
-                        {" "}{nearestAlert.conditionType === "ABOVE" ? ">" : "<"}
-                        {" "}{formatCurrency(nearestAlert.targetPrice)}
-                      </p>
-                    ) : (
-                      <p className="summary-card-subtitle">{t("dashboard.cards.alertsSubtitle")}</p>
-                    )}
+                    <div className="kpi-card-content">
+                      <h3>{formatNumber(activeAlertCount, 0)}</h3>
+                      {activeAlertCount === 0 ? (
+                        <span className="summary-card-cta">{t("dashboard.cards.addAlert")}</span>
+                      ) : nearestAlert ? (
+                        <p className="summary-card-subtitle alerts-kpi-nearest">
+                          {formatInstrumentCode(nearestAlert.instrumentCode)}
+                          {" "}{nearestAlert.conditionType === "ABOVE" ? ">" : "<"}
+                          {" "}{formatCurrency(nearestAlert.targetPrice)}
+                        </p>
+                      ) : (
+                        <p className="summary-card-subtitle">{t("dashboard.cards.alertsSubtitle")}</p>
+                      )}
+                    </div>
                   </Link>
                 ) : (
                   <GuestLockOverlay
@@ -364,15 +444,18 @@ export default function DashboardPage() {
                     badgeClassName="dashboard-kpi-lock-badge"
                     onRequestAuth={() => setAuthRequiredModalOpen(true)}
                   >
-                    <div className="summary-card summary-card-neutral">
-                      <div className="summary-card-top">
-                        <div className="summary-card-title-row">
+                    <div className="summary-card summary-card-neutral summary-card--secondary">
+                      <div className="kpi-card-header">
+                        <div className="kpi-card-title-row">
                           <span className="summary-card-icon summary-card-icon--neutral"><Bell size={18} /></span>
                           <p className="summary-card-title">{t("dashboard.cards.alertsTitle")}</p>
                         </div>
+                        <div className="kpi-card-badge-slot" />
                       </div>
-                      <h3>-</h3>
-                      <p className="summary-card-subtitle">{t("dashboard.cards.alertsSubtitle")}</p>
+                      <div className="kpi-card-content">
+                        <h3>-</h3>
+                        <p className="summary-card-subtitle">{t("dashboard.cards.alertsSubtitle")}</p>
+                      </div>
                     </div>
                   </GuestLockOverlay>
                 );
@@ -394,20 +477,24 @@ export default function DashboardPage() {
                   {isAuthenticated ? (
                     <button
                       type="button"
-                      className={`summary-card summary-card-${card.tone} summary-card-${card.key} summary-card-interactive dashboard-watchlist-kpi-card`}
+                      className={`summary-card summary-card-${card.tone} summary-card-${card.key} summary-card-interactive dashboard-watchlist-kpi-card summary-card--secondary`}
                       aria-haspopup="dialog"
                       aria-expanded={isAuthenticated ? isWatchlistPopoverOpen : undefined}
                       onClick={handleWatchlistCardClick}
                     >
-                      <div className="summary-card-top">
-                        <div className="summary-card-title-row">
+                      <div className="kpi-card-header">
+                        <div className="kpi-card-title-row">
                           {card.icon ? <span className={`summary-card-icon summary-card-icon--${card.tone}`}>{card.icon}</span> : null}
                           <p className="summary-card-title">{card.title}</p>
                         </div>
-                        {card.trend ? <span className="summary-chip">{card.trend}</span> : null}
+                        <div className="kpi-card-badge-slot">
+                          {card.trend ? <span className="summary-chip">{card.trend}</span> : null}
+                        </div>
                       </div>
-                      <h3>{card.value}</h3>
-                      {card.subtitle ? <p className="summary-card-subtitle">{card.subtitle}</p> : null}
+                      <div className="kpi-card-content">
+                        <h3>{card.value}</h3>
+                        {card.subtitle ? <p className="summary-card-subtitle">{card.subtitle}</p> : null}
+                      </div>
                     </button>
                   ) : (
                     <GuestLockOverlay
@@ -418,7 +505,7 @@ export default function DashboardPage() {
                     >
                       <button
                         type="button"
-                        className={`summary-card summary-card-${card.tone} summary-card-${card.key} summary-card-interactive dashboard-watchlist-kpi-card`}
+                        className={`summary-card summary-card-${card.tone} summary-card-${card.key} summary-card-interactive dashboard-watchlist-kpi-card summary-card--secondary`}
                         aria-hidden="true"
                         tabIndex={-1}
                       >
@@ -489,21 +576,25 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div key={card.key} className={`summary-card summary-card-${card.tone} summary-card-${card.key} ${card.key === "portfolio-value" || card.key === "daily-pnl" ? "summary-card--primary" : "summary-card--secondary"}`}>
-                  <div className="summary-card-top">
-                    <div className="summary-card-title-row">
+                  <div className="kpi-card-header">
+                    <div className="kpi-card-title-row">
                       {card.icon ? <span className={`summary-card-icon summary-card-icon--${card.tone}`}>{card.icon}</span> : null}
                       <p className="summary-card-title">{card.title}</p>
                     </div>
-                    {card.trend ? (
-                      <span className={`summary-chip${card.trendClassName ? ` ${card.trendClassName}` : ""}`}>{card.trend}</span>
+                    <div className="kpi-card-badge-slot">
+                      {card.trend ? (
+                        <span className={`summary-chip${card.trendClassName ? ` ${card.trendClassName}` : ""}`}>{card.trend}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="kpi-card-content">
+                    <h3 className={card.valueClassName}>{card.value}</h3>
+                    {card.isEmpty ? (
+                      <Link to="/portfolio" className="summary-card-cta">{t("dashboard.cards.addPortfolio")}</Link>
+                    ) : card.subtitle ? (
+                      <p className="summary-card-subtitle">{card.subtitle}</p>
                     ) : null}
                   </div>
-                  <h3 className={card.valueClassName}>{card.value}</h3>
-                  {card.isEmpty ? (
-                    <Link to="/portfolio" className="summary-card-cta">{t("dashboard.cards.addPortfolio")}</Link>
-                  ) : card.subtitle ? (
-                    <p className="summary-card-subtitle">{card.subtitle}</p>
-                  ) : null}
                 </div>
               )
             })}
@@ -515,96 +606,65 @@ export default function DashboardPage() {
             <div className="finance-dashboard-main">
               <section className="panel-surface finance-dashboard-panel">
                 <div className="panel-head">
-                  <div className="dashboard-market-heading">
-                    <h3 className="dashboard-section-title">{t("dashboard.marketSummaryTitle")}</h3>
-                    <div className="market-tabs">
-                      <button
-                        type="button"
-                        className={`market-tab dashboard-market-tab ${marketTab === "gainers" ? "active" : ""}`}
-                        onClick={() => setMarketTab("gainers")}
-                      >
-                        {t("dashboard.marketTabs.gainers")}
-                      </button>
-                      <button
-                        type="button"
-                        className={`market-tab dashboard-market-tab ${marketTab === "losers" ? "active" : ""}`}
-                        onClick={() => setMarketTab("losers")}
-                      >
-                        {t("dashboard.marketTabs.losers")}
-                      </button>
-                    </div>
-                    <div className="dashboard-market-filter-row" role="tablist" aria-label={t("dashboard.marketCategoryAria")}>
-                      {DASHBOARD_MARKET_CATEGORY_FILTERS.map((filter) => (
-                        <button
-                          key={filter.key}
-                          type="button"
-                          role="tab"
-                          aria-selected={marketCategoryFilter === filter.key}
-                          className={marketCategoryFilter === filter.key ? "dashboard-market-filter active" : "dashboard-market-filter"}
-                          onClick={() => setMarketCategoryFilter(filter.key)}
-                        >
-                          {t(filter.labelKey)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <Link to="/markets" className="panel-text-link">
-                    {t("dashboard.allMarkets")}
-                  </Link>
+                  <h3 className="dashboard-section-title">Piyasalarda Bugün</h3>
+                  <Link to="/markets" className="panel-text-link">{t("dashboard.allMarkets")} →</Link>
                 </div>
 
-                {sectionErrors.market && marketRows.length === 0 ? <ErrorMessage message={sectionErrors.market} /> : null}
-                {!sectionErrors.market && marketRows.length === 0 && marketQuotes.length === 0 ? (
+                {sectionErrors.market && marketQuotes.length === 0 ? <ErrorMessage message={sectionErrors.market} /> : null}
+                {!sectionErrors.market && marketQuotes.length === 0 ? (
                   <EmptyState title={t("dashboard.marketEmptyTitle")} description={t("dashboard.marketEmptyDescription")} />
                 ) : null}
-                {!sectionErrors.market && marketRows.length === 0 && marketQuotes.length > 0 ? (
-                  <EmptyState title={t("dashboard.marketFilteredEmptyTitle")} description={t("dashboard.marketFilteredEmptyDescription")} />
-                ) : null}
-                {marketRows.length > 0 && (
-                  <>
-                    {/* Mover cards removed — display table only */}
 
-                    {/** portfolio summary moved out to its own panel below the market panel **/}
+                {marketQuotes.length > 0 && (() => {
+                  const totalUp   = marketCategorySummary.reduce((s, c) => s + c.up,   0);
+                  const totalDown = marketCategorySummary.reduce((s, c) => s + c.down, 0);
+                  const overview  = generateMarketBreadthOverview(marketCategorySummary, totalUp, totalDown);
+                  return (
+                    <>
+                      {overview ? (
+                        <div className="dash-breadth-overview">
+                          <span className="dash-breadth-overview-label">Genel Görünüm</span>
+                          <p className="dash-breadth-overview-text">{overview.line1}</p>
+                          {overview.line2 ? <p className="dash-breadth-overview-text">{overview.line2}</p> : null}
+                        </div>
+                      ) : null}
 
-                    <div className="finance-market-table-wrap">
-                    <table className="finance-market-table">
-                      <thead>
-                        <tr>
-                          <th>{t("dashboard.table.instrument")}</th>
-                          <th className="col-right">{t("dashboard.table.lastPrice")}</th>
-                          <th className="col-right">{t("dashboard.table.dailyChange")}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {marketRows.map((item) => {
-                          const label = getDashboardInstrumentLabel(item);
-                          const subLabel = getDashboardInstrumentSubLabel(item);
+                      <div className="dash-breadth-kpi-row">
+                        <div className="dash-breadth-kpi dash-breadth-kpi--up">
+                          <span className="dash-breadth-kpi-num">{totalUp}</span>
+                          <span className="dash-breadth-kpi-label">Yükselen</span>
+                        </div>
+                        <div className="dash-breadth-kpi dash-breadth-kpi--down">
+                          <span className="dash-breadth-kpi-num">{totalDown}</span>
+                          <span className="dash-breadth-kpi-label">Düşen</span>
+                        </div>
+                      </div>
 
+                      <div className="dash-breadth-pulse-list">
+                        {marketCategorySummary.map((cat) => {
+                          const status = getMarketBreadthStatus(cat.up, cat.total);
+                          const Icon = MARKET_CATEGORY_ICONS[cat.type];
                           return (
-                            <tr key={item.symbol}>
-                              <td>
-                                <Link to={buildMarketDetailPath(item.symbol, item.instrumentType)} className="finance-table-symbol">
-                                  <strong>{label}</strong>
-                                  {subLabel ? <span>{subLabel}</span> : null}
-                                </Link>
-                              </td>
-                              <td className="col-right">{formatCurrency(item.price, item.currency || "TRY")}</td>
-                              <td className={`col-right ${toNumber(item.changeRate) >= 0 ? "market-up" : "market-down"}`}>
-                                {formatMarketChange(item.changeRate)}
-                              </td>
-                            </tr>
+                            <div key={cat.type} className={`dash-breadth-pulse-row dash-breadth-pulse-row--${status.tone}`}>
+                              <span className="dash-breadth-pulse-cat">{cat.label}</span>
+                              <div className="dash-breadth-pulse-right">
+                                <span className={`dash-breadth-pulse-status dash-breadth-pulse-status--${status.tone}`}>
+                                  {status.icon} {status.label}
+                                </span>
+                                <span className="dash-breadth-inline-up"><span className="dash-breadth-dot-up" aria-hidden="true">•</span>{cat.up} yükselen</span>
+                                <span className="dash-breadth-inline-dn"><span className="dash-breadth-dot-dn" aria-hidden="true">•</span>{cat.down} düşen</span>
+                              </div>
+                            </div>
                           );
                         })}
-                      </tbody>
-                    </table>
-                  </div>
-                  </>
-                )}
+                      </div>
+                    </>
+                  );
+                })()}
               </section>
 
               {/* Portfolio panel: separate card with holdings */}
               <GuestLockOverlay
-                compact
                 className="dashboard-portfolio-guest-lock"
                 badgeClassName="dash-portfolio-lock-badge"
                 onRequestAuth={() => setAuthRequiredModalOpen(true)}
@@ -617,34 +677,37 @@ export default function DashboardPage() {
                     <Link to="/portfolio" className="panel-text-link">{t("Portföyünü görüntüle") ?? "Tümünü Gör"}</Link>
                   </div>
 
-                  <div className="panel-body" style={{ padding: '12px 16px' }}>
-                    {hasPortfolio ? (
-                      <div className="portfolio-holdings-list">
-                        {(widgetHoldings && widgetHoldings.length ? widgetHoldings : (portfolioSnapshots[0]?.holdings || [])).slice(0,5).map((h, idx) => {
-                          const label = getDashboardPortfolioHoldingLabel(h);
-                          const subLabel = getDashboardPortfolioHoldingSubLabel(h, label);
-
-                          return (
-                            <div key={idx} className="portfolio-holding-row" style={{display:'flex',justifyContent:'space-between',gap:12,padding:'8px 0',borderBottom: idx < 4 ? '1px solid var(--panel-border)' : 'none'}}>
-                              <div style={{minWidth:0}}>
-                                <strong style={{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{label}</strong>
-                                {subLabel ? <span style={{fontSize:'0.8rem',color:'var(--text-soft)'}}>{subLabel}</span> : null}
-                              </div>
-                              <div style={{textAlign:'right'}}>
-                                <div style={{fontWeight:700}}>{formatCurrency(h?.currentValue ?? h?.marketValue ?? 0)}</div>
-                                <div className={toNumber(h?.changeRate) >= 0 ? 'market-up' : 'market-down'} style={{fontSize:'0.85rem'}}>{formatMarketChange(h?.changeRate)}</div>
-                              </div>
+                  {hasPortfolio && portfolioDistributionData.length > 0 ? (
+                    <div className="dash-portfolio-dist-layout">
+                      <PortfolioDonutChart data={portfolioDistributionData} totalValue={selectedWidgetTotalValue} />
+                      <div className="dash-portfolio-dist-list">
+                        {portfolioDistributionData.map((entry) => (
+                          <div key={entry.key} className="dash-portfolio-dist-item">
+                            <div className="dash-portfolio-dist-label">
+                              <span className="portfolio-color-dot" style={{ backgroundColor: entry.color }} />
+                              <span>{entry.label}</span>
                             </div>
-                          );
-                        })}
-                        {(!widgetHoldings || widgetHoldings.length === 0) && !(portfolioSnapshots[0]?.holdings && portfolioSnapshots[0].holdings.length) ? (
-                          <div className="portfolio-empty" style={{padding:'8px 0'}}>{t('dashboard.portfolioEmpty') ?? 'Portföyünüz boş'}</div>
-                        ) : null}
+                            <div className="dash-portfolio-dist-metrics">
+                              <strong>{formatCurrency(entry.value)}</strong>
+                              <span>{formatNumber(entry.weight, 1)}%</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ) : (
-                      <div style={{padding:'8px 0'}}>{t('dashboard.cards.addPortfolio')}</div>
-                    )}
-                  </div>
+                    </div>
+                  ) : portfolioSnapshots.length === 0 ? (
+                    <div className="dash-portfolio-empty">
+                      <p className="dash-portfolio-empty-title">Takip edecek bir portföyünüz bulunmuyor.</p>
+                      <p className="dash-portfolio-empty-desc">Borsa, kripto ve döviz yatırımlarınızı ayrı klasörlerde takip edebilmek için ilk portföyünüzü oluşturun.</p>
+                      <Link to="/portfolio" className="summary-card-cta">{t("dashboard.cards.addPortfolio")}</Link>
+                    </div>
+                  ) : (
+                    <div className="dash-portfolio-empty">
+                      <p className="dash-portfolio-empty-title">Bu portföyde henüz bir varlık bulunmuyor.</p>
+                      <p className="dash-portfolio-empty-desc">Portföyünüze hisse senedi, kripto para veya nakit ekleyerek anlık değerini izleyin.</p>
+                      <Link to="/portfolio" className="summary-card-cta">{t("dashboard.cards.addPortfolio")}</Link>
+                    </div>
+                  )}
                 </section>
               </GuestLockOverlay>
             </div>
@@ -703,17 +766,34 @@ export default function DashboardPage() {
                 ) : null}
                 {newsItems.length > 0 ? (
                   <div className="dashboard-news-list">
-                    {newsItems.map((item) => (
-                      <Link key={item.id || item.externalId} to={`/news/${item.id}`} className="dash-news-item">
-                        <div className="dash-news-item-header">
-                          <span className={`dash-news-source-badge ${getDashboardNewsProviderBadgeClass(item.provider)}`.trim()}>
-                            {buildNewsPlaceholderLabel(item)}
-                          </span>
-                          <span className="dash-news-date">{formatDateTime(item.publishedAt)}</span>
-                        </div>
-                        <strong className="dash-news-title">{item.title || t("dashboard.untitledNews")}</strong>
-                      </Link>
-                    ))}
+                    {newsItems.map((item) => {
+                      const thumb = item?.thumbnailUrl || item?.imageUrl || item?.image || null;
+                      return (
+                        <Link key={item.id || item.externalId} to={`/news/${item.id}`} className={`dash-news-item${thumb ? " has-image" : ""}`}>
+                          {thumb && (
+                            <img
+                              className="dash-news-thumb"
+                              src={thumb}
+                              alt=""
+                              loading="lazy"
+                              onError={e => {
+                                e.currentTarget.style.display = "none";
+                                e.currentTarget.closest(".dash-news-item")?.classList.remove("has-image");
+                              }}
+                            />
+                          )}
+                          <div className="dash-news-content">
+                            <div className="dash-news-item-header">
+                              <span className={`dash-news-source-badge ${getDashboardNewsProviderBadgeClass(item.provider)}`.trim()}>
+                                {buildNewsPlaceholderLabel(item)}
+                              </span>
+                              <span className="dash-news-date">{formatDateTime(item.publishedAt)}</span>
+                            </div>
+                            <strong className="dash-news-title">{item.title || t("dashboard.untitledNews")}</strong>
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
                 ) : null}
               </section>
@@ -885,6 +965,14 @@ export default function DashboardPage() {
         onClose={() => setAuthRequiredModalOpen(false)}
         onConfirm={login}
       />
+      <CreateAlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal((s) => ({ ...s, isOpen: false }))}
+        symbol={alertModal.symbol}
+        displaySymbol={alertModal.displaySymbol}
+        currentPrice={alertModal.currentPrice}
+        userId={userId}
+      />
     </div>
   );
 }
@@ -913,6 +1001,29 @@ function isTriggeredAlert(item) {
 function toNumber(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function formatDashboardPnL(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric >= 0) return formatCurrency(value);
+  const abs = formatCurrency(-numeric);
+  return abs.replace(/^([^0-9\s,.‒-―]+)/, "$1-");
+}
+
+function formatMarketPrice(price, currency = "TRY") {
+  const numeric = Number(price);
+  if (!Number.isFinite(numeric)) return formatCurrency(price, currency);
+  const fractionDigits = Math.abs(numeric) > 0 && Math.abs(numeric) < 1 ? 4 : 2;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: currency || "TRY",
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }).format(numeric);
+  } catch {
+    return formatCurrency(price, currency);
+  }
 }
 
 function formatMarketChange(value) {
@@ -1036,6 +1147,10 @@ function collapseRepeatedDashboardCode(value) {
   }
 
   const midpoint = value.length / 2;
+  if (midpoint < 3) {
+    return value;
+  }
+
   const firstHalf = value.slice(0, midpoint);
 
   return firstHalf === value.slice(midpoint) ? firstHalf : value;
@@ -1126,6 +1241,76 @@ function getDashboardNewsProviderBadgeClass(provider) {
   }
 }
 
+function getMarketBreadthStatus(up, total) {
+  if (!total) return { label: "Veri Yok", icon: "—", tone: "neutral" };
+  const r = up / total;
+  if (r >= 0.65) return { label: "Güçlü",     icon: "↑",  tone: "up"      };
+  if (r >= 0.55) return { label: "Pozitif",   icon: "↗",  tone: "up"      };
+  if (r >= 0.45) return { label: "Dengeli",   icon: "↔",  tone: "neutral" };
+  if (r >= 0.35) return { label: "Zayıf",     icon: "↘",  tone: "down"    };
+  return             { label: "Çok Zayıf", icon: "↓",  tone: "down"    };
+}
+
+function generateMarketBreadthOverview(categorySummary, totalUp, totalDown) {
+  const total = totalUp + totalDown;
+  if (!total) return null;
+
+  const upRatio = totalUp / total;
+
+  let line1;
+  if (upRatio >= 0.62)      line1 = "Kategorilerin büyük bölümünde yükselenler önde.";
+  else if (upRatio >= 0.54) line1 = "Piyasada genel olarak alıcılı görünüm hakim.";
+  else if (upRatio >= 0.46) line1 = "Piyasa görünümü dengeli seyrediyor.";
+  else if (upRatio >= 0.38) line1 = "Piyasada hafif satış baskısı gözlemleniyor.";
+  else                       line1 = "Piyasalarda satış baskısı belirgin.";
+
+  const cats = categorySummary
+    .filter((c) => c.total > 0)
+    .map((c) => ({ ...c, ratio: c.up / c.total }))
+    .sort((a, b) => b.ratio - a.ratio);
+
+  if (cats.length < 2) return { line1, line2: null };
+
+  const best  = cats[0];
+  const worst = cats[cats.length - 1];
+  const spread = best.ratio - worst.ratio;
+
+  let line2 = null;
+  if (best.ratio >= 0.65 && worst.ratio <= 0.35) {
+    line2 = `${best.label} öne çıkarken ${worst.label} baskı altında.`;
+  } else if (best.ratio >= 0.65) {
+    line2 = `${best.label} kategorisi pozitif ayrışıyor.`;
+  } else if (worst.ratio <= 0.35) {
+    line2 = `${worst.label} kategorisinde belirgin satış baskısı var.`;
+  } else if (spread >= 0.20) {
+    line2 = `${best.label} öne çıkarken ${worst.label} geride kalıyor.`;
+  }
+
+  return { line1, line2 };
+}
+
+const MARKET_CATEGORY_ICONS = {
+  STOCK:     BarChart2,
+  CRYPTO:    Bitcoin,
+  FUND:      LineChart,
+  FX:        ArrowLeftRight,
+  INDEX:     Globe,
+  COMMODITY: Package,
+};
+
+function getDashboardMarketCategoryLabel(item) {
+  switch (normalizeDashboardInstrumentType(item?.instrumentType)) {
+    case "STOCK": return "BIST";
+    case "CRYPTO": return "Kripto";
+    case "FX": return "Döviz";
+    case "FUND": return "Fon";
+    case "INDEX": return "Endeks";
+    case "COMMODITY": return "Emtia";
+    case "FUTURES": return "Vadeli";
+    default: return "";
+  }
+}
+
 const INSTRUMENT_TYPE_LABELS = {
   STOCK: "Hisse",
   FX: "Doviz",
@@ -1136,44 +1321,6 @@ const INSTRUMENT_TYPE_LABELS = {
   INDEX: "Endeks",
   COMMODITY: "Emtia",
 };
-
-const DASHBOARD_MARKET_CATEGORY_FILTERS = [
-  { key: "all", labelKey: "dashboard.marketCategoryFilters.all" },
-  { key: "bist", labelKey: "dashboard.marketCategoryFilters.bist" },
-  { key: "crypto", labelKey: "dashboard.marketCategoryFilters.crypto" },
-  { key: "fund", labelKey: "dashboard.marketCategoryFilters.fund" },
-  { key: "index", labelKey: "dashboard.marketCategoryFilters.index" },
-  { key: "fx-commodities", labelKey: "dashboard.marketCategoryFilters.fxCommodities" },
-];
-
-function matchesDashboardMarketCategory(item, filterKey) {
-  if (filterKey === "all") {
-    return true;
-  }
-
-  const type = normalizeDashboardInstrumentType(item?.instrumentType);
-  if (filterKey === "bist") {
-    return type === "STOCK";
-  }
-
-  if (filterKey === "crypto") {
-    return type === "CRYPTO";
-  }
-
-  if (filterKey === "fund") {
-    return type === "FUND";
-  }
-
-  if (filterKey === "index") {
-    return type === "INDEX";
-  }
-
-  if (filterKey === "fx-commodities") {
-    return type === "FX" || type === "COMMODITY";
-  }
-
-  return true;
-}
 
 function normalizeDashboardInstrumentType(value) {
   const normalized = String(value || "").trim().toUpperCase();
