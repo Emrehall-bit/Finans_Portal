@@ -281,7 +281,11 @@
       "Bash(python3 *)",
       "Bash([ -d \"$FDIR\" ])",
       "Bash(ls \"C:\\\\\\\\Users\\\\\\\\ehall\\\\\\\\Desktop\\\\\\\\Finans-Portal\\\\\\\\frontend\\\\\\\\src\\\\\\\\styles\\\\\\\\components\\\\\\\\\")",
-      "PowerShell(Get-Command *)"
+      "PowerShell(Get-Command *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Directory | Where-Object {$_.FullName -match 'ai|AI'} | Select-Object -ExpandProperty FullName | Sort-Object)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(xargs basename -a)",
+      "PowerShell(cd \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\"; $env:JAVA_HOME = \\(Get-Command java -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source | Split-Path -Parent | Split-Path -Parent\\); .\\\\mvnw.cmd compile -q 2>&1 | Select-Object -Last 30)"
     ]
   }
 }

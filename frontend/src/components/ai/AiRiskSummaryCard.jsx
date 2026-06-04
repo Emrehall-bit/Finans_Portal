@@ -16,7 +16,7 @@ export default function AiRiskSummaryCard({ instrumentType, symbol, availableDat
           : "düşük-orta";
 
   return (
-    <AiCard title="AI Risk Özeti" subtitle={`${symbol || "Varlık"} için kısa risk görünümü`}>
+    <AiCard title="Risk Sinyali" subtitle={`${symbol || "Varlık"} için kısa risk görünümü`} badge="Sinyal">
       <p>
         {formatInstrumentType(instrumentType)} için mevcut risk görünümü <strong>{riskTone}</strong>. Günlük değişim{" "}
         <strong>{absChange === null ? "-" : `${formatNumber(changeRate, 2)}%`}</strong> seviyesinde.

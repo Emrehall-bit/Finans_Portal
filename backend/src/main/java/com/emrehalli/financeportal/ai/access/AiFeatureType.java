@@ -15,7 +15,8 @@ public enum AiFeatureType {
     UNIFIED_ANALYSIS(true),
     NEWS_IMPACT_ANALYSIS(true),
     COMPANY_COMPARISON_AI(true),
-    PORTFOLIO_AI(true);
+    PORTFOLIO_AI(true),
+    DASHBOARD_AI(true);
 
     private final boolean premiumRequired;
 

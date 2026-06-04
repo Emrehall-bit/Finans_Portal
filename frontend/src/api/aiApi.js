@@ -72,6 +72,19 @@ export function getPortfolioAiAnalysis(portfolioId, language = "tr") {
   );
 }
 
+export function getDashboardAiAnalysis({ language = "tr", avgMarketChange = 0, gainerCount = 0, loserCount = 0, totalQuotes = 0 } = {}) {
+  const key = `dashboard-analysis:${language}:${avgMarketChange}:${gainerCount}:${loserCount}:${totalQuotes}`;
+  return deduplicate(
+    key,
+    () => axiosClient
+      .get("/api/v1/ai/dashboard", {
+        params: { language, avgMarketChange, gainerCount, loserCount, totalQuotes },
+        timeout: 30000,
+      })
+      .then((r) => r.data)
+  );
+}
+
 export function postAiChat(message, context = null, language = "tr") {
   return axiosClient
     .post("/api/v1/ai/chat", { message, context, language }, { timeout: 30000 })

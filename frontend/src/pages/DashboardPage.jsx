@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Bell, Eye, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { AlertTriangle, Bell, Eye, ShieldAlert, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQueries } from "@tanstack/react-query";
 import { buildMarketDetailPath } from "../api/marketApi";
@@ -20,10 +20,12 @@ import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../
 import { formatInstrumentCode } from "../utils/instrumentUtils";
 import { buildNewsPlaceholderLabel } from "../components/news/newsCardUtils";
 import GuestLockOverlay from "../components/common/GuestLockOverlay";
+import AiLockedCard from "../components/ai/AiLockedCard";
+import { getDashboardAiAnalysis } from "../api/aiApi";
 
 export default function DashboardPage() {
-  const { t } = useTranslation();
-  const { userId, isAuthenticated, login } = useAuth();
+  const { t, i18n } = useTranslation();
+  const { userId, isAuthenticated, isPremium, login } = useAuth();
 
   const { data: marketQuotes = [], isLoading: quotesLoading, error: quotesError } = useMarketQuotes();
   const { data: newsPage, isLoading: newsLoading, error: newsError } = useNewsList(
@@ -51,6 +53,10 @@ export default function DashboardPage() {
   const [isPortfolioWidgetExpanded, setPortfolioWidgetExpanded] = useState(false);
   const [selectedWidgetPortfolioId, setSelectedWidgetPortfolioId] = useState(null);
   const [isAiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [aiAnalysisData, setAiAnalysisData] = useState(null);
+  const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+  const [aiAnalysisError, setAiAnalysisError] = useState("");
+  const [aiAnalysisRetryKey, setAiAnalysisRetryKey] = useState(0);
   const [isWatchlistPopoverOpen, setWatchlistPopoverOpen] = useState(false);
   const [isAuthRequiredModalOpen, setAuthRequiredModalOpen] = useState(false);
   const [marketCategoryFilter, setMarketCategoryFilter] = useState("all");
@@ -206,14 +212,16 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [marketQuotes, marketCategoryFilter, marketTab]);
 
-  const aiSummary = useMemo(() => {
+  const marketParams = useMemo(() => {
     const changedRows = marketQuotes.filter((item) => Number.isFinite(Number(item?.changeRate)));
-    if (!changedRows.length) return null;
+    if (!changedRows.length) return { avgMarketChange: 0, gainerCount: 0, loserCount: 0, totalQuotes: 0 };
     const avg = changedRows.reduce((sum, item) => sum + Number(item.changeRate), 0) / changedRows.length;
-    const mood = avg > 0.4 ? "pozitif" : avg < -0.4 ? "zayif" : "dengeli";
-    const topGainer = [...changedRows].sort((a, b) => Number(b.changeRate) - Number(a.changeRate))[0];
-    const topLoser = [...changedRows].sort((a, b) => Number(a.changeRate) - Number(b.changeRate))[0];
-    return { mood, avg, topGainer, topLoser };
+    return {
+      avgMarketChange: Math.round(avg * 100) / 100,
+      gainerCount: changedRows.filter((item) => Number(item.changeRate) > 0).length,
+      loserCount: changedRows.filter((item) => Number(item.changeRate) < 0).length,
+      totalQuotes: changedRows.length,
+    };
   }, [marketQuotes]);
 
   useEffect(() => {
@@ -278,6 +286,44 @@ export default function DashboardPage() {
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [isAiDrawerOpen]);
+
+  const dashboardAiLanguage = i18n.language?.toLowerCase().startsWith("en") ? "en" : "tr";
+  const dashboardAiErrorFallback = dashboardAiLanguage === "en"
+    ? "Analysis could not be loaded."
+    : "Analiz getirilemedi.";
+
+  useEffect(() => {
+    if (!isAiDrawerOpen || !isAuthenticated || !isPremium || aiAnalysisData) return undefined;
+    let cancelled = false;
+    async function loadAnalysis() {
+      try {
+        setAiAnalysisLoading(true);
+        setAiAnalysisError("");
+        const data = await getDashboardAiAnalysis({
+          language: dashboardAiLanguage,
+          ...marketParams,
+        });
+        if (!cancelled) setAiAnalysisData(normalizeDashboardAiAnalysis(data));
+      } catch (err) {
+        if (!cancelled) {
+          setAiAnalysisData(null);
+          setAiAnalysisError(err?.response?.data?.message || err?.message || dashboardAiErrorFallback);
+        }
+      } finally {
+        if (!cancelled) setAiAnalysisLoading(false);
+      }
+    }
+    loadAnalysis();
+    return () => { cancelled = true; };
+  }, [isAiDrawerOpen, isAuthenticated, isPremium, aiAnalysisData, marketParams, dashboardAiLanguage, dashboardAiErrorFallback, aiAnalysisRetryKey]);
+
+  useEffect(() => {
+    if (!isAiDrawerOpen && (aiAnalysisLoading || aiAnalysisError || aiAnalysisData)) {
+      setAiAnalysisData(null);
+      setAiAnalysisError("");
+      setAiAnalysisLoading(false);
+    }
+  }, [isAiDrawerOpen, aiAnalysisLoading, aiAnalysisError, aiAnalysisData]);
 
   return (
     <div className="dashboard-stack finance-dashboard-shell dashboard-page">
@@ -678,65 +724,170 @@ export default function DashboardPage() {
       {/* AI Drawer overlay/panel */}
       {isAiDrawerOpen ? (
         <div className="ai-drawer-overlay" onClick={() => setAiDrawerOpen(false)}>
-          <div className="ai-drawer-panel" role="dialog" aria-modal="true" aria-label="AI Piyasa Özeti" onClick={(e) => e.stopPropagation()}>
+          <div className="ai-drawer-panel" role="dialog" aria-modal="true" aria-label={t("dashboard.aiDrawer.title")} onClick={(e) => e.stopPropagation()}>
             <div className="ai-drawer-header">
               <div className="ai-drawer-title-group">
-                <h3 className="ai-drawer-title">AI Piyasa Özeti</h3>
-                <div className="ai-drawer-sub">Günün piyasa görünümü</div>
+                <h3 className="ai-drawer-title">{t("dashboard.aiDrawer.title")}</h3>
+                <div className="ai-drawer-sub">{t("dashboard.aiDrawer.subtitle")}</div>
                 <div className="ai-drawer-pills" aria-hidden="true">
-                  <span className="ai-pill">PİYASA ÖZETİ</span>
+                  <span className="ai-pill">AI ANALİZİ</span>
                   <span className="ai-pill">GÜNCEL</span>
-                  <span className="ai-pill">AI DESTEKLİ</span>
+                  <span className="ai-pill">PREMİUM</span>
                 </div>
               </div>
               <button type="button" className="ai-drawer-close" aria-label="Kapat" onClick={() => setAiDrawerOpen(false)}>✕</button>
             </div>
             <div className="ai-drawer-body">
-              {aiSummary ? (
-                <div className="ai-cards">
-                  <div className="ai-card ai-summary-card">
-                    <div className="dash-ai-banner">
-                      <Sparkles size={14} className="dash-ai-banner-icon" aria-hidden="true" />
-                      <p className="dash-ai-banner-text">
-                        Piyasa görünümu <strong>{aiSummary.mood}</strong>
-                        {aiSummary.topGainer ? (
-                          <> {" · "} Güçlü: <strong>{aiSummary.topGainer.code ?? aiSummary.topGainer.symbol}</strong> (+{Number(aiSummary.topGainer.changeRate).toFixed(2)}%)</>
-                        ) : null}
-                        {aiSummary.topLoser ? (
-                          <> {" · "} Zayıf: <strong>{aiSummary.topLoser.code ?? aiSummary.topLoser.symbol}</strong> ({Number(aiSummary.topLoser.changeRate).toFixed(2)}%)</>
-                        ) : null}
-                      </p>
-                    </div>
+              {!isAuthenticated ? (
+                <AiLockedCard
+                  featureName={t("dashboard.aiDrawer.title")}
+                  description={t("dashboard.aiDrawer.loginRequired")}
+                />
+              ) : !isPremium ? (
+                <AiLockedCard
+                  featureName={t("dashboard.aiDrawer.title")}
+                  description={t("dashboard.aiDrawer.premiumRequired")}
+                  requiresPremium
+                />
+              ) : aiAnalysisLoading ? (
+                <div className="portfolio-ai-sections">
+                  <div className="portfolio-ai-state-card portfolio-ai-state-card--loading">
+                    <strong>{t("dashboard.aiDrawer.loading")}</strong>
+                    <p>{t("dashboard.aiDrawer.loadingDesc")}</p>
                   </div>
-
-                  <div className="ai-metrics-row">
-                    <div className="ai-card ai-metric-card">
-                      <span className="ai-metric-label">Genel eğilim</span>
-                      <strong className="ai-metric-value">{aiSummary.mood}</strong>
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="portfolio-ai-section-card portfolio-ai-section-card--skeleton" aria-hidden="true">
+                      <span className="portfolio-ai-skeleton-line portfolio-ai-skeleton-line--title" />
+                      <span className="portfolio-ai-skeleton-line" />
+                      <span className="portfolio-ai-skeleton-line portfolio-ai-skeleton-line--short" />
                     </div>
-                    <div className="ai-card ai-metric-card">
-                      <span className="ai-metric-label">Ortalama değişim</span>
-                      <strong className={`ai-metric-value ${aiSummary.avg >= 0 ? 'market-up' : 'market-down'}`}>{formatMarketChange(aiSummary.avg)}</strong>
+                  ))}
+                </div>
+              ) : aiAnalysisError ? (
+                <div className="portfolio-ai-sections">
+                  <div className="portfolio-ai-state-card portfolio-ai-state-card--error">
+                    <div className="portfolio-ai-state-head">
+                      <AlertTriangle size={16} />
+                      <strong>{t("dashboard.aiDrawer.error")}</strong>
                     </div>
+                    <p>{aiAnalysisError}</p>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      style={{ marginTop: 12 }}
+                      onClick={() => {
+                        setAiAnalysisData(null);
+                        setAiAnalysisError("");
+                        setAiAnalysisLoading(false);
+                        setAiAnalysisRetryKey((value) => value + 1);
+                      }}
+                    >
+                      {t("dashboard.aiDrawer.retry")}
+                    </button>
                   </div>
+                </div>
+              ) : !aiAnalysisData ? (
+                <div className="portfolio-ai-sections">
+                  <div className="portfolio-ai-state-card">
+                    <strong>{t("dashboard.aiDrawer.noData")}</strong>
+                    <p>{t("dashboard.aiDrawer.noDataDesc")}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="portfolio-ai-sections">
+                  {aiAnalysisData.marketContext ? (
+                    <article className="portfolio-ai-section-card is-primary">
+                      <div className="portfolio-ai-section-head">
+                        <div className="portfolio-ai-section-icon"><Sparkles size={15} /></div>
+                        <div>
+                          <h4>{t("dashboard.aiDrawer.marketContext")}</h4>
+                        </div>
+                      </div>
+                      <div className="portfolio-ai-section-copy">
+                        <p>{aiAnalysisData.marketContext}</p>
+                      </div>
+                    </article>
+                  ) : null}
 
-                  {(aiSummary.topGainer || aiSummary.topLoser) ? (
-                    <div className="ai-card ai-strong-weak-card">
-                      {aiSummary.topGainer ? (
-                        <div className="ai-strong">
-                          <strong>Güçlü: </strong>{aiSummary.topGainer.code ?? aiSummary.topGainer.symbol} <span className="market-up">(+{Number(aiSummary.topGainer.changeRate).toFixed(2)}%)</span>
+                  {aiAnalysisData.newsContext ? (
+                    <article className="portfolio-ai-section-card is-neutral">
+                      <div className="portfolio-ai-section-head">
+                        <div className="portfolio-ai-section-icon"><Sparkles size={15} /></div>
+                        <div>
+                          <h4>{t("dashboard.aiDrawer.newsContext")}</h4>
                         </div>
-                      ) : null}
-                      {aiSummary.topLoser ? (
-                        <div className="ai-weak">
-                          <strong>Zayıf: </strong>{aiSummary.topLoser.code ?? aiSummary.topLoser.symbol} <span className="market-down">({Number(aiSummary.topLoser.changeRate).toFixed(2)}%)</span>
+                      </div>
+                      <div className="portfolio-ai-section-copy">
+                        <p>{aiAnalysisData.newsContext}</p>
+                      </div>
+                    </article>
+                  ) : null}
+
+                  {aiAnalysisData.riskSignals?.length > 0 ? (
+                    <article className="portfolio-ai-section-card is-risk">
+                      <div className="portfolio-ai-section-head">
+                        <div className="portfolio-ai-section-icon"><ShieldAlert size={15} /></div>
+                        <div>
+                          <h4>{t("dashboard.aiDrawer.riskSignals")}</h4>
                         </div>
-                      ) : null}
+                      </div>
+                      <ul className="portfolio-ai-section-list">
+                        {aiAnalysisData.riskSignals.map((s) => <li key={s}>{s}</li>)}
+                      </ul>
+                    </article>
+                  ) : null}
+
+                  {aiAnalysisData.watchPoints?.length > 0 ? (
+                    <article className="portfolio-ai-section-card is-warning">
+                      <div className="portfolio-ai-section-head">
+                        <div className="portfolio-ai-section-icon"><AlertTriangle size={15} /></div>
+                        <div>
+                          <h4>{t("dashboard.aiDrawer.watchPoints")}</h4>
+                        </div>
+                      </div>
+                      <ul className="portfolio-ai-section-list">
+                        {aiAnalysisData.watchPoints.map((w) => <li key={w}>{w}</li>)}
+                      </ul>
+                    </article>
+                  ) : null}
+
+                  {aiAnalysisData.portfolioImpact ? (
+                    <article className="portfolio-ai-section-card is-success">
+                      <div className="portfolio-ai-section-head">
+                        <div className="portfolio-ai-section-icon"><Sparkles size={15} /></div>
+                        <div>
+                          <h4>{t("dashboard.aiDrawer.portfolioImpact")}</h4>
+                        </div>
+                      </div>
+                      <div className="portfolio-ai-section-copy">
+                        <p>{aiAnalysisData.portfolioImpact}</p>
+                      </div>
+                    </article>
+                  ) : null}
+
+                  {aiAnalysisData.finalComment ? (
+                    <article className="portfolio-ai-section-card is-neutral">
+                      <div className="portfolio-ai-section-head">
+                        <div className="portfolio-ai-section-icon"><Sparkles size={15} /></div>
+                        <div>
+                          <h4>{t("dashboard.aiDrawer.finalComment")}</h4>
+                        </div>
+                      </div>
+                      <div className="portfolio-ai-section-copy">
+                        <p>{aiAnalysisData.finalComment}</p>
+                      </div>
+                    </article>
+                  ) : null}
+
+                  {!aiAnalysisData.marketContext && !aiAnalysisData.newsContext && !aiAnalysisData.portfolioImpact
+                    && !aiAnalysisData.riskSignals?.length && !aiAnalysisData.watchPoints?.length
+                    && !aiAnalysisData.finalComment ? (
+                    <div className="portfolio-ai-state-card">
+                      <strong>{t("dashboard.aiDrawer.noContent")}</strong>
+                      <p>{t("dashboard.aiDrawer.noContentDesc")}</p>
                     </div>
                   ) : null}
                 </div>
-              ) : (
-                <div className="ai-card ai-empty-card">Henüz AI piyasa özeti oluşturulmadı.</div>
               )}
             </div>
           </div>
@@ -750,6 +901,24 @@ export default function DashboardPage() {
       />
     </div>
   );
+}
+
+function normalizeDashboardAiAnalysis(data) {
+  if (!data || typeof data !== "object") {
+    return {};
+  }
+
+  return {
+    marketContext: typeof data.marketContext === "string" ? data.marketContext.trim() : "",
+    newsContext: typeof data.newsContext === "string" ? data.newsContext.trim() : "",
+    portfolioImpact: typeof data.portfolioImpact === "string" ? data.portfolioImpact.trim() : "",
+    riskSignals: Array.isArray(data.riskSignals) ? data.riskSignals.filter(Boolean) : [],
+    watchPoints: Array.isArray(data.watchPoints) ? data.watchPoints.filter(Boolean) : [],
+    finalComment: typeof data.finalComment === "string" ? data.finalComment.trim() : "",
+    marketTone: data.marketTone,
+    fallbackUsed: data.fallbackUsed,
+    metadata: data.metadata,
+  };
 }
 
 function isTriggeredAlert(item) {

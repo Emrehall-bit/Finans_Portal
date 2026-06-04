@@ -239,6 +239,26 @@
       "empty": "Bu portföyde henüz varlık bulunmuyor.",
       "units": "adet",
       "goPortfolio": "Portföy Yönetimi'ne Git →"
+    },
+    "aiDrawer": {
+      "title": "Piyasa Analizi",
+      "subtitle": "Güncel piyasa ve haber bağlamı",
+      "marketContext": "Piyasa Bağlamı",
+      "portfolioImpact": "Portföy Etkisi",
+      "riskSignals": "Risk Sinyalleri",
+      "watchPoints": "İzlenecek Noktalar",
+      "finalComment": "Genel Sonuç",
+      "retry": "Tekrar Dene",
+      "loading": "Analiz hazırlanıyor...",
+      "loadingDesc": "Piyasa ve haber verileri yorumlanıyor.",
+      "noData": "Analiz henüz hazır değil",
+      "noDataDesc": "Sayfayı yenileyerek tekrar deneyin.",
+      "noContent": "Yeterli bağlam verisi bulunamadı",
+      "noContentDesc": "Piyasa ve haber bağlamı için yeterli veri bulunamadı.",
+      "error": "Analiz getirilemedi",
+      "loginRequired": "Bu özelliği kullanmak için giriş yapın.",
+      "premiumRequired": "Piyasa analizi premium üyelere özeldir.",
+      "newsContext": "Haber Bağlamı"
     }
   },
   "news": {

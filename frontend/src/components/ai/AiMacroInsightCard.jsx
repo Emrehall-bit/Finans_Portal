@@ -13,7 +13,7 @@ export default function AiMacroInsightCard({ symbol, availableData = {} }) {
     : "belirsiz";
 
   return (
-    <AiCard title="AI Makro Kur Yorumu" subtitle={`${symbol || "Döviz"} için makro görünüm`}>
+    <AiCard title="Kur Görünümü" subtitle={`${symbol || "Döviz"} için makro görünüm`} badge="Sinyal">
       <p>
         Kısa vadeli kur görünümü <strong>{availableData.trendLabel || "nötr"}</strong>. Güncel seviye{" "}
         <strong>{formatCurrency(quote.price ?? quote.sellRate ?? quote.buyRate, quote.currency || "TRY")}</strong>,

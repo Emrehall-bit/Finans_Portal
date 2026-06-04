@@ -58,6 +58,7 @@ public class AiProperties {
         private RouteConfig portfolioAnalysis    = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
         private RouteConfig newsSummary          = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
         private RouteConfig newsImpactAnalysis   = new RouteConfig(AiProviderType.GROQ,   AiProviderType.GEMINI);
+        private RouteConfig dashboardAnalysis    = new RouteConfig(AiProviderType.GEMINI, AiProviderType.GROQ);
 
         public RouteConfig getForTask(AiTaskType taskType) {
             return switch (taskType) {
@@ -69,6 +70,7 @@ public class AiProperties {
                 case PORTFOLIO_ANALYSIS   -> portfolioAnalysis;
                 case NEWS_SUMMARY         -> newsSummary;
                 case NEWS_IMPACT_ANALYSIS -> newsImpactAnalysis;
+                case DASHBOARD_ANALYSIS   -> dashboardAnalysis;
             };
         }
 

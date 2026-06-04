@@ -8,7 +8,7 @@ export default function AiYieldRiskInsightCard({ symbol, availableData = {} }) {
   const creditRisk = quote.creditRisk ?? quote.rating ?? null;
 
   return (
-    <AiCard title="AI Getiri ve Risk Yorumu" subtitle={`${symbol || "Tahvil"} için faiz riski özeti`}>
+    <AiCard title="Getiri ve Risk Özeti" subtitle={`${symbol || "Tahvil"} için faiz riski özeti`} badge="Sinyal">
       <p>
         Tahvil/bono getirisi <strong>{formatYield(yieldValue)}</strong>. Vade bilgisi{" "}
         <strong>{maturity ? formatDateTime(maturity) : "belirtilmedi"}</strong>.

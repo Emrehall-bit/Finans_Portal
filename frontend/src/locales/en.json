@@ -239,6 +239,26 @@
       "empty": "No holdings in this portfolio yet.",
       "units": "units",
       "goPortfolio": "Go to Portfolio Management →"
+    },
+    "aiDrawer": {
+      "title": "Market Analysis",
+      "subtitle": "Current market and news context",
+      "marketContext": "Market Context",
+      "portfolioImpact": "Portfolio Impact",
+      "riskSignals": "Risk Signals",
+      "watchPoints": "Watch Points",
+      "finalComment": "Final Comment",
+      "retry": "Try Again",
+      "loading": "Preparing analysis...",
+      "loadingDesc": "Interpreting market and news data.",
+      "noData": "Analysis is not ready yet",
+      "noDataDesc": "Refresh the page and try again.",
+      "noContent": "Not enough context data found",
+      "noContentDesc": "Not enough data was found for market and news context.",
+      "error": "Analysis could not be loaded",
+      "loginRequired": "Sign in to use this feature.",
+      "premiumRequired": "Market analysis is available to premium members.",
+      "newsContext": "News Context"
     }
   },
   "news": {

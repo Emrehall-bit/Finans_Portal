@@ -10,7 +10,7 @@ export default function AiFundInsightCard({ symbol, availableData = {} }) {
   const allocation = quote.portfolioDistribution || quote.allocation || null;
 
   return (
-    <AiCard title="AI Fon Yorumu" subtitle={`${symbol || "Fon"} için fon verisi özeti`}>
+    <AiCard title="Fon Özeti" subtitle={`${symbol || "Fon"} için fon verisi özeti`} badge="Sinyal">
       <p>
         Fon türü <strong>{fundType}</strong>. Risk seviyesi <strong>{riskLevel}</strong>, son getiri göstergesi{" "}
         <strong>{formatPercentLike(recentReturn)}</strong> olarak izleniyor.
