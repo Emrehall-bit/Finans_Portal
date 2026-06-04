@@ -1,0 +1,67 @@
+package com.emrehalli.financeportal.ai.core.context;
+
+import com.emrehalli.financeportal.ai.features.fundamental.AiFundamentalAnalysisResponse;
+import com.emrehalli.financeportal.ai.features.technical.AiTechnicalAnalysisResponse;
+import org.springframework.stereotype.Component;
+
+@Component
+public class AiContextBuilder {
+
+    public String buildInstrumentBlock(InstrumentContext ctx) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== EKRAN BAÄLAMI: ").append(ctx.symbol()).append(" ===\n");
+
+        AiTechnicalAnalysisResponse tech = ctx.technicalSummary();
+        if (tech != null) {
+            sb.append("TEKNÄ°K ANALÄ°Z:\n");
+            if (tech.summary() != null) {
+                sb.append("  Ã–zet: ").append(tech.summary()).append("\n");
+            }
+            if (tech.trendComment() != null) {
+                sb.append("  Trend: ").append(tech.trendComment()).append("\n");
+            }
+            if (tech.momentumComment() != null) {
+                sb.append("  Momentum: ").append(tech.momentumComment()).append("\n");
+            }
+            if (tech.riskLevel() != null) {
+                sb.append("  Risk seviyesi: ").append(tech.riskLevel()).append("\n");
+            }
+            if (tech.signal() != null) {
+                sb.append("  Teknik sinyal: ").append(tech.signal()).append("\n");
+            }
+        }
+
+        AiFundamentalAnalysisResponse fund = ctx.fundamentalSummary();
+        if (fund != null) {
+            sb.append("TEMEL ANALÄ°Z:\n");
+            if (fund.summary() != null) {
+                sb.append("  Ã–zet: ").append(fund.summary()).append("\n");
+            }
+            if (fund.strengths() != null && !fund.strengths().isEmpty()) {
+                sb.append("  GÃ¼Ã§lÃ¼ yÃ¶nler: ").append(String.join(" | ", fund.strengths())).append("\n");
+            }
+            if (fund.weaknesses() != null && !fund.weaknesses().isEmpty()) {
+                sb.append("  ZayÄ±f yÃ¶nler: ").append(String.join(" | ", fund.weaknesses())).append("\n");
+            }
+            if (fund.risks() != null && !fund.risks().isEmpty()) {
+                sb.append("  Riskler: ").append(String.join(" | ", fund.risks())).append("\n");
+            }
+            if (fund.growthComment() != null) {
+                sb.append("  BÃ¼yÃ¼me: ").append(fund.growthComment()).append("\n");
+            }
+            if (fund.financialHealth() != null) {
+                sb.append("  Finansal saÄŸlÄ±k: ").append(fund.financialHealth()).append("\n");
+            }
+        }
+
+        return sb.toString().trim();
+    }
+
+    public String buildDashboardBlock(DashboardContext ctx) {
+        return "=== EKRAN BAÄLAMI: DASHBOARD ===\n" + ctx.screenNote();
+    }
+}
+
+
+
+

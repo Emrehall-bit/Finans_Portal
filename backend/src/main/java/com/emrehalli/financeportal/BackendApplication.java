@@ -1,6 +1,6 @@
 package com.emrehalli.financeportal;
 
-import com.emrehalli.financeportal.ai.config.AiProperties;
+import com.emrehalli.financeportal.ai.core.config.AiProperties;
 import com.emrehalli.financeportal.news.config.NewsStartupSyncProperties;
 import com.emrehalli.financeportal.news.provider.aa.AaNewsProperties;
 import com.emrehalli.financeportal.news.provider.cnbc.CnbcNewsProperties;
