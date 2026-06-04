@@ -851,20 +851,6 @@ export default function DashboardPage() {
                     </article>
                   ) : null}
 
-                  {aiAnalysisData.portfolioImpact ? (
-                    <article className="portfolio-ai-section-card is-success">
-                      <div className="portfolio-ai-section-head">
-                        <div className="portfolio-ai-section-icon"><Sparkles size={15} /></div>
-                        <div>
-                          <h4>{t("dashboard.aiDrawer.portfolioImpact")}</h4>
-                        </div>
-                      </div>
-                      <div className="portfolio-ai-section-copy">
-                        <p>{aiAnalysisData.portfolioImpact}</p>
-                      </div>
-                    </article>
-                  ) : null}
-
                   {aiAnalysisData.finalComment ? (
                     <article className="portfolio-ai-section-card is-neutral">
                       <div className="portfolio-ai-section-head">
@@ -879,7 +865,7 @@ export default function DashboardPage() {
                     </article>
                   ) : null}
 
-                  {!aiAnalysisData.marketContext && !aiAnalysisData.newsContext && !aiAnalysisData.portfolioImpact
+                  {!aiAnalysisData.marketContext && !aiAnalysisData.newsContext
                     && !aiAnalysisData.riskSignals?.length && !aiAnalysisData.watchPoints?.length
                     && !aiAnalysisData.finalComment ? (
                     <div className="portfolio-ai-state-card">
@@ -911,7 +897,6 @@ function normalizeDashboardAiAnalysis(data) {
   return {
     marketContext: typeof data.marketContext === "string" ? data.marketContext.trim() : "",
     newsContext: typeof data.newsContext === "string" ? data.newsContext.trim() : "",
-    portfolioImpact: typeof data.portfolioImpact === "string" ? data.portfolioImpact.trim() : "",
     riskSignals: Array.isArray(data.riskSignals) ? data.riskSignals.filter(Boolean) : [],
     watchPoints: Array.isArray(data.watchPoints) ? data.watchPoints.filter(Boolean) : [],
     finalComment: typeof data.finalComment === "string" ? data.finalComment.trim() : "",

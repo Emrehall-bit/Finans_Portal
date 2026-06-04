@@ -32,7 +32,7 @@
 .news-card-media {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 2.2 / 1;
+  aspect-ratio: 16 / 9;
   background:
     radial-gradient(circle at top right, rgba(104, 147, 255, 0.18), transparent 34%),
     linear-gradient(135deg, #eaf1ff 0%, #dce8ff 100%);
@@ -46,6 +46,7 @@
 
 .news-card-image {
   object-fit: cover;
+  object-position: center top;
   display: block;
 }
 
@@ -256,7 +257,7 @@
 .news-detail-media {
   overflow: hidden;
   border-radius: 16px;
-  aspect-ratio: 16 / 7;
+  aspect-ratio: 16 / 9;
   background:
     radial-gradient(circle at top right, rgba(104, 147, 255, 0.2), transparent 32%),
     linear-gradient(135deg, rgba(234, 241, 255, 0.96), rgba(220, 232, 255, 0.92));
@@ -267,6 +268,7 @@
   height: 100%;
   display: block;
   object-fit: cover;
+  object-position: center top;
 }
 
 .news-detail-media-fallback {

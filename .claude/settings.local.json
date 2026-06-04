@@ -285,7 +285,8 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\" -Recurse -Directory | Where-Object {$_.FullName -match 'ai|AI'} | Select-Object -ExpandProperty FullName | Sort-Object)",
       "Bash(xargs -I {} basename {})",
       "Bash(xargs basename -a)",
-      "PowerShell(cd \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\"; $env:JAVA_HOME = \\(Get-Command java -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source | Split-Path -Parent | Split-Path -Parent\\); .\\\\mvnw.cmd compile -q 2>&1 | Select-Object -Last 30)"
+      "PowerShell(cd \"C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal\\\\backend\"; $env:JAVA_HOME = \\(Get-Command java -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source | Split-Path -Parent | Split-Path -Parent\\); .\\\\mvnw.cmd compile -q 2>&1 | Select-Object -Last 30)",
+      "Bash(dir C:\\\\Users\\\\ehall\\\\Desktop\\\\Finans-Portal *)"
     ]
   }
 }

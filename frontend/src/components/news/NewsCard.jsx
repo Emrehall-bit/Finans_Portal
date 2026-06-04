@@ -170,6 +170,8 @@ function NewsCardContent({ item, onClick, assetKey, isFavorite, favoriteBusy, on
               src={thumbnail}
               alt={item?.title || "Haber gorseli"}
               loading="lazy"
+              width="640"
+              height="360"
               onError={() => setImageFailed(true)}
             />
           ) : (

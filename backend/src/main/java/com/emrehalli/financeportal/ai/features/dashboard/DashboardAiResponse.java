@@ -7,7 +7,6 @@ import java.util.List;
 public record DashboardAiResponse(
         String marketContext,
         String newsContext,
-        String portfolioImpact,
         List<String> riskSignals,
         List<String> watchPoints,
         String finalComment,
