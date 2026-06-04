@@ -255,87 +255,66 @@ public class FinancialImpactClassifier {
 
         // --- Impact type (priority order) ---
         ImpactType impactType;
-        List<AffectedAssetClass> assetClasses;
         String reason;
 
         if (directCompanyScore > 0) {
             impactType = ImpactType.DIRECT_COMPANY;
-            assetClasses = List.of(AffectedAssetClass.STOCK);
             reason = "Haberde ÅŸirket adÄ±/tiker doÄŸrudan geÃ§iyor: " + directSymbols;
 
         } else if (centralBankScore >= THRESHOLD_MONETARY_POLICY_CB
                 || (centralBankScore + rateScore) >= THRESHOLD_MONETARY_POLICY_COMBINED) {
             impactType = ImpactType.MONETARY_POLICY;
-            assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX,
-                    AffectedAssetClass.BANKING_INDEX, AffectedAssetClass.INTEREST_RATE);
             reason = "Merkez bankasÄ±/faiz sinyalleri para politikasÄ± etkisi gÃ¶steriyor";
 
         } else if (fiscalScore >= THRESHOLD_FISCAL) {
             impactType = ImpactType.FISCAL_POLICY;
-            assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX, AffectedAssetClass.BOND);
             reason = "Hazine/bÃ¼tÃ§e sinyalleri mali politika etkisi gÃ¶steriyor";
 
         } else if (politicalScore >= THRESHOLD_POLITICAL_RISK) {
             impactType = ImpactType.POLITICAL_RISK;
-            assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX, AffectedAssetClass.GOLD);
             reason = "Siyasi sinyal + piyasa baÄŸlamÄ± siyasi risk olarak sÄ±nÄ±flandÄ±rÄ±ldÄ±";
 
         } else if (geopoliticalScore >= THRESHOLD_GEOPOLITICAL) {
             impactType = ImpactType.GEOPOLITICAL;
-            assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX,
-                    AffectedAssetClass.GOLD, AffectedAssetClass.COMMODITY);
             reason = "Jeopolitik sinyal + emtia/kur baÄŸlamÄ± jeopolitik risk olarak sÄ±nÄ±flandÄ±rÄ±ldÄ±";
 
         } else if (macroScore >= THRESHOLD_MACRO) {
             impactType = ImpactType.MACRO;
-            assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX);
             reason = "Makroekonomik sinyaller tespit edildi";
 
         } else if ((globalScore + marketScore) >= THRESHOLD_GLOBAL_MARKET_COMBINED) {
             impactType = ImpactType.GLOBAL_MARKET;
-            assetClasses = List.of(AffectedAssetClass.EQUITY_INDEX, AffectedAssetClass.FX,
-                    AffectedAssetClass.GOLD, AffectedAssetClass.COMMODITY);
             reason = "KÃ¼resel piyasa sinyalleri tespit edildi";
 
         } else if (regulatoryScore >= THRESHOLD_REGULATORY) {
             impactType = ImpactType.REGULATORY;
-            assetClasses = List.of(AffectedAssetClass.EQUITY_INDEX);
             reason = "DÃ¼zenleyici kurul kararÄ± sinyali tespit edildi";
 
         } else if (bankingScore >= THRESHOLD_SECTOR) {
             impactType = ImpactType.SECTOR;
-            assetClasses = List.of(AffectedAssetClass.BANKING_INDEX, AffectedAssetClass.EQUITY_INDEX);
             reason = "BankacÄ±lÄ±k sektÃ¶rÃ¼ sinyali tespit edildi";
 
         } else if (goldScore >= THRESHOLD_SECTOR || oilScore >= THRESHOLD_SECTOR) {
             impactType = ImpactType.GLOBAL_MARKET;
-            assetClasses = goldScore >= oilScore
-                    ? List.of(AffectedAssetClass.GOLD, AffectedAssetClass.COMMODITY)
-                    : List.of(AffectedAssetClass.COMMODITY);
             reason = "Emtia sinyali tespit edildi";
 
         } else if (totalScore >= THRESHOLD_MARKET_RELEVANT) {
             // Catch-all: financially relevant but no dominant type
             if (fxScore >= 18) {
                 impactType = ImpactType.MACRO;
-                assetClasses = List.of(AffectedAssetClass.FX, AffectedAssetClass.EQUITY_INDEX);
                 reason = "DÃ¶viz/kur sinyali piyasa etkisi gÃ¶steriyor";
             } else if (rateScore >= 20) {
                 impactType = ImpactType.MACRO;
-                assetClasses = List.of(AffectedAssetClass.INTEREST_RATE, AffectedAssetClass.BOND);
                 reason = "Faiz/tahvil sinyali piyasa etkisi gÃ¶steriyor";
             } else if (marketScore >= 20) {
                 impactType = ImpactType.SECTOR;
-                assetClasses = List.of(AffectedAssetClass.EQUITY_INDEX);
                 reason = "Borsa/endeks sinyali piyasa etkisi gÃ¶steriyor";
             } else {
                 impactType = ImpactType.MACRO;
-                assetClasses = List.of(AffectedAssetClass.EQUITY_INDEX);
                 reason = "Birden fazla piyasa sinyali tespit edildi";
             }
         } else {
             impactType = ImpactType.NOT_MARKET_RELEVANT;
-            assetClasses = List.of(AffectedAssetClass.NONE);
             reason = "Yeterli finansal/piyasa sinyali bulunamadÄ± (score=" + totalScore + ")";
         }
 
@@ -344,7 +323,6 @@ public class FinancialImpactClassifier {
         String confidence;
         if (impactType == ImpactType.NOT_MARKET_RELEVANT || totalScore < THRESHOLD_MARKET_RELEVANT) {
             impactType = ImpactType.NOT_MARKET_RELEVANT;
-            assetClasses = List.of(AffectedAssetClass.NONE);
             confidence = "LOW";
             marketRelevant = false;
         } else if (impactType == ImpactType.DIRECT_COMPANY || totalScore >= THRESHOLD_HIGH_CONFIDENCE) {
@@ -357,16 +335,14 @@ public class FinancialImpactClassifier {
 
         List<String> dedupedSignals = deduplicate(matched);
         FinancialImpactResult result = new FinancialImpactResult(
-                marketRelevant, confidence, impactType, assetClasses,
-                totalScore, reason, dedupedSignals);
+                marketRelevant, confidence, impactType, totalScore, reason, dedupedSignals);
 
         if (logger.isDebugEnabled()) {
             logger.debug(
                     "news.classify: provider={}, feed={}, title=\"{}\", score={}, marketRelevant={}, " +
-                    "confidence={}, impactType={}, affectedAssetClasses={}, matchedSignals={}, reason=\"{}\"",
+                    "confidence={}, impactType={}, matchedSignals={}, reason=\"{}\"",
                     provider, feedName, truncate(title, 80),
-                    totalScore, marketRelevant, confidence, impactType, assetClasses,
-                    dedupedSignals, reason);
+                    totalScore, marketRelevant, confidence, impactType, dedupedSignals, reason);
         }
 
         return result;
@@ -429,7 +405,6 @@ public class FinancialImpactClassifier {
         return value.length() <= max ? value : value.substring(0, max) + "â€¦";
     }
 }
-
 
 
 

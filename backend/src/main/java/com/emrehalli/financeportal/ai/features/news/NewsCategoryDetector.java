@@ -7,47 +7,82 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Keyword-based news category detector.
- * Categories are evaluated in enum declaration order â€” more specific categories
- * (TCMB, FED) are placed before the broader ones (INTEREST_RATE) to avoid
- * mis-classification on overlapping keywords.
+ * Keyword-based detector for News Impact AI. App-level news category is only a
+ * weak fallback because feed categorization can be noisy.
  */
 @Component
 public class NewsCategoryDetector {
 
+    public record DetectionResult(
+            NewsCategory category,
+            boolean titleMatched,
+            boolean summaryMatched,
+            boolean categoryOnly
+    ) {
+        public boolean hasContentEvidence() {
+            return titleMatched || summaryMatched;
+        }
+    }
+
     private static final Map<NewsCategory, List<String>> KEYWORDS = Map.ofEntries(
-            Map.entry(NewsCategory.TCMB,               List.of("tcmb", "merkez bankasÄ±", "merkez bank", "para politikasÄ±")),
-            Map.entry(NewsCategory.FED,                List.of("federal reserve", "fomc", "powell", "yellen", "fed faiz")),
-            Map.entry(NewsCategory.INFLATION,          List.of("enflasyon", "tÃ¼fe", "Ã¼fe", " cpi", " ppi", "inflation", "fiyat artÄ±ÅŸ")),
-            Map.entry(NewsCategory.INTEREST_RATE,      List.of("faiz kararÄ±", "faiz oranÄ±", "interest rate", "baz puan", "basis point")),
-            Map.entry(NewsCategory.OIL_ENERGY,         List.of("petrol", "brent", "doÄŸalgaz", "doÄŸal gaz", "enerji fiyat", " opec", "lng")),
-            Map.entry(NewsCategory.DEFENSE,            List.of("savunma sanayii", "savunma sanayi", "silah sistem", "askeri teknoloji", "savunma harcamasi", "defense")),
-            Map.entry(NewsCategory.AVIATION,           List.of("havacÄ±lÄ±k", "havayolu", "thyao", "thy hava", "pegasus", "aviation", "airline")),
-            Map.entry(NewsCategory.BANKING,            List.of("bankacÄ±lÄ±k sektÃ¶rÃ¼", "banka kÃ¢r", "banka zarar", "kredi bÃ¼yÃ¼me", "mevduat faiz")),
-            Map.entry(NewsCategory.CRYPTO,             List.of("kripto", "bitcoin", "ethereum", " btc", " eth", "blockchain", "crypto", "coin fiyat")),
-            Map.entry(NewsCategory.REGULATION,         List.of("regÃ¼lasyon", "dÃ¼zenleme kararÄ±", " spk ", " bddk ", "yasal dÃ¼zenleme", "regulation")),
-            Map.entry(NewsCategory.EARNINGS,           List.of("bilanÃ§o", "kÃ¢r aÃ§Ä±kladÄ±", "zarar aÃ§Ä±kladÄ±", "net kÃ¢r", "earnings", "revenue")),
-            Map.entry(NewsCategory.DIVIDEND,           List.of("temettÃ¼", "kar payÄ±", "dividend")),
-            Map.entry(NewsCategory.MERGER_ACQUISITION, List.of("birleÅŸme", "satÄ±n alma anlaÅŸmasÄ±", "merger", "acquisition", "devralmak")),
-            Map.entry(NewsCategory.INVESTMENT,         List.of("tahvil ihraÃ§", "bono ihraÃ§", "yatÄ±rÄ±m fonu", "investment fund"))
+            Map.entry(NewsCategory.TCMB, List.of("tcmb", "merkez bankası", "merkez bank", "para politikası")),
+            Map.entry(NewsCategory.FED, List.of("federal reserve", "fomc", "powell", "yellen", "fed faiz")),
+            Map.entry(NewsCategory.INFLATION, List.of("enflasyon", "tüfe", "üfe", " cpi", " ppi", "inflation", "fiyat artış")),
+            Map.entry(NewsCategory.INTEREST_RATE, List.of("faiz kararı", "faiz oranı", "interest rate", "baz puan", "basis point")),
+            Map.entry(NewsCategory.OIL_ENERGY, List.of("petrol", "brent", "doğalgaz", "doğal gaz", "enerji fiyat", " opec", "lng")),
+            Map.entry(NewsCategory.DEFENSE, List.of("savunma sanayii", "savunma sanayi", "silah sistem", "askeri teknoloji", "savunma harcaması", "defense")),
+            Map.entry(NewsCategory.AVIATION, List.of("havacılık", "havayolu", "thyao", "thy hava", "pegasus", "aviation", "airline")),
+            Map.entry(NewsCategory.BANKING, List.of("bankacılık sektörü", "bankacılık", "banka kâr", "banka kar", "banka zarar", "kredi büyüme", "mevduat faiz")),
+            Map.entry(NewsCategory.CRYPTO, List.of("kripto", "bitcoin", "ethereum", " btc", " eth", "blockchain", "crypto", "coin fiyat")),
+            Map.entry(NewsCategory.REGULATION, List.of("regülasyon", "düzenleme kararı", " spk ", " bddk ", "yasal düzenleme", "regulation")),
+            Map.entry(NewsCategory.EARNINGS, List.of("bilanço", "kâr açıkladı", "kar açıkladı", "zarar açıkladı", "net kâr", "net kar", "earnings", "revenue")),
+            Map.entry(NewsCategory.DIVIDEND, List.of("temettü", "kar payı", "dividend")),
+            Map.entry(NewsCategory.MERGER_ACQUISITION, List.of("birleşme", "satın alma anlaşması", "merger", "acquisition", "devralmak")),
+            Map.entry(NewsCategory.INVESTMENT, List.of("tahvil ihraç", "bono ihraç", "yatırım fonu", "investment fund"))
     );
 
     public NewsCategory detect(String title, String summary, String existingCategory) {
+        return detectWithEvidence(title, summary, existingCategory).category();
+    }
+
+    public DetectionResult detectWithEvidence(String title, String summary, String existingCategory) {
+        String titleText = lower(title);
+        String summaryText = lower(summary);
+
+        NewsCategory titleCategory = matchCategory(titleText);
+        if (titleCategory != null) {
+            return new DetectionResult(titleCategory, true, false, false);
+        }
+
+        NewsCategory summaryCategory = matchCategory(summaryText);
+        if (summaryCategory != null) {
+            return new DetectionResult(summaryCategory, false, true, false);
+        }
+
         NewsCategory mappedExistingCategory = mapExistingCategory(existingCategory);
         if (mappedExistingCategory != null) {
-            return mappedExistingCategory;
+            return new DetectionResult(mappedExistingCategory, false, false, true);
         }
-        String combined = buildSearchText(title, summary);
+
+        return new DetectionResult(NewsCategory.GENERAL, false, false, false);
+    }
+
+    private NewsCategory matchCategory(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
         for (NewsCategory category : NewsCategory.values()) {
-            if (category == NewsCategory.GENERAL) continue;
+            if (category == NewsCategory.GENERAL) {
+                continue;
+            }
             List<String> keywords = KEYWORDS.getOrDefault(category, List.of());
-            for (String kw : keywords) {
-                if (combined.contains(kw)) {
+            for (String keyword : keywords) {
+                if (text.contains(keyword)) {
                     return category;
                 }
             }
         }
-        return NewsCategory.GENERAL;
+        return null;
     }
 
     private NewsCategory mapExistingCategory(String existingCategory) {
@@ -66,13 +101,7 @@ public class NewsCategoryDetector {
         };
     }
 
-    private String buildSearchText(String title, String summary) {
-        String t = title   != null ? title.toLowerCase(Locale.ROOT)   : "";
-        String s = summary != null ? summary.toLowerCase(Locale.ROOT) : "";
-        return t + " " + s;
+    private String lower(String s) {
+        return s != null ? s.toLowerCase(Locale.ROOT) : "";
     }
 }
-
-
-
-

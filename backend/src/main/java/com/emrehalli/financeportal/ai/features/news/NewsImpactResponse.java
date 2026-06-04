@@ -6,20 +6,18 @@ import java.util.List;
 
 public record NewsImpactResponse(
         String newsId,
-        String summary,           // finansalContext içeriği; geriye dönük uyumluluk için korundu
-        String marketImpact,      // shortTermImpact içeriği; geriye dönük uyumluluk için korundu
+        String financialContext,
+        List<String> affectedAssets,
+        String marketImplication,
+        List<String> watchIndicators,
+        String uncertainty,
+        List<String> highlights,
         String shortTermImpact,
         String mediumTermImpact,
-        String uncertainty,
-        List<String> affectedSectors,
-        String sentiment,
-        String riskLevel,
-        List<String> highlights,
         String provider,
         boolean fallbackUsed,
-        AiResponseMetadata metadata
+        AiResponseMetadata metadata,
+        String summary,
+        String marketImpact,
+        List<String> affectedSectors
 ) {}
-
-
-
-

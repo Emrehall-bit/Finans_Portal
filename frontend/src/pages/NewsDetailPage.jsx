@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { buildMarketDetailPath } from "../api/marketApi";
 import AiNewsImpactCard from "../components/ai/AiNewsImpactCard";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
@@ -9,7 +8,6 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import PageHeader from "../components/common/PageHeader";
 import { useNewsDetail, useNewsRelated } from "../hooks/useNewsQueries";
-import { formatCurrency, formatPercent } from "../utils/formatters";
 import { formatNewsDate } from "../utils/dateUtils";
 import {
   buildNewsPlaceholderLabel,
@@ -25,7 +23,7 @@ import {
   isKapDisclosure,
 } from "../components/news/newsCardUtils";
 
-const EMPTY_RELATED = { relatedInstruments: [], relatedNews: [] };
+const EMPTY_RELATED = { relatedNews: [] };
 
 export default function NewsDetailPage() {
   const { t } = useTranslation();
@@ -44,7 +42,6 @@ export default function NewsDetailPage() {
   const error = !id ? t("newsDetail.missingId") : detailError ? extractErrorMessage(detailError, t("newsDetail.loadError")) : "";
   const relatedError = relatedQueryError ? extractErrorMessage(relatedQueryError, t("newsDetail.relatedLoadError")) : "";
   const relatedData = {
-    relatedInstruments: Array.isArray(relatedRaw?.relatedInstruments) ? relatedRaw.relatedInstruments : [],
     relatedNews: Array.isArray(relatedRaw?.relatedNews) ? relatedRaw.relatedNews : [],
   };
 
@@ -201,75 +198,6 @@ export default function NewsDetailPage() {
 
           <aside className="news-detail-side-panel">
             <div className="news-detail-side-sticky">
-              <section className="panel-surface news-related-panel">
-                <div className="panel-head">
-                  <div>
-                    <p className="eyebrow">{t("newsDetail.relatedAssetsEyebrow")}</p>
-                    <h3>{t("newsDetail.relatedAssetsTitle")}</h3>
-                    <p className="news-related-panel-copy">{t("newsDetail.relatedAssetsDescription")}</p>
-                  </div>
-                </div>
-
-                {relatedLoading ? <LoadingSpinner label={t("newsDetail.relatedLoading")} /> : null}
-                {!relatedLoading && relatedError ? <ErrorMessage message={relatedError} /> : null}
-                {!relatedLoading && !relatedError && relatedData.relatedInstruments.length === 0 ? (
-                  <EmptyState
-                    title={t("newsDetail.relatedAssetsEmptyTitle")}
-                    description={t("newsDetail.relatedAssetsEmptyDescription")}
-                  />
-                ) : null}
-
-                {!relatedLoading && !relatedError && relatedData.relatedInstruments.length > 0 ? (
-                  <div className="news-related-list">
-                    {relatedData.relatedInstruments.map((instrument) => {
-                      const changeTone = Number(instrument?.changePercent) >= 0 ? "market-up" : "market-down";
-                      const confidenceKey = String(instrument?.confidence || "low").toLowerCase();
-                      const isMacroTheme =
-                        String(instrument?.relationType || "").toUpperCase() === "THEME" &&
-                        String(instrument?.confidence || "").toUpperCase() === "CONTEXTUAL";
-                      return (
-                        <Link
-                          key={instrument.symbol}
-                          to={buildMarketDetailPath(instrument.symbol, instrument.instrumentType)}
-                          className="news-related-card"
-                        >
-                          <div className="news-related-card-top">
-                            <strong className="news-related-symbol">{instrument.symbol}</strong>
-                            <div className="news-related-badge-stack">
-                              <span className="news-card-badge provider">{instrument.instrumentType || "STOCK"}</span>
-                              <span className={`news-card-badge neutral ${String(instrument.relationType || "").toLowerCase()}`}>
-                                {isMacroTheme
-                                  ? t("newsDetail.confidence.contextual")
-                                  : t(`newsDetail.relationTypes.${String(instrument.relationType || "THEME").toLowerCase()}`)}
-                              </span>
-                              <span className={`news-card-badge importance ${confidenceKey}`}>
-                                {t(`newsDetail.confidence.${confidenceKey}`, t("newsDetail.relatedAssetsReasonFallback"))}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="news-related-title" title={instrument.name || instrument.symbol}>
-                            {instrument.name || instrument.symbol}
-                          </p>
-                          <p className="news-related-reason" title={instrument.reason || ""}>
-                            {instrument.reason || t("newsDetail.relatedAssetsReasonFallback")}
-                          </p>
-                          {instrument.lastPrice !== null && instrument.lastPrice !== undefined ? (
-                            <div className="news-related-market-line">
-                              <strong>{formatCurrency(instrument.lastPrice, "TRY")}</strong>
-                              <span className={changeTone}>
-                                {formatPercent(instrument.changePercent ?? 0)}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="muted">{t("newsDetail.relatedStocksNoPrice")}</span>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </section>
-
               <section className="panel-surface news-related-panel">
                 <div className="panel-head">
                   <div>

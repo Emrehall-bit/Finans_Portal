@@ -6,7 +6,6 @@ import com.emrehalli.financeportal.news.dto.request.NewsSearchRequest;
 import com.emrehalli.financeportal.news.dto.response.NewsCategoryRepairResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsFavoriteResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsImportanceRecalculationResponseDto;
-import com.emrehalli.financeportal.news.dto.response.NewsAffectedInstrumentsAuditResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsPurgeResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
@@ -216,18 +215,6 @@ public class NewsController {
                 .build();
     }
 
-    @GetMapping("/admin/affected-instruments-audit")
-    public ApiResponse<NewsAffectedInstrumentsAuditResponseDto> auditAffectedInstruments(
-            @RequestParam(defaultValue = "100") int limit) {
-        NewsAffectedInstrumentsAuditResponseDto response = newsService.auditAffectedInstruments(limit);
-
-        return ApiResponse.<NewsAffectedInstrumentsAuditResponseDto>builder()
-                .success(true)
-                .data(response)
-                .message(appMessageSource.get("news.sync.completed"))
-                .build();
-    }
-
     @PostMapping("/sync")
     public ApiResponse<NewsSyncResponseDto> syncNews(
             @RequestParam(required = false) String scope,
@@ -250,7 +237,6 @@ public class NewsController {
                 .build();
     }
 }
-
 
 
 

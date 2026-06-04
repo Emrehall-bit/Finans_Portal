@@ -1,7 +1,6 @@
 package com.emrehalli.financeportal.news.service;
 
 import com.emrehalli.financeportal.admin.notification.service.NotificationService;
-import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.news.config.NewsNotificationProperties;
 import com.emrehalli.financeportal.news.dto.response.NewsItemDto;
 import com.emrehalli.financeportal.news.entity.News;
@@ -299,7 +298,7 @@ class NewsServiceIngestValidationTest {
                 .satisfies(news -> {
                     assertThat(news.getImageUrl()).isEqualTo("https://media.guim.co.uk/fed.jpg");
                     assertThat(news.getQualityStatus()).isEqualTo("FULL_CONTENT");
-                    assertThat(news.getCategory()).isEqualTo(NewsCategoryClassifier.INTEREST_BONDS);
+                    assertThat(news.getCategory()).isEqualTo(NewsCategoryClassifier.GLOBAL_MARKETS);
                 });
     }
 
@@ -358,10 +357,6 @@ class NewsServiceIngestValidationTest {
             NewsProviderSyncStateRepository syncStateRepository,
             List<NewsProvider> providers
     ) {
-        MarketQueryService mqs = mock(MarketQueryService.class);
-        com.emrehalli.financeportal.news.config.NewsRelationsProperties legacyProps =
-                mock(com.emrehalli.financeportal.news.config.NewsRelationsProperties.class);
-        when(legacyProps.isConservativeMode()).thenReturn(false);
         return new NewsService(
                 newsRepository,
                 mock(com.emrehalli.financeportal.news.repository.NewsFavoriteRepository.class),
@@ -374,9 +369,6 @@ class NewsServiceIngestValidationTest {
                 mock(NewsNotificationProperties.class),
                 new NewsPresentationMapper(),
                 new NewsCategoryClassifier(),
-                mqs,
-                legacyProps,
-                new ConservativeNewsRelationService(newsRepository, mqs, new FinancialImpactClassifier()),
                 new FinancialImpactClassifier()
         );
     }

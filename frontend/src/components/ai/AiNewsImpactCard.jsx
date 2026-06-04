@@ -5,10 +5,8 @@ import {
   Brain,
   ChevronDown,
   Info,
-  Minus,
   Newspaper,
   Sparkles,
-  TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import { getAiNewsImpactAnalysis } from "../../api/aiApi";
@@ -18,7 +16,7 @@ import AiResponseMeta from "./AiResponseMeta";
 
 export default function AiNewsImpactCard({ newsId }) {
   const { isAuthenticated, isPremium } = useAuth();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,7 +39,7 @@ export default function AiNewsImpactCard({ newsId }) {
       setHasLoaded(true);
     } catch {
       setData(null);
-      setError("AI etki analizi şu anda üretilemedi.");
+      setError(t("aiCards.newsImpact.error"));
     } finally {
       setLoading(false);
     }
@@ -50,8 +48,8 @@ export default function AiNewsImpactCard({ newsId }) {
   if (!isAuthenticated) {
     return (
       <AiLockedCard
-        featureName="AI Etki Analizi"
-        description="Bu haberin finansal ve sektörel AI yorumunu görmek için giriş yapın."
+        featureName={t("aiCards.newsImpact.title")}
+        description={t("aiCards.newsImpact.guestDescription")}
       />
     );
   }
@@ -59,8 +57,8 @@ export default function AiNewsImpactCard({ newsId }) {
   if (!isPremium) {
     return (
       <AiLockedCard
-        featureName="AI Etki Analizi"
-        description="Haberin finansal, sektörel ve piyasa etkisini yorumlayan gelişmiş AI analizi premium üyelere özeldir."
+        featureName={t("aiCards.newsImpact.title")}
+        description={t("aiCards.newsImpact.premiumDescription")}
         requiresPremium
       />
     );
@@ -76,13 +74,15 @@ export default function AiNewsImpactCard({ newsId }) {
             {hasLoaded ? <Brain size={17} /> : <Sparkles size={17} />}
           </span>
           <div>
-            <h3>{hasLoaded ? "AI Etki Analizi" : "Yapay Zeka Etki Analizini Başlat"}</h3>
-            <p>{hasLoaded ? "Analiz hazır, detayları görüntüleyebilirsiniz." : "AI ile analiz et"}</p>
+            <h3>{hasLoaded ? t("aiCards.newsImpact.title") : t("aiCards.newsImpact.startTitle")}</h3>
+            <p>{hasLoaded ? t("aiCards.newsImpact.readySubtitle") : t("aiCards.newsImpact.startSubtitle")}</p>
           </div>
         </div>
 
         <div className="ai-news-impact-trigger-actions">
-          <span className="ai-card-badge ai-news-impact-badge">{hasLoaded ? "HAZIR" : "AI"}</span>
+          <span className="ai-card-badge ai-news-impact-badge">
+            {hasLoaded ? t("aiCards.newsImpact.readyBadge") : t("aiCards.newsImpact.aiBadge")}
+          </span>
           <ChevronDown
             size={18}
             className={`ai-news-impact-chevron${expanded ? " is-expanded" : ""}`}
@@ -93,9 +93,9 @@ export default function AiNewsImpactCard({ newsId }) {
 
       <div className={`ai-news-impact-collapsible${expanded ? " is-expanded" : ""}`}>
         <div className="ai-card-body ai-news-impact-collapsible-inner">
-          {loading ? <ImpactSkeleton /> : null}
+          {loading ? <ImpactSkeleton t={t} /> : null}
           {!loading && error ? <p className="ai-state-message error">{error}</p> : null}
-          {!loading && !error && data ? <ImpactContent data={data} /> : null}
+          {!loading && !error && data ? <ImpactContent data={data} t={t} /> : null}
         </div>
 
         {data ? (
@@ -106,146 +106,107 @@ export default function AiNewsImpactCard({ newsId }) {
 
         <p className="ai-disclaimer">
           <Info size={13} aria-hidden="true" />
-          <span>Bu yorum yatırım tavsiyesi değildir; yalnızca mevcut verilerin otomatik analizidir.</span>
+          <span>{t("aiCards.disclaimer")}</span>
         </p>
       </div>
     </section>
   );
 }
 
-function ImpactContent({ data }) {
-  // Prefer new fields; fall back to legacy fields for backward compat
-  const financialContext = data.financialContext || data.summary;
-  const shortTermImpact  = data.shortTermImpact  || data.marketImpact;
-  const mediumTermImpact = data.mediumTermImpact;
-  const uncertainty      = data.uncertainty;
-
-  // Prefer LLM-generated affected assets; fall back to rule-based sectors
-  const assetsToShow =
+function ImpactContent({ data, t }) {
+  const financialContext = optionalText(data.financialContext || data.summary);
+  const marketImplication = optionalText(data.marketImplication || data.marketImpact);
+  const shortTermImpact = optionalImpact(data.shortTermImpact);
+  const mediumTermImpact = optionalImpact(data.mediumTermImpact);
+  const uncertainty = optionalText(data.uncertainty);
+  const affectedAssets = normalizeAssets(
     Array.isArray(data.affectedAssets) && data.affectedAssets.length > 0
       ? data.affectedAssets
-      : Array.isArray(data.affectedSectors) && data.affectedSectors.length > 0
-      ? data.affectedSectors
-      : [];
-
-  const hasAssets      = assetsToShow.length > 0;
-  const hasHighlights  = Array.isArray(data.highlights) && data.highlights.length > 0;
-  const hasUncertainty = uncertainty && uncertainty.trim().length > 0;
+      : []
+  );
+  const watchIndicators = normalizeList(data.watchIndicators);
+  const highlights = normalizeList(data.highlights);
 
   return (
     <>
-      <div className="ai-impact-meta">
-        <SentimentBadge sentiment={data.sentiment} />
-        <RiskBadge riskLevel={data.riskLevel} />
-      </div>
-
       {financialContext ? (
-        <div className="ai-impact-section">
-          <div className="ai-impact-section-head">
-            <Info size={14} aria-hidden="true" />
-            <strong>Finansal Bağlam</strong>
-          </div>
+        <ImpactSection icon={<Info size={14} aria-hidden="true" />} title={t("aiCards.newsImpact.financialContext")}>
           <p className="ai-impact-text">{financialContext}</p>
-        </div>
+        </ImpactSection>
+      ) : null}
+
+      {marketImplication ? (
+        <ImpactSection icon={<TrendingUp size={14} aria-hidden="true" />} title={t("aiCards.newsImpact.marketImplication")}>
+          <p className="ai-impact-text">{marketImplication}</p>
+        </ImpactSection>
       ) : null}
 
       {shortTermImpact ? (
-        <div className="ai-impact-section">
-          <div className="ai-impact-section-head">
-            <TrendingUp size={14} aria-hidden="true" />
-            <strong>Kısa Vadeli Etki</strong>
-          </div>
+        <ImpactSection icon={<TrendingUp size={14} aria-hidden="true" />} title={t("aiCards.newsImpact.shortTermImpact")}>
           <p className="ai-impact-text">{shortTermImpact}</p>
-        </div>
+        </ImpactSection>
       ) : null}
 
       {mediumTermImpact ? (
-        <div className="ai-impact-section">
-          <div className="ai-impact-section-head">
-            <TrendingUp size={14} aria-hidden="true" />
-            <strong>Orta Vadeli Etki</strong>
-          </div>
+        <ImpactSection icon={<TrendingUp size={14} aria-hidden="true" />} title={t("aiCards.newsImpact.mediumTermImpact")}>
           <p className="ai-impact-text">{mediumTermImpact}</p>
-        </div>
+        </ImpactSection>
       ) : null}
 
-      {hasAssets ? (
-        <div className="ai-impact-section">
-          <div className="ai-impact-section-head">
-            <AlertTriangle size={14} aria-hidden="true" />
-            <strong>Etkilenebilecek Varlıklar</strong>
-          </div>
+      {affectedAssets.length > 0 ? (
+        <ImpactSection icon={<AlertTriangle size={14} aria-hidden="true" />} title={t("aiCards.newsImpact.affectedAssets")}>
           <div className="ai-sector-chips">
-            {assetsToShow.map((item, i) => (
+            {affectedAssets.map((item, i) => (
               <span key={i} className="ai-sector-chip">{item}</span>
             ))}
           </div>
-        </div>
+        </ImpactSection>
       ) : null}
 
-      {hasHighlights ? (
-        <div className="ai-impact-section">
-          <div className="ai-impact-section-head">
-            <Newspaper size={14} aria-hidden="true" />
-            <strong>Öne Çıkanlar</strong>
-          </div>
+      {watchIndicators.length > 0 ? (
+        <ImpactSection icon={<Info size={14} aria-hidden="true" />} title={t("aiCards.newsImpact.watchIndicators")}>
           <ul className="ai-insight-list">
-            {data.highlights.map((item, i) => (
+            {watchIndicators.map((item, i) => (
               <li key={i}>{item}</li>
             ))}
           </ul>
-        </div>
+        </ImpactSection>
       ) : null}
 
-      {hasUncertainty ? (
-        <div className="ai-impact-section">
-          <div className="ai-impact-section-head">
-            <Info size={14} aria-hidden="true" />
-            <strong>Belirsizlikler</strong>
-          </div>
+      {highlights.length > 0 ? (
+        <ImpactSection icon={<Newspaper size={14} aria-hidden="true" />} title={t("aiCards.newsImpact.highlights")}>
+          <ul className="ai-insight-list">
+            {highlights.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </ImpactSection>
+      ) : null}
+
+      {uncertainty ? (
+        <ImpactSection icon={<Info size={14} aria-hidden="true" />} title={t("aiCards.newsImpact.uncertainty")}>
           <p className="ai-impact-text">{uncertainty}</p>
-        </div>
+        </ImpactSection>
       ) : null}
     </>
   );
 }
 
-function SentimentBadge({ sentiment }) {
-  const map = {
-    POSITIVE: { label: "Olumlu", cls: "positive" },
-    NEGATIVE: { label: "Olumsuz", cls: "negative" },
-    MIXED: { label: "Karma", cls: "mixed" },
-    NEUTRAL: { label: "Nötr", cls: "neutral" },
-  };
-  const { label, cls } = map[sentiment] ?? { label: sentiment, cls: "neutral" };
-  const Icon = sentiment === "POSITIVE" ? TrendingUp
-    : sentiment === "NEGATIVE" ? TrendingDown
-      : Minus;
+function ImpactSection({ icon, title, children }) {
   return (
-    <span className={`ai-sentiment-badge ai-sentiment-badge--${cls}`}>
-      <Icon size={11} aria-hidden="true" />
-      {label}
-    </span>
+    <div className="ai-impact-section">
+      <div className="ai-impact-section-head">
+        {icon}
+        <strong>{title}</strong>
+      </div>
+      {children}
+    </div>
   );
 }
 
-function RiskBadge({ riskLevel }) {
-  const map = {
-    LOW: { label: "Düşük Risk", cls: "low" },
-    MEDIUM: { label: "Orta Risk", cls: "medium" },
-    HIGH: { label: "Yüksek Risk", cls: "high" },
-  };
-  const { label, cls } = map[riskLevel] ?? { label: riskLevel, cls: "medium" };
+function ImpactSkeleton({ t }) {
   return (
-    <span className={`ai-risk-badge ai-risk-badge--${cls}`}>
-      {label}
-    </span>
-  );
-}
-
-function ImpactSkeleton() {
-  return (
-    <div className="ai-unified-skeleton" aria-busy="true" aria-label="AI etki analizi hazırlanıyor">
+    <div className="ai-unified-skeleton" aria-busy="true" aria-label={t("aiCards.newsImpact.loading")}>
       <div className="ai-skeleton-line ai-skeleton-line--narrow" style={{ width: "40%", marginBottom: "0.75rem" }} />
       <div className="ai-skeleton-line ai-skeleton-line--wide" />
       <div className="ai-skeleton-line" />
@@ -253,4 +214,78 @@ function ImpactSkeleton() {
       <div className="ai-skeleton-line ai-skeleton-line--narrow" />
     </div>
   );
+}
+
+function normalizeList(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map(optionalText).filter(Boolean).slice(0, 3);
+}
+
+function normalizeAssets(value) {
+  if (!Array.isArray(value)) return [];
+  const result = [];
+  value.forEach((item) => {
+    const cleaned = normalizeAssetLabel(item);
+    if (cleaned && !result.includes(cleaned)) {
+      result.push(cleaned);
+    }
+  });
+  return result.slice(0, 3);
+}
+
+function normalizeAssetLabel(value) {
+  let text = repairMojibake(String(value || ""));
+  text = text.replace(/→|->|â†’/g, "|");
+  text = text.split("|")[0].replace(/\s+/g, " ").trim();
+  if (!text || text.length > 60 || hasBrokenEncoding(text)) return "";
+  return text;
+}
+
+function optionalImpact(value) {
+  const text = optionalText(value);
+  if (!text) return "";
+  const lower = text.toLocaleLowerCase("tr-TR");
+  const weakPhrases = [
+    "belirgin kısa vadeli etki",
+    "belirgin kisa vadeli etki",
+    "orta vadeli etki için ek gelişme",
+    "orta vadeli etki icin ek gelisme",
+    "saptanamıyor",
+    "saptanamiyor",
+  ];
+  return weakPhrases.some((phrase) => lower.includes(phrase)) ? "" : text;
+}
+
+function optionalText(value) {
+  if (value == null) return "";
+  const text = repairMojibake(String(value)).replace(/\s+/g, " ").trim();
+  if (!text || hasBrokenEncoding(text)) return "";
+  return text;
+}
+
+function repairMojibake(value) {
+  return value
+    .replaceAll("FÄ°NANSAL SEKTÃ–R", "Finansal sektör")
+    .replaceAll("GENEL PÄ°YASA", "Genel piyasa")
+    .replaceAll("KRÄ°PTO VARLIKLARÄ±", "Kripto varlıklar")
+    .replaceAll("Ä°", "İ")
+    .replaceAll("Ä±", "ı")
+    .replaceAll("Ã¶", "ö")
+    .replaceAll("Ã¼", "ü")
+    .replaceAll("Ã§", "ç")
+    .replaceAll("ÅŸ", "ş")
+    .replaceAll("ÄŸ", "ğ")
+    .replaceAll("Ã–", "Ö")
+    .replaceAll("Ãœ", "Ü")
+    .replaceAll("Ã‡", "Ç")
+    .replaceAll("Åž", "Ş")
+    .replaceAll("Äž", "Ğ")
+    .replaceAll("â€™", "'")
+    .replaceAll("â€“", "-")
+    .replaceAll("â€”", "-")
+    .replaceAll("â†’", "→");
+}
+
+function hasBrokenEncoding(value) {
+  return /Ã|Ä|Å|�/.test(value);
 }

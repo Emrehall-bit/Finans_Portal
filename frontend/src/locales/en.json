@@ -159,13 +159,6 @@
       "marketTabs": {
         "gainers": "Top gainers",
         "losers": "Top losers"
-      },
-      "newsAffectedAudit": {
-        "eyebrow": "News Debug",
-        "title": "Affected Instruments Audit",
-        "description": "Audit affected-instrument output across recent normal news and list suspicious matches.",
-        "action": "Run Audit",
-        "limitPlaceholder": "Limit (e.g. 100)"
       }
     },
     "marketSummaryEyebrow": "Market Summary",
@@ -1559,28 +1552,11 @@
     "openSource": "Open at source",
     "relatedLoadError": "Failed to load related data.",
     "relatedLoading": "Loading related content...",
-    "relatedAssetsEyebrow": "Potentially Affected Assets",
-    "relatedAssetsTitle": "Potentially Affected Assets",
-    "relatedAssetsDescription": "Automatically generated from company, sector, and macro-theme matches in the news content.",
-    "relatedAssetsEmptyTitle": "No directly related asset was found for this item.",
-    "relatedAssetsEmptyDescription": "No strong company, sector, or theme match was detected in the news text.",
-    "relatedStocksNoPrice": "No market data",
-    "relatedAssetsReasonFallback": "Theme match",
     "relatedNewsEyebrow": "Related News",
     "relatedNewsTitle": "Related news",
     "relatedNewsEmptyTitle": "No related news found",
     "relatedNewsEmptyDescription": "No related record was found for this item in the last 7 days.",
-    "relationTypes": {
-      "direct": "Direct",
-      "theme": "Theme"
-    },
-    "indirectTheme": "Indirect theme",
-    "confidence": {
-      "high": "Direct match",
-      "medium": "Medium confidence",
-      "contextual": "Macro/thematic impact",
-      "low": "Low confidence"
-    }
+    "indirectTheme": "Indirect theme"
   },
   "marketDetail": {
     "addToPortfolio": {
@@ -2123,12 +2099,36 @@
       "loginCta": "Sign In",
       "waitingLabel": "Waiting for response",
       "suggestions": "Suggestions",
-      "suggestionList": ["Technical summary for THYAO", "BIST 100 overview", "What is the risk in my portfolio?"],
+      "suggestionList": [
+        "Technical summary for THYAO",
+        "BIST 100 overview",
+        "What is the risk in my portfolio?"
+      ],
       "inputPlaceholder": "Ask something...",
       "loginPlaceholder": "Sign in to start AI chat",
       "inputLabel": "Message",
       "sendLabel": "Send",
       "disclaimer": "Not investment advice; automated data analysis only."
+    },
+    "newsImpact": {
+      "title": "AI Impact Analysis",
+      "startTitle": "Start AI Impact Analysis",
+      "readySubtitle": "Analysis is ready, you can view the details.",
+      "startSubtitle": "Analyze with AI",
+      "guestDescription": "Sign in to view the AI financial and sector commentary for this news item.",
+      "premiumDescription": "Advanced AI analysis interpreting the financial, sector, and market impact of this news is available to premium members.",
+      "error": "AI impact analysis is currently unavailable.",
+      "financialContext": "Financial Context",
+      "marketImplication": "Market Implication",
+      "shortTermImpact": "Short-Term Impact",
+      "mediumTermImpact": "Medium-Term Impact",
+      "affectedAssets": "Potentially Affected Assets",
+      "watchIndicators": "Indicators to Watch",
+      "highlights": "Highlights",
+      "uncertainty": "Uncertainties",
+      "readyBadge": "READY",
+      "aiBadge": "AI",
+      "loading": "Preparing AI impact analysis"
     }
   }
 }

@@ -159,13 +159,6 @@
       "marketTabs": {
         "gainers": "En çok artan",
         "losers": "En çok azalan"
-      },
-      "newsAffectedAudit": {
-        "eyebrow": "News Debug",
-        "title": "Affected Instruments Audit",
-        "description": "Son normal haberlerde affected instruments sonucunu toplu denetler ve şüpheli eşleşmeleri listeler.",
-        "action": "Audit Çalıştır",
-        "limitPlaceholder": "Limit (örn: 100)"
       }
     },
     "marketSummaryTitle": "Günün Hareketli Enstrümanları",
@@ -1552,28 +1545,11 @@
     "openSource": "Kaynakta aç",
     "relatedLoadError": "İlgili veriler yüklenemedi.",
     "relatedLoading": "İlgili içerikler yükleniyor...",
-    "relatedAssetsEyebrow": "Etkilenebilecek Varlıklar",
-    "relatedAssetsTitle": "Etkilenebilecek Varlıklar",
-    "relatedAssetsDescription": "Haber içeriğindeki şirket, sektör ve makro tema eşleşmelerine göre otomatik üretilmiştir.",
-    "relatedAssetsEmptyTitle": "Bu haber için doğrudan ilişkili varlık bulunamadı.",
-    "relatedAssetsEmptyDescription": "Haber metninde güçlü bir şirket, sektör veya tema eşleşmesi tespit edilemedi.",
-    "relatedStocksNoPrice": "Piyasa verisi yok",
-    "relatedAssetsReasonFallback": "Tema eşleşmesi",
     "relatedNewsEyebrow": "İlgili Haberler",
     "relatedNewsTitle": "İlgili haberler",
     "relatedNewsEmptyTitle": "İlgili haber bulunamadı",
     "relatedNewsEmptyDescription": "Son 7 gün içinde bu haberle ilişkili başka kayıt bulunamadı.",
-    "relationTypes": {
-      "direct": "Doğrudan",
-      "theme": "Tema"
-    },
-    "indirectTheme": "Dolaylı tema",
-    "confidence": {
-      "high": "Doğrudan ilişki",
-      "medium": "Orta güven",
-      "contextual": "Makro/tematik etki",
-      "low": "Düşük güven"
-    }
+    "indirectTheme": "Dolaylı tema"
   },
   "marketDetail": {
     "addToPortfolio": {
@@ -2116,12 +2092,36 @@
       "loginCta": "Giriş Yap",
       "waitingLabel": "Yanıt bekleniyor",
       "suggestions": "Öneriler",
-      "suggestionList": ["THYAO için teknik özet", "BIST 100 genel görünümü", "Portföyümün riski nedir?"],
+      "suggestionList": [
+        "THYAO için teknik özet",
+        "BIST 100 genel görünümü",
+        "Portföyümün riski nedir?"
+      ],
       "inputPlaceholder": "Bir şey sorun...",
       "loginPlaceholder": "Giriş yaparak AI sohbeti başlatın",
       "inputLabel": "Mesaj",
       "sendLabel": "Gönder",
       "disclaimer": "Yatırım tavsiyesi değildir; yalnızca veri analizidir."
+    },
+    "newsImpact": {
+      "title": "AI Etki Analizi",
+      "startTitle": "Yapay Zeka Etki Analizini Başlat",
+      "readySubtitle": "Analiz hazır, detayları görüntüleyebilirsiniz.",
+      "startSubtitle": "AI ile analiz et",
+      "guestDescription": "Bu haberin finansal ve sektörel AI yorumunu görmek için giriş yapın.",
+      "premiumDescription": "Haberin finansal, sektörel ve piyasa etkisini yorumlayan gelişmiş AI analizi premium üyelere özeldir.",
+      "error": "AI etki analizi şu anda üretilemedi.",
+      "financialContext": "Finansal Bağlam",
+      "marketImplication": "Piyasa Yansıması",
+      "shortTermImpact": "Kısa Vadeli Etki",
+      "mediumTermImpact": "Orta Vadeli Etki",
+      "affectedAssets": "Etkilenebilecek Varlıklar",
+      "watchIndicators": "Takip Edilecek Göstergeler",
+      "highlights": "Öne Çıkanlar",
+      "uncertainty": "Belirsizlikler",
+      "readyBadge": "HAZIR",
+      "aiBadge": "AI",
+      "loading": "AI etki analizi hazırlanıyor"
     }
   }
 }

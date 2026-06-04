@@ -2,7 +2,6 @@ package com.emrehalli.financeportal.news.controller;
 
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
-import com.emrehalli.financeportal.news.dto.response.RelatedInstrumentDto;
 import com.emrehalli.financeportal.news.dto.response.RelatedNewsItemDto;
 import com.emrehalli.financeportal.news.service.NewsService;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,7 +42,6 @@ class NewsControllerTest {
     void relatedEndpointReturns200WithEmptyLists() throws Exception {
         when(newsService.getRelatedData(42L))
                 .thenReturn(NewsRelatedResponseDto.builder()
-                        .relatedInstruments(List.of())
                         .relatedNews(List.of())
                         .build());
         when(appMessageSource.get("news.detail.fetched")).thenReturn("News detail fetched");
@@ -52,8 +50,6 @@ class NewsControllerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.relatedInstruments").isArray())
-                .andExpect(jsonPath("$.data.relatedInstruments").isEmpty())
                 .andExpect(jsonPath("$.data.relatedNews").isArray())
                 .andExpect(jsonPath("$.data.relatedNews").isEmpty());
     }
@@ -62,14 +58,6 @@ class NewsControllerTest {
     void relatedEndpointReturns200WithPayload() throws Exception {
         when(newsService.getRelatedData(7L))
                 .thenReturn(NewsRelatedResponseDto.builder()
-                        .relatedInstruments(List.of(RelatedInstrumentDto.builder()
-                                .symbol("USDTRY")
-                                .name("USD/TRY")
-                                .instrumentType("FX")
-                                .reason("Haberde TCMB/faiz karari gectigi icin")
-                                .confidence("HIGH")
-                                .relationType("THEME")
-                                .build()))
                         .relatedNews(List.of(RelatedNewsItemDto.builder()
                                 .id(9L)
                                 .title("TCMB faiz karari sonrasi kur hareketlendi")
@@ -84,7 +72,6 @@ class NewsControllerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.relatedInstruments[0].symbol").value("USDTRY"))
                 .andExpect(jsonPath("$.data.relatedNews[0].id").value(9L));
     }
 }

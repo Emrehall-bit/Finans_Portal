@@ -6,7 +6,6 @@ import java.util.List;
 
 @Builder
 public record NewsRelatedResponseDto(
-        List<RelatedInstrumentDto> relatedInstruments,
         List<RelatedNewsItemDto> relatedNews
 ) {
 }

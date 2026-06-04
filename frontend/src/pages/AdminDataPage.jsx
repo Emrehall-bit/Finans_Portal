@@ -26,7 +26,7 @@ import {
   updateMarketTapeConfig,
   importCompanyFinancialCsv,
 } from "../api/adminApi";
-import { auditAffectedInstruments, repairNewsCategories, syncNews } from "../api/newsApi";
+import { repairNewsCategories, syncNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { getNewsProviderLabel } from "../components/news/newsCardUtils";
 import EmptyState from "../components/common/EmptyState";
@@ -70,7 +70,6 @@ export default function AdminDataPage() {
   const [indexHistoryDays, setIndexHistoryDays] = useState("365");
   const [tefasFundCode, setTefasFundCode] = useState("");
   const [tefasPeriod, setTefasPeriod] = useState("");
-  const [affectedAuditLimit, setAffectedAuditLimit] = useState("100");
   const [categoryRepairLimit, setCategoryRepairLimit] = useState("500");
   const [marketTapeSymbols, setMarketTapeSymbols] = useState([]);
   const [marketTapeCatalog, setMarketTapeCatalog] = useState([]);
@@ -289,30 +288,6 @@ export default function AdminDataPage() {
         description: "KAP bildirim akışını senkronize eder.",
         actionLabel: `${getNewsProviderLabel("KAP")} sync`,
         onClick: () => runAction("news-sync-kap", () => syncNews({ provider: "KAP" })),
-      },
-      {
-        key: "news-affected-audit",
-        group: "live",
-        eyebrow: t("admin.cards.newsAffectedAudit.eyebrow"),
-        title: t("admin.cards.newsAffectedAudit.title"),
-        description: t("admin.cards.newsAffectedAudit.description"),
-        actionLabel: t("admin.cards.newsAffectedAudit.action"),
-        input: (
-          <input
-            type="number"
-            min="1"
-            max="500"
-            step="1"
-            value={affectedAuditLimit}
-            onChange={(event) => setAffectedAuditLimit(event.target.value)}
-            className="admin-console-input"
-            placeholder={t("admin.cards.newsAffectedAudit.limitPlaceholder")}
-          />
-        ),
-        onClick: () =>
-          runAction("news-affected-audit", () =>
-            auditAffectedInstruments({ limit: Number.parseInt(affectedAuditLimit, 10) || 100 }),
-          ),
       },
       {
         key: "news-category-repair",
@@ -796,12 +771,6 @@ export default function AdminDataPage() {
     </article>
   );
 
-  const isAffectedInstrumentAuditResult =
-    result &&
-    typeof result === "object" &&
-    typeof result.checkedCount === "number" &&
-    Array.isArray(result.suspiciousItems);
-
   const isCategoryRepairResult =
     result &&
     typeof result === "object" &&
@@ -869,74 +838,7 @@ export default function AdminDataPage() {
       );
     }
 
-    if (!isAffectedInstrumentAuditResult) {
-      return <pre className="admin-console-result-box">{JSON.stringify(result, null, 2)}</pre>;
-    }
-
-    const suspiciousItems = result.suspiciousItems ?? [];
-
-    return (
-      <div className="admin-audit-result">
-        <div className="admin-audit-metrics">
-          <div className="admin-console-metric-card">
-            <span>{t("admin.audit.checkedCount")}</span>
-            <strong>{result.checkedCount ?? 0}</strong>
-          </div>
-          <div className="admin-console-metric-card">
-            <span>{t("admin.audit.suspiciousCount")}</span>
-            <strong>{result.suspiciousCount ?? 0}</strong>
-          </div>
-          <div className="admin-console-metric-card">
-            <span>{t("admin.audit.emptyCount")}</span>
-            <strong>{result.emptyCount ?? 0}</strong>
-          </div>
-          <div className="admin-console-metric-card">
-            <span>{t("admin.audit.highConfidenceCount")}</span>
-            <strong>{result.highConfidenceCount ?? 0}</strong>
-          </div>
-          <div className="admin-console-metric-card">
-            <span>{t("admin.audit.mediumConfidenceCount")}</span>
-            <strong>{result.mediumConfidenceCount ?? 0}</strong>
-          </div>
-          <div className="admin-console-metric-card">
-            <span>{t("admin.audit.lowConfidenceCount")}</span>
-            <strong>{result.lowConfidenceCount ?? 0}</strong>
-          </div>
-        </div>
-
-        {suspiciousItems.length === 0 ? (
-          <EmptyState
-            title={t("admin.audit.emptyTitle")}
-            description={t("admin.audit.emptyDescription")}
-          />
-        ) : (
-          <div className="admin-audit-list">
-            {suspiciousItems.map((item) => (
-              <article key={item.newsId} className="admin-audit-item">
-                <div className="admin-audit-item-head">
-                  <strong>{item.title}</strong>
-                  <span className="summary-chip">#{item.newsId}</span>
-                </div>
-                <p className="admin-console-copy">{item.suspiciousReason}</p>
-                <div className="admin-audit-meta">
-                  <span>{t("admin.audit.category")}: {item.category || "-"}</span>
-                  <span>
-                    {t("admin.audit.symbols")}: {Array.isArray(item.affectedSymbols) && item.affectedSymbols.length ? item.affectedSymbols.join(", ") : "-"}
-                  </span>
-                </div>
-                {Array.isArray(item.reasons) && item.reasons.length ? (
-                  <ul className="admin-audit-reasons">
-                    {item.reasons.map((reason) => (
-                      <li key={reason}>{reason}</li>
-                    ))}
-                  </ul>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+    return <pre className="admin-console-result-box">{JSON.stringify(result, null, 2)}</pre>;
   };
 
   return (

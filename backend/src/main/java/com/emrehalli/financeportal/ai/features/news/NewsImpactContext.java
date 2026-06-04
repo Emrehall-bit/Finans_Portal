@@ -9,11 +9,8 @@ public record NewsImpactContext(
         String source,
         String relatedSymbol,
         NewsCategory detectedCategory,
-        List<String> affectedSectors,
-        String initialSentiment,
-        String initialRiskLevel
+        boolean titleMatched,
+        boolean summaryMatched,
+        boolean categoryOnly,
+        List<String> affectedSectors
 ) {}
-
-
-
-
