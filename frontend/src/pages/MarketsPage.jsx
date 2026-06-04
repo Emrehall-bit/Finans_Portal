@@ -60,7 +60,17 @@ const STOCK_RANK_SORT_OPTIONS = [
   { value: "price_desc", label: "Fiyat yüksekten" },
   { value: "price_asc", label: "Fiyat düşükten" },
 ];
+const STOCK_BASIC_SORT_OPTIONS = [
+  { value: "name", label: "Ada göre" },
+  { value: "change_desc", label: "En Çok Yükselen" },
+  { value: "change_asc", label: "En Çok Düşen" },
+];
 const SEARCH_DEBOUNCE_MS = 275;
+const INSTRUMENT_TYPE_LABELS = {
+  FX: "Döviz", FOREX: "Döviz", CURRENCY: "Döviz",
+  STOCK: "Hisse", CRYPTO: "Kripto", FUND: "Fon",
+  FUTURES: "Vadeli", BOND: "Tahvil", INDEX: "Endeks", COMMODITY: "Emtia",
+};
 const FX_SOURCE_MODES = [
   { value: "TCMB", label: "TCMB" },
   { value: "AKBANK", label: "AKBANK" },
@@ -79,10 +89,8 @@ export default function MarketsPage() {
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState(() => location.state?.category ?? "FX");
-  const [sourceFilter, setSourceFilter] = useState("");
   const [fxSourceMode, setFxSourceMode] = useState("TCMB");
   const [viewMode, setViewMode] = useState("table");
-  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState("name");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -104,6 +112,7 @@ export default function MarketsPage() {
   const [stockSectorFilter, setStockSectorFilter] = useState("");
   const [watchlistItems, setWatchlistItems] = useState([]);
   const [favoriteBusyKey, setFavoriteBusyKey] = useState("");
+  const [filterMode, setFilterMode] = useState("basic");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
 
   const isFavoritesTab = categoryFilter === "FAVORITES";
@@ -116,13 +125,14 @@ export default function MarketsPage() {
       setBistTierFilter("");
       setStockSectorFilter("");
     }
-  }, [isStockTab]);
+    setFilterMode("basic");
+  }, [categoryFilter, isStockTab]);
 
   const { data: allQuotes = [], isLoading: loadingAll } = useMarketQuotes({ enabled: true });
 
   const screenParams = useMemo(() => ({
     type: categoryFilter,
-    source: isFxTab ? (fxSourceMode !== "COMPARE" ? fxSourceMode : undefined) : sourceFilter || undefined,
+    source: isFxTab && fxSourceMode !== "COMPARE" ? fxSourceMode : undefined,
     q: debouncedSearch.trim() || undefined,
     minPrice: toFilterNumber(minPrice),
     maxPrice: toFilterNumber(maxPrice),
@@ -149,7 +159,6 @@ export default function MarketsPage() {
     categoryFilter,
     fxSourceMode,
     isFxTab,
-    sourceFilter,
     debouncedSearch,
     minPrice,
     maxPrice,
@@ -237,8 +246,7 @@ export default function MarketsPage() {
             || item.symbol?.toLowerCase().includes(query)
             || item.code?.toLowerCase().includes(query)
             || item.displayName?.toLowerCase().includes(query);
-          const matchesSource = !sourceFilter || String(item.source ?? "").toUpperCase() === sourceFilter.toUpperCase();
-          return onWatchlist && matchesQuery && matchesSource;
+          return onWatchlist && matchesQuery;
         })
         .sort((left, right) => sortQuotes(left, right, sortBy));
     }
@@ -253,15 +261,14 @@ export default function MarketsPage() {
     return nextQuotes;
   }, [
     allQuotes,
-    categoryFilter,
     debouncedSearch,
     isFavoritesTab,
     screenedQuotes,
-    sourceFilter,
     sortBy,
     watchlistItems,
     fxSourceMode,
     isFxTab,
+    isStockTab,
   ]);
 
   const fxComparisonRows = useMemo(
@@ -270,16 +277,6 @@ export default function MarketsPage() {
   );
 
   const displayedCount = isFxTab && fxSourceMode === "COMPARE" ? fxComparisonRows.length : visibleQuotes.length;
-  const sourceOptions = useMemo(() => {
-    const sourceItems = isFavoritesTab ? allQuotes : screenedQuotes;
-    const sourceSet = new Set(
-      sourceItems
-        .map((item) => item.source)
-        .filter(Boolean),
-    );
-    return [...sourceSet].sort();
-  }, [allQuotes, isFavoritesTab, screenedQuotes]);
-
   const activeAdvancedFilterChips = useMemo(() => {
     if (!isStockTab) {
       return [];
@@ -333,7 +330,6 @@ export default function MarketsPage() {
   const hasAdvancedFilters = activeAdvancedFilterChips.length > 0;
   const hasTopBarFilters = Boolean(
     search.trim()
-    || sourceFilter
     || (isFxTab && fxSourceMode !== "TCMB")
     || sortBy !== "name"
     || (isStockTab && (bistTierFilter || stockSectorFilter))
@@ -362,7 +358,6 @@ export default function MarketsPage() {
 
   function clearAllMarketFilters() {
     setSearch("");
-    setSourceFilter("");
     setFxSourceMode("TCMB");
     setSortBy("name");
     clearAllAdvancedFilters();
@@ -429,7 +424,6 @@ export default function MarketsPage() {
         <section className="market-main-panel panel-surface">
           <div className="market-panel-head">
             <div className="market-dashboard-title">
-              <p className="eyebrow">Piyasa Takip</p>
               <h1>PİYASA VERİLERİ</h1>
               <p>Gerçek zamanlı piyasa verileri ve fiyatlamalar</p>
             </div>
@@ -443,45 +437,100 @@ export default function MarketsPage() {
           </div>
 
           <div className="market-top-filter-row">
-            <div className="market-category-tabs" role="tablist" aria-label={t("markets.category")}>
-              {CATEGORY_OPTIONS.map((category) => {
-                const isActive = categoryFilter === category;
-                return (
-                  <button key={category} type="button" role="tab" aria-selected={isActive} className={"market-tab " + (isActive ? "active" : "")} onClick={() => setCategoryFilter(category)}>
-                    {category === "FAVORITES" ? "Favoriler" : formatCategoryLabel(category, t)}
-                  </button>
-                );
-              })}
+            <div className="market-category-cluster">
+              <div className="market-category-tabs" role="tablist" aria-label={t("markets.category")}>
+                {CATEGORY_OPTIONS.map((category) => {
+                  const isActive = categoryFilter === category;
+                  return (
+                    <button key={category} type="button" role="tab" aria-selected={isActive} className={"market-tab " + (isActive ? "active" : "")} onClick={() => setCategoryFilter(category)}>
+                      {category === "FAVORITES" ? "Favoriler" : formatCategoryLabel(category, t)}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <label className="market-search-box"><span className="sr-only">{t("markets.searchLabel")}</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("markets.searchPlaceholder")} /></label>
-            <div className="market-toolbar-actions">
-              <button type="button" className="market-advanced-toggle" aria-expanded={advancedFiltersOpen} onClick={() => setAdvancedFiltersOpen((value) => !value)}>Gelişmiş Filtreler</button>
-              {hasAnyFilters ? <button type="button" className="market-inline-button" onClick={clearAllMarketFilters}>Temizle</button> : null}
-            </div>
           </div>
+        </section>
 
-          <div className="market-advanced-shell">
-            {advancedFiltersOpen ? (
-              <div className="market-advanced-grid">
-                {isStockTab ? <div className="market-filter-segment" role="tablist" aria-label="BIST Endeks Filtresi">{BIST_TIER_OPTIONS.map((option) => (<button key={option.value} type="button" role="tab" aria-selected={bistTierFilter === option.value} className={"market-filter-segment-button " + (bistTierFilter === option.value ? "active" : "")} onClick={() => setBistTierFilter(option.value)}>{option.label}</button>))}</div> : null}
-                {isStockTab ? <label className="market-filter-field"><span>Sektör</span><select value={stockSectorFilter} onChange={(event) => setStockSectorFilter(event.target.value)}>{STOCK_SECTOR_OPTIONS.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}</select></label> : null}
-                {isFxTab ? <label className="market-filter-field"><span>{t("markets.columns.source")}</span><select value={fxSourceMode} onChange={(event) => setFxSourceMode(event.target.value)}>{FX_SOURCE_MODES.map((mode) => (<option key={mode.value} value={mode.value}>{mode.label}</option>))}</select></label> : <label className="market-filter-field"><span>{t("markets.columns.source")}</span><select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}><option value="">Tümü</option>{sourceOptions.map((source) => (<option key={source} value={source}>{source}</option>))}</select></label>}
-                <label className="market-filter-field"><span>{isStockTab ? "Sırala" : t("markets.sorting")}</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>{(isStockTab ? STOCK_RANK_SORT_OPTIONS : DEFAULT_SORT_OPTIONS).map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}</select></label>
+        <div className="market-results-layout">
+          <aside className="market-filter-card" aria-label="Filtreler">
+            <div className="market-filter-card-head">
+              <strong>Filtreler</strong>
+            </div>
+            {isStockTab ? (
+              <div className="market-filter-mode-toggle">
+                <button type="button" className={"market-filter-mode-btn" + (filterMode === "basic" ? " is-active" : "")} onClick={() => setFilterMode("basic")}>Basit</button>
+                <button type="button" className={"market-filter-mode-btn" + (filterMode === "advanced" ? " is-active" : "")} onClick={() => setFilterMode("advanced")}>Gelişmiş</button>
               </div>
             ) : null}
-          </div>
-
-          {hasAdvancedFilters ? <div className="market-active-filter-row market-active-filter-row--inline">{activeAdvancedFilterChips.map((chip) => (<button key={chip.key} type="button" className="market-active-filter-chip" onClick={() => clearAdvancedFilter(chip.key)}><span>{chip.label}</span><span aria-hidden>x</span></button>))}</div> : null}
+            <div className="market-advanced-shell">
+              <div className="market-advanced-grid">
+                {isStockTab ? (
+                  <div className="market-filter-section">
+                    <div className="market-filter-section-head"><h4>Endeks</h4></div>
+                    <div className="market-filter-option-list" role="list">
+                      {BIST_TIER_OPTIONS.map((option) => (
+                        <button key={option.value} type="button" className={"market-filter-option " + (bistTierFilter === option.value ? "is-selected" : "")} onClick={() => setBistTierFilter(option.value)}>
+                          <span className="market-filter-option-indicator" aria-hidden="true" />
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {isStockTab && filterMode === "advanced" ? (
+                  <div className="market-filter-section">
+                    <div className="market-filter-section-head"><h4>Sektör</h4></div>
+                    <div className="market-filter-option-list" role="list">
+                      {STOCK_SECTOR_OPTIONS.map((option) => (
+                        <button key={option.value} type="button" className={"market-filter-option " + (stockSectorFilter === option.value ? "is-selected" : "")} onClick={() => setStockSectorFilter(option.value)}>
+                          <span className="market-filter-option-indicator" aria-hidden="true" />
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {isFxTab ? (
+                  <div className="market-filter-section">
+                    <div className="market-filter-section-head"><h4>{t("markets.columns.source")}</h4></div>
+                    <div className="market-filter-option-list" role="list">
+                      {FX_SOURCE_MODES.map((option) => (
+                        <button key={option.value} type="button" className={"market-filter-option " + (fxSourceMode === option.value ? "is-selected" : "")} onClick={() => setFxSourceMode(option.value)}>
+                          <span className="market-filter-option-indicator" aria-hidden="true" />
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="market-filter-section">
+                  <div className="market-filter-section-head"><h4>Sıralama</h4></div>
+                  <div className="market-filter-option-list" role="list">
+                    {(isStockTab ? (filterMode === "advanced" ? STOCK_RANK_SORT_OPTIONS : STOCK_BASIC_SORT_OPTIONS) : DEFAULT_SORT_OPTIONS).map((option) => (
+                      <button key={option.value} type="button" className={"market-filter-option " + (sortBy === option.value ? "is-selected" : "")} onClick={() => setSortBy(option.value)}>
+                        <span className="market-filter-option-indicator" aria-hidden="true" />
+                        <span>{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button type="button" className="market-filter-clear" onClick={clearAllMarketFilters}>Temizle</button>
+            {hasAdvancedFilters ? <div className="market-active-filter-row market-active-filter-row--inline">{activeAdvancedFilterChips.map((chip) => (<button key={chip.key} type="button" className="market-active-filter-chip" onClick={() => clearAdvancedFilter(chip.key)}><span>{chip.label}</span><span aria-hidden>x</span></button>))}</div> : null}
+          </aside>
 
           <div className="market-table-region">
             {loading ? (viewMode === "cards" ? <MarketCardSkeleton /> : <MarketTableSkeleton />) : null}
             {error ? <ErrorMessage message={error} /> : null}
             {!loading && !error && displayedCount === 0 ? <div className="market-contained-empty"><EmptyState title={isFavoritesTab && userId ? t("markets.favoritesEmptyTitle") : t("markets.emptyTitle")} description={isFavoritesTab && userId ? t("markets.favoritesEmptyDescription") : t("markets.emptyDescription")} /></div> : null}
             {!loading && !error && isFxTab && fxSourceMode === "COMPARE" && fxComparisonRows.length > 0 ? <MarketFxComparisonTable rows={fxComparisonRows} navigate={navigate} formatRateConverted={formatRateConverted} /> : null}
-            {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteTable quotes={visibleQuotes} isFxTab={isFxTab} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
+            {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteTable quotes={visibleQuotes} isFxTab={isFxTab} isFavoritesTab={isFavoritesTab} isStockTab={isStockTab} sortBy={sortBy} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
             {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteCards quotes={visibleQuotes} isFxTab={isFxTab} isStockTab={isStockTab} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
           </div>
-        </section>
+          </div>
       </div>
     </div>
   );
@@ -538,18 +587,22 @@ function MarketFxComparisonTable({ rows, navigate, formatRateConverted }) {
   );
 }
 
-function MarketQuoteTable({ quotes, isFxTab, watchlistItems, favoriteBusyKey, onFavoriteToggle, navigate, formatRateConverted, t }) {
+function MarketQuoteTable({ quotes, isFxTab, isFavoritesTab, isStockTab, sortBy, watchlistItems, favoriteBusyKey, onFavoriteToggle, navigate, formatRateConverted, t }) {
+  const metricCol = resolveStockMetricCol(isStockTab, sortBy);
+  const tableClass = isFxTab ? "market-data-table--fx" : isFavoritesTab ? "market-data-table--favorites" : metricCol ? "market-data-table--compact market-data-table--with-metric" : "market-data-table--compact";
   return (
     <div className="table-wrap finance-market-table-wrap market-data-table-wrap">
-      <table className={"finance-market-table market-data-table " + (isFxTab ? "market-data-table--fx" : "market-data-table--compact")}>
+      <table className={"finance-market-table market-data-table " + tableClass}>
         <thead>
           <tr>
             <th className="col-favorite" scope="col"><span className="sr-only">{t("markets.columns.favorite")}</span></th>
-            <th>Enstrüman</th>
-            <th>Son Fiyat</th>
-            <th>Değişim</th>
-            {isFxTab ? <th>Alış</th> : null}
-            {isFxTab ? <th>Satış</th> : null}
+            <th>{t("markets.columns.instrument")}</th>
+            {isFavoritesTab ? <th>{t("markets.columns.type")}</th> : null}
+            <th>{t("markets.columns.lastPrice")}</th>
+            <th>{t("markets.columns.change")}</th>
+            {metricCol ? <th className="market-number-cell">{metricCol.label}</th> : null}
+            {isFxTab ? <th>{t("markets.columns.buy")}</th> : null}
+            {isFxTab ? <th>{t("markets.columns.sell")}</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -566,8 +619,12 @@ function MarketQuoteTable({ quotes, isFxTab, watchlistItems, favoriteBusyKey, on
                     <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="table" />
                   </button>
                 </td>
+                {isFavoritesTab ? (
+                  <td><span className="market-type-badge">{formatInstrumentTypeLabel(item.marketCategory || item.instrumentType)}</span></td>
+                ) : null}
                 <td className="market-number-cell">{formatRateConverted(resolveLastPrice(item))}</td>
                 <td className={"market-change-cell " + getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</td>
+                {metricCol ? <td className="market-number-cell">{metricCol.getValue(item)}</td> : null}
                 {isFxTab ? <td className="market-number-cell">{formatRateConverted(item.buyRate)}</td> : null}
                 {isFxTab ? <td className="market-number-cell">{formatRateConverted(item.sellRate)}</td> : null}
               </tr>
@@ -590,7 +647,6 @@ function MarketQuoteCards({ quotes, isFxTab, isStockTab, watchlistItems, favorit
             <button type="button" className="market-quote-card" onClick={() => navigate(buildMarketDetailPath(getMarketActionSymbol(item), item.instrumentType))}>
               <div className="market-quote-card-top">
                 <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="card" />
-                <span className="terminal-badge muted">{item.source || "-"}</span>
               </div>
 
               <div className="market-quote-card-body">
@@ -652,10 +708,13 @@ function MarketQuoteCards({ quotes, isFxTab, isStockTab, watchlistItems, favorit
 function MarketInstrumentLabel({ item, categoryFilter, variant = "table" }) {
   const countryCode = getCountryCodeForInstrument(item, categoryFilter);
   const codeLabel = item.code || formatInstrumentCode(item.symbol) || "-";
-  const nameLabel = item.displayName || item.instrumentType || "-";
+  const rawName = item.displayName || item.instrumentType || "-";
+  const nameLabel = rawName.includes("||")
+    ? rawName.split("||").filter((s) => s && s !== "TYPE").join(" / ")
+    : rawName;
   const flagStyle = {
-    width: "1.25em",
-    height: "1.25em",
+    width: "1.5em",
+    height: "1.5em",
     borderRadius: "2px",
     display: "block",
     flexShrink: 0,
@@ -679,10 +738,7 @@ function MarketInstrumentLabel({ item, categoryFilter, variant = "table" }) {
     <span className="finance-table-symbol finance-table-symbol--with-flag">
       <span className="market-instrument-flag-row">
         {countryCode ? <ReactCountryFlag countryCode={countryCode} svg style={flagStyle} title={countryCode} alt="" /> : null}
-        <span className="market-instrument-text-stack">
-          <strong>{codeLabel}</strong>
-          <span>{nameLabel}</span>
-        </span>
+        <strong title={nameLabel}>{codeLabel}</strong>
       </span>
     </span>
   );
@@ -719,6 +775,7 @@ function renderFundamentalSummary(item) {
     </div>
   );
 }
+
 
 function hasFundamentals(item) {
   return item?.peRatio != null || item?.pbRatio != null || item?.roe != null;
@@ -775,6 +832,10 @@ function formatCategoryLabel(value, t) {
   return t(`markets.categories.${value}`, { defaultValue: value ?? "-" });
 }
 
+function formatInstrumentTypeLabel(type) {
+  return INSTRUMENT_TYPE_LABELS[String(type || "").toUpperCase()] ?? (type || "-");
+}
+
 function formatMarketChange(value) {
   if (value === null || value === undefined || value === "") return "-";
   const numeric = Number(value);
@@ -797,6 +858,29 @@ function formatPercentValue(value) {
   if (value === null || value === undefined) return "-";
   const numeric = Number(value);
   return Number.isFinite(numeric) ? `%${(numeric * 100).toFixed(2)}` : "-";
+}
+
+function formatCompactValue(value) {
+  if (value === null || value === undefined) return "-";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "-";
+  if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(1)} Mlr`;
+  if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(1)} Mln`;
+  return n.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
+}
+
+function resolveStockMetricCol(isStockTab, sortBy) {
+  if (!isStockTab) return null;
+  switch (sortBy) {
+    case "pe_asc":              return { label: "F/K",        getValue: (item) => formatRatioValue(item.peRatio) };
+    case "pb_asc":              return { label: "PD/DD",      getValue: (item) => formatRatioValue(item.pbRatio) };
+    case "roe_desc":            return { label: "ROE",        getValue: (item) => formatPercentValue(item.roe) };
+    case "roa_desc":            return { label: "ROA",        getValue: (item) => formatPercentValue(item.roa) };
+    case "debt_to_equity":      return { label: "Borç/ÖzS",  getValue: (item) => formatRatioValue(item.debtToEquity) };
+    case "revenue_growth_desc": return { label: "Gelir Büy.", getValue: (item) => formatPercentValue(item.revenueGrowth) };
+    case "market_cap_desc":     return { label: "Piy. Değ.", getValue: (item) => formatCompactValue(item.marketCap) };
+    default: return null;
+  }
 }
 
 function toSortableNumber(value) {

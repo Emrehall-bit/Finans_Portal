@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Bell, ChevronDown, Eye, Lock, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Bell, Eye, Sparkles, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQueries } from "@tanstack/react-query";
 import { buildMarketDetailPath } from "../api/marketApi";
@@ -50,7 +50,7 @@ export default function DashboardPage() {
 
   const [isPortfolioWidgetExpanded, setPortfolioWidgetExpanded] = useState(false);
   const [selectedWidgetPortfolioId, setSelectedWidgetPortfolioId] = useState(null);
-  const [isAiSummaryOpen, setAiSummaryOpen] = useState(false);
+  const [isAiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [isWatchlistPopoverOpen, setWatchlistPopoverOpen] = useState(false);
   const [isAuthRequiredModalOpen, setAuthRequiredModalOpen] = useState(false);
   const [marketCategoryFilter, setMarketCategoryFilter] = useState("all");
@@ -268,8 +268,19 @@ export default function DashboardPage() {
     setWatchlistPopoverOpen(false);
   }
 
+  useEffect(() => {
+    if (!isAiDrawerOpen) return undefined;
+    function handleKey(event) {
+      if (event.key === "Escape") {
+        setAiDrawerOpen(false);
+      }
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [isAiDrawerOpen]);
+
   return (
-    <div className="dashboard-stack finance-dashboard-shell">
+    <div className="dashboard-stack finance-dashboard-shell dashboard-page">
       {loading ? <LoadingSpinner label={t("dashboard.loading")} /> : null}
 
       {!loading ? (
@@ -278,7 +289,7 @@ export default function DashboardPage() {
             {orderedOverviewCardKeys.map((cardKey) => {
               if (cardKey === "alerts") {
                 return isAuthenticated ? (
-                  <Link key="alerts" to="/alerts" className={`summary-card summary-card-${alertTone} alerts-kpi-card`}>
+                  <Link key="alerts" to="/alerts" className={`summary-card summary-card-${alertTone} summary-card-alerts alerts-kpi-card`}>
                     <div className="summary-card-top">
                       <div className="summary-card-title-row">
                         <span className={`summary-card-icon summary-card-icon--${alertTone}`}><Bell size={18} /></span>
@@ -339,7 +350,7 @@ export default function DashboardPage() {
                   {isAuthenticated ? (
                     <button
                       type="button"
-                      className={`summary-card summary-card-${card.tone} summary-card-interactive dashboard-watchlist-kpi-card`}
+                      className={`summary-card summary-card-${card.tone} summary-card-${card.key} summary-card-interactive dashboard-watchlist-kpi-card`}
                       aria-haspopup="dialog"
                       aria-expanded={isAuthenticated ? isWatchlistPopoverOpen : undefined}
                       onClick={handleWatchlistCardClick}
@@ -364,7 +375,7 @@ export default function DashboardPage() {
                     >
                       <button
                         type="button"
-                        className={`summary-card summary-card-${card.tone} summary-card-interactive dashboard-watchlist-kpi-card`}
+                        className={`summary-card summary-card-${card.tone} summary-card-${card.key} summary-card-interactive dashboard-watchlist-kpi-card`}
                         aria-hidden="true"
                         tabIndex={-1}
                       >
@@ -392,7 +403,7 @@ export default function DashboardPage() {
                           className="dashboard-watchlist-popover-link"
                           onClick={() => setWatchlistPopoverOpen(false)}
                         >
-                          {t("dashboard.watchlistWidgetSeeAll")}
+                          {t("İzleme listenizi görüntüleyin")}
                         </Link>
                       </div>
 
@@ -435,7 +446,7 @@ export default function DashboardPage() {
                   ) : null}
                 </div>
               ) : (
-                <div key={card.key} className={`summary-card summary-card-${card.tone}`}>
+                <div key={card.key} className={`summary-card summary-card-${card.tone} summary-card-${card.key} ${card.key === "portfolio-value" || card.key === "daily-pnl" ? "summary-card--primary" : "summary-card--secondary"}`}>
                   <div className="summary-card-top">
                     <div className="summary-card-title-row">
                       {card.icon ? <span className={`summary-card-icon summary-card-icon--${card.tone}`}>{card.icon}</span> : null}
@@ -457,6 +468,8 @@ export default function DashboardPage() {
             })}
           </section>
 
+          {/* AI trigger removed from main area — moved to right column */}
+
           <section className="finance-dashboard-grid">
             <div className="finance-dashboard-main">
               <section className="panel-surface finance-dashboard-panel">
@@ -466,14 +479,14 @@ export default function DashboardPage() {
                     <div className="market-tabs">
                       <button
                         type="button"
-                        className={marketTab === "gainers" ? "market-tab active" : "market-tab"}
+                        className={`market-tab dashboard-market-tab ${marketTab === "gainers" ? "active" : ""}`}
                         onClick={() => setMarketTab("gainers")}
                       >
                         {t("dashboard.marketTabs.gainers")}
                       </button>
                       <button
                         type="button"
-                        className={marketTab === "losers" ? "market-tab active" : "market-tab"}
+                        className={`market-tab dashboard-market-tab ${marketTab === "losers" ? "active" : ""}`}
                         onClick={() => setMarketTab("losers")}
                       >
                         {t("dashboard.marketTabs.losers")}
@@ -506,8 +519,13 @@ export default function DashboardPage() {
                 {!sectionErrors.market && marketRows.length === 0 && marketQuotes.length > 0 ? (
                   <EmptyState title={t("dashboard.marketFilteredEmptyTitle")} description={t("dashboard.marketFilteredEmptyDescription")} />
                 ) : null}
-                {marketRows.length > 0 ? (
-                  <div className="finance-market-table-wrap">
+                {marketRows.length > 0 && (
+                  <>
+                    {/* Mover cards removed — display table only */}
+
+                    {/** portfolio summary moved out to its own panel below the market panel **/}
+
+                    <div className="finance-market-table-wrap">
                     <table className="finance-market-table">
                       <thead>
                         <tr>
@@ -534,169 +552,81 @@ export default function DashboardPage() {
                       </tbody>
                     </table>
                   </div>
-                ) : null}
+                  </>
+                )}
               </section>
 
-              <section className={`panel-surface finance-dashboard-panel dashboard-ai-summary-card${isAiSummaryOpen ? " is-open" : ""}`}>
-                <button
-                  type="button"
-                  className="dashboard-ai-summary-toggle"
-                  aria-expanded={isAiSummaryOpen}
-                  onClick={() => setAiSummaryOpen((prev) => !prev)}
-                >
-                  <div className="dashboard-ai-summary-toggle-copy">
-                    <div className="dashboard-ai-summary-toggle-title-row">
-                      <span className="dashboard-ai-summary-toggle-icon"><Sparkles size={14} aria-hidden="true" /></span>
-                      <h3>AI Piyasa Ozeti</h3>
-                    </div>
-                    <p>Piyasa yonunu, one cikan guclu ve zayif hareketleri kisa bir ozet halinde gosterir.</p>
+              {/* Portfolio panel: separate card with holdings */}
+              <section className="panel-surface finance-dashboard-panel dashboard-portfolio-panel">
+                <div className="panel-head">
+                  <div>
+                    <h3 className="dashboard-section-title">Portföy Özeti</h3>
                   </div>
-                  <ChevronDown size={18} className={`dashboard-ai-summary-chevron${isAiSummaryOpen ? " is-open" : ""}`} />
-                </button>
+                  <Link to="/portfolio" className="panel-text-link">{t("Portföyünü görüntüle") ?? "Tümünü Gör"}</Link>
+                </div>
 
-                <div className={`dashboard-ai-summary-collapse${isAiSummaryOpen ? " is-open" : ""}`}>
-                  {aiSummary ? (
-                    <div className="dashboard-ai-summary-content">
-                      <div className="dash-ai-banner">
-                        <Sparkles size={13} className="dash-ai-banner-icon" aria-hidden="true" />
-                        <p className="dash-ai-banner-text">
-                          Piyasa gorunumu <strong>{aiSummary.mood}</strong>
-                          {aiSummary.topGainer ? (
-                            <>{" · "}Guclu: <strong>{aiSummary.topGainer.code ?? aiSummary.topGainer.symbol}</strong>{" "}
-                            (+{Number(aiSummary.topGainer.changeRate).toFixed(2)}%)</>
-                          ) : null}
-                          {aiSummary.topLoser ? (
-                            <>{" · "}Zayif: <strong>{aiSummary.topLoser.code ?? aiSummary.topLoser.symbol}</strong>{" "}
-                            ({Number(aiSummary.topLoser.changeRate).toFixed(2)}%)</>
-                          ) : null}
-                        </p>
-                      </div>
-
-                      <div className="dashboard-ai-summary-metrics">
-                        <div className="dashboard-ai-summary-metric">
-                          <span>Genel egilim</span>
-                          <strong>{aiSummary.mood}</strong>
+                <div className="panel-body" style={{ padding: '12px 16px' }}>
+                  {hasPortfolio ? (
+                    <div className="portfolio-holdings-list">
+                      {(widgetHoldings && widgetHoldings.length ? widgetHoldings : (portfolioSnapshots[0]?.holdings || [])).slice(0,5).map((h, idx) => (
+                        <div key={idx} className="portfolio-holding-row" style={{display:'flex',justifyContent:'space-between',gap:12,padding:'8px 0',borderBottom: idx < 4 ? '1px solid var(--panel-border)' : 'none'}}>
+                          <div style={{minWidth:0}}>
+                            <strong style={{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{h?.instrumentCode || h?.symbol || h?.name}</strong>
+                            <span style={{fontSize:'0.8rem',color:'var(--text-soft)'}}>{h?.name || ''}</span>
+                          </div>
+                          <div style={{textAlign:'right'}}>
+                            <div style={{fontWeight:700}}>{formatCurrency(h?.currentValue ?? h?.marketValue ?? 0)}</div>
+                            <div className={toNumber(h?.changeRate) >= 0 ? 'market-up' : 'market-down'} style={{fontSize:'0.85rem'}}>{formatMarketChange(h?.changeRate)}</div>
+                          </div>
                         </div>
-                        <div className="dashboard-ai-summary-metric">
-                          <span>Ortalama degisim</span>
-                          <strong className={aiSummary.avg >= 0 ? "market-up" : "market-down"}>{formatMarketChange(aiSummary.avg)}</strong>
-                        </div>
-                      </div>
+                      ))}
+                      {(!widgetHoldings || widgetHoldings.length === 0) && !(portfolioSnapshots[0]?.holdings && portfolioSnapshots[0].holdings.length) ? (
+                        <div className="portfolio-empty" style={{padding:'8px 0'}}>{t('dashboard.portfolioEmpty') ?? 'Portföyünüz boş'}</div>
+                      ) : null}
                     </div>
                   ) : (
-                    <div className="dashboard-ai-summary-empty">Yeterli piyasa verisi olmadigi icin ozet olusturulamadi.</div>
+                    <div style={{padding:'8px 0'}}>{t('dashboard.cards.addPortfolio')}</div>
                   )}
                 </div>
               </section>
             </div>
 
             <aside className="finance-dashboard-side">
-              <section className="panel-surface finance-dashboard-panel dash-portfolio-widget">
+              {/* AI mini-card placed above news panel (replaces duplicate portfolio widget) */}
+              <section className="panel-surface finance-dashboard-panel dash-ai-mini-card">
                 <div
-                  className="dash-portfolio-header"
+                  className="dash-ai-mini-header"
                   role="button"
                   tabIndex={0}
-                  aria-expanded={isAuthenticated ? isPortfolioWidgetExpanded : undefined}
-                  onClick={() => {
-                    if (!isAuthenticated) {
-                      setAuthRequiredModalOpen(true);
-                      return;
-                    }
-                    setPortfolioWidgetExpanded((prev) => !prev);
-                  }}
+                  onClick={() => setAiDrawerOpen(true)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      if (!isAuthenticated) {
-                        setAuthRequiredModalOpen(true);
-                        return;
-                      }
-                      setPortfolioWidgetExpanded((prev) => !prev);
+                      setAiDrawerOpen(true);
                     }
                   }}
                 >
-                  <div className="dash-portfolio-header-left">
-                    <div className="dash-portfolio-header-copy">
-                      <span className="dash-portfolio-header-title">{t("dashboard.portfolioWidget.title")}</span>
+                  <div className="dash-ai-mini-copy">
+                    <span className="dash-ai-mini-icon"><Sparkles size={16} aria-hidden="true" /></span>
+                    <div className="dash-ai-mini-text">
+                      <span className="dash-ai-mini-title">AI Piyasa Özeti</span>
+                      <span className="dash-ai-mini-sub">Günün piyasa görünümünü incele</span>
                     </div>
-                    {isAuthenticated && portfolios.length > 1 ? (
-                      <select
-                        className="dash-portfolio-select"
-                        value={effectiveWidgetPortfolioId ?? ""}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={(event) => {
-                          event.stopPropagation();
-                          setSelectedWidgetPortfolioId(Number(event.target.value));
-                        }}
-                      >
-                        {portfolios.map((portfolio) => (
-                          <option key={portfolio.portfolioId} value={portfolio.portfolioId}>{portfolio.portfolioName}</option>
-                        ))}
-                      </select>
-                    ) : null}
                   </div>
 
-                  <div className="dash-portfolio-header-right">
-                    {!isAuthenticated ? (
-                      <span className="dash-portfolio-lock-badge" aria-hidden="true">
-                        <span className="guest-lock-icon"><Lock size={13} strokeWidth={2.3} aria-hidden="true" /></span>
-                      </span>
-                    ) : (
-                      <>
-                        {selectedWidgetTotalValue > 0 ? (
-                          <span className="dash-portfolio-total">{formatCurrency(selectedWidgetTotalValue)}</span>
-                        ) : null}
-                        <ChevronDown
-                          size={16}
-                          className={`dash-portfolio-chevron${isPortfolioWidgetExpanded ? " is-open" : ""}`}
-                        />
-                      </>
-                    )}
+                  <div className="dash-ai-mini-action">
+                    <button
+                      type="button"
+                      className="dashboard-ai-open-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAiDrawerOpen(true);
+                      }}
+                    >
+                      Detayı Aç
+                    </button>
                   </div>
                 </div>
-
-                {isAuthenticated ? (
-                  <div className={`dash-portfolio-body${isPortfolioWidgetExpanded ? " is-open" : ""}`}>
-                    {portfolios.length === 0 ? (
-                      <div className="dash-portfolio-empty">
-                        <Link to="/portfolio" className="dash-portfolio-cta">{t("dashboard.portfolioWidget.goPortfolio")}</Link>
-                      </div>
-                    ) : widgetHoldings.length === 0 ? (
-                      <div className="dash-portfolio-empty">{t("dashboard.portfolioWidget.empty")}</div>
-                    ) : (
-                      <div className="dash-portfolio-holdings">
-                        {widgetHoldings.map((holding, index) => {
-                          const pnl = toNumber(holding.profitLoss);
-                          const pnlClass = !holding.valuationAvailable ? "" : pnl > 0 ? "market-up" : pnl < 0 ? "market-down" : "";
-                          return (
-                            <div
-                              key={holding.holdingId || `${holding.instrumentCode}-${index}`}
-                              className="dash-portfolio-row"
-                            >
-                              <div className="dash-portfolio-symbol-col">
-                                <strong>{formatInstrumentCode(holding.instrumentCode)}</strong>
-                                <span>{formatNumber(holding.quantity)} {t("dashboard.portfolioWidget.units")}</span>
-                              </div>
-                              <div className="dash-portfolio-value-col">
-                                <span>{holding.valuationAvailable ? formatCurrency(holding.currentValue) : "-"}</span>
-                                <span className={pnlClass}>
-                                  {holding.valuationAvailable
-                                    ? `${pnl >= 0 ? "+" : ""}${formatPercent(holding.profitLossPercent)}`
-                                    : "-"}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <div className="dash-portfolio-footer">
-                      <Link to="/portfolio" className="dash-portfolio-cta">
-                        {t("dashboard.portfolioWidget.goPortfolio")}
-                      </Link>
-                    </div>
-                  </div>
-                ) : null}
               </section>
 
               <section className="panel-surface finance-dashboard-panel finance-dashboard-news-panel">
@@ -733,6 +663,74 @@ export default function DashboardPage() {
           </section>
         </>
       ) : null}
+      {/* AI Drawer overlay/panel */}
+      {isAiDrawerOpen ? (
+        <div className="ai-drawer-overlay" onClick={() => setAiDrawerOpen(false)}>
+          <div className="ai-drawer-panel" role="dialog" aria-modal="true" aria-label="AI Piyasa Özeti" onClick={(e) => e.stopPropagation()}>
+            <div className="ai-drawer-header">
+              <div className="ai-drawer-title-group">
+                <h3 className="ai-drawer-title">AI Piyasa Özeti</h3>
+                <div className="ai-drawer-sub">Günün piyasa görünümü</div>
+                <div className="ai-drawer-pills" aria-hidden="true">
+                  <span className="ai-pill">PİYASA ÖZETİ</span>
+                  <span className="ai-pill">GÜNCEL</span>
+                  <span className="ai-pill">AI DESTEKLİ</span>
+                </div>
+              </div>
+              <button type="button" className="ai-drawer-close" aria-label="Kapat" onClick={() => setAiDrawerOpen(false)}>✕</button>
+            </div>
+            <div className="ai-drawer-body">
+              {aiSummary ? (
+                <div className="ai-cards">
+                  <div className="ai-card ai-summary-card">
+                    <div className="dash-ai-banner">
+                      <Sparkles size={14} className="dash-ai-banner-icon" aria-hidden="true" />
+                      <p className="dash-ai-banner-text">
+                        Piyasa görünümu <strong>{aiSummary.mood}</strong>
+                        {aiSummary.topGainer ? (
+                          <> {" · "} Güçlü: <strong>{aiSummary.topGainer.code ?? aiSummary.topGainer.symbol}</strong> (+{Number(aiSummary.topGainer.changeRate).toFixed(2)}%)</>
+                        ) : null}
+                        {aiSummary.topLoser ? (
+                          <> {" · "} Zayıf: <strong>{aiSummary.topLoser.code ?? aiSummary.topLoser.symbol}</strong> ({Number(aiSummary.topLoser.changeRate).toFixed(2)}%)</>
+                        ) : null}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="ai-metrics-row">
+                    <div className="ai-card ai-metric-card">
+                      <span className="ai-metric-label">Genel eğilim</span>
+                      <strong className="ai-metric-value">{aiSummary.mood}</strong>
+                    </div>
+                    <div className="ai-card ai-metric-card">
+                      <span className="ai-metric-label">Ortalama değişim</span>
+                      <strong className={`ai-metric-value ${aiSummary.avg >= 0 ? 'market-up' : 'market-down'}`}>{formatMarketChange(aiSummary.avg)}</strong>
+                    </div>
+                  </div>
+
+                  {(aiSummary.topGainer || aiSummary.topLoser) ? (
+                    <div className="ai-card ai-strong-weak-card">
+                      {aiSummary.topGainer ? (
+                        <div className="ai-strong">
+                          <strong>Güçlü: </strong>{aiSummary.topGainer.code ?? aiSummary.topGainer.symbol} <span className="market-up">(+{Number(aiSummary.topGainer.changeRate).toFixed(2)}%)</span>
+                        </div>
+                      ) : null}
+                      {aiSummary.topLoser ? (
+                        <div className="ai-weak">
+                          <strong>Zayıf: </strong>{aiSummary.topLoser.code ?? aiSummary.topLoser.symbol} <span className="market-down">({Number(aiSummary.topLoser.changeRate).toFixed(2)}%)</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="ai-card ai-empty-card">Henüz AI piyasa özeti oluşturulmadı.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <AuthRequiredModal
         isOpen={isAuthRequiredModalOpen}
         onClose={() => setAuthRequiredModalOpen(false)}

@@ -310,14 +310,11 @@ public class MarketScreeningService {
 
     private String positivePeOrderBy(boolean ascending) {
         String direction = ascending ? "asc" : "desc";
-        return """
-                 order by case
-                              when lr.pe_ratio is not null and lr.pe_ratio > 0 then 0
-                              when lr.pe_ratio is not null then 1
-                              else 2
-                          end,
-                          case when lr.pe_ratio > 0 then lr.pe_ratio end
-                 """ + direction + " nulls last, mi.instrument_code asc";
+        return " order by"
+                + " case when lr.pe_ratio is not null and lr.pe_ratio > 0 then 0"
+                + " when lr.pe_ratio is not null then 1 else 2 end,"
+                + " case when lr.pe_ratio > 0 then lr.pe_ratio end "
+                + direction + " nulls last, mi.instrument_code asc";
     }
 
     private MarketScreenItemResponse mapRow(Object[] row) {

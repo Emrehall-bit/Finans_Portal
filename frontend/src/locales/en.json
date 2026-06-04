@@ -371,7 +371,7 @@
       "change": "Change",
       "source": "Source",
       "detail": "Detail",
-      "type": "Type"
+      "type": "Instrument Type"
     },
     "fundColumns": {
       "umbrellaType": "Umbrella Fund Type",
