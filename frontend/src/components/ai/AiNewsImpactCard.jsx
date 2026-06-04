@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Brain,
@@ -17,6 +18,7 @@ import AiResponseMeta from "./AiResponseMeta";
 
 export default function AiNewsImpactCard({ newsId }) {
   const { isAuthenticated, isPremium } = useAuth();
+  const { i18n } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -34,7 +36,7 @@ export default function AiNewsImpactCard({ newsId }) {
     try {
       setLoading(true);
       setError("");
-      const result = await getAiNewsImpactAnalysis(newsId);
+      const result = await getAiNewsImpactAnalysis(newsId, i18n.language);
       setData(result ?? null);
       setHasLoaded(true);
     } catch {

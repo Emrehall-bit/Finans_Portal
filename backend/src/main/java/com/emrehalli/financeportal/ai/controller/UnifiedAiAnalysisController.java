@@ -35,9 +35,10 @@ public class UnifiedAiAnalysisController {
     @GetMapping("/unified/{symbol}")
     public ResponseEntity<UnifiedAnalysisResponse> getUnifiedAnalysis(
             @PathVariable String symbol,
-            @RequestParam(required = false) String type) {
+            @RequestParam(required = false) String type,
+            @RequestParam(defaultValue = "tr") String language) {
         featureAccessService.logAccess(AiFeatureType.UNIFIED_ANALYSIS);
-        return ResponseEntity.ok(unifiedAiAnalysisService.getUnifiedAnalysis(symbol, type));
+        return ResponseEntity.ok(unifiedAiAnalysisService.getUnifiedAnalysis(symbol, type, language));
     }
 }
 

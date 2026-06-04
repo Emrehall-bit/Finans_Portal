@@ -13,6 +13,7 @@ import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
 import com.emrehalli.financeportal.ai.service.AiResponseLogHelper;
 import com.emrehalli.financeportal.ai.service.AiTechnicalAnalysisService;
+import com.emrehalli.financeportal.ai.prompt.AiPromptBuilder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
@@ -70,11 +71,16 @@ public class UnifiedAiAnalysisService {
     }
 
     public UnifiedAnalysisResponse getUnifiedAnalysis(String symbol, String instrumentType) {
-        String key = "ai:unified:" + normalize(symbol);
+        return getUnifiedAnalysis(symbol, instrumentType, "tr");
+    }
+
+    public UnifiedAnalysisResponse getUnifiedAnalysis(String symbol, String instrumentType, String language) {
+        String lang = AiPromptBuilder.normLang(language);
+        String key = "ai:unified:" + normalize(symbol) + ":" + lang;
         try {
             LookupResult<UnifiedAnalysisResponse> lookup = cacheService.getOrComputeWithDynamicTtlStatus(
                     key, UnifiedAnalysisResponse.class,
-                    () -> compute(normalize(symbol), instrumentType));
+                    () -> compute(normalize(symbol), instrumentType, lang));
             UnifiedAnalysisResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
             responseLogHelper.log(AiTaskType.PAGE_ANALYSIS, response.metadata());
             return response;
@@ -88,7 +94,7 @@ public class UnifiedAiAnalysisService {
 
     // â”€â”€ Computation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    private CachedValue<UnifiedAnalysisResponse> compute(String symbol, String instrumentType) {
+    private CachedValue<UnifiedAnalysisResponse> compute(String symbol, String instrumentType, String lang) {
         // Unified analysis only makes sense for STOCK: it requires both technical AND fundamental data.
         // For FX, CRYPTO, FUTURES, BOND, FUND, INDEX — no fundamental data exists, so the LLM
         // would produce nothing more than a rephrased technical analysis. Skip to avoid wasted cost.
@@ -99,7 +105,7 @@ public class UnifiedAiAnalysisService {
 
         AiTechnicalAnalysisResponse technical;
         try {
-            technical = technicalService.getTechnicalComment(symbol);
+            technical = technicalService.getTechnicalComment(symbol, lang);
         } catch (Exception e) {
             logger.warn("Unified AI: technical fetch failed. symbol={}, reason={}", symbol, e.getMessage());
             return new CachedValue<>(emptyFallback(symbol), FALLBACK_CACHE_TTL);
@@ -107,7 +113,7 @@ public class UnifiedAiAnalysisService {
 
         AiFundamentalAnalysisResponse fundamental;
         try {
-            fundamental = fundamentalService.getFundamentalComment(symbol);
+            fundamental = fundamentalService.getFundamentalComment(symbol, lang);
         } catch (Exception e) {
             logger.warn("Unified AI: fundamental fetch failed. symbol={}, reason={}", symbol, e.getMessage());
             return new CachedValue<>(emptyFallback(symbol), FALLBACK_CACHE_TTL);
@@ -125,7 +131,7 @@ public class UnifiedAiAnalysisService {
         }
 
         UnifiedAnalysisContext context = assembler.assemble(symbol, technical, fundamental);
-        String prompt = promptBuilder.build(context);
+        String prompt = promptBuilder.build(context, lang);
 
         Optional<AiResponse> aiResponse = aiGatewayService.generate(AiTaskType.PAGE_ANALYSIS, prompt);
         if (aiResponse.isEmpty()) {

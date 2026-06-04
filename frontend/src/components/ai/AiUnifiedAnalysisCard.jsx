@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Sparkles, TrendingUp, AlertTriangle, Info } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { getAiUnifiedAnalysis } from "../../api/aiApi";
 import { useAuth } from "../../auth/AuthContext";
 import AiLockedCard from "./AiLockedCard";
@@ -7,6 +8,7 @@ import AiResponseMeta from "./AiResponseMeta";
 
 export default function AiUnifiedAnalysisCard({ symbol, instrumentType = "STOCK" }) {
   const { isAuthenticated, isPremium } = useAuth();
+  const { t, i18n } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -25,12 +27,12 @@ export default function AiUnifiedAnalysisCard({ symbol, instrumentType = "STOCK"
       try {
         setLoading(true);
         setError("");
-        const result = await getAiUnifiedAnalysis(symbol, instrumentType);
+        const result = await getAiUnifiedAnalysis(symbol, instrumentType, i18n.language);
         if (active) setData(result ?? null);
       } catch {
         if (active) {
           setData(null);
-          setError("AI genel degerlendirme su anda uretilemedi.");
+          setError(t("aiCards.unified.error"));
         }
       } finally {
         if (active) setLoading(false);
@@ -38,16 +40,14 @@ export default function AiUnifiedAnalysisCard({ symbol, instrumentType = "STOCK"
     }
 
     load();
-    return () => {
-      active = false;
-    };
-  }, [instrumentType, isPremium, symbol]);
+    return () => { active = false; };
+  }, [instrumentType, isPremium, symbol, i18n.language, t]);
 
   if (!isAuthenticated) {
     return (
       <AiLockedCard
-        featureName="AI Genel Degerlendirme"
-        description="Teknik ve temel analizleri birlestiren AI yorumu gormek icin giris yapin."
+        featureName={t("aiCards.unified.title")}
+        description={t("aiCards.unified.guestDescription")}
       />
     );
   }
@@ -55,8 +55,8 @@ export default function AiUnifiedAnalysisCard({ symbol, instrumentType = "STOCK"
   if (!isPremium) {
     return (
       <AiLockedCard
-        featureName="AI Genel Degerlendirme"
-        description="Teknik ve temel analizleri birlestiren gelismis AI yorumu premium uyelere ozeldir."
+        featureName={t("aiCards.unified.title")}
+        description={t("aiCards.unified.premiumDescription")}
         requiresPremium
       />
     );
@@ -72,19 +72,19 @@ export default function AiUnifiedAnalysisCard({ symbol, instrumentType = "STOCK"
             <Sparkles size={17} />
           </span>
           <div>
-            <h3>AI Genel Degerlendirme</h3>
-            <p>{symbol || "Varlik"} icin teknik + temel birlesik analiz</p>
+            <h3>{t("aiCards.unified.title")}</h3>
+            <p>{t("aiCards.unified.subtitle", { symbol: symbol || t("aiCards.asset") })}</p>
           </div>
         </div>
         <span className="ai-card-badge ai-unified-badge">PRO</span>
       </header>
 
       <div className="ai-card-body">
-        {loading ? <UnifiedSkeleton /> : null}
+        {loading ? <UnifiedSkeleton t={t} /> : null}
         {!loading && error ? <p className="ai-state-message error">{error}</p> : null}
-        {!loading && !error && data && hasContent(data) ? <UnifiedContent data={data} /> : null}
+        {!loading && !error && data && hasContent(data) ? <UnifiedContent data={data} t={t} /> : null}
         {!loading && !error && data && !hasContent(data) ? (
-          <p className="ai-state-message">Birlesik analiz icin yeterli temel veri bulunmuyor.</p>
+          <p className="ai-state-message">{t("aiCards.unified.noData")}</p>
         ) : null}
       </div>
 
@@ -94,13 +94,13 @@ export default function AiUnifiedAnalysisCard({ symbol, instrumentType = "STOCK"
 
       <p className="ai-disclaimer">
         <Info size={13} aria-hidden="true" />
-        <span>Bu yorum yatirim tavsiyesi degildir; yalnizca mevcut verilerin otomatik analizidir.</span>
+        <span>{t("aiCards.disclaimer")}</span>
       </p>
     </section>
   );
 }
 
-function UnifiedContent({ data }) {
+function UnifiedContent({ data, t }) {
   const hasHighlights = Array.isArray(data.highlights) && data.highlights.length > 0;
   const hasRisks = Array.isArray(data.risks) && data.risks.length > 0;
 
@@ -112,7 +112,7 @@ function UnifiedContent({ data }) {
         <div className="ai-unified-section">
           <div className="ai-unified-section-head">
             <TrendingUp size={14} aria-hidden="true" />
-            <strong>One Cikanlar</strong>
+            <strong>{t("aiCards.highlights")}</strong>
           </div>
           <ul className="ai-insight-list">
             {data.highlights.map((item, i) => (
@@ -126,7 +126,7 @@ function UnifiedContent({ data }) {
         <div className="ai-unified-section">
           <div className="ai-unified-section-head ai-unified-section-head--risk">
             <AlertTriangle size={14} aria-hidden="true" />
-            <strong>Riskler</strong>
+            <strong>{t("aiCards.risksList")}</strong>
           </div>
           <ul className="ai-insight-list ai-insight-list--risk">
             {data.risks.map((item, i) => (
@@ -147,9 +147,9 @@ function hasContent(data) {
   );
 }
 
-function UnifiedSkeleton() {
+function UnifiedSkeleton({ t }) {
   return (
-    <div className="ai-unified-skeleton" aria-busy="true" aria-label="AI genel degerlendirme hazirlaniyor">
+    <div className="ai-unified-skeleton" aria-busy="true" aria-label={t("aiCards.unified.loading")}>
       <div className="ai-skeleton-line ai-skeleton-line--wide" />
       <div className="ai-skeleton-line" />
       <div className="ai-skeleton-line ai-skeleton-line--narrow" />

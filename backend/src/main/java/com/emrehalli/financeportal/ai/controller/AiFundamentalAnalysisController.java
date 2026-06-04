@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.ai.service.AiFundamentalAnalysisService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -18,11 +19,9 @@ public class AiFundamentalAnalysisController {
     }
 
     @GetMapping("/fundamental/{symbol}")
-    public AiFundamentalAnalysisResponse getFundamentalAnalysis(@PathVariable String symbol) {
-        return aiFundamentalAnalysisService.getFundamentalComment(symbol);
+    public AiFundamentalAnalysisResponse getFundamentalAnalysis(
+            @PathVariable String symbol,
+            @RequestParam(defaultValue = "tr") String language) {
+        return aiFundamentalAnalysisService.getFundamentalComment(symbol, language);
     }
 }
-
-
-
-

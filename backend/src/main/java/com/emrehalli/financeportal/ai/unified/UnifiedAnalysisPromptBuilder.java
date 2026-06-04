@@ -3,20 +3,15 @@ package com.emrehalli.financeportal.ai.unified;
 import com.emrehalli.financeportal.ai.prompt.AiPromptBuilder;
 import org.springframework.stereotype.Component;
 
-/**
- * Builds the LLM prompt for the unified analysis endpoint.
- *
- * Design: Uses pre-interpreted text from technical and fundamental analyses
- * (no raw numbers), so the LLM synthesizes rather than re-derives meaning.
- */
 @Component
 public class UnifiedAnalysisPromptBuilder implements AiPromptBuilder {
 
-    public String build(UnifiedAnalysisContext ctx) {
+    public String build(UnifiedAnalysisContext ctx, String language) {
         StringBuilder sb = new StringBuilder();
+        sb.append(AiPromptBuilder.languageInstruction(language));
 
-        sb.append("Sen Finance Portal'in kıdemli finansal analistisysin. ");
-        sb.append("Asagidaki teknik ve temel analiz bloklarini dogal, profesyonel Turkce finans diliyle sentezleyeceksin.\n\n");
+        sb.append("Sen Finance Portal'in kidemli finansal analistisysin. ");
+        sb.append("Asagidaki teknik ve temel analiz bloklarini dogal, profesyonel finans diliyle sentezleyeceksin.\n\n");
 
         sb.append("DAVRANIS KURALLARI:\n");
         sb.append("- Ham sayi veya yuzde listeleme yapma; yorumlama yap.\n");

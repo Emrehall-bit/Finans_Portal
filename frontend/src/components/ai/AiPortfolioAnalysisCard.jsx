@@ -1,5 +1,6 @@
 import { AlertTriangle, ShieldAlert, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getPortfolioAiAnalysis } from "../../api/aiApi";
 import { extractErrorMessage } from "../../api/responseUtils";
 import { useAuth } from "../../auth/AuthContext";
@@ -9,6 +10,7 @@ import AiResponseMeta from "./AiResponseMeta";
 
 export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, holdingsCount = 0 }) {
   const { isAuthenticated, isPremium } = useAuth();
+  const { t, i18n } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -17,8 +19,10 @@ export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, ho
   const hasPortfolio = Boolean(portfolioId);
   const isEmptyPortfolio = Number(holdingsCount || 0) === 0;
   const title = useMemo(
-    () => (portfolioName ? `${portfolioName} icin premium AI portfoy yorumu` : "Premium AI portfoy yorumu"),
-    [portfolioName],
+    () => portfolioName
+      ? t("aiCards.portfolio.subtitleNamed", { name: portfolioName })
+      : t("aiCards.portfolio.subtitle"),
+    [portfolioName, t],
   );
 
   useEffect(() => {
@@ -35,11 +39,11 @@ export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, ho
     try {
       setLoading(true);
       setError("");
-      const response = await getPortfolioAiAnalysis(portfolioId);
+      const response = await getPortfolioAiAnalysis(portfolioId, i18n.language);
       setData(response ?? null);
     } catch (requestError) {
       setData(null);
-      setError(extractErrorMessage(requestError, "AI portfoy analizi su anda uretilemedi."));
+      setError(extractErrorMessage(requestError, t("aiCards.portfolio.error")));
     } finally {
       setLoading(false);
     }
@@ -48,8 +52,8 @@ export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, ho
   if (!isAuthenticated) {
     return (
       <AiLockedCard
-        featureName="AI Portfoy Analizi"
-        description="Portfoy dagilimi, risk gorunumu ve cesitlilik yorumunu gormek icin giris yapin."
+        featureName={t("aiCards.portfolio.title")}
+        description={t("aiCards.portfolio.guestDescription")}
       />
     );
   }
@@ -57,8 +61,8 @@ export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, ho
   if (!canUse) {
     return (
       <AiLockedCard
-        featureName="AI Portfoy Analizi"
-        description="Bu ozellik premium kullanicilar icin gecerlidir."
+        featureName={t("aiCards.portfolio.title")}
+        description={t("aiCards.portfolio.premiumDescription")}
         requiresPremium
       />
     );
@@ -66,7 +70,7 @@ export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, ho
 
   return (
     <AiCard
-      title="AI Portfoy Analizi"
+      title={t("aiCards.portfolio.title")}
       subtitle={title}
       badge="PRO"
       className="ai-portfolio-analysis-card"
@@ -75,10 +79,10 @@ export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, ho
       <div className="ai-portfolio-analysis-toolbar">
         <div className="ai-portfolio-analysis-intro">
           <span className="summary-chip">Pozisyon: {Number(holdingsCount || 0)}</span>
-          <p>Analiz sadece butona bastiginizda calisir. Sayfa acilisinda otomatik istek yapilmaz.</p>
+          <p>{t("aiCards.portfolio.onDemandNote")}</p>
         </div>
         <button type="button" className="ai-comparison-action" onClick={handleAnalyze} disabled={!hasPortfolio || loading}>
-          {loading ? "Analiz uretiliyor..." : "Portfoyumu AI ile Analiz Et"}
+          {loading ? t("aiCards.portfolio.analyzing") : t("aiCards.portfolio.analyzeButton")}
         </button>
       </div>
 
@@ -89,8 +93,8 @@ export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, ho
           <Sparkles size={16} aria-hidden="true" />
           <p>
             {isEmptyPortfolio
-              ? "Portfoy su anda bos gorunuyor. Isterseniz butona basarak bos portfoy icin kontrollu AI yorumunu alabilirsiniz."
-              : "Dagilim, risk sinyalleri ve cesitlilik yorumu butona bastiktan sonra burada gosterilir."}
+              ? t("aiCards.portfolio.emptyPlaceholder")
+              : t("aiCards.portfolio.readyPlaceholder")}
           </p>
         </div>
       ) : null}
@@ -100,25 +104,25 @@ export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, ho
           {data.dataQuality !== "COMPLETE" ? (
             <div className="ai-comparison-warning">
               <AlertTriangle size={14} aria-hidden="true" />
-              <span>Veri kalitesi {formatDataQuality(data.dataQuality)}. Yorum bazi alanlarda sinirli veriyle uretildi.</span>
+              <span>{t("aiCards.portfolio.dataQualityWarning", { quality: formatDataQuality(data.dataQuality, t) })}</span>
             </div>
           ) : null}
 
-          <AnalysisBlock icon={<Sparkles size={14} aria-hidden="true" />} title="Ozet" content={data.summary} />
-          <AnalysisBlock icon={<Sparkles size={14} aria-hidden="true" />} title="Dagilim yorumu" content={data.allocationComment} />
-          <AnalysisBlock icon={<ShieldAlert size={14} aria-hidden="true" />} title="Risk gorunumu" content={data.riskComment} />
-          <AnalysisBlock icon={<Sparkles size={14} aria-hidden="true" />} title="Cesitlilik" content={data.diversificationComment} />
+          <AnalysisBlock icon={<Sparkles size={14} aria-hidden="true" />} title={t("aiCards.portfolio.summary")} content={data.summary} />
+          <AnalysisBlock icon={<Sparkles size={14} aria-hidden="true" />} title={t("aiCards.portfolio.allocation")} content={data.allocationComment} />
+          <AnalysisBlock icon={<ShieldAlert size={14} aria-hidden="true" />} title={t("aiCards.portfolio.riskView")} content={data.riskComment} />
+          <AnalysisBlock icon={<Sparkles size={14} aria-hidden="true" />} title={t("aiCards.portfolio.diversification")} content={data.diversificationComment} />
 
           <div className="ai-comparison-grid">
-            <ListBlock title="Guclu pozisyonlar" items={data.strongestPositions} tone="positive" />
-            <ListBlock title="Zayif pozisyonlar" items={data.weakestPositions} tone="risk" />
+            <ListBlock title={t("aiCards.portfolio.strongPositions")} items={data.strongestPositions} tone="positive" />
+            <ListBlock title={t("aiCards.portfolio.weakPositions")} items={data.weakestPositions} tone="risk" />
           </div>
 
           {Array.isArray(data.riskSignals) && data.riskSignals.length > 0 ? (
             <div className="ai-portfolio-analysis-signals">
               <div className="ai-unified-section-head">
                 <ShieldAlert size={14} aria-hidden="true" />
-                <strong>Risk sinyalleri</strong>
+                <strong>{t("aiCards.portfolio.riskSignals")}</strong>
               </div>
               <ul className="ai-insight-list ai-portfolio-signal-list">
                 {data.riskSignals.map((item, index) => (
@@ -132,7 +136,7 @@ export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, ho
             <div className="ai-portfolio-analysis-suggestions">
               <div className="ai-unified-section-head">
                 <Sparkles size={14} aria-hidden="true" />
-                <strong>Kontrol edilebilir noktalar</strong>
+                <strong>{t("aiCards.portfolio.suggestions")}</strong>
               </div>
               <ul className="ai-insight-list">
                 {data.suggestions.map((item, index) => (
@@ -142,7 +146,7 @@ export default function AiPortfolioAnalysisCard({ portfolioId, portfolioName, ho
             </div>
           ) : null}
 
-          <AnalysisBlock icon={<Sparkles size={14} aria-hidden="true" />} title="Son yorum" content={data.finalComment} />
+          <AnalysisBlock icon={<Sparkles size={14} aria-hidden="true" />} title={t("aiCards.portfolio.finalComment")} content={data.finalComment} />
         </div>
       ) : null}
     </AiCard>
@@ -183,17 +187,13 @@ function ListBlock({ title, items, tone = "neutral" }) {
   );
 }
 
-function formatDataQuality(value) {
+function formatDataQuality(value, t) {
   switch (String(value || "").toUpperCase()) {
-    case "COMPLETE":
-      return "yuksek";
-    case "PARTIAL":
-      return "orta";
+    case "COMPLETE":     return t("aiCards.portfolio.qualityHigh");
+    case "PARTIAL":      return t("aiCards.portfolio.qualityMedium");
     case "LIMITED":
     case "LOW":
-    case "INSUFFICIENT":
-      return "dusuk";
-    default:
-      return "bilinmiyor";
+    case "INSUFFICIENT": return t("aiCards.portfolio.qualityLow");
+    default:             return t("aiCards.portfolio.qualityUnknown");
   }
 }

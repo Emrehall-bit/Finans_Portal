@@ -18,14 +18,11 @@ public class FundamentalAnalysisPromptBuilder implements AiPromptBuilder {
         this.insightGenerator = insightGenerator;
     }
 
-    /**
-     * @param revenue   latest period revenue (may be null)
-     * @param netProfit latest period net profit (may be null)
-     */
     public String build(String symbol,
                         CompanyFundamentalsResponse fundamentals,
                         BigDecimal revenue,
-                        BigDecimal netProfit) {
+                        BigDecimal netProfit,
+                        String language) {
         List<FinancialInsight> insights = insightGenerator.generate(fundamentals, revenue, netProfit);
 
         String strengths  = block(insights, FinancialInsight.Category.STRENGTH);
@@ -35,39 +32,37 @@ public class FundamentalAnalysisPromptBuilder implements AiPromptBuilder {
         String valuation  = block(insights, FinancialInsight.Category.VALUATION);
         String neutral    = block(insights, FinancialInsight.Category.NEUTRAL);
 
-        return """
-                Sen Finance Portal'ın uzman temel analiz asistanısın. %s şirketi için aşağıdaki \
-                önceden yorumlanmış finansal sinyalleri sentezleyerek kısa ve profesyonel bir analiz yaz.
-                Türkçe yaz. Sinyalleri birebir tekrar etme; sentezle ve birleştir.
-                Finansal analist dili kullan. "Bakılabilir", "incelenebilir" ifadesi kullanma; direkt yorum yap.
+        return AiPromptBuilder.languageInstruction(language) + """
+                Sen Finance Portal'in uzman temel analiz asistanisin. %s sirketi icin asagidaki \
+                onceden yorumlanmis finansal sinyalleri sentezleyerek kisa ve profesyonel bir analiz yaz.
+                Sinyalleri birebir tekrar etme; sentezle ve birlestir.
+                Finansal analist dili kullan. "Bakilabilir", "incelenebilir" ifadesi kullanma; direkt yorum yap.
 
-                ÖNCEDEn YORUMLANMIŞ FİNANSAL SİNYALLER:
-                [GÜÇ]     %s
+                ONCEDEN YORUMLANMIS FINANSAL SINYALLER:
+                [GUC]     %s
                 [ZAYIF]   %s
-                [RİSK]    %s
-                [BÜYÜME]  %s
-                [DEĞER]   %s
-                [NÖTR]    %s
+                [RISK]    %s
+                [BUYUME]  %s
+                [DEGER]   %s
+                [NOTR]    %s
 
-                BAĞLAM (doğrulama için — sinyalleri tekrar etme):
-                Dönem: %s | Hasılat: %s TL | Net Kâr: %s TL
+                BAGLAN (dogrulama icin - sinyalleri tekrar etme):
+                Donem: %s | Hasilat: %s TL | Net Kar: %s TL
 
-                ANTİ-HALÜSÜNASYON:
-                - Yalnızca yukarıdaki verileri kullan. Değeri "-" olan alanlar için sayı uydurma.
-                - Şirketin sektörünü veya haberlerini ekleme.
+                ANTI-HALUSINASYON:
+                - Yalnizca yukardaki verileri kullan. Degeri "-" olan alanlar icin sayi uydurma.
+                - Sirketin sektorunu veya haberlerini ekleme.
                 - Olmayan veriyi tahminen belirtme.
 
-                ÇIKTI YAPISI — altı bölüm, tek JSON nesnesi:
-                1. summary: 2-3 cümle genel finansal görünüm — sayıları tekrar etme, finansal tablonun hikayesini anlat
-                2. strengths: 2-3 madde — şirketin içsel güçlü dinamikleri (kârlılık, büyüme, verimlilik);
-                   gerekirse bir sayı kullan ama asıl amaç finansal anlamı açıklamak
-                3. weaknesses: 1-2 madde — şirket içindeki zayıf noktalar (yüksek değerleme, marj baskısı, yavaş büyüme)
-                4. risks: 1-2 madde — bilanço kırılganlığı, dış faktörler veya sürdürülebilirlik belirsizliği;
-                   strengths/weaknesses ile tekrar etme
-                5. growthComment: 2-3 cümle büyüme yorumu — sadece oranları listeleme, büyümenin kalitesini yorumla
+                CIKTI YAPISI - alti bolum, tek JSON nesnesi:
+                1. summary: 2-3 cumle genel finansal gorunum - sayilari tekrar etme, finansal tablonun hikayesini anlat
+                2. strengths: 2-3 madde - sirketin icsel guclu dinamikleri; gerekirse bir sayi kullan ama asil amac anlami aciklamak
+                3. weaknesses: 1-2 madde - sirket icindeki zayif noktalar
+                4. risks: 1-2 madde - bilanco kirilganligi, dis faktorler veya surdurulebilirlik belirsizligi; strengths/weaknesses ile tekrar etme
+                5. growthComment: 2-3 cumle buyume yorumu - sadece oranlari listeleme, buyumenin kalitesini yorumla
                 6. financialHealth: STRONG | STABLE | WATCH | RISKY
 
-                YANIT FORMATI — sadece bu JSON, başka hiçbir şey:
+                YANIT FORMATI - sadece bu JSON, baska hicbir sey:
                 {"summary":"...","strengths":["...","..."],"weaknesses":["..."],"risks":["..."],"growthComment":"...","financialHealth":"STABLE"}
                 """.formatted(
                 symbol,

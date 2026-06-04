@@ -4,6 +4,7 @@ import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.AiSignal;
 import com.emrehalli.financeportal.ai.dto.AiTechnicalAnalysisResponse.RiskLevel;
 import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
+import com.emrehalli.financeportal.ai.prompt.AiPromptBuilder;
 import com.emrehalli.financeportal.ai.prompt.TechnicalAnalysisPromptBuilder;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
@@ -52,30 +53,35 @@ public class AiTechnicalAnalysisService {
     }
 
     public AiTechnicalAnalysisResponse getTechnicalComment(String symbol) {
+        return getTechnicalComment(symbol, "tr");
+    }
+
+    public AiTechnicalAnalysisResponse getTechnicalComment(String symbol, String language) {
         String normalizedSymbol = normalizeSymbol(symbol);
-        String cacheKey = "ai:technical:" + normalizedSymbol;
+        String lang = AiPromptBuilder.normLang(language);
+        String cacheKey = "ai:technical:" + normalizedSymbol + ":" + lang;
         try {
             LookupResult<AiTechnicalAnalysisResponse> lookup = aiResponseCacheService.getOrComputeWithDynamicTtlStatus(
-                    cacheKey, AiTechnicalAnalysisResponse.class, () -> computeTechnicalComment(normalizedSymbol));
+                    cacheKey, AiTechnicalAnalysisResponse.class, () -> computeTechnicalComment(normalizedSymbol, lang));
             AiTechnicalAnalysisResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
             responseLogHelper.log(AiTaskType.TECHNICAL_ANALYSIS, response.metadata());
             return response;
         } catch (Exception exception) {
             logger.warn("AI technical endpoint critical failure, returning fallback. symbol={}, reason={}", normalizedSymbol, exception.getMessage());
-            AiTechnicalAnalysisResponse response = dataLimitedFallback(normalizedSymbol);
+            AiTechnicalAnalysisResponse response = dataLimitedFallback(normalizedSymbol, lang);
             responseLogHelper.log(AiTaskType.TECHNICAL_ANALYSIS, response.metadata());
             return response;
         }
     }
 
-    private CachedValue<AiTechnicalAnalysisResponse> computeTechnicalComment(String normalizedSymbol) {
+    private CachedValue<AiTechnicalAnalysisResponse> computeTechnicalComment(String normalizedSymbol, String lang) {
         try {
             LocalDate to = LocalDate.now();
             LocalDate from = to.minusDays(180);
             TechnicalAnalysisResult analysis = technicalAnalysisService.analyze(normalizedSymbol, from, to, DEFAULT_INDICATORS);
-            AiTechnicalAnalysisResponse ruleBased = fromTechnicalAnalysis(normalizedSymbol, analysis);
+            AiTechnicalAnalysisResponse ruleBased = fromTechnicalAnalysis(normalizedSymbol, analysis, lang);
             AiGenerationService.EnhancedResult<AiTechnicalAnalysisResponse> enhanced =
-                    aiGenerationService.enhanceTechnical(promptBuilder.build(normalizedSymbol, analysis), ruleBased);
+                    aiGenerationService.enhanceTechnical(promptBuilder.build(normalizedSymbol, analysis, lang), ruleBased);
             Duration ttl = enhanced.fromLlm() ? CACHE_TTL : FALLBACK_CACHE_TTL;
             String summarySnippet = enhanced.response().summary();
             logger.info("AI technical computed. symbol={}, source={}, provider={}, ttlMinutes={}, summaryPreview={}",
@@ -87,11 +93,11 @@ public class AiTechnicalAnalysisService {
             return new CachedValue<>(enhanced.response(), ttl);
         } catch (Exception exception) {
             logger.warn("AI technical analysis used data-limited fallback. symbol={}, source=RULE_BASED_FALLBACK, reason={}", normalizedSymbol, exception.getMessage());
-            return new CachedValue<>(dataLimitedFallback(normalizedSymbol), FALLBACK_CACHE_TTL);
+            return new CachedValue<>(dataLimitedFallback(normalizedSymbol, lang), FALLBACK_CACHE_TTL);
         }
     }
 
-    private AiTechnicalAnalysisResponse fromTechnicalAnalysis(String symbol, TechnicalAnalysisResult analysis) {
+    private AiTechnicalAnalysisResponse fromTechnicalAnalysis(String symbol, TechnicalAnalysisResult analysis, String lang) {
         BigDecimal latestPrice = analysis.latestPrice();
         BigDecimal rsi = analysis.indicatorValues().get(IndicatorType.RSI14);
         BigDecimal sma20 = analysis.indicatorValues().get(IndicatorType.SMA20);
@@ -102,9 +108,9 @@ public class AiTechnicalAnalysisService {
         RiskLevel riskLevel = resolveRiskLevel(trendDirection, rsi, signals, analysis.analysisStatus());
         AiSignal signal = resolveSignal(trendDirection, rsi, signals, riskLevel);
 
-        String summary = buildSummary(symbol, trendDirection, rsi, signals, signal, analysis.analysisStatus());
-        String trendComment = buildTrendComment(trendDirection, signals, latestPrice, sma20);
-        String momentumComment = buildMomentumComment(rsi, trendDirection, signals);
+        String summary = buildSummary(symbol, trendDirection, rsi, signals, signal, analysis.analysisStatus(), lang);
+        String trendComment = buildTrendComment(trendDirection, signals, latestPrice, sma20, lang);
+        String momentumComment = buildMomentumComment(rsi, trendDirection, signals, lang);
 
         return new AiTechnicalAnalysisResponse(
                 symbol,
@@ -156,76 +162,124 @@ public class AiTechnicalAnalysisService {
                                 BigDecimal rsi,
                                 List<TechnicalSignal> signals,
                                 AiSignal signal,
-                                String status) {
+                                String status,
+                                String lang) {
+        boolean en = "en".equals(lang);
         if (!"AVAILABLE".equals(status)) {
-            return symbol + " için teknik veri sınırlı; yorum, mevcut fiyat geçmişi yetersiz olduğu için temkinli ve nötr değerlendirilmelidir.";
+            return en
+                ? symbol + ": technical data is limited; assessment is neutral pending sufficient price history."
+                : symbol + " için teknik veri sınırlı; yorum, mevcut fiyat geçmişi yetersiz olduğu için temkinli ve nötr değerlendirilmelidir.";
         }
 
-        String signalContext = switch (signal) {
-            case POSITIVE -> "kısa vadeli teknik görünüm olumlu";
-            case NEGATIVE -> "kısa vadeli teknik baskı devam ediyor";
-            case RISKY    -> "aşırı bölge sinyali mevcut; temkinli yaklaşım önerilir";
-            case NEUTRAL  -> "teknik yön belirsiz, net sinyal üretilemiyor";
-        };
+        String signalContext = en
+            ? switch (signal) {
+                case POSITIVE -> "short-term technical outlook is positive";
+                case NEGATIVE -> "short-term technical pressure continues";
+                case RISKY    -> "extreme zone signal detected; cautious approach warranted";
+                case NEUTRAL  -> "technical direction unclear, no decisive signal";
+              }
+            : switch (signal) {
+                case POSITIVE -> "kısa vadeli teknik görünüm olumlu";
+                case NEGATIVE -> "kısa vadeli teknik baskı devam ediyor";
+                case RISKY    -> "aşırı bölge sinyali mevcut; temkinli yaklaşım önerilir";
+                case NEUTRAL  -> "teknik yön belirsiz, net sinyal üretilemiyor";
+              };
 
         List<String> context = new ArrayList<>();
-        if (trendDirection != null) context.add("trend " + formatTrend(trendDirection));
-        if (signals.contains(TechnicalSignal.PRICE_ABOVE_SMA20)) context.add("fiyat kısa vadeli ortalama üzerinde");
-        if (signals.contains(TechnicalSignal.PRICE_BELOW_SMA20)) context.add("fiyat kısa vadeli ortalama altında");
-        if (isRsiAbove(rsi, 70)) context.add("RSI aşırı alım bölgesinde");
-        if (isRsiBelow(rsi, 30)) context.add("RSI aşırı satım bölgesinde");
+        if (trendDirection != null) context.add((en ? "trend " : "trend ") + formatTrend(trendDirection, lang));
+        if (signals.contains(TechnicalSignal.PRICE_ABOVE_SMA20))
+            context.add(en ? "price above short-term average" : "fiyat kısa vadeli ortalama üzerinde");
+        if (signals.contains(TechnicalSignal.PRICE_BELOW_SMA20))
+            context.add(en ? "price below short-term average" : "fiyat kısa vadeli ortalama altında");
+        if (isRsiAbove(rsi, 70))
+            context.add(en ? "RSI in overbought zone" : "RSI aşırı alım bölgesinde");
+        if (isRsiBelow(rsi, 30))
+            context.add(en ? "RSI in oversold zone" : "RSI aşırı satım bölgesinde");
 
-        return symbol + " için " + signalContext
-                + (context.isEmpty() ? "." : "; " + String.join(", ", context) + ".");
+        return en
+            ? symbol + ": " + signalContext + (context.isEmpty() ? "." : "; " + String.join(", ", context) + ".")
+            : symbol + " için " + signalContext + (context.isEmpty() ? "." : "; " + String.join(", ", context) + ".");
     }
 
-    private String buildTrendComment(TrendDirection trendDirection, List<TechnicalSignal> signals, BigDecimal latestPrice, BigDecimal sma20) {
+    private String buildTrendComment(TrendDirection trendDirection, List<TechnicalSignal> signals,
+                                     BigDecimal latestPrice, BigDecimal sma20, String lang) {
+        boolean en = "en".equals(lang);
         if (signals.contains(TechnicalSignal.PRICE_ABOVE_SMA20)) {
-            return "Fiyat 20 günlük ortalamanın üzerinde; kısa vadeli trend pozitif bölgede değerlendiriliyor.";
+            return en
+                ? "Price is trading above the 20-day moving average; short-term trend is in positive territory."
+                : "Fiyat 20 günlük ortalamanın üzerinde; kısa vadeli trend pozitif bölgede değerlendiriliyor.";
         }
         if (signals.contains(TechnicalSignal.PRICE_BELOW_SMA20)) {
-            return "Fiyat 20 günlük ortalamanın altında; görünüm zayıf ve toparlanma için ortalama üzerine dönüş izlenmeli.";
+            return en
+                ? "Price is below the 20-day moving average; outlook is weak — a recovery above the average should be monitored."
+                : "Fiyat 20 günlük ortalamanın altında; görünüm zayıf ve toparlanma için ortalama üzerine dönüş izlenmeli.";
         }
         if (trendDirection == TrendDirection.UPTREND) {
-            return "Trend yönü yukarı; hareketli ortalama teyidi sınırlı olsa da momentum olumlu.";
+            return en
+                ? "Trend direction is up; momentum is positive despite limited moving average confirmation."
+                : "Trend yönü yukarı; hareketli ortalama teyidi sınırlı olsa da momentum olumlu.";
         }
         if (trendDirection == TrendDirection.DOWNTREND) {
-            return "Trend yönü aşağı; fiyat üzerinde baskı ve risk artışı var.";
+            return en
+                ? "Trend direction is down; downward price pressure and elevated risk."
+                : "Trend yönü aşağı; fiyat üzerinde baskı ve risk artışı var.";
         }
         if (latestPrice != null && sma20 != null) {
-            return "Fiyat ile 20 günlük ortalama arasındaki ilişki belirgin sinyal üretmiyor; yatay görünüm öne çıkıyor.";
+            return en
+                ? "Price and 20-day moving average are not generating a clear signal; sideways movement dominates."
+                : "Fiyat ile 20 günlük ortalama arasındaki ilişki belirgin sinyal üretmiyor; yatay görünüm öne çıkıyor.";
         }
-        return "Trend yorumu için hareketli ortalama verisi sınırlı; görünüm nötr kabul edilmeli.";
+        return en
+            ? "Moving average data is limited for trend assessment; outlook should be treated as neutral."
+            : "Trend yorumu için hareketli ortalama verisi sınırlı; görünüm nötr kabul edilmeli.";
     }
 
-    private String buildMomentumComment(BigDecimal rsi, TrendDirection trendDirection, List<TechnicalSignal> signals) {
+    private String buildMomentumComment(BigDecimal rsi, TrendDirection trendDirection,
+                                        List<TechnicalSignal> signals, String lang) {
+        boolean en = "en".equals(lang);
         if (rsi == null) {
-            return "RSI verisi yok; momentum yorumu trend ve SMA sinyalleriyle sınırlı.";
+            return en
+                ? "RSI data unavailable; momentum assessment is limited to trend and SMA signals."
+                : "RSI verisi yok; momentum yorumu trend ve SMA sinyalleriyle sınırlı.";
         }
         if (isRsiAbove(rsi, 70)) {
-            return "RSI 70 üzerinde; aşırı alım bölgesi nedeniyle kısa vadeli yorulma ve düzeltme riski artıyor.";
+            return en
+                ? "RSI above 70; elevated overbought zone — short-term exhaustion and correction risk is increasing."
+                : "RSI 70 üzerinde; aşırı alım bölgesi nedeniyle kısa vadeli yorulma ve düzeltme riski artıyor.";
         }
         if (isRsiBelow(rsi, 30)) {
-            return "RSI 30 altında; aşırı satım bölgesi tepki potansiyeli yaratsa da risk yüksek kalıyor.";
+            return en
+                ? "RSI below 30; oversold zone may create a bounce opportunity, but risk remains elevated."
+                : "RSI 30 altında; aşırı satım bölgesi tepki potansiyeli yaratsa da risk yüksek kalıyor.";
         }
         if (trendDirection == TrendDirection.UPTREND || signals.contains(TechnicalSignal.SMA7_ABOVE_SMA20)) {
-            return "RSI nötr bölgede ve trend yukarı; momentum olumlu ancak aşırı alım teyidi yok.";
+            return en
+                ? "RSI is in neutral territory with an upward trend; momentum is positive without an overbought signal."
+                : "RSI nötr bölgede ve trend yukarı; momentum olumlu ancak aşırı alım teyidi yok.";
         }
         if (trendDirection == TrendDirection.DOWNTREND || signals.contains(TechnicalSignal.SMA7_BELOW_SMA20)) {
-            return "RSI nötr bölgede olsa da trend zayıf; momentum baskı altında.";
+            return en
+                ? "RSI is neutral but trend is weak; momentum is under pressure."
+                : "RSI nötr bölgede olsa da trend zayıf; momentum baskı altında.";
         }
-        return "RSI nötr bölgede; momentum dengeli ve yön teyidi için yeni fiyat hareketi beklenmeli.";
+        return en
+            ? "RSI is in neutral territory; momentum is balanced — new price action needed to confirm direction."
+            : "RSI nötr bölgede; momentum dengeli ve yön teyidi için yeni fiyat hareketi beklenmeli.";
     }
 
-    private AiTechnicalAnalysisResponse dataLimitedFallback(String symbol) {
+    private AiTechnicalAnalysisResponse dataLimitedFallback(String symbol, String lang) {
         int bucket = Math.abs(symbol.hashCode()) % 3;
         RiskLevel riskLevel = bucket == 0 ? RiskLevel.LOW : bucket == 1 ? RiskLevel.MEDIUM : RiskLevel.HIGH;
         AiSignal signal = bucket == 0 ? AiSignal.NEUTRAL : bucket == 1 ? AiSignal.NEUTRAL : AiSignal.RISKY;
+        boolean en = "en".equals(lang);
         return new AiTechnicalAnalysisResponse(
                 symbol,
-                symbol + " için yeterli teknik veri yok; veri eksikliği nedeniyle yön yerine risk ve takip ihtiyacı vurgulanıyor.",
-                "SMA ve trend teyidi üretilemedi; fiyat geçmişi tamamlandığında trend yorumu netleşir.",
-                "RSI verisi üretilemedi; momentum nötr kabul edilmeli ve yeni veri beklenmelidir.",
+                en ? symbol + ": insufficient technical data available; assessment is neutral pending more price history."
+                   : symbol + " için yeterli teknik veri yok; veri eksikliği nedeniyle yön yerine risk ve takip ihtiyacı vurgulanıyor.",
+                en ? "SMA and trend confirmation unavailable; trend assessment will improve as price history accumulates."
+                   : "SMA ve trend teyidi üretilemedi; fiyat geçmişi tamamlandığında trend yorumu netleşir.",
+                en ? "RSI data unavailable; momentum is treated as neutral pending new price data."
+                   : "RSI verisi üretilemedi; momentum nötr kabul edilmeli ve yeni veri beklenmelidir.",
                 riskLevel,
                 signal,
                 DISCLAIMER,
@@ -262,11 +316,12 @@ public class AiTechnicalAnalysisService {
         return rsi != null && rsi.compareTo(BigDecimal.valueOf(threshold)) < 0;
     }
 
-    private String formatTrend(TrendDirection trendDirection) {
+    private String formatTrend(TrendDirection trendDirection, String lang) {
+        boolean en = "en".equals(lang);
         return switch (trendDirection) {
-            case UPTREND   -> "yukarı yönlü";
-            case DOWNTREND -> "aşağı yönlü";
-            case SIDEWAYS  -> "yatay";
+            case UPTREND   -> en ? "upward" : "yukarı yönlü";
+            case DOWNTREND -> en ? "downward" : "aşağı yönlü";
+            case SIDEWAYS  -> en ? "sideways" : "yatay";
         };
     }
 

@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.ai.comparison;
 
 import com.emrehalli.financeportal.ai.comparison.ComparisonAnalysisContext.InstrumentSnapshot;
+import com.emrehalli.financeportal.ai.prompt.AiPromptBuilder;
 import com.emrehalli.financeportal.ai.comparison.ComparisonAnalysisResponse.DataQuality;
 import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse.FinancialHealth;
@@ -76,18 +77,22 @@ public class ComparisonAnalysisService {
     }
 
     public ComparisonAnalysisResponse getComparisonAnalysis(String leftSymbol, String rightSymbol) {
+        return getComparisonAnalysis(leftSymbol, rightSymbol, "tr");
+    }
+
+    public ComparisonAnalysisResponse getComparisonAnalysis(String leftSymbol, String rightSymbol, String language) {
         String left = normalizeSymbol(leftSymbol);
         String right = normalizeSymbol(rightSymbol);
         validateSymbols(left, right);
-
+        String lang = AiPromptBuilder.normLang(language);
         String normalizedPair = normalizedPair(left, right);
-        String cacheKey = "ai:comparison-analysis:" + normalizedPair;
+        String cacheKey = "ai:comparison-analysis:" + normalizedPair + ":" + lang;
 
         try {
             LookupResult<ComparisonAnalysisResponse> lookup = cacheService.getOrComputeWithDynamicTtlStatus(
                     cacheKey,
                     ComparisonAnalysisResponse.class,
-                    () -> compute(left, right)
+                    () -> compute(left, right, lang)
             );
             ComparisonAnalysisResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
             responseLogHelper.log(AiTaskType.COMPANY_COMPARISON, response.metadata());
@@ -109,14 +114,14 @@ public class ComparisonAnalysisService {
                 .orElse("-");
     }
 
-    private CachedValue<ComparisonAnalysisResponse> compute(String left, String right) {
+    private CachedValue<ComparisonAnalysisResponse> compute(String left, String right, String lang) {
         InstrumentSnapshot leftSnapshot = buildSnapshot(left);
         InstrumentSnapshot rightSnapshot = buildSnapshot(right);
         DataQuality dataQuality = determineDataQuality(leftSnapshot, rightSnapshot);
         ComparisonAnalysisContext context = new ComparisonAnalysisContext(leftSnapshot, rightSnapshot, dataQuality);
         ComparisonAnalysisResponse fallback = deterministicFallback(leftSnapshot, rightSnapshot, dataQuality);
 
-        String prompt = promptBuilder.build(context);
+        String prompt = promptBuilder.build(context, lang);
         Optional<AiResponse> aiResponse = aiGatewayService.generate(AiTaskType.COMPANY_COMPARISON, prompt);
         if (aiResponse.isEmpty()) {
             logger.warn("AI comparison generation unavailable. pair={}-{}", left, right);

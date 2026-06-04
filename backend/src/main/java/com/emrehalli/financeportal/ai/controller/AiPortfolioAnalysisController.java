@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -24,9 +25,11 @@ public class AiPortfolioAnalysisController {
     }
 
     @GetMapping("/portfolio-analysis/{portfolioId}")
-    public ResponseEntity<PortfolioAnalysisResponse> getPortfolioAnalysis(@PathVariable Long portfolioId) {
+    public ResponseEntity<PortfolioAnalysisResponse> getPortfolioAnalysis(
+            @PathVariable Long portfolioId,
+            @RequestParam(defaultValue = "tr") String language) {
         featureAccessService.logAccess(AiFeatureType.PORTFOLIO_AI);
-        return ResponseEntity.ok(portfolioAnalysisService.getPortfolioAnalysis(portfolioId));
+        return ResponseEntity.ok(portfolioAnalysisService.getPortfolioAnalysis(portfolioId, language));
     }
 }
 

@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.ai.service;
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse;
 import com.emrehalli.financeportal.ai.dto.AiFundamentalAnalysisResponse.FinancialHealth;
 import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
+import com.emrehalli.financeportal.ai.prompt.AiPromptBuilder;
 import com.emrehalli.financeportal.ai.prompt.FundamentalAnalysisPromptBuilder;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue;
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
@@ -49,36 +50,41 @@ public class AiFundamentalAnalysisService {
     }
 
     public AiFundamentalAnalysisResponse getFundamentalComment(String symbol) {
+        return getFundamentalComment(symbol, "tr");
+    }
+
+    public AiFundamentalAnalysisResponse getFundamentalComment(String symbol, String language) {
         String normalizedSymbol = normalizeSymbol(symbol);
-        String cacheKey = "ai:fundamental:" + normalizedSymbol;
+        String lang = AiPromptBuilder.normLang(language);
+        String cacheKey = "ai:fundamental:" + normalizedSymbol + ":" + lang;
         try {
             LookupResult<AiFundamentalAnalysisResponse> lookup = aiResponseCacheService.getOrComputeWithDynamicTtlStatus(
-                    cacheKey, AiFundamentalAnalysisResponse.class, () -> computeFundamentalComment(normalizedSymbol));
+                    cacheKey, AiFundamentalAnalysisResponse.class, () -> computeFundamentalComment(normalizedSymbol, lang));
             AiFundamentalAnalysisResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
             responseLogHelper.log(AiTaskType.FUNDAMENTAL_ANALYSIS, response.metadata());
             return response;
         } catch (Exception exception) {
             logger.warn("AI fundamental endpoint critical failure, returning fallback. symbol={}, reason={}", normalizedSymbol, exception.getMessage());
-            AiFundamentalAnalysisResponse response = dataLimitedFallback(normalizedSymbol);
+            AiFundamentalAnalysisResponse response = dataLimitedFallback(normalizedSymbol, lang);
             responseLogHelper.log(AiTaskType.FUNDAMENTAL_ANALYSIS, response.metadata());
             return response;
         }
     }
 
-    private CachedValue<AiFundamentalAnalysisResponse> computeFundamentalComment(String normalizedSymbol) {
+    private CachedValue<AiFundamentalAnalysisResponse> computeFundamentalComment(String normalizedSymbol, String lang) {
         try {
             CompanyFundamentalsResponse fundamentals = companyQueryService.getFundamentals(normalizedSymbol);
             if (fundamentals == null || fundamentals.getMessage() != null) {
                 logger.info("AI fundamental computed. symbol={}, source=RULE_BASED_FALLBACK, reason=no-fundamentals-data, ttlMinutes={}",
                         normalizedSymbol, FALLBACK_CACHE_TTL.toMinutes());
-                return new CachedValue<>(dataLimitedFallback(normalizedSymbol), FALLBACK_CACHE_TTL);
+                return new CachedValue<>(dataLimitedFallback(normalizedSymbol, lang), FALLBACK_CACHE_TTL);
             }
 
             LatestFinancials latestFinancials = extractLatestFinancials(companyQueryService.getFinancials(normalizedSymbol));
-            AiFundamentalAnalysisResponse ruleBased = fromFundamentals(normalizedSymbol, fundamentals, latestFinancials);
+            AiFundamentalAnalysisResponse ruleBased = fromFundamentals(normalizedSymbol, fundamentals, latestFinancials, lang);
             AiGenerationService.EnhancedResult<AiFundamentalAnalysisResponse> enhanced =
                     aiGenerationService.enhanceFundamental(
-                            promptBuilder.build(normalizedSymbol, fundamentals, latestFinancials.revenue(), latestFinancials.netProfit()),
+                            promptBuilder.build(normalizedSymbol, fundamentals, latestFinancials.revenue(), latestFinancials.netProfit(), lang),
                             ruleBased);
             Duration ttl = enhanced.fromLlm() ? CACHE_TTL : FALLBACK_CACHE_TTL;
             String summarySnippet = enhanced.response().summary();
@@ -91,19 +97,20 @@ public class AiFundamentalAnalysisService {
             return new CachedValue<>(enhanced.response(), ttl);
         } catch (Exception exception) {
             logger.warn("AI fundamental analysis used data-limited fallback. symbol={}, source=RULE_BASED_FALLBACK, reason={}", normalizedSymbol, exception.getMessage());
-            return new CachedValue<>(dataLimitedFallback(normalizedSymbol), FALLBACK_CACHE_TTL);
+            return new CachedValue<>(dataLimitedFallback(normalizedSymbol, lang), FALLBACK_CACHE_TTL);
         }
     }
 
     private AiFundamentalAnalysisResponse fromFundamentals(String symbol,
                                                           CompanyFundamentalsResponse fundamentals,
-                                                          LatestFinancials latestFinancials) {
+                                                          LatestFinancials latestFinancials,
+                                                          String lang) {
         FinancialHealth health = resolveHealth(fundamentals, latestFinancials);
-        List<String> strengths = buildStrengths(fundamentals, latestFinancials);
-        List<String> weaknesses = buildWeaknesses(fundamentals, latestFinancials);
-        List<String> risks = buildRisks(fundamentals, latestFinancials);
-        String growthComment = buildGrowthComment(fundamentals);
-        String summary = buildSummary(symbol, fundamentals, latestFinancials, health);
+        List<String> strengths = buildStrengths(fundamentals, latestFinancials, lang);
+        List<String> weaknesses = buildWeaknesses(fundamentals, latestFinancials, lang);
+        List<String> risks = buildRisks(fundamentals, latestFinancials, lang);
+        String growthComment = buildGrowthComment(fundamentals, lang);
+        String summary = buildSummary(symbol, fundamentals, latestFinancials, health, lang);
 
         return new AiFundamentalAnalysisResponse(
                 symbol,
@@ -145,121 +152,143 @@ public class AiFundamentalAnalysisService {
         return FinancialHealth.WATCH;
     }
 
-    private List<String> buildStrengths(CompanyFundamentalsResponse fundamentals, LatestFinancials latestFinancials) {
+    private List<String> buildStrengths(CompanyFundamentalsResponse fundamentals,
+                                        LatestFinancials latestFinancials, String lang) {
+        boolean en = "en".equals(lang);
         List<String> strengths = new ArrayList<>();
-        if (greaterThan(fundamentals.getRevenueGrowth(), "0")) {
-            strengths.add("HasÄ±lat bÃ¼yÃ¼mesi pozitif; satÄ±ÅŸ tarafÄ±nda bÃ¼yÃ¼me gÃ¼Ã§lÃ¼ gÃ¶rÃ¼nÃ¼yor.");
-        }
-        if (greaterThan(fundamentals.getNetProfitGrowth(), "0")) {
-            strengths.add("Net kÃ¢r bÃ¼yÃ¼mesi pozitif; kÃ¢rlÄ±lÄ±k yÄ±llÄ±k bazda destekleniyor.");
-        }
-        if (greaterThan(fundamentals.getRoe(), "0.15")) {
-            strengths.add("ROE yÃ¼ksek; Ã¶zkaynak kÃ¢rlÄ±lÄ±ÄŸÄ± gÃ¼Ã§lÃ¼.");
-        }
-        if (greaterThan(fundamentals.getRoa(), "0.04")) {
-            strengths.add("ROA pozitif ve anlamlÄ±; varlÄ±klarÄ±n kÃ¢r Ã¼retme gÃ¼cÃ¼ destekleyici.");
-        }
-        if (greaterThan(fundamentals.getGrossMargin(), "0.15")) {
-            strengths.add("BrÃ¼t marj operasyonel kÃ¢rlÄ±lÄ±ÄŸÄ± destekliyor.");
-        }
-        if (greaterThan(fundamentals.getNetMargin(), "0.05")) {
-            strengths.add("Net marj pozitif; ÅŸirket satÄ±ÅŸlarÄ±ndan kÃ¢r Ã¼retebiliyor.");
-        }
-        if (between(fundamentals.getPeRatio(), "0", "15")) {
-            strengths.add("F/K oranÄ± mevcut kÃ¢rlÄ±lÄ±ÄŸa gÃ¶re makul bÃ¶lgede.");
-        }
-        if (between(fundamentals.getPbRatio(), "0", "2")) {
-            strengths.add("PD/DD oranÄ± Ã¶zkaynak deÄŸerlemesine gÃ¶re aÅŸÄ±rÄ± pahalÄ± sinyal vermiyor.");
-        }
-        if (greaterThan(latestFinancials.netProfit(), "0")) {
-            strengths.add("Son raporda net kÃ¢r pozitif.");
-        }
-        if (strengths.isEmpty()) {
-            strengths.add("Mevcut veriler gÃ¼Ã§lÃ¼ bir pozitif sinyal Ã¼retmiyor; daha fazla dÃ¶nem verisi izlenmeli.");
-        }
+        if (greaterThan(fundamentals.getRevenueGrowth(), "0"))
+            strengths.add(en ? "Revenue growth is positive; sales momentum looks solid."
+                             : "Hasılat büyümesi pozitif; satış tarafında büyüme güçlü görünüyor.");
+        if (greaterThan(fundamentals.getNetProfitGrowth(), "0"))
+            strengths.add(en ? "Net profit growth is positive; profitability is supported on a year-over-year basis."
+                             : "Net kâr büyümesi pozitif; kârlılık yıllık bazda destekleniyor.");
+        if (greaterThan(fundamentals.getRoe(), "0.15"))
+            strengths.add(en ? "ROE is high; equity profitability is strong."
+                             : "ROE yüksek; özkaynak kârlılığı güçlü.");
+        if (greaterThan(fundamentals.getRoa(), "0.04"))
+            strengths.add(en ? "ROA is positive and meaningful; asset return capacity is supportive."
+                             : "ROA pozitif ve anlamlı; varlıkların kâr üretme gücü destekleyici.");
+        if (greaterThan(fundamentals.getGrossMargin(), "0.15"))
+            strengths.add(en ? "Gross margin supports operational profitability."
+                             : "Brüt marj operasyonel kârlılığı destekliyor.");
+        if (greaterThan(fundamentals.getNetMargin(), "0.05"))
+            strengths.add(en ? "Net margin is positive; the company generates profit from sales."
+                             : "Net marj pozitif; şirket satışlarından kâr üretebiliyor.");
+        if (between(fundamentals.getPeRatio(), "0", "15"))
+            strengths.add(en ? "P/E ratio is in a reasonable range relative to current earnings."
+                             : "F/K oranı mevcut kârlılığa göre makul bölgede.");
+        if (between(fundamentals.getPbRatio(), "0", "2"))
+            strengths.add(en ? "P/B ratio does not signal excessive overvaluation relative to book value."
+                             : "PD/DD oranı özkaynak değerlemesine göre aşırı pahalı sinyal vermiyor.");
+        if (greaterThan(latestFinancials.netProfit(), "0"))
+            strengths.add(en ? "Net profit was positive in the latest report."
+                             : "Son raporda net kâr pozitif.");
+        if (strengths.isEmpty())
+            strengths.add(en ? "Available data does not generate a strong positive signal; additional period data should be monitored."
+                             : "Mevcut veriler güçlü bir pozitif sinyal üretmiyor; daha fazla dönem verisi izlenmeli.");
         return List.copyOf(strengths);
     }
 
-    private List<String> buildWeaknesses(CompanyFundamentalsResponse fundamentals, LatestFinancials latestFinancials) {
+    private List<String> buildWeaknesses(CompanyFundamentalsResponse fundamentals,
+                                         LatestFinancials latestFinancials, String lang) {
+        boolean en = "en".equals(lang);
         List<String> weaknesses = new ArrayList<>();
-        if (fundamentals.getPeRatio() == null) {
-            weaknesses.add("F/K hesaplanamÄ±yor; net kÃ¢r veya piyasa deÄŸeri verisi eksik olabilir.");
-        } else if (greaterThan(fundamentals.getPeRatio(), "25")) {
-            weaknesses.add("F/K yÃ¼ksek; kÃ¢r beklentilerinin Ã¶nemli kÄ±smÄ± fiyata yansÄ±mÄ±ÅŸ olabilir.");
-        }
-        if (fundamentals.getPbRatio() == null) {
-            weaknesses.add("PD/DD hesaplanamÄ±yor; Ã¶zkaynak veya piyasa deÄŸeri verisi eksik olabilir.");
-        } else if (greaterThan(fundamentals.getPbRatio(), "3")) {
-            weaknesses.add("PD/DD yÃ¼ksek; defter deÄŸerine gÃ¶re primli fiyatlama olabilir.");
-        }
-        if (lessThan(fundamentals.getRevenueGrowth(), "0")) {
-            weaknesses.add("HasÄ±lat bÃ¼yÃ¼mesi negatif; satÄ±ÅŸ tarafÄ±nda baskÄ± var.");
-        }
-        if (lessThan(fundamentals.getNetProfitGrowth(), "0")) {
-            weaknesses.add("Net kÃ¢r bÃ¼yÃ¼mesi negatif; kÃ¢rlÄ±lÄ±k ivmesi zayÄ±flÄ±yor.");
-        }
-        if (lessThanOrEqual(fundamentals.getNetMargin(), "0") || lessThanOrEqual(latestFinancials.netProfit(), "0")) {
-            weaknesses.add("Net kÃ¢r veya net marj negatif; finansal baskÄ± sinyali oluÅŸuyor.");
-        }
-        if (weaknesses.isEmpty()) {
-            weaknesses.add("Belirgin zayÄ±flÄ±k sÄ±nÄ±rlÄ±; oranlar yine de sektÃ¶r ortalamasÄ±yla karÅŸÄ±laÅŸtÄ±rÄ±lmalÄ±.");
-        }
+        if (fundamentals.getPeRatio() == null)
+            weaknesses.add(en ? "P/E cannot be calculated; net profit or market value data may be missing."
+                              : "F/K hesaplanamıyor; net kâr veya piyasa değeri verisi eksik olabilir.");
+        else if (greaterThan(fundamentals.getPeRatio(), "25"))
+            weaknesses.add(en ? "P/E is high; a significant portion of earnings expectations may already be priced in."
+                              : "F/K yüksek; kâr beklentilerinin önemli kısmı fiyata yansımış olabilir.");
+        if (fundamentals.getPbRatio() == null)
+            weaknesses.add(en ? "P/B cannot be calculated; equity or market value data may be missing."
+                              : "PD/DD hesaplanamıyor; özkaynak veya piyasa değeri verisi eksik olabilir.");
+        else if (greaterThan(fundamentals.getPbRatio(), "3"))
+            weaknesses.add(en ? "P/B is high; pricing may be at a premium to book value."
+                              : "PD/DD yüksek; defter değerine göre primli fiyatlama olabilir.");
+        if (lessThan(fundamentals.getRevenueGrowth(), "0"))
+            weaknesses.add(en ? "Revenue growth is negative; sales-side pressure is present."
+                              : "Hasılat büyümesi negatif; satış tarafında baskı var.");
+        if (lessThan(fundamentals.getNetProfitGrowth(), "0"))
+            weaknesses.add(en ? "Net profit growth is negative; profitability momentum is weakening."
+                              : "Net kâr büyümesi negatif; kârlılık ivmesi zayıflıyor.");
+        if (lessThanOrEqual(fundamentals.getNetMargin(), "0") || lessThanOrEqual(latestFinancials.netProfit(), "0"))
+            weaknesses.add(en ? "Net profit or net margin is negative; a financial pressure signal is forming."
+                              : "Net kâr veya net marj negatif; finansal baskı sinyali oluşuyor.");
+        if (weaknesses.isEmpty())
+            weaknesses.add(en ? "No significant weakness detected; ratios should still be compared against the sector average."
+                              : "Belirgin zayıflık sınırlı; oranlar yine de sektör ortalamasıyla karşılaştırılmalı.");
         return List.copyOf(weaknesses);
     }
 
-    private List<String> buildRisks(CompanyFundamentalsResponse fundamentals, LatestFinancials latestFinancials) {
+    private List<String> buildRisks(CompanyFundamentalsResponse fundamentals,
+                                    LatestFinancials latestFinancials, String lang) {
+        boolean en = "en".equals(lang);
         List<String> risks = new ArrayList<>();
-        if (greaterThan(fundamentals.getDebtToEquity(), "2")) {
-            risks.add("BorÃ§/Ã¶zkaynak oranÄ± yÃ¼ksek; finansman maliyeti ve bilanÃ§o riski artabilir.");
-        }
-        if (lessThanOrEqual(latestFinancials.netProfit(), "0")) {
-            risks.add("Son raporda net kÃ¢r negatif veya sÄ±fÄ±r; kÃ¢rlÄ±lÄ±k sÃ¼rdÃ¼rÃ¼lebilirliÄŸi izlenmeli.");
-        }
-        if (lessThan(fundamentals.getRevenueGrowth(), "0")) {
-            risks.add("Negatif hasÄ±lat bÃ¼yÃ¼mesi operasyonel talep veya fiyatlama baskÄ±sÄ±na iÅŸaret edebilir.");
-        }
-        if (lessThan(fundamentals.getNetProfitGrowth(), "0")) {
-            risks.add("Negatif net kÃ¢r bÃ¼yÃ¼mesi marj veya maliyet baskÄ±sÄ± yaratabilir.");
-        }
-        if (fundamentals.getRevenueGrowth() == null && fundamentals.getRevenueGrowthLabel() == null) {
-            risks.add("HasÄ±lat bÃ¼yÃ¼mesi iÃ§in yeterli karÅŸÄ±laÅŸtÄ±rmalÄ± dÃ¶nem verisi yok.");
-        }
-        if (fundamentals.getNetProfitGrowth() == null && fundamentals.getNetProfitGrowthLabel() == null) {
-            risks.add("Net kÃ¢r bÃ¼yÃ¼mesi iÃ§in yeterli karÅŸÄ±laÅŸtÄ±rmalÄ± dÃ¶nem verisi yok.");
-        }
-        if (risks.isEmpty()) {
-            risks.add("Ana riskler makro koÅŸullar, sektÃ¶r dÃ¶ngÃ¼sÃ¼ ve finansal veri gÃ¼ncelliÄŸidir.");
-        }
+        if (greaterThan(fundamentals.getDebtToEquity(), "2"))
+            risks.add(en ? "Debt-to-equity ratio is high; financing cost and balance sheet risk may increase."
+                        : "Borç/özkaynak oranı yüksek; finansman maliyeti ve bilanço riski artabilir.");
+        if (lessThanOrEqual(latestFinancials.netProfit(), "0"))
+            risks.add(en ? "Net profit was negative or zero in the latest report; profitability sustainability should be monitored."
+                        : "Son raporda net kâr negatif veya sıfır; kârlılık sürdürülebilirliği izlenmeli.");
+        if (lessThan(fundamentals.getRevenueGrowth(), "0"))
+            risks.add(en ? "Negative revenue growth may signal operational demand or pricing pressure."
+                        : "Negatif hasılat büyümesi operasyonel talep veya fiyatlama baskısına işaret edebilir.");
+        if (lessThan(fundamentals.getNetProfitGrowth(), "0"))
+            risks.add(en ? "Negative net profit growth may indicate margin or cost pressure."
+                        : "Negatif net kâr büyümesi marj veya maliyet baskısı yaratabilir.");
+        if (fundamentals.getRevenueGrowth() == null && fundamentals.getRevenueGrowthLabel() == null)
+            risks.add(en ? "Insufficient comparable period data for revenue growth assessment."
+                        : "Hasılat büyümesi için yeterli karşılaştırmalı dönem verisi yok.");
+        if (fundamentals.getNetProfitGrowth() == null && fundamentals.getNetProfitGrowthLabel() == null)
+            risks.add(en ? "Insufficient comparable period data for net profit growth assessment."
+                        : "Net kâr büyümesi için yeterli karşılaştırmalı dönem verisi yok.");
+        if (risks.isEmpty())
+            risks.add(en ? "Key risks are macro conditions, sector cycle and financial data currency."
+                        : "Ana riskler makro koşullar, sektör döngüsü ve finansal veri güncelliğidir.");
         return List.copyOf(risks);
     }
 
-    private String buildGrowthComment(CompanyFundamentalsResponse fundamentals) {
+    private String buildGrowthComment(CompanyFundamentalsResponse fundamentals, String lang) {
+        boolean en = "en".equals(lang);
         List<String> comments = new ArrayList<>();
-        comments.add(growthText("HasÄ±lat", fundamentals.getRevenueGrowth(), fundamentals.getRevenueGrowthLabel()));
-        comments.add(growthText("Net kÃ¢r", fundamentals.getNetProfitGrowth(), fundamentals.getNetProfitGrowthLabel()));
-        comments.add(growthText("Aktifler", fundamentals.getAssetGrowth(), fundamentals.getAssetGrowthLabel()));
+        comments.add(growthText(en ? "Revenue"    : "Hasılat",  fundamentals.getRevenueGrowth(),   fundamentals.getRevenueGrowthLabel(), lang));
+        comments.add(growthText(en ? "Net profit" : "Net kâr",  fundamentals.getNetProfitGrowth(), fundamentals.getNetProfitGrowthLabel(), lang));
+        comments.add(growthText(en ? "Assets"     : "Aktifler", fundamentals.getAssetGrowth(),     fundamentals.getAssetGrowthLabel(), lang));
         return String.join(" ", comments);
     }
 
     private String buildSummary(String symbol,
                                 CompanyFundamentalsResponse fundamentals,
                                 LatestFinancials latestFinancials,
-                                FinancialHealth health) {
+                                FinancialHealth health,
+                                String lang) {
+        boolean en = "en".equals(lang);
+
         String netProfitContext = latestFinancials.netProfit() == null
-                ? "net kâr verisi yetersiz"
+                ? (en ? "net profit data unavailable"     : "net kâr verisi yetersiz")
                 : latestFinancials.netProfit().compareTo(BigDecimal.ZERO) < 0
-                ? "kârlılık baskı altında"
-                : "kârlılık destekleyici görünüyor";
+                ? (en ? "profitability is under pressure" : "kârlılık baskı altında")
+                : (en ? "profitability appears supportive": "kârlılık destekleyici görünüyor");
 
-        String healthContext = switch (health) {
-            case STRONG -> "finansal göstergeler genel olarak güçlü";
-            case STABLE -> "finansal tablo dengeli seyrediyor";
-            case WATCH  -> "bazı göstergeler yakın takip gerektiriyor";
-            case RISKY  -> "finansal tabloda risk sinyalleri öne çıkıyor";
-        };
+        String healthContext = en
+                ? switch (health) {
+                    case STRONG -> "financial indicators are broadly strong";
+                    case STABLE -> "financial position is balanced";
+                    case WATCH  -> "some indicators warrant close monitoring";
+                    case RISKY  -> "risk signals are prominent in the financial picture";
+                  }
+                : switch (health) {
+                    case STRONG -> "finansal göstergeler genel olarak güçlü";
+                    case STABLE -> "finansal tablo dengeli seyrediyor";
+                    case WATCH  -> "bazı göstergeler yakın takip gerektiriyor";
+                    case RISKY  -> "finansal tabloda risk sinyalleri öne çıkıyor";
+                  };
 
-        return symbol + " için kural tabanlı temel analiz: " + healthContext + "; " + netProfitContext + ". "
-                + "Büyüme, kârlılık ve borçluluk verileri bu değerlendirmenin temel girdilerini oluşturuyor.";
+        return en
+                ? symbol + " fundamental assessment: " + healthContext + "; " + netProfitContext + ". "
+                    + "Growth, profitability and leverage data are the key inputs to this assessment."
+                : symbol + " için kural tabanlı temel analiz: " + healthContext + "; " + netProfitContext + ". "
+                    + "Büyüme, kârlılık ve borçluluk verileri bu değerlendirmenin temel girdilerini oluşturuyor.";
     }
 
     private LatestFinancials extractLatestFinancials(List<CompanyFinancialReportResponse> reports) {
@@ -293,36 +322,49 @@ public class AiFundamentalAnalysisService {
         return value.getValue().multiply(BigDecimal.valueOf(value.getUnitMultiplier() != null ? value.getUnitMultiplier() : 1));
     }
 
-    private AiFundamentalAnalysisResponse dataLimitedFallback(String symbol) {
+    private AiFundamentalAnalysisResponse dataLimitedFallback(String symbol, String lang) {
         int bucket = Math.abs(symbol.hashCode()) % 3;
         FinancialHealth health = bucket == 0 ? FinancialHealth.STABLE : bucket == 1 ? FinancialHealth.WATCH : FinancialHealth.RISKY;
+        boolean en = "en".equals(lang);
         return new AiFundamentalAnalysisResponse(
                 symbol,
-                symbol + " iÃ§in temel analiz verisi sÄ±nÄ±rlÄ±. Rule-based yorum, oranlar hesaplanana kadar veri eksikliÄŸini ana risk olarak deÄŸerlendirir.",
-                List.of("Finansal veriler tamamlandÄ±ÄŸÄ±nda bÃ¼yÃ¼me, marj ve deÄŸerleme kurallarÄ± otomatik yorumlanabilir."),
-                List.of("F/K, PD/DD, ROE, ROA ve marj verileri yeterli deÄŸil."),
-                List.of("Eksik finansal veri nedeniyle kÃ¢rlÄ±lÄ±k, borÃ§luluk ve bÃ¼yÃ¼me gÃ¶rÃ¼nÃ¼mÃ¼ teyit edilemiyor."),
-                "BÃ¼yÃ¼me yorumu iÃ§in yeterli karÅŸÄ±laÅŸtÄ±rmalÄ± dÃ¶nem verisi yok.",
+                en ? symbol + ": fundamental data is limited; assessment is inconclusive pending complete financial reports."
+                   : symbol + " icin temel analiz verisi sinirli. Rule-based yorum, oranlar hesaplanana kadar veri eksikligini ana risk olarak degerlendirir.",
+                en ? List.of("Once financial data is complete, growth, margin and valuation analysis will be available.")
+                   : List.of("Finansal veriler tamamlandiginda buyume, marj ve degerleme kurallari otomatik yorumlanabilir."),
+                en ? List.of("P/E, P/B, ROE, ROA and margin data are insufficient.")
+                   : List.of("F/K, PD/DD, ROE, ROA ve marj verileri yeterli degil."),
+                en ? List.of("Missing financial data prevents confirmation of profitability, leverage and growth outlook.")
+                   : List.of("Eksik finansal veri nedeniyle karlılık, borcluluк ve buyume gorunumu teyit edilemiyor."),
+                en ? "Insufficient comparable period data for growth commentary."
+                   : "Buyume yorumu icin yeterli karsilastirmali donem verisi yok.",
                 health,
                 DISCLAIMER,
                 AiResponseMetadata.deterministic("INSUFFICIENT")
         );
     }
 
-    private String growthText(String label, BigDecimal value, String fallbackLabel) {
+    private String growthText(String label, BigDecimal value, String fallbackLabel, String lang) {
+        boolean en = "en".equals(lang);
         if (fallbackLabel != null && !fallbackLabel.isBlank()) {
             return label + ": " + fallbackLabel + ".";
         }
         if (value == null) {
-            return label + ": yeterli veri yok.";
+            return label + ": " + (en ? "insufficient data." : "yeterli veri yok.");
         }
         if (value.compareTo(BigDecimal.ZERO) > 0) {
-            return label + ": pozitif bÃ¼yÃ¼me gÃ¼Ã§lÃ¼ gÃ¶rÃ¼nÃ¼mÃ¼ destekliyor (" + formatPercent(value) + ").";
+            return en
+                ? label + ": positive growth supports a constructive outlook (" + formatPercent(value) + ")."
+                : label + ": pozitif büyüme güçlü görünümü destekliyor (" + formatPercent(value) + ").";
         }
         if (value.compareTo(BigDecimal.ZERO) < 0) {
-            return label + ": negatif bÃ¼yÃ¼me baskÄ±/risk sinyali veriyor (" + formatPercent(value) + ").";
+            return en
+                ? label + ": negative growth is a pressure/risk signal (" + formatPercent(value) + ")."
+                : label + ": negatif büyüme baskı/risk sinyali veriyor (" + formatPercent(value) + ").";
         }
-        return label + ": yatay bÃ¼yÃ¼me, sÄ±nÄ±rlÄ± ivmeye iÅŸaret ediyor.";
+        return en
+            ? label + ": flat growth, signalling limited momentum."
+            : label + ": yatay büyüme, sınırlı ivmeye işaret ediyor.";
     }
 
     private boolean greaterThan(BigDecimal value, String threshold) {

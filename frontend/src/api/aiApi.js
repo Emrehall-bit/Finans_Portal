@@ -9,48 +9,52 @@ function deduplicate(key, fn) {
   return promise;
 }
 
-export function getAiTechnicalAnalysis(symbol) {
+export function getAiTechnicalAnalysis(symbol, language = "tr") {
   return deduplicate(
-    `technical:${symbol}`,
-    () => axiosClient.get(`/api/v1/ai/technical/${encodeURIComponent(symbol)}`).then((r) => r.data)
-  );
-}
-
-export function getAiFundamentalAnalysis(symbol) {
-  return deduplicate(
-    `fundamental:${symbol}`,
-    () => axiosClient.get(`/api/v1/ai/fundamental/${encodeURIComponent(symbol)}`).then((r) => r.data)
-  );
-}
-
-export function getAiUnifiedAnalysis(symbol, type) {
-  return deduplicate(
-    `unified:${symbol}`,
+    `technical:${symbol}:${language}`,
     () => axiosClient
-      .get(`/api/v1/ai/unified/${encodeURIComponent(symbol)}`, { params: { type } })
+      .get(`/api/v1/ai/technical/${encodeURIComponent(symbol)}`, { params: { language } })
       .then((r) => r.data)
   );
 }
 
-export function getAiNewsImpactAnalysis(newsId) {
+export function getAiFundamentalAnalysis(symbol, language = "tr") {
   return deduplicate(
-    `news-impact:${newsId}`,
+    `fundamental:${symbol}:${language}`,
     () => axiosClient
-      .get(`/api/v1/ai/news-impact/${encodeURIComponent(newsId)}`)
+      .get(`/api/v1/ai/fundamental/${encodeURIComponent(symbol)}`, { params: { language } })
       .then((r) => r.data)
   );
 }
 
-export function getAiComparisonAnalysis(left, right) {
+export function getAiUnifiedAnalysis(symbol, type, language = "tr") {
+  return deduplicate(
+    `unified:${symbol}:${language}`,
+    () => axiosClient
+      .get(`/api/v1/ai/unified/${encodeURIComponent(symbol)}`, { params: { type, language } })
+      .then((r) => r.data)
+  );
+}
+
+export function getAiNewsImpactAnalysis(newsId, language = "tr") {
+  return deduplicate(
+    `news-impact:${newsId}:${language}`,
+    () => axiosClient
+      .get(`/api/v1/ai/news-impact/${encodeURIComponent(newsId)}`, { params: { language } })
+      .then((r) => r.data)
+  );
+}
+
+export function getAiComparisonAnalysis(left, right, language = "tr") {
   const pair = [left, right]
     .map((value) => String(value || "").trim().toUpperCase())
     .sort()
     .join("-");
 
   return deduplicate(
-    `compare-analysis:${pair}`,
+    `compare-analysis:${pair}:${language}`,
     () => axiosClient
-      .get("/api/v1/ai/compare-analysis", { params: { left, right } })
+      .get("/api/v1/ai/compare-analysis", { params: { left, right, language } })
       .then((r) => r.data)
   );
 }
@@ -59,17 +63,17 @@ export function getAiComparisonAnalysis(left, right) {
  * Chat is not cached — every call hits the AI provider directly.
  * Uses a 30-second timeout to accommodate AI response latency.
  */
-export function getPortfolioAiAnalysis(portfolioId) {
+export function getPortfolioAiAnalysis(portfolioId, language = "tr") {
   return deduplicate(
-    `portfolio-analysis:${portfolioId}`,
+    `portfolio-analysis:${portfolioId}:${language}`,
     () => axiosClient
-      .get(`/api/v1/ai/portfolio-analysis/${encodeURIComponent(portfolioId)}`)
+      .get(`/api/v1/ai/portfolio-analysis/${encodeURIComponent(portfolioId)}`, { params: { language } })
       .then((r) => r.data)
   );
 }
 
-export function postAiChat(message, context = null) {
+export function postAiChat(message, context = null, language = "tr") {
   return axiosClient
-    .post("/api/v1/ai/chat", { message, context }, { timeout: 30000 })
+    .post("/api/v1/ai/chat", { message, context, language }, { timeout: 30000 })
     .then((r) => r.data);
 }

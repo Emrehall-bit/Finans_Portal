@@ -142,7 +142,7 @@ class PortfolioAnalysisServiceTest {
                     var cached = (AiResponseCacheService.CachedValue<?>) supplier.get();
                     return new AiResponseCacheService.LookupResult<>(cached.value(), false);
                 });
-        when(promptBuilder.build(any())).thenReturn("prompt");
+        when(promptBuilder.build(any(), anyString())).thenReturn("prompt");
         when(aiGatewayService.generate(eq(AiTaskType.PORTFOLIO_ANALYSIS), anyString()))
                 .thenReturn(Optional.of(new AiResponse("""
                         {

@@ -84,7 +84,7 @@ class ComparisonAnalysisServiceTest {
         service.getComparisonAnalysis("thyao", "pgsus");
         service.getComparisonAnalysis("PGSUS", "THYAO");
 
-        verify(cacheService, times(2)).getOrComputeWithDynamicTtlStatus(eq("ai:comparison-analysis:PGSUS-THYAO"), eq(ComparisonAnalysisResponse.class), any());
+        verify(cacheService, times(2)).getOrComputeWithDynamicTtlStatus(eq("ai:comparison-analysis:PGSUS-THYAO:tr"), eq(ComparisonAnalysisResponse.class), any());
     }
 
     @Test
@@ -166,7 +166,7 @@ class ComparisonAnalysisServiceTest {
                     var cached = (AiResponseCacheService.CachedValue<?>) supplier.get();
                     return new AiResponseCacheService.LookupResult<>(cached.value(), false);
                 });
-        when(promptBuilder.build(any())).thenReturn("prompt");
+        when(promptBuilder.build(any(), anyString())).thenReturn("prompt");
         return service.getComparisonAnalysis(left, right);
     }
 

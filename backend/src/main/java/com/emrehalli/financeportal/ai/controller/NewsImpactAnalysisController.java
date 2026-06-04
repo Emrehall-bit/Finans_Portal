@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -31,9 +32,11 @@ public class NewsImpactAnalysisController {
      * Cache key: ai:news-impact:{newsId}, TTL 24 h (LLM) / 12 h (fallback).
      */
     @GetMapping("/news-impact/{newsId}")
-    public ResponseEntity<NewsImpactResponse> getNewsImpactAnalysis(@PathVariable Long newsId) {
+    public ResponseEntity<NewsImpactResponse> getNewsImpactAnalysis(
+            @PathVariable Long newsId,
+            @RequestParam(defaultValue = "tr") String language) {
         featureAccessService.logAccess(AiFeatureType.NEWS_IMPACT_ANALYSIS);
-        return ResponseEntity.ok(newsImpactAnalysisService.getNewsImpactAnalysis(newsId));
+        return ResponseEntity.ok(newsImpactAnalysisService.getNewsImpactAnalysis(newsId, language));
     }
 }
 

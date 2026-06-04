@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.ai.portfolio;
 
 import com.emrehalli.financeportal.ai.portfolio.PortfolioAnalysisContext.PositionSnapshot;
+import com.emrehalli.financeportal.ai.prompt.AiPromptBuilder;
 import com.emrehalli.financeportal.ai.portfolio.PortfolioAnalysisResponse.DataQuality;
 import com.emrehalli.financeportal.ai.dto.AiResponseMetadata;
 import com.emrehalli.financeportal.ai.postprocess.AiResponsePostProcessor;
@@ -72,17 +73,22 @@ public class PortfolioAnalysisService {
     }
 
     public PortfolioAnalysisResponse getPortfolioAnalysis(Long portfolioId) {
+        return getPortfolioAnalysis(portfolioId, "tr");
+    }
+
+    public PortfolioAnalysisResponse getPortfolioAnalysis(Long portfolioId, String language) {
         Portfolio portfolio = portfolioService.getPortfolioEntityById(portfolioId);
         PortfolioValuationResult valuation = portfolioHoldingService.getPortfolioValuation(portfolioId);
         List<PortfolioHoldingDto> holdings = valuation.holdings();
         PortfolioSummaryResponse summary = valuation.summary();
-        String cacheKey = buildCacheKey(portfolio, holdings);
+        String lang = AiPromptBuilder.normLang(language);
+        String cacheKey = buildCacheKey(portfolio, holdings) + ":" + lang;
 
         try {
             LookupResult<PortfolioAnalysisResponse> lookup = cacheService.getOrComputeWithDynamicTtlStatus(
                     cacheKey,
                     PortfolioAnalysisResponse.class,
-                    () -> compute(portfolio, holdings, summary)
+                    () -> compute(portfolio, holdings, summary, lang)
             );
             PortfolioAnalysisResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
             responseLogHelper.log(AiTaskType.PORTFOLIO_ANALYSIS, response.metadata());
@@ -101,7 +107,8 @@ public class PortfolioAnalysisService {
 
     private CachedValue<PortfolioAnalysisResponse> compute(Portfolio portfolio,
                                                            List<PortfolioHoldingDto> holdings,
-                                                           PortfolioSummaryResponse summary) {
+                                                           PortfolioSummaryResponse summary,
+                                                           String lang) {
         PortfolioAnalysisContext context = buildContext(portfolio, holdings, summary);
         PortfolioAnalysisResponse fallback = deterministicFallback(context);
 
@@ -109,7 +116,7 @@ public class PortfolioAnalysisService {
             return new CachedValue<>(fallback, CACHE_TTL);
         }
 
-        String prompt = promptBuilder.build(context);
+        String prompt = promptBuilder.build(context, lang);
         Optional<AiResponse> aiResponse = aiGatewayService.generate(AiTaskType.PORTFOLIO_ANALYSIS, prompt);
         if (aiResponse.isEmpty()) {
             logger.warn("AI portfolio generation unavailable. portfolioId={}", portfolio.getId());

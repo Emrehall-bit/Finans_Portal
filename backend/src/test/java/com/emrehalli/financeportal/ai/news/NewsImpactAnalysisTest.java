@@ -87,7 +87,7 @@ class NewsImpactAnalysisTest {
         service.getNewsImpactAnalysis(42L);
 
         verify(cacheService).getOrComputeWithDynamicTtlStatus(
-                eq("ai:news-impact:42"),
+                eq("ai:news-impact:42:tr"),
                 eq(NewsImpactResponse.class),
                 any()
         );

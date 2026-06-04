@@ -8,12 +8,14 @@ import java.util.StringJoiner;
 @Component
 public class ComparisonAnalysisPromptBuilder implements AiPromptBuilder {
 
-    public String build(ComparisonAnalysisContext context) {
+    public String build(ComparisonAnalysisContext context, String language) {
         ComparisonAnalysisContext.InstrumentSnapshot left = context.left();
         ComparisonAnalysisContext.InstrumentSnapshot right = context.right();
 
         StringJoiner prompt = new StringJoiner("\n");
-        prompt.add("Sen finansal veri uydurmayan premium bir karsilastirma asistansÄ±n.");
+        prompt.add(AiPromptBuilder.languageInstruction(language).trim());
+        prompt.add("");
+        prompt.add("Sen finansal veri uydurmayan premium bir karsilastirma asistanisin.");
         prompt.add("Sadece verilen deterministic verilere dayan.");
         prompt.add("Veri olmayan alanlarda acikca veri sinirli de.");
         prompt.add("Yatirim tavsiyesi verme.");
@@ -69,19 +71,9 @@ public class ComparisonAnalysisPromptBuilder implements AiPromptBuilder {
         return block.toString();
     }
 
-    private String yesNo(boolean value) {
-        return value ? "EVET" : "HAYIR";
-    }
-
-    private String value(Object value) {
-        return value == null ? "-" : String.valueOf(value);
-    }
-
+    private String yesNo(boolean value) { return value ? "EVET" : "HAYIR"; }
+    private String value(Object value)   { return value == null ? "-" : String.valueOf(value); }
     private String list(java.util.List<String> values) {
         return values == null || values.isEmpty() ? "-" : String.join(" | ", values);
     }
 }
-
-
-
-

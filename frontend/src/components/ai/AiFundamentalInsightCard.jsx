@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getAiFundamentalAnalysis } from "../../api/aiApi";
 import { useAuth } from "../../auth/AuthContext";
 import AiCard from "./AiCard";
@@ -7,6 +8,7 @@ import AiResponseMeta from "./AiResponseMeta";
 
 export default function AiFundamentalInsightCard({ symbol, availableData = {} }) {
   const { isAuthenticated } = useAuth();
+  const { t, i18n } = useTranslation();
   const requestSymbol = availableData.quote?.symbol || availableData.quote?.code || symbol;
   const [comment, setComment] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -28,14 +30,14 @@ export default function AiFundamentalInsightCard({ symbol, availableData = {} })
       try {
         setLoading(true);
         setError("");
-        const data = await getAiFundamentalAnalysis(requestSymbol);
+        const data = await getAiFundamentalAnalysis(requestSymbol, i18n.language);
         if (active) {
           setComment(data ?? null);
         }
       } catch {
         if (active) {
           setComment(null);
-          setError("AI finansal degerlendirme su anda uretilemedi.");
+          setError(t("aiCards.fundamental.error"));
         }
       } finally {
         if (active) {
@@ -49,43 +51,43 @@ export default function AiFundamentalInsightCard({ symbol, availableData = {} })
     return () => {
       active = false;
     };
-  }, [isGuest, requestSymbol]);
+  }, [isGuest, requestSymbol, i18n.language, t]);
 
   if (isGuest) {
     return (
       <AiLockedCard
-        featureName="AI Finansal Degerlendirme"
-        description={`${symbol || "Sirket"} icin temel AI yorumunu gormek uzere giris yapin.`}
+        featureName={t("aiCards.fundamental.title")}
+        description={t("aiCards.fundamental.guestDescription", { symbol: symbol || t("aiCards.company") })}
       />
     );
   }
 
   return (
     <AiCard
-      title="AI Finansal Degerlendirme"
-      subtitle={`${symbol || "Sirket"} icin backend destekli finansal yorum`}
+      title={t("aiCards.fundamental.title")}
+      subtitle={t("aiCards.fundamental.subtitle", { symbol: symbol || t("aiCards.company") })}
       footer={comment ? <AiResponseMeta metadata={comment.metadata} /> : null}
     >
-      {loading ? <p className="ai-state-message">AI finansal degerlendirme hazirlaniyor...</p> : null}
+      {loading ? <p className="ai-state-message">{t("aiCards.fundamental.loading")}</p> : null}
       {!loading && error ? <p className="ai-state-message error">{error}</p> : null}
       {!loading && !error && comment ? (
         <>
           <p>{comment.summary}</p>
 
           <div className="ai-metric-strip">
-            <AiMiniMetric label="Saglik" value={formatHealth(comment.financialHealth)} tone={healthTone(comment.financialHealth)} />
-            <AiMiniMetric label="Guclu Yan" value={String(comment.strengths?.length ?? 0)} />
-            <AiMiniMetric label="Risk" value={String(comment.risks?.length ?? 0)} tone={(comment.risks?.length ?? 0) > 1 ? "is-risky" : ""} />
+            <AiMiniMetric label={t("aiCards.health")} value={formatHealth(comment.financialHealth, t)} tone={healthTone(comment.financialHealth)} />
+            <AiMiniMetric label={t("aiCards.strengths")} value={String(comment.strengths?.length ?? 0)} />
+            <AiMiniMetric label={t("aiCards.risks")} value={String(comment.risks?.length ?? 0)} tone={(comment.risks?.length ?? 0) > 1 ? "is-risky" : ""} />
           </div>
 
           <div className="ai-fundamental-grid">
-            <AiList title="Guclu Yanlar" items={comment.strengths} />
-            <AiList title="Zayif Yanlar" items={comment.weaknesses} />
-            <AiList title="Riskler" items={comment.risks} />
+            <AiList title={t("aiCards.strengthsList")} items={comment.strengths} t={t} />
+            <AiList title={t("aiCards.weaknessesList")} items={comment.weaknesses} t={t} />
+            <AiList title={t("aiCards.risksList")} items={comment.risks} t={t} />
           </div>
 
           <p>
-            <strong>Buyume:</strong> {comment.growthComment || "Yeterli buyume verisi yok."}
+            <strong>{t("aiCards.growth")}:</strong> {comment.growthComment || t("aiCards.fundamental.noGrowthData")}
           </p>
         </>
       ) : null}
@@ -102,8 +104,8 @@ function AiMiniMetric({ label, value, tone = "" }) {
   );
 }
 
-function AiList({ title, items }) {
-  const rows = Array.isArray(items) && items.length ? items : ["Veri yok"];
+function AiList({ title, items, t }) {
+  const rows = Array.isArray(items) && items.length ? items : [t("aiCards.noData")];
   return (
     <div className="ai-fundamental-list">
       <strong>{title}</strong>
@@ -116,17 +118,17 @@ function AiList({ title, items }) {
   );
 }
 
-function formatHealth(value) {
+function formatHealth(value, t) {
   return {
-    STRONG: "Guclu",
-    STABLE: "Dengeli",
-    WATCH: "Izle",
-    RISKY: "Riskli",
+    STRONG: t("aiCards.healthStrong"),
+    STABLE: t("aiCards.healthStable"),
+    WATCH:  t("aiCards.healthWatch"),
+    RISKY:  t("aiCards.healthRisky"),
   }[value] ?? "-";
 }
 
 function healthTone(value) {
   if (value === "STRONG") return "is-positive";
-  if (value === "RISKY") return "is-risky";
+  if (value === "RISKY")  return "is-risky";
   return "is-neutral";
 }

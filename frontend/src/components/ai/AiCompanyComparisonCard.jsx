@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, GitCompareArrows, LockKeyhole, ShieldAlert, Sparkles } from "lucide-react";
 import { getAiComparisonAnalysis } from "../../api/aiApi";
 import { getMarkets } from "../../api/marketApi";
@@ -9,6 +10,7 @@ import AiResponseMeta from "./AiResponseMeta";
 
 export default function AiCompanyComparisonCard({ leftSymbol, displaySymbol, instrumentType = "STOCK" }) {
   const { isAuthenticated, isPremium } = useAuth();
+  const { t, i18n } = useTranslation();
   const [rightSymbol, setRightSymbol] = useState("");
   const [quotes, setQuotes] = useState([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
@@ -77,14 +79,14 @@ export default function AiCompanyComparisonCard({ leftSymbol, displaySymbol, ins
     }
 
     if (!normalizedRight) {
-      setValidationMessage("Karsilastirmak icin ikinci enstrumani secmelisiniz.");
+      setValidationMessage(t("aiCards.comparison.selectSecond"));
       setError("");
       setData(null);
       return;
     }
 
     if (normalizeCode(normalizedRight) === normalizedLeft) {
-      setValidationMessage("Ayni enstruman karsilastirilamaz.");
+      setValidationMessage(t("aiCards.comparison.sameSymbol"));
       setError("");
       setData(null);
       return;
@@ -94,11 +96,11 @@ export default function AiCompanyComparisonCard({ leftSymbol, displaySymbol, ins
       setLoading(true);
       setValidationMessage("");
       setError("");
-      const response = await getAiComparisonAnalysis(leftSymbol, normalizedRight);
+      const response = await getAiComparisonAnalysis(leftSymbol, normalizedRight, i18n.language);
       setData(response ?? null);
     } catch (requestError) {
       setData(null);
-      setError(extractErrorMessage(requestError, "AI karsilastirma su anda uretilemedi."));
+      setError(extractErrorMessage(requestError, t("aiCards.comparison.error")));
     } finally {
       setLoading(false);
     }
@@ -107,8 +109,8 @@ export default function AiCompanyComparisonCard({ leftSymbol, displaySymbol, ins
   if (!isAuthenticated) {
     return (
       <AiLockedCard
-        featureName="AI ile Karsilastir"
-        description="Mevcut enstrumani ikinci bir enstrumanla AI yorumu uzerinden karsilastirabilirsiniz."
+        featureName={t("aiCards.comparison.title")}
+        description={t("aiCards.comparison.guestDescription")}
       />
     );
   }
@@ -116,8 +118,8 @@ export default function AiCompanyComparisonCard({ leftSymbol, displaySymbol, ins
   if (!canUse) {
     return (
       <AiLockedCard
-        featureName="AI ile Karsilastir"
-        description="Iki enstrumanin teknik, temel ve risk farklarini premium AI yorumu ile gorebilirsiniz."
+        featureName={t("aiCards.comparison.title")}
+        description={t("aiCards.comparison.premiumDescription")}
         requiresPremium
       />
     );
@@ -133,8 +135,8 @@ export default function AiCompanyComparisonCard({ leftSymbol, displaySymbol, ins
             <GitCompareArrows size={17} />
           </span>
           <div>
-            <h3>AI ile Karsilastir</h3>
-            <p>{displaySymbol || leftSymbol} icin ikinci enstrumanla premium yorum karsilastirmasi</p>
+            <h3>{t("aiCards.comparison.title")}</h3>
+            <p>{t("aiCards.comparison.subtitle", { symbol: displaySymbol || leftSymbol })}</p>
           </div>
         </div>
         <span className="ai-card-badge ai-unified-badge">PRO</span>
@@ -143,17 +145,17 @@ export default function AiCompanyComparisonCard({ leftSymbol, displaySymbol, ins
       <div className="ai-card-body">
         <div className="ai-comparison-toolbar">
           <div className="market-filter-field">
-            <span>Mevcut enstruman</span>
+            <span>{t("aiCards.comparison.currentInstrument")}</span>
             <input value={displaySymbol || leftSymbol || ""} disabled />
           </div>
 
           <div className="market-filter-field">
-            <span>Karsilastirilacak enstruman</span>
+            <span>{t("aiCards.comparison.compareWith")}</span>
             <input
               list={datalistId}
               value={rightSymbol}
               onChange={(event) => setRightSymbol(event.target.value)}
-              placeholder={loadingQuotes ? "Liste yukleniyor..." : "PGSUS, SDTTR, ETHUSDT..."}
+              placeholder={loadingQuotes ? t("aiCards.comparison.loadingList") : "PGSUS, SDTTR, ETHUSDT..."}
             />
             <datalist id={datalistId}>
               {compareOptions.map((item) => (
@@ -165,7 +167,7 @@ export default function AiCompanyComparisonCard({ leftSymbol, displaySymbol, ins
           </div>
 
           <button type="button" className="ai-comparison-action" onClick={handleCompare} disabled={loading}>
-            {loading ? "Karsilastiriliyor..." : "AI ile Karsilastir"}
+            {loading ? t("aiCards.comparison.comparing") : t("aiCards.comparison.compareButton")}
           </button>
         </div>
 
@@ -184,24 +186,24 @@ export default function AiCompanyComparisonCard({ leftSymbol, displaySymbol, ins
               <div className="ai-comparison-warning">
                 <AlertTriangle size={14} aria-hidden="true" />
                 <span>
-                  Veri kalitesi {formatDataQuality(data.dataQuality)}. Yorum bazi alanlarda sinirli veriyle uretildi.
+                  {t("aiCards.comparison.dataQualityWarning", { quality: formatDataQuality(data.dataQuality, t) })}
                 </span>
               </div>
             ) : null}
 
-            <ComparisonSection icon={<Sparkles size={14} aria-hidden="true" />} title="Ozet" content={data.summary} />
-            <ComparisonSection icon={<GitCompareArrows size={14} aria-hidden="true" />} title="Teknik gorunum" content={data.technicalComparison} />
-            <ComparisonSection icon={<Sparkles size={14} aria-hidden="true" />} title="Temel gorunum" content={data.fundamentalComparison} />
-            <ComparisonSection icon={<ShieldAlert size={14} aria-hidden="true" />} title="Risk karsilastirmasi" content={data.riskComparison} />
+            <ComparisonSection icon={<Sparkles size={14} aria-hidden="true" />} title={t("aiCards.portfolio.summary")} content={data.summary} />
+            <ComparisonSection icon={<GitCompareArrows size={14} aria-hidden="true" />} title={t("aiCards.comparison.technicalView")} content={data.technicalComparison} />
+            <ComparisonSection icon={<Sparkles size={14} aria-hidden="true" />} title={t("aiCards.comparison.fundamentalView")} content={data.fundamentalComparison} />
+            <ComparisonSection icon={<ShieldAlert size={14} aria-hidden="true" />} title={t("aiCards.comparison.riskComparison")} content={data.riskComparison} />
 
             <div className="ai-comparison-grid">
-              <ListBlock title={`${displaySymbol || leftSymbol} guclu yonler`} items={data.strengthsLeft} tone="positive" />
-              <ListBlock title={`${formatComparedSymbol(data.rightSymbol)} guclu yonler`} items={data.strengthsRight} tone="positive" />
-              <ListBlock title={`${displaySymbol || leftSymbol} zayif yonler`} items={data.weaknessesLeft} tone="risk" />
-              <ListBlock title={`${formatComparedSymbol(data.rightSymbol)} zayif yonler`} items={data.weaknessesRight} tone="risk" />
+              <ListBlock title={t("aiCards.comparison.strengths", { symbol: displaySymbol || leftSymbol })} items={data.strengthsLeft} tone="positive" />
+              <ListBlock title={t("aiCards.comparison.strengths", { symbol: formatComparedSymbol(data.rightSymbol) })} items={data.strengthsRight} tone="positive" />
+              <ListBlock title={t("aiCards.comparison.weaknesses", { symbol: displaySymbol || leftSymbol })} items={data.weaknessesLeft} tone="risk" />
+              <ListBlock title={t("aiCards.comparison.weaknesses", { symbol: formatComparedSymbol(data.rightSymbol) })} items={data.weaknessesRight} tone="risk" />
             </div>
 
-            <ComparisonSection icon={<Sparkles size={14} aria-hidden="true" />} title="Final yorum" content={data.finalComment} />
+            <ComparisonSection icon={<Sparkles size={14} aria-hidden="true" />} title={t("aiCards.portfolio.finalComment")} content={data.finalComment} />
           </div>
         ) : null}
       </div>
@@ -278,17 +280,13 @@ function formatComparedSymbol(symbol) {
   return String(symbol || "").trim() || "-";
 }
 
-function formatDataQuality(value) {
+function formatDataQuality(value, t) {
   switch (String(value || "").toUpperCase()) {
-    case "COMPLETE":
-      return "yuksek";
-    case "PARTIAL":
-      return "orta";
+    case "COMPLETE":     return t("aiCards.portfolio.qualityHigh");
+    case "PARTIAL":      return t("aiCards.portfolio.qualityMedium");
     case "LIMITED":
     case "LOW":
-    case "INSUFFICIENT":
-      return "dusuk";
-    default:
-      return "bilinmiyor";
+    case "INSUFFICIENT": return t("aiCards.portfolio.qualityLow");
+    default:             return t("aiCards.portfolio.qualityUnknown");
   }
 }

@@ -26,9 +26,10 @@ public class AiComparisonAnalysisController {
     @GetMapping("/compare-analysis")
     public ResponseEntity<ComparisonAnalysisResponse> getComparisonAnalysis(
             @RequestParam String left,
-            @RequestParam String right) {
+            @RequestParam String right,
+            @RequestParam(defaultValue = "tr") String language) {
         featureAccessService.logAccess(AiFeatureType.COMPANY_COMPARISON_AI);
-        return ResponseEntity.ok(comparisonAnalysisService.getComparisonAnalysis(left, right));
+        return ResponseEntity.ok(comparisonAnalysisService.getComparisonAnalysis(left, right, language));
     }
 }
 

@@ -84,7 +84,7 @@ class UnifiedAiAnalysisTest {
         service.getUnifiedAnalysis("thyao", "STOCK");
 
         verify(cacheService).getOrComputeWithDynamicTtlStatus(
-                eq("ai:unified:THYAO"),
+                eq("ai:unified:THYAO:tr"),
                 eq(UnifiedAnalysisResponse.class),
                 any()
         );
@@ -101,8 +101,8 @@ class UnifiedAiAnalysisTest {
                 }
                 """;
 
-        when(technicalService.getTechnicalComment("THYAO")).thenReturn(makeTech());
-        when(fundamentalService.getFundamentalComment("THYAO")).thenReturn(makeFund());
+        when(technicalService.getTechnicalComment("THYAO", "tr")).thenReturn(makeTech());
+        when(fundamentalService.getFundamentalComment("THYAO", "tr")).thenReturn(makeFund());
         when(aiGatewayService.generate(eq(AiTaskType.PAGE_ANALYSIS), anyString()))
                 .thenReturn(Optional.of(new AiResponse(llmJson, AiProviderType.GROQ, false, "llama3", 500L)));
         when(cacheService.getOrComputeWithDynamicTtlStatus(anyString(), eq(UnifiedAnalysisResponse.class), any()))
@@ -154,8 +154,8 @@ class UnifiedAiAnalysisTest {
 
     @Test
     void insufficientFundamentalData_skipsLlmCall() {
-        when(technicalService.getTechnicalComment("NEWCO")).thenReturn(makeTech());
-        when(fundamentalService.getFundamentalComment("NEWCO")).thenReturn(makeInsufficientFund());
+        when(technicalService.getTechnicalComment("NEWCO", "tr")).thenReturn(makeTech());
+        when(fundamentalService.getFundamentalComment("NEWCO", "tr")).thenReturn(makeInsufficientFund());
         when(cacheService.getOrComputeWithDynamicTtlStatus(anyString(), eq(UnifiedAnalysisResponse.class), any()))
                 .thenAnswer(invocation -> {
                     var supplier = (java.util.function.Supplier<?>) invocation.getArgument(2);

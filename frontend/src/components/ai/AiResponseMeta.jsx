@@ -1,4 +1,7 @@
+import { useTranslation } from "react-i18next";
+
 export default function AiResponseMeta({ metadata, providerUsed, fallbackUsed = false, dataQuality = "" }) {
+  const { t, i18n } = useTranslation();
   const meta = normalizeMetadata(metadata, providerUsed, fallbackUsed, dataQuality);
   if (!meta) {
     return null;
@@ -7,27 +10,27 @@ export default function AiResponseMeta({ metadata, providerUsed, fallbackUsed = 
   const segments = [];
 
   if (meta.deterministicFallbackUsed) {
-    segments.push("Fallback analiz");
+    segments.push(t("aiCards.meta.fallbackAnalysis"));
   } else if (meta.providerUsed) {
     const modelLabel = humanizeModel(meta.modelUsed);
     segments.push(modelLabel ? `AI: ${meta.providerUsed} · ${modelLabel}` : `AI: ${meta.providerUsed}`);
   }
 
   if (meta.cacheHit) {
-    segments.push("Cache");
+    segments.push(t("aiCards.meta.cache"));
   }
 
   if (meta.fallbackUsed && !meta.deterministicFallbackUsed) {
-    segments.push("Fallback provider");
+    segments.push(t("aiCards.meta.fallbackProvider"));
   }
 
-  const qualityLabel = qualityHint(meta.dataQuality);
+  const qualityLabel = qualityHint(meta.dataQuality, t);
   if (qualityLabel) {
     segments.push(qualityLabel);
   }
 
   if (meta.generatedAt) {
-    const generatedLabel = formatGeneratedAt(meta.generatedAt);
+    const generatedLabel = formatGeneratedAt(meta.generatedAt, i18n.language);
     if (generatedLabel) {
       segments.push(generatedLabel);
     }
@@ -72,25 +75,13 @@ function normalizeMetadata(metadata, providerUsed, fallbackUsed, dataQuality) {
 
 function humanizeModel(value) {
   const raw = String(value || "").trim();
-  if (!raw) {
-    return "";
-  }
+  if (!raw) return "";
 
-  if (raw.startsWith("llama-3.3")) {
-    return "Llama 3.3";
-  }
-  if (raw.startsWith("llama-3.1")) {
-    return "Llama 3.1";
-  }
-  if (raw.startsWith("gemini-2.5-flash-lite")) {
-    return "Gemini 2.5 Flash Lite";
-  }
-  if (raw.startsWith("gemini-2.5-flash")) {
-    return "Gemini 2.5 Flash";
-  }
-  if (raw.startsWith("gemini-1.5")) {
-    return "Gemini 1.5";
-  }
+  if (raw.startsWith("llama-3.3"))            return "Llama 3.3";
+  if (raw.startsWith("llama-3.1"))            return "Llama 3.1";
+  if (raw.startsWith("gemini-2.5-flash-lite")) return "Gemini 2.5 Flash Lite";
+  if (raw.startsWith("gemini-2.5-flash"))     return "Gemini 2.5 Flash";
+  if (raw.startsWith("gemini-1.5"))           return "Gemini 1.5";
 
   return raw
     .split("-")
@@ -99,23 +90,19 @@ function humanizeModel(value) {
     .join(" ");
 }
 
-function qualityHint(value) {
+function qualityHint(value, t) {
   switch (String(value || "").toUpperCase()) {
-    case "PARTIAL":
-      return "Veri kismi";
+    case "PARTIAL":      return t("aiCards.meta.qualityPartial");
     case "LOW":
     case "LIMITED":
-    case "INSUFFICIENT":
-      return "Veri sinirli";
-    default:
-      return "";
+    case "INSUFFICIENT": return t("aiCards.meta.qualityLimited");
+    default:             return "";
   }
 }
 
-function formatGeneratedAt(value) {
+function formatGeneratedAt(value, language) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return date.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  if (Number.isNaN(date.getTime())) return "";
+  const locale = language && language.startsWith("en") ? "en-GB" : "tr-TR";
+  return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }

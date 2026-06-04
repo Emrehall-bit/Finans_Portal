@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getAiTechnicalAnalysis } from "../../api/aiApi";
 import { useAuth } from "../../auth/AuthContext";
 import AiCard from "./AiCard";
@@ -7,6 +8,7 @@ import AiResponseMeta from "./AiResponseMeta";
 
 export default function AiTechnicalInsightCard({ symbol, availableData = {}, highRisk = false }) {
   const { isAuthenticated } = useAuth();
+  const { t, i18n } = useTranslation();
   const requestSymbol = availableData.quote?.symbol || availableData.quote?.code || symbol;
   const [comment, setComment] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -28,14 +30,14 @@ export default function AiTechnicalInsightCard({ symbol, availableData = {}, hig
       try {
         setLoading(true);
         setError("");
-        const data = await getAiTechnicalAnalysis(requestSymbol);
+        const data = await getAiTechnicalAnalysis(requestSymbol, i18n.language);
         if (active) {
           setComment(data ?? null);
         }
       } catch {
         if (active) {
           setComment(null);
-          setError("AI teknik yorum su anda uretilemedi.");
+          setError(t("aiCards.technical.error"));
         }
       } finally {
         if (active) {
@@ -49,45 +51,52 @@ export default function AiTechnicalInsightCard({ symbol, availableData = {}, hig
     return () => {
       active = false;
     };
-  }, [isGuest, requestSymbol]);
+  }, [isGuest, requestSymbol, i18n.language, t]);
 
   if (isGuest) {
     return (
       <AiLockedCard
-        featureName="AI Teknik Gorunum"
-        description={`${symbol || "Varlik"} icin kisa AI teknik yorumunu gormek uzere giris yapin.`}
+        featureName={t("aiCards.technical.title")}
+        description={t("aiCards.technical.guestDescription", { symbol: symbol || t("aiCards.asset") })}
       />
     );
   }
 
   return (
     <AiCard
-      title="AI Teknik Gorunum"
-      subtitle={`${symbol || "Varlik"} icin backend destekli teknik yorum`}
+      title={t("aiCards.technical.title")}
+      subtitle={t("aiCards.technical.subtitle", { symbol: symbol || t("aiCards.asset") })}
       footer={comment ? <AiResponseMeta metadata={comment.metadata} /> : null}
     >
-      {loading ? <p className="ai-state-message">AI teknik analiz hazirlaniyor...</p> : null}
+      {loading ? <p className="ai-state-message">{t("aiCards.technical.loading")}</p> : null}
       {!loading && error ? <p className="ai-state-message error">{error}</p> : null}
       {!loading && !error && comment ? (
         <>
+          {comment.keyObservation ? (
+            <div className="ai-key-observation">
+              <small>{t("aiCards.keyObservation")}</small>
+              <p>{comment.keyObservation}</p>
+            </div>
+          ) : null}
+
           <p>{comment.summary}</p>
 
           <div className="ai-metric-strip">
-            <AiMiniMetric label="Risk" value={formatRisk(comment.riskLevel)} tone={riskTone(comment.riskLevel)} />
-            <AiMiniMetric label="Sinyal" value={formatSignal(comment.signal)} tone={signalTone(comment.signal)} />
-            <AiMiniMetric label="Sembol" value={comment.symbol || requestSymbol || "-"} />
+            <AiMiniMetric label={t("aiCards.risk")} value={formatRisk(comment.riskLevel, t)} tone={riskTone(comment.riskLevel)} />
+            <AiMiniMetric label={t("aiCards.signal")} value={formatSignal(comment.signal, t)} tone={signalTone(comment.signal)} />
+            <AiMiniMetric label={t("aiCards.symbol")} value={comment.symbol || requestSymbol || "-"} />
           </div>
 
           <ul className="ai-insight-list">
             <li>
-              <strong>Trend:</strong> {comment.trendComment}
+              <strong>{t("aiCards.trend")}:</strong> {comment.trendComment}
             </li>
             <li>
-              <strong>Momentum:</strong> {comment.momentumComment}
+              <strong>{t("aiCards.momentum")}:</strong> {comment.momentumComment}
             </li>
             {highRisk ? (
               <li>
-                <strong>Uyari:</strong> Vadeli islemler kaldirac nedeniyle yuksek risk tasir.
+                <strong>{t("aiCards.warning")}:</strong> {t("aiCards.technical.futuresWarning")}
               </li>
             ) : null}
           </ul>
@@ -106,20 +115,16 @@ function AiMiniMetric({ label, value, tone = "" }) {
   );
 }
 
-function formatRisk(value) {
-  return {
-    LOW: "Dusuk",
-    MEDIUM: "Orta",
-    HIGH: "Yuksek",
-  }[value] ?? "-";
+function formatRisk(value, t) {
+  return { LOW: t("aiCards.riskLow"), MEDIUM: t("aiCards.riskMedium"), HIGH: t("aiCards.riskHigh") }[value] ?? "-";
 }
 
-function formatSignal(value) {
+function formatSignal(value, t) {
   return {
-    POSITIVE: "Pozitif",
-    NEUTRAL: "Notr",
-    NEGATIVE: "Negatif",
-    RISKY: "Riskli",
+    POSITIVE: t("aiCards.signalPositive"),
+    NEUTRAL:  t("aiCards.signalNeutral"),
+    NEGATIVE: t("aiCards.signalNegative"),
+    RISKY:    t("aiCards.signalRisky"),
   }[value] ?? "-";
 }
 

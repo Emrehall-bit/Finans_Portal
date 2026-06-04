@@ -1,5 +1,6 @@
 import { Crown, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 
 export default function AiLockedCard({
@@ -9,12 +10,13 @@ export default function AiLockedCard({
 }) {
   const navigate = useNavigate();
   const { isAuthenticated, login } = useAuth();
+  const { t } = useTranslation();
 
   const isGuest = !isAuthenticated;
   const message = isGuest
-    ? "Bu özelliği kullanmak için giriş yapmalısınız."
-    : "Bu özellik premium kullanıcılar için geçerlidir.";
-  const ctaLabel = isGuest ? "Giriş Yap" : "Premium'a Geç";
+    ? t("aiCards.locked.guestMessage")
+    : t("aiCards.locked.premiumMessage");
+  const ctaLabel = isGuest ? t("aiCards.locked.loginCta") : t("aiCards.locked.upgradeCta");
 
   function handleAction() {
     if (isGuest) {
@@ -25,7 +27,7 @@ export default function AiLockedCard({
   }
 
   return (
-    <section className="ai-card ai-premium-gate-card" aria-label={`${featureName} kilitli`}>
+    <section className="ai-card ai-premium-gate-card" aria-label={t("aiCards.locked.ariaLabel", { name: featureName })}>
       <div className="ai-premium-gate-glow" aria-hidden="true" />
 
       <div className="ai-premium-gate-body">
@@ -38,7 +40,7 @@ export default function AiLockedCard({
             <h3 className="ai-premium-gate-title">{featureName}</h3>
             <span className="ai-premium-upgrade-badge">
               {requiresPremium ? <Crown size={10} aria-hidden="true" /> : null}
-              {requiresPremium ? "PREMIUM" : "GIRIS GEREKLI"}
+              {requiresPremium ? t("aiCards.locked.premiumBadge") : t("aiCards.locked.loginBadge")}
             </span>
           </div>
 

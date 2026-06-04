@@ -28,8 +28,8 @@ import java.util.Optional;
 public class AiChatController {
 
     private static final Logger logger = LogManager.getLogger(AiChatController.class);
-    private static final String UNAVAILABLE_REPLY =
-            "Su an yanit uretilemiyor, lutfen daha sonra tekrar deneyin.";
+    private static final String UNAVAILABLE_REPLY_TR = "Su an yanit uretilemiyor, lutfen daha sonra tekrar deneyin.";
+    private static final String UNAVAILABLE_REPLY_EN = "Unable to generate a response right now, please try again later.";
 
     private final AiGatewayService aiGatewayService;
     private final ChatPromptBuilder chatPromptBuilder;
@@ -54,9 +54,11 @@ public class AiChatController {
 
     @PostMapping("/chat")
     public ResponseEntity<AiChatResponse> chat(@RequestBody AiChatRequest request) {
+        String lang = request.language() != null && request.language().trim().toLowerCase().startsWith("en") ? "en" : "tr";
+        String unavailableReply = "en".equals(lang) ? UNAVAILABLE_REPLY_EN : UNAVAILABLE_REPLY_TR;
         if (request.message() == null || request.message().isBlank()) {
             AiChatResponse response = new AiChatResponse(
-                    "Mesaj bos olamaz.",
+                    "en".equals(lang) ? "Message cannot be empty." : "Mesaj bos olamaz.",
                     null,
                     false,
                     AiResponseMetadata.deterministic("LOW")
@@ -70,13 +72,13 @@ public class AiChatController {
                 request.context() != null ? request.context().type() : "none");
 
         String contextBlock = contextEnricher.buildContextBlock(request.context());
-        String prompt = chatPromptBuilder.build(request.message(), contextBlock);
+        String prompt = chatPromptBuilder.build(request.message(), contextBlock, lang);
 
         Optional<AiResponse> response = aiGatewayService.generate(AiTaskType.CHAT, prompt);
         if (response.isEmpty()) {
             logger.warn("AI chat: no response from any provider.");
             AiChatResponse chatResponse = new AiChatResponse(
-                    UNAVAILABLE_REPLY,
+                    unavailableReply,
                     null,
                     false,
                     AiResponseMetadata.deterministic("LOW")
@@ -103,7 +105,7 @@ public class AiChatController {
 
     private String extractReply(String content) {
         if (content == null || content.isBlank()) {
-            return UNAVAILABLE_REPLY;
+            return UNAVAILABLE_REPLY_TR;
         }
         try {
             String cleaned = content.trim()

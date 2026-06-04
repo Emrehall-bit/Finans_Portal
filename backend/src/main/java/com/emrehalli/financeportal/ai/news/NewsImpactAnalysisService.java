@@ -10,6 +10,7 @@ import com.emrehalli.financeportal.ai.service.AiResponseCacheService.CachedValue
 import com.emrehalli.financeportal.ai.service.AiResponseCacheService.LookupResult;
 import com.emrehalli.financeportal.ai.service.AiResponseLogHelper;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
+import com.emrehalli.financeportal.ai.prompt.AiPromptBuilder;
 import com.emrehalli.financeportal.news.service.NewsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,13 +69,18 @@ public class NewsImpactAnalysisService {
     }
 
     public NewsImpactResponse getNewsImpactAnalysis(Long newsId) {
+        return getNewsImpactAnalysis(newsId, "tr");
+    }
+
+    public NewsImpactResponse getNewsImpactAnalysis(Long newsId, String language) {
         // Eagerly resolve — propagates ResourceNotFoundException (→ 404) before cache lookup
         NewsResponseDto news = newsService.getNewsById(newsId);
-        String cacheKey = "ai:news-impact:" + newsId;
+        String lang = AiPromptBuilder.normLang(language);
+        String cacheKey = "ai:news-impact:" + newsId + ":" + lang;
         try {
             LookupResult<NewsImpactResponse> lookup = cacheService.getOrComputeWithDynamicTtlStatus(
                     cacheKey, NewsImpactResponse.class,
-                    () -> compute(newsId, news));
+                    () -> compute(newsId, news, lang));
             NewsImpactResponse response = withCacheHit(lookup.value(), lookup.cacheHit());
             responseLogHelper.log(AiTaskType.NEWS_IMPACT_ANALYSIS, response.metadata());
             return response;
@@ -88,7 +94,7 @@ public class NewsImpactAnalysisService {
 
     // ── Computation ──────────────────────────────────────────────────────────
 
-    private CachedValue<NewsImpactResponse> compute(Long newsId, NewsResponseDto news) {
+    private CachedValue<NewsImpactResponse> compute(Long newsId, NewsResponseDto news, String lang) {
         NewsCategory category = categoryDetector.detect(news.getTitle(), news.getSummary(), news.getCategory());
         SectorImpactResolver.SectorImpact impact =
                 sectorImpactResolver.resolve(category, news.getTitle(), news.getSummary());
@@ -105,7 +111,7 @@ public class NewsImpactAnalysisService {
                 impact.riskLevel()
         );
 
-        String prompt = promptBuilder.build(context);
+        String prompt = promptBuilder.build(context, lang);
         Optional<AiResponse> aiResponse = aiGatewayService.generate(AiTaskType.NEWS_IMPACT_ANALYSIS, prompt);
 
         if (aiResponse.isEmpty()) {
@@ -204,9 +210,14 @@ public class NewsImpactAnalysisService {
     }
 
     private NewsImpactResponse emptyFallback(Long newsId) {
+        return emptyFallback(newsId, "tr");
+    }
+
+    private NewsImpactResponse emptyFallback(Long newsId, String lang) {
+        boolean en = "en".equals(lang);
         return new NewsImpactResponse(
                 String.valueOf(newsId),
-                "Haber etki analizi şu an hazırlanamıyor.",
+                en ? "News impact analysis is temporarily unavailable." : "Haber etki analizi şu an hazırlanamıyor.",
                 "",
                 "",
                 "",
