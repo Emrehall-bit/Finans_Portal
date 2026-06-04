@@ -122,13 +122,11 @@
   .portfolio-ai-drawer-sheet {
     top: 0;
     right: 0;
-    bottom: 0;
-    width: min(100vw, 100vw);
-    padding: 22px 18px 18px;
-    border-top-left-radius: 22px;
-    border-bottom-left-radius: 22px;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+    width: 100vw;
+    max-height: none;
+    height: 100vh;
+    padding: 14px;
+    border-radius: 0;
   }
 
   .portfolio-ai-drawer-brief {
@@ -639,4 +637,3 @@
 .portfolio-selector-card:hover {
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
 }
-

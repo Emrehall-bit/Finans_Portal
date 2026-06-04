@@ -528,30 +528,29 @@
   width: 100%;
   height: 100%;
   pointer-events: auto;
-  background: rgba(15, 23, 42, 0.16);
-  backdrop-filter: blur(2px);
+  background: rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(7px);
   opacity: 0;
   transition: opacity 220ms ease;
 }
 
 .portfolio-ai-drawer-sheet {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(540px, calc(100vw - 48px));
-  padding: 28px 28px 24px;
+  top: 58px;
+  right: 18px;
+  width: min(480px, calc(100vw - 32px));
+  min-height: min(600px, calc(100vh - 90px));
+  max-height: calc(100vh - 90px);
+  height: auto;
+  padding: 18px;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 20px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(147, 197, 253, 0.45);
-  border-top-left-radius: 28px;
-  border-bottom-left-radius: 28px;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.22);
-  transform: translateX(24px);
+  gap: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,251,255,0.94));
+  border: 1px solid rgba(214, 225, 245, 0.9);
+  border-radius: 24px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+  transform: translateX(18px);
   opacity: 0;
   transition: transform 220ms ease, opacity 220ms ease;
   overflow: hidden;
@@ -575,7 +574,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 10px;
 }
 
 .portfolio-ai-drawer-head h3,
@@ -587,12 +586,13 @@
 
 .portfolio-ai-drawer-head-copy {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .portfolio-ai-drawer-head-copy h3 {
-  font-size: 1.45rem;
-  letter-spacing: 0;
+  font-size: 1.02rem;
+  font-weight: 760;
+  letter-spacing: -0.015em;
 }
 
 .portfolio-ai-drawer-badges {
@@ -604,28 +604,28 @@
 .portfolio-ai-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 26px;
+  padding: 0 9px;
   border-radius: 999px;
   border: 1px solid rgba(191, 219, 254, 0.72);
   background: rgba(255, 255, 255, 0.78);
   color: color-mix(in srgb, var(--text-main) 74%, white);
-  font-size: 0.73rem;
+  font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .portfolio-ai-drawer-close {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(191, 219, 254, 0.7);
+  border: 1px solid rgba(157, 174, 205, 0.28);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.64);
   color: color-mix(in srgb, var(--text-main) 76%, white);
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
   transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
@@ -640,9 +640,9 @@
 .portfolio-ai-drawer-brief {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
-  padding: 18px;
-  border-radius: 22px;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(239, 246, 255, 0.8)),
     linear-gradient(180deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.03));
@@ -683,6 +683,7 @@
   min-height: 0;
   height: 100%;
   overflow-y: auto;
+  max-height: calc(100vh - 270px);
   padding-right: 6px;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
@@ -700,4 +701,3 @@
 .portfolio-ai-drawer-body::-webkit-scrollbar-track {
   background: transparent;
 }
-

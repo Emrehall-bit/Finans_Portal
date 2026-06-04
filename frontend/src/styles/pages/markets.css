@@ -450,7 +450,7 @@
   }
 }
 
-.market-tape-shell {
+html[data-theme] .market-tape-shell {
   position: fixed; /* keep tape always on top */
   top: 0;
   left: 0;
@@ -459,7 +459,7 @@
   overflow: hidden;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(180deg, var(--sidebar-start), var(--sidebar-end));
-  color: #e2e8f0;
+  color: #c4d2e5;
   min-height: 40px;
 }
 
@@ -496,28 +496,33 @@
   white-space: nowrap;
 }
 
-.market-tape-item::before {
+html[data-theme] .market-tape-shell .market-tape-item::before {
   content: "";
   width: 5px;
   height: 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.34);
+  background: rgba(185, 200, 220, 0.28);
 }
 
-.market-tape-symbol {
-  color: #f8fafc;
+html[data-theme] .market-tape-shell .market-tape-symbol {
+  color: #e1ebf7;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
-.market-tape-shell .market-up {
-  color: #22c55e;
-  font-weight: 800;
+html[data-theme] .market-tape-shell .market-tape-item > strong {
+  color: #dde6f2;
+  font-weight: 780;
 }
 
-.market-tape-shell .market-down {
-  color: #ef4444;
-  font-weight: 800;
+html[data-theme] .market-tape-shell .market-up {
+  color: #52c983;
+  font-weight: 740;
+}
+
+html[data-theme] .market-tape-shell .market-down {
+  color: #e46f6f;
+  font-weight: 740;
 }
 
 @media (max-width: 920px) {

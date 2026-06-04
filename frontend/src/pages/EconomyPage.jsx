@@ -192,7 +192,8 @@ export default function EconomyPage() {
   return (
     <div className="dashboard-stack">
       <PageHeader
-        eyebrow={t("economy.eyebrow")}
+        className="economy-page-header"
+        eyebrow={null}
         title={t("economy.title")}
         description={t("economy.description")}
       />
@@ -200,7 +201,7 @@ export default function EconomyPage() {
       <section className="panel-surface economy-section">
         <div className="economy-hero">
           <div className="economy-hero-left">
-            <h2 className="economy-hero-title">{t('economy.heroTitle', 'Türkiye makro görünümü')}</h2>
+            <h2 className="economy-hero-title">{t('economy.heroTitle', 'Türkiye Makro Görünümü')}</h2>
           </div>
           {/* KPI strip removed per request */}
         </div>

@@ -122,6 +122,9 @@ export default function DashboardPage() {
   );
   const previousValue = portfolioValue - dailyProfitLoss;
   const dailyProfitLossPercent = previousValue > 0 ? (dailyProfitLoss / previousValue) * 100 : null;
+  const dailyProfitLossPercentLabel = dailyProfitLossPercent != null
+    ? `${dailyProfitLossPercent >= 0 ? "+" : ""}${dailyProfitLossPercent.toFixed(2)}%`
+    : null;
   const pnlTone = dailyProfitLoss > 0 ? "positive" : dailyProfitLoss < 0 ? "negative" : "neutral";
 
   const overviewCards = [
@@ -139,14 +142,11 @@ export default function DashboardPage() {
       key: "daily-pnl",
       title: t("dashboard.cards.dailyPnLTitle"),
       value: formatCurrency(dailyProfitLoss),
-      subtitle: dailyProfitLossPercent != null
-        ? `${dailyProfitLossPercent >= 0 ? "+" : ""}${dailyProfitLossPercent.toFixed(2)}%`
-        : t("dashboard.cards.dailyPnLSubtitle"),
-      trend: formatSignedCurrency(dailyProfitLoss),
+      subtitle: dailyProfitLossPercentLabel ? null : t("dashboard.cards.dailyPnLSubtitle"),
+      trend: dailyProfitLossPercentLabel,
       tone: pnlTone,
       valueClassName: dailyProfitLoss > 0 ? "market-up" : dailyProfitLoss < 0 ? "market-down" : "",
-      subtitleClassName: dailyProfitLossPercent > 0 ? "market-up" : dailyProfitLossPercent < 0 ? "market-down" : "",
-      trendClassName: dailyProfitLoss > 0 ? "market-up" : dailyProfitLoss < 0 ? "market-down" : "",
+      trendClassName: dailyProfitLossPercent > 0 ? "market-up" : dailyProfitLossPercent < 0 ? "market-down" : "",
       icon: dailyProfitLoss < 0 ? <TrendingDown size={18} /> : <TrendingUp size={18} />,
     },
     {
@@ -309,7 +309,6 @@ export default function DashboardPage() {
                     ) : (
                       <p className="summary-card-subtitle">{t("dashboard.cards.alertsSubtitle")}</p>
                     )}
-                    <div aria-hidden="true" className={`summary-card-bar summary-card-bar--${alertTone}`} />
                   </Link>
                 ) : (
                   <GuestLockOverlay
@@ -328,7 +327,6 @@ export default function DashboardPage() {
                       </div>
                       <h3>-</h3>
                       <p className="summary-card-subtitle">{t("dashboard.cards.alertsSubtitle")}</p>
-                      <div aria-hidden="true" className="summary-card-bar summary-card-bar--neutral" />
                     </div>
                   </GuestLockOverlay>
                 );
@@ -364,7 +362,6 @@ export default function DashboardPage() {
                       </div>
                       <h3>{card.value}</h3>
                       {card.subtitle ? <p className="summary-card-subtitle">{card.subtitle}</p> : null}
-                      <div aria-hidden="true" className={`summary-card-bar summary-card-bar--${card.tone}`} />
                     </button>
                   ) : (
                     <GuestLockOverlay
@@ -388,7 +385,6 @@ export default function DashboardPage() {
                         </div>
                         <h3>{card.value}</h3>
                         {card.subtitle ? <p className="summary-card-subtitle">{card.subtitle}</p> : null}
-                        <div aria-hidden="true" className={`summary-card-bar summary-card-bar--${card.tone}`} />
                       </button>
                     </GuestLockOverlay>
                   )}
@@ -460,9 +456,8 @@ export default function DashboardPage() {
                   {card.isEmpty ? (
                     <Link to="/portfolio" className="summary-card-cta">{t("dashboard.cards.addPortfolio")}</Link>
                   ) : card.subtitle ? (
-                    <p className={`summary-card-subtitle${card.subtitleClassName ? ` ${card.subtitleClassName}` : ""}`}>{card.subtitle}</p>
+                    <p className="summary-card-subtitle">{card.subtitle}</p>
                   ) : null}
-                  <div aria-hidden="true" className={`summary-card-bar summary-card-bar--${card.tone}`} />
                 </div>
               )
             })}
@@ -535,20 +530,25 @@ export default function DashboardPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {marketRows.map((item) => (
-                          <tr key={item.symbol}>
-                            <td>
-                              <Link to={buildMarketDetailPath(item.symbol, item.instrumentType)} className="finance-table-symbol">
-                                <strong>{item.code || item.symbol}</strong>
-                                <span>{item.displayName || item.code || item.symbol}</span>
-                              </Link>
-                            </td>
-                            <td className="col-right">{formatCurrency(item.price, item.currency || "TRY")}</td>
-                            <td className={`col-right ${toNumber(item.changeRate) >= 0 ? "market-up" : "market-down"}`}>
-                              {formatMarketChange(item.changeRate)}
-                            </td>
-                          </tr>
-                        ))}
+                        {marketRows.map((item) => {
+                          const label = getDashboardInstrumentLabel(item);
+                          const subLabel = getDashboardInstrumentSubLabel(item);
+
+                          return (
+                            <tr key={item.symbol}>
+                              <td>
+                                <Link to={buildMarketDetailPath(item.symbol, item.instrumentType)} className="finance-table-symbol">
+                                  <strong>{label}</strong>
+                                  {subLabel ? <span>{subLabel}</span> : null}
+                                </Link>
+                              </td>
+                              <td className="col-right">{formatCurrency(item.price, item.currency || "TRY")}</td>
+                              <td className={`col-right ${toNumber(item.changeRate) >= 0 ? "market-up" : "market-down"}`}>
+                                {formatMarketChange(item.changeRate)}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -557,38 +557,50 @@ export default function DashboardPage() {
               </section>
 
               {/* Portfolio panel: separate card with holdings */}
-              <section className="panel-surface finance-dashboard-panel dashboard-portfolio-panel">
-                <div className="panel-head">
-                  <div>
-                    <h3 className="dashboard-section-title">Portföy Özeti</h3>
-                  </div>
-                  <Link to="/portfolio" className="panel-text-link">{t("Portföyünü görüntüle") ?? "Tümünü Gör"}</Link>
-                </div>
-
-                <div className="panel-body" style={{ padding: '12px 16px' }}>
-                  {hasPortfolio ? (
-                    <div className="portfolio-holdings-list">
-                      {(widgetHoldings && widgetHoldings.length ? widgetHoldings : (portfolioSnapshots[0]?.holdings || [])).slice(0,5).map((h, idx) => (
-                        <div key={idx} className="portfolio-holding-row" style={{display:'flex',justifyContent:'space-between',gap:12,padding:'8px 0',borderBottom: idx < 4 ? '1px solid var(--panel-border)' : 'none'}}>
-                          <div style={{minWidth:0}}>
-                            <strong style={{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{h?.instrumentCode || h?.symbol || h?.name}</strong>
-                            <span style={{fontSize:'0.8rem',color:'var(--text-soft)'}}>{h?.name || ''}</span>
-                          </div>
-                          <div style={{textAlign:'right'}}>
-                            <div style={{fontWeight:700}}>{formatCurrency(h?.currentValue ?? h?.marketValue ?? 0)}</div>
-                            <div className={toNumber(h?.changeRate) >= 0 ? 'market-up' : 'market-down'} style={{fontSize:'0.85rem'}}>{formatMarketChange(h?.changeRate)}</div>
-                          </div>
-                        </div>
-                      ))}
-                      {(!widgetHoldings || widgetHoldings.length === 0) && !(portfolioSnapshots[0]?.holdings && portfolioSnapshots[0].holdings.length) ? (
-                        <div className="portfolio-empty" style={{padding:'8px 0'}}>{t('dashboard.portfolioEmpty') ?? 'Portföyünüz boş'}</div>
-                      ) : null}
+              <GuestLockOverlay
+                compact
+                className="dashboard-portfolio-guest-lock"
+                badgeClassName="dash-portfolio-lock-badge"
+                onRequestAuth={() => setAuthRequiredModalOpen(true)}
+              >
+                <section className="panel-surface finance-dashboard-panel dashboard-portfolio-panel">
+                  <div className="panel-head">
+                    <div>
+                      <h3 className="dashboard-section-title">Portföy Özeti</h3>
                     </div>
-                  ) : (
-                    <div style={{padding:'8px 0'}}>{t('dashboard.cards.addPortfolio')}</div>
-                  )}
-                </div>
-              </section>
+                    <Link to="/portfolio" className="panel-text-link">{t("Portföyünü görüntüle") ?? "Tümünü Gör"}</Link>
+                  </div>
+
+                  <div className="panel-body" style={{ padding: '12px 16px' }}>
+                    {hasPortfolio ? (
+                      <div className="portfolio-holdings-list">
+                        {(widgetHoldings && widgetHoldings.length ? widgetHoldings : (portfolioSnapshots[0]?.holdings || [])).slice(0,5).map((h, idx) => {
+                          const label = getDashboardPortfolioHoldingLabel(h);
+                          const subLabel = getDashboardPortfolioHoldingSubLabel(h, label);
+
+                          return (
+                            <div key={idx} className="portfolio-holding-row" style={{display:'flex',justifyContent:'space-between',gap:12,padding:'8px 0',borderBottom: idx < 4 ? '1px solid var(--panel-border)' : 'none'}}>
+                              <div style={{minWidth:0}}>
+                                <strong style={{display:'block',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{label}</strong>
+                                {subLabel ? <span style={{fontSize:'0.8rem',color:'var(--text-soft)'}}>{subLabel}</span> : null}
+                              </div>
+                              <div style={{textAlign:'right'}}>
+                                <div style={{fontWeight:700}}>{formatCurrency(h?.currentValue ?? h?.marketValue ?? 0)}</div>
+                                <div className={toNumber(h?.changeRate) >= 0 ? 'market-up' : 'market-down'} style={{fontSize:'0.85rem'}}>{formatMarketChange(h?.changeRate)}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {(!widgetHoldings || widgetHoldings.length === 0) && !(portfolioSnapshots[0]?.holdings && portfolioSnapshots[0].holdings.length) ? (
+                          <div className="portfolio-empty" style={{padding:'8px 0'}}>{t('dashboard.portfolioEmpty') ?? 'Portföyünüz boş'}</div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div style={{padding:'8px 0'}}>{t('dashboard.cards.addPortfolio')}</div>
+                    )}
+                  </div>
+                </section>
+              </GuestLockOverlay>
             </div>
 
             <aside className="finance-dashboard-side">
@@ -762,12 +774,189 @@ function formatMarketChange(value) {
   return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
 }
 
-function formatSignedCurrency(value) {
-  if (!Number.isFinite(value)) {
-    return "-";
+function getDashboardInstrumentLabel(item) {
+  const type = normalizeDashboardInstrumentType(item?.instrumentType);
+  const pairLabel = getDashboardPairLabel(item);
+
+  if (pairLabel) {
+    return pairLabel;
   }
 
-  return `${value >= 0 ? "+" : ""}${formatCurrency(value)}`;
+  if (type === "CRYPTO") {
+    const baseCode = getDashboardCryptoBaseCode(item);
+    return baseCode ? `${baseCode}/TRY` : getDashboardFallbackInstrumentLabel(item);
+  }
+
+  if (type === "STOCK") {
+    return cleanDashboardStockCode(item?.code || item?.symbol || item?.displayName) || getDashboardFallbackInstrumentLabel(item);
+  }
+
+  return getDashboardFallbackInstrumentLabel(item);
+}
+
+function getDashboardInstrumentSubLabel(item) {
+  const label = getDashboardInstrumentLabel(item);
+  const displayName = String(item?.displayName || "").trim();
+
+  if (!displayName || isDashboardInstrumentDuplicateText(displayName, label, item)) {
+    return null;
+  }
+
+  return displayName;
+}
+
+function getDashboardFallbackInstrumentLabel(item) {
+  const rawValue = item?.code || item?.displayName || item?.symbol || "-";
+  const text = String(rawValue).trim();
+  const formattedCode = formatInstrumentCode(text);
+
+  return formattedCode && formattedCode !== "—" ? formattedCode : cleanDashboardStockCode(text) || text || "-";
+}
+
+function getDashboardPairLabel(item) {
+  const candidates = [item?.displayName, item?.symbol];
+
+  for (const candidate of candidates) {
+    const label = formatDashboardTryPairLabel(candidate);
+    if (label) {
+      return label;
+    }
+  }
+
+  return "";
+}
+
+function getDashboardCryptoBaseCode(item) {
+  const pairCandidates = [item?.displayName, item?.symbol, item?.code];
+
+  for (const candidate of pairCandidates) {
+    const baseCode = extractDashboardCryptoPairBaseCode(candidate);
+    if (baseCode) {
+      return baseCode;
+    }
+  }
+
+  const codeCandidates = [item?.code, item?.symbol];
+  for (const candidate of codeCandidates) {
+    const baseCode = extractDashboardPlainCryptoCode(candidate);
+    if (baseCode) {
+      return baseCode;
+    }
+  }
+
+  return "";
+}
+
+function formatDashboardTryPairLabel(value) {
+  const normalized = normalizeDashboardInstrumentText(value);
+  if (!normalized.endsWith("TRY") || normalized.length <= 3) {
+    return "";
+  }
+
+  const baseCode = collapseRepeatedDashboardCode(normalized.slice(0, -3));
+  return baseCode ? `${baseCode}/TRY` : "";
+}
+
+function extractDashboardCryptoPairBaseCode(value) {
+  const normalized = normalizeDashboardInstrumentText(value);
+  if (!normalized) {
+    return "";
+  }
+
+  const baseCode = normalized
+    .replace(/(TRY)+$/u, "")
+    .replace(/(USDT)+$/u, "")
+    .replace(/(USD)+$/u, "");
+
+  return baseCode === normalized ? "" : collapseRepeatedDashboardCode(baseCode);
+}
+
+function extractDashboardPlainCryptoCode(value) {
+  const normalized = collapseRepeatedDashboardCode(normalizeDashboardInstrumentText(value));
+  return /^[A-Z0-9]{2,12}$/u.test(normalized) ? normalized : "";
+}
+
+function collapseRepeatedDashboardCode(value) {
+  if (!value || value.length % 2 !== 0) {
+    return value;
+  }
+
+  const midpoint = value.length / 2;
+  const firstHalf = value.slice(0, midpoint);
+
+  return firstHalf === value.slice(midpoint) ? firstHalf : value;
+}
+
+function cleanDashboardStockCode(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\.IS$/iu, "")
+    .toUpperCase();
+}
+
+function isDashboardInstrumentDuplicateText(text, label, item) {
+  const normalizedText = normalizeDashboardInstrumentText(text);
+  const normalizedLabel = normalizeDashboardInstrumentText(label);
+  const normalizedCode = normalizeDashboardInstrumentText(item?.code);
+  const normalizedSymbol = normalizeDashboardInstrumentText(item?.symbol);
+
+  if (!normalizedText) {
+    return true;
+  }
+
+  const equivalents = new Set([
+    normalizedLabel,
+    normalizedCode,
+    normalizedSymbol,
+    normalizedCode ? `${normalizedCode}TRY` : "",
+    normalizedCode ? `${normalizedCode}USDT` : "",
+    normalizedCode ? `${normalizedCode}USD` : "",
+  ].filter(Boolean));
+
+  if (equivalents.has(normalizedText)) {
+    return true;
+  }
+
+  const textWithoutTry = normalizedText.replace(/(TRY)+$/u, "");
+  const labelWithoutTry = normalizedLabel.replace(/(TRY)+$/u, "");
+  const codeWithoutTry = normalizedCode.replace(/(TRY)+$/u, "");
+
+  return Boolean(
+    textWithoutTry
+      && (
+        textWithoutTry === labelWithoutTry
+        || textWithoutTry === codeWithoutTry
+        || normalizedText === `${codeWithoutTry}${normalizedLabel}`
+        || normalizedText === `${codeWithoutTry}${labelWithoutTry}TRY`
+      ),
+  );
+}
+
+function normalizeDashboardInstrumentText(value) {
+  return String(value || "")
+    .toUpperCase()
+    .replace(/[\s/:_-]+/gu, "");
+}
+
+function getDashboardPortfolioHoldingLabel(item) {
+  return getDashboardInstrumentLabel({
+    code: item?.instrumentCode || item?.symbol || item?.name,
+    symbol: item?.symbol || item?.instrumentCode,
+    displayName: item?.name,
+    instrumentType: item?.instrumentType,
+  });
+}
+
+function getDashboardPortfolioHoldingSubLabel(item, label) {
+  const name = String(item?.name || "").trim();
+  if (!name || isDashboardInstrumentDuplicateText(name, label, {
+    code: item?.instrumentCode,
+    symbol: item?.symbol,
+  })) {
+    return null;
+  }
+
+  return name;
 }
 
 function getDashboardNewsProviderBadgeClass(provider) {

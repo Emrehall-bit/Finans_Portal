@@ -84,6 +84,6 @@
 
 /* Dashboard */
 @import "./pages/dashboard.css";
-@import "./pages/dashboard-widgets.css";
 @import "./pages/dashboard-panels.css";
 @import "./pages/dashboard-news.css";
+@import "./pages/dashboard-widgets.css";

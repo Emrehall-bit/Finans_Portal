@@ -172,45 +172,19 @@ html[data-theme="dark"] .dash-portfolio-lock-badge {
 }
 
 /* ── KPI cards: compact row ─────────────────────────────────────── */
-.finance-dashboard-kpis {
+.dashboard-page .finance-dashboard-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.finance-dashboard-kpis .summary-card {
-  min-height: 96px;
-  padding: 12px 16px;
-  gap: 4px;
-}
-
-.finance-dashboard-kpis .summary-card-title {
-  font-size: 1rem;
-}
-
-.finance-dashboard-kpis .summary-card-subtitle {
-  font-size: 0.72rem;
-}
-
-.finance-dashboard-kpis .summary-card-bar {
-  height: 5px;
-  margin-top: 4px;
-}
-
-.finance-dashboard-kpis .summary-card-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
 }
 
 @media (max-width: 900px) {
-  .finance-dashboard-kpis {
+  .dashboard-page .finance-dashboard-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 480px) {
-  .finance-dashboard-kpis {
+  .dashboard-page .finance-dashboard-kpis {
     grid-template-columns: 1fr;
   }
 }
@@ -245,29 +219,17 @@ html[data-theme="dark"] .dash-portfolio-lock-badge {
 }
 
 /* ── KPI cards: soft color backgrounds per tone ─────────────────── */
-.finance-dashboard-kpis .summary-card-cool    { background: rgba(47, 99, 216, 0.07); }
-.finance-dashboard-kpis .summary-card-positive { background: rgba(22, 165, 103, 0.07); }
-.finance-dashboard-kpis .summary-card-negative { background: rgba(214, 82, 82, 0.07); }
-.finance-dashboard-kpis .summary-card-neutral  { background: rgba(111, 125, 158, 0.06); }
-.finance-dashboard-kpis .summary-card-warm     { background: rgba(245, 158, 11, 0.07); }
+.dashboard-page .finance-dashboard-kpis .summary-card-cool    { background: rgba(47, 99, 216, 0.07); }
+.dashboard-page .finance-dashboard-kpis .summary-card-positive { background: rgba(22, 165, 103, 0.07); }
+.dashboard-page .finance-dashboard-kpis .summary-card-negative { background: rgba(214, 82, 82, 0.07); }
+.dashboard-page .finance-dashboard-kpis .summary-card-neutral  { background: rgba(111, 125, 158, 0.06); }
+.dashboard-page .finance-dashboard-kpis .summary-card-warm     { background: rgba(245, 158, 11, 0.07); }
 
-html[data-theme="dark"] .finance-dashboard-kpis .summary-card-cool    { background: rgba(96, 165, 250, 0.08); }
-html[data-theme="dark"] .finance-dashboard-kpis .summary-card-positive { background: rgba(52, 211, 153, 0.08); }
-html[data-theme="dark"] .finance-dashboard-kpis .summary-card-negative { background: rgba(248, 113, 113, 0.08); }
-html[data-theme="dark"] .finance-dashboard-kpis .summary-card-neutral  { background: rgba(148, 163, 184, 0.07); }
-html[data-theme="dark"] .finance-dashboard-kpis .summary-card-warm     { background: rgba(251, 191, 36, 0.08); }
-
-.finance-dashboard-kpis .summary-card-title {
-  font-size: 1rem;
-  letter-spacing: 0.06em;
-  font-weight: 700;
-}
-
-.finance-dashboard-kpis .summary-card-subtitle {
-  font-size: 0.71rem;
-  color: var(--text-soft);
-  font-weight: 500;
-}
+html[data-theme="dark"] .dashboard-page .finance-dashboard-kpis .summary-card-cool    { background: rgba(96, 165, 250, 0.08); }
+html[data-theme="dark"] .dashboard-page .finance-dashboard-kpis .summary-card-positive { background: rgba(52, 211, 153, 0.08); }
+html[data-theme="dark"] .dashboard-page .finance-dashboard-kpis .summary-card-negative { background: rgba(248, 113, 113, 0.08); }
+html[data-theme="dark"] .dashboard-page .finance-dashboard-kpis .summary-card-neutral  { background: rgba(148, 163, 184, 0.07); }
+html[data-theme="dark"] .dashboard-page .finance-dashboard-kpis .summary-card-warm     { background: rgba(251, 191, 36, 0.08); }
 
 /* ── Dashboard AI summary banner ──────────────────────────────────── */
 .dash-ai-banner {

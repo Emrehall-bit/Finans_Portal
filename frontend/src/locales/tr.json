@@ -142,15 +142,15 @@
     "portfoliosError": "Portföy listesi yüklenemedi.",
     "portfolioDetailsError": "Bazı portföy detayları yüklenemedi.",
     "cards": {
-      "portfolioValueTitle": "Toplam portföy değeri",
+      "portfolioValueTitle": "Toplam Portföy Değeri",
       "portfolioValueSubtitle": "{{count}} portföy değerlemesi",
       "portfolioValueTrend": "Canlı",
-      "dailyPnLTitle": "Günlük kar / zarar",
+      "dailyPnLTitle": "Günlük Kar/Zarar",
       "dailyPnLSubtitle": "Holding bazlı piyasa hareketi",
-      "watchlistTitle": "İzlenen enstrüman",
+      "watchlistTitle": "İzlenen Enstrüman",
       "watchlistSubtitle": "Favori listesinde tutulan sembol",
       "watchlistTrend": "Takipte",
-      "alertsTitle": "Aktif alarm",
+      "alertsTitle": "Aktif Alarm",
       "alertsSubtitle": "Tetik bekleyen kurallar",
       "alertsTrend": "Uyarı",
       "addAlert": "Alarm Ekle →",
@@ -169,7 +169,7 @@
       }
     },
     "marketSummaryTitle": "Günün Hareketli Enstrümanları",
-    "allMarkets": "Tüm piyasa",
+    "allMarkets": "Tüm Piyasa",
     "marketCategoryAria": "Piyasa kategori filtreleri",
     "marketCategoryFilters": {
       "all": "Tümü",

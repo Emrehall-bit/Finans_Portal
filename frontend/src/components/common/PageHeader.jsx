@@ -1,8 +1,10 @@
-export default function PageHeader({ title, description, actions, eyebrow = "Overview" }) {
+export default function PageHeader({ title, description, actions, eyebrow = "Overview", className = "" }) {
+  const rootClassName = `page-header panel-surface${className ? ` ${className}` : ""}`;
+
   return (
-    <div className="page-header panel-surface">
+    <div className={rootClassName}>
       <div>
-        <p className="eyebrow">{eyebrow}</p>
+        {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
         <h1>{title}</h1>
         {description ? <p className="page-description">{description}</p> : null}
       </div>
