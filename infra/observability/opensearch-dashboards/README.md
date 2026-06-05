@@ -142,13 +142,30 @@ Paneller:
 Paneller:
 - requestId Search Flow
 
+## Index Pattern Kurulum (İlk Kez)
+
+1. OpenSearch Dashboards aç: `http://localhost:5601`
+2. Sol menü → **Management** → **Dashboards Management** → **Index Patterns**
+3. **Create index pattern** tıkla
+4. Index pattern: `finance-portal-logs-*`
+5. Time field: `timestamp`
+6. **Create index pattern** ile kaydet
+
+> Index template `opensearch-init` container'ı tarafından otomatik olarak uygulanır.
+> Eğer manual uygulamak gerekirse:
+> ```powershell
+> Invoke-RestMethod -Method Put `
+>   -Uri "http://localhost:9200/_index_template/finance-portal-logs-template" `
+>   -ContentType "application/json" `
+>   -InFile "infra/observability/opensearch/finance-portal-logs-template.json"
+> ```
+
 ## Kullanım
 
-1. OpenSearch Dashboards ac:
-   - `http://localhost:5601`
-2. Data view olarak `finance-portal-logs-*` sec
-3. Discover ekraninda [queries.md](./queries.md) icindeki sorgulari uygula
-4. Ihtiyac olan gorunumleri `Save search` ile kaydet
+1. OpenSearch Dashboards aç: `http://localhost:5601`
+2. Data view olarak `finance-portal-logs-*` seç
+3. Discover ekranında [queries.md](./queries.md) içindeki sorguları uygula
+4. İhtiyaç olan görünümleri `Save search` ile kaydet
 5. Bu saved search'leri yeni dashboard'lara ekle
 
 ## Pratik Notlar

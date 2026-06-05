@@ -1,5 +1,25 @@
 # Finance Portal Observability
 
+## Hızlı Özet — Karşılanan İsterler
+
+| İster | Durum |
+|-------|-------|
+| Log4j2 | ✅ log4j2-spring.xml + JSON template |
+| JSON format (timestamp/level/service/logger/thread/message/exception/traceId/spanId/requestId/userId) | ✅ 48+ alan |
+| INFO/WARN/ERROR/DEBUG seviyeleri | ✅ |
+| OpenSearch log aktarımı (Fluent Bit) | ✅ |
+| Kafka opsiyonu | 📋 belgelenmiş (aşağıya bkz.) |
+| OpenTelemetry entegrasyonu | ✅ micrometer-tracing-bridge-otel, sampling %100 |
+| Temel metrikler (request count, response time, error rate, JVM, DB pool) | ✅ Actuator + Micrometer + Prometheus |
+| Trace/span log correlation | ✅ traceId/spanId MDC'de |
+| Prometheus + Grafana | ✅ provisioned, 65KB dashboard |
+| OpenSearch log arama | ✅ index template + 20+ örnek sorgu |
+| Dashboard'lar (Response Time, Error Rate, Request Volume, Service Health) | ✅ finance-portal-overview.json |
+| Güvenlik olayları (401/403, admin ops) | ✅ log_type=security_event + audit.log |
+| Scheduler logları | ✅ SchedulerLogSupport, log_type=scheduler |
+| Harici servis izleme | ✅ ExternalProviderLogInterceptor |
+| Hassas veri maskeleme | ✅ SensitiveDataMasker |
+
 Faz 1 observability setup'i Prometheus, Grafana, Fluent Bit, OpenSearch ve OpenSearch Dashboards bilesenlerinden olusur.
 
 ## Servis URL'leri
@@ -625,3 +645,122 @@ Yaygin nedenler:
 - `/actuator/prometheus` endpoint'i kapali.
 - Docker network veya port mapping hatali.
 - Local firewall host erisimini engelliyor.
+
+## OpenTelemetry Tracing
+
+Bağımlılıklar (`pom.xml`):
+
+- `micrometer-tracing-bridge-otel`: OTel bridge, traceId/spanId'yi otomatik MDC'ye yazar.
+- `opentelemetry-exporter-otlp`: Trace'leri OTLP collector'a gönderir.
+- `opentelemetry-log4j-appender-2.17`: Log4j2 OTel bridge.
+
+Yapılandırma (`application.yml`):
+
+```yaml
+management:
+  tracing:
+    sampling:
+      probability: 1.0   # dev: tüm requestler; prod: 0.1 önerilir
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:}  # boş = OTLP export devre dışı
+```
+
+Collector dağıtımı olmadan traceId/spanId MDC'de üretilir ve her JSON log satırında bulunur. Trace export için `OTEL_EXPORTER_OTLP_ENDPOINT` env değişkeni ile Jaeger/Tempo gibi bir collector hedeflenir.
+
+## Kafka Log Pipeline Kararı
+
+İsterde log4j → Kafka → consumer → OpenSearch akışı talep edilmiştir. Aşağıdaki karar değerlendirmesi uygulanmıştır:
+
+| Seçenek | Mevcut Durumda Uygulanabilirlik |
+|---------|-------------------------------|
+| Fluent Bit → OpenSearch | ✅ Aktif, çalışıyor, tam entegre |
+| Kafka → Consumer → OpenSearch | Proje infra'sında Kafka yok; Kafka + consumer + zookeeper eklenmesi +3 servis demektir |
+
+**Alınan karar:** Fluent Bit pipeline aktif olarak kullanılmaktadır. Kafka isteri için iki yaklaşım sunulmaktadır:
+
+### A) Log4j2 Kafka Appender (Demo/Ek servis)
+
+`pom.xml`'e `log4j-kafka` appender eklenir, `log4j2-spring.xml`'e Kafka appender tanımlanır, docker-compose'a Kafka + Zookeeper eklenir. Log consumer olarak Kafka Connect sink veya basit Spring Boot consumer yazılır.
+
+Bu yaklaşım için gerekli ek:
+```xml
+<!-- pom.xml'e eklenecek -->
+<dependency>
+    <groupId>org.apache.kafka</groupId>
+    <artifactId>kafka-clients</artifactId>
+</dependency>
+```
+
+```xml
+<!-- log4j2-spring.xml'e eklenecek appender -->
+<Kafka name="KafkaAppender" topic="finance-portal-logs">
+    <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json"/>
+    <Property name="bootstrap.servers">${env:KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}</Property>
+</Kafka>
+```
+
+### B) Mevcut Fluent Bit (Aktif)
+
+Mevcut akış: `log dosyaları → Fluent Bit → OpenSearch`
+
+Bu akış, Kafka'nın sağladığı dayanıklı kuyruk garantilerini sağlamaz; ancak küçük-orta ölçekli bir proje için yeterlidir. Dosya tabanlı buffering (`fluent-bit/state/*.db`) veri kaybını minimize eder.
+
+## Güvenlik Olayları Log Mimarisi
+
+| Olay | Log Tipi | Logger | Nerede |
+|------|----------|--------|--------|
+| 401 Unauthorized | security_event | HttpRequestLoggingFilter | access.log + console |
+| 403 Forbidden | security_event | AiPremiumAccessDeniedHandler | application.log + console |
+| Admin işlemleri | audit | AUDIT | audit.log |
+| Rol değişikliği | audit | AUDIT | audit.log |
+| Portfolio CRUD | audit | AUDIT | audit.log |
+
+OpenSearch sorgusu:
+```text
+log_type: "security_event"
+```
+
+## Observability Checklist
+
+### Backend Loglama
+- [x] Log4j2 JSON format (48+ alan)
+- [x] requestId/traceId/spanId/userId MDC'de
+- [x] Request/response access log
+- [x] Exception structured log
+- [x] Audit log (admin/portfolio/alert)
+- [x] Scheduler log (log_type=scheduler)
+- [x] External provider log
+- [x] Sensitive data masking
+
+### Metrics & Tracing
+- [x] Spring Boot Actuator exposed
+- [x] Micrometer Prometheus endpoint
+- [x] OTel tracing sampling %100 (dev)
+- [x] traceId/spanId JSON loglarda
+- [x] JVM heap/CPU metrics
+- [x] HikariCP DB pool metrics
+- [x] HTTP server request metrics
+
+### Log Pipeline
+- [x] Fluent Bit → OpenSearch akışı
+- [x] Index template (finance-portal-logs-*)
+- [x] Auto-apply (opensearch-init container)
+- [x] JSON parsing doğru
+
+### Prometheus + Grafana
+- [x] Prometheus docker target (`backend:8080`)
+- [x] 5 alert rule tanımlı
+- [x] Grafana provisioned datasource
+- [x] Grafana provisioned dashboard (65KB)
+
+### OpenSearch
+- [x] Index pattern: finance-portal-logs-*
+- [x] 20+ örnek sorgu
+- [x] Security event sorguları
+- [x] Trace ID ile istek takibi
+
+### Güvenlik
+- [x] 401/403 log_type=security_event
+- [x] Admin op audit log
+- [x] Token/password/header maskeleme

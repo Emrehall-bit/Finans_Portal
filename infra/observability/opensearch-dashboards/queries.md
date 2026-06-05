@@ -98,6 +98,60 @@ status: "404" AND uri: *
 durationMs > 500 AND status: /5../
 ```
 
+## Security Events
+
+```text
+log_type: "security_event"
+```
+
+## Unauthorized Access (401)
+
+```text
+log_type: "security_event" AND status: "401"
+```
+
+## Forbidden Access (403)
+
+```text
+log_type: "security_event" AND status: "403"
+```
+
+## Audit Logs - Admin Actions
+
+```text
+log_type: "audit" AND action: "ADMIN_ACTION"
+```
+
+## Audit Logs - Role Changes
+
+```text
+log_type: "audit" AND action: "USER_ROLE_CHANGE"
+```
+
+## Scheduler Logs
+
+```text
+log_type: "scheduler"
+```
+
+## Scheduler Failures
+
+```text
+log_type: "scheduler" AND level: "ERROR"
+```
+
+## Trace ID - Request Flow
+
+```text
+traceId: "<TRACE_ID>"
+```
+
+## Provider Errors with Duration
+
+```text
+success: false AND responseTimeMs: *
+```
+
 ## Onerilen Discover Kolonlari
 
 ### ERROR Logs
