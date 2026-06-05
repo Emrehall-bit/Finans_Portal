@@ -18,7 +18,7 @@ public class AlertScheduler {
         this.alertService = alertService;
     }
 
-    @Scheduled(fixedDelayString = "${alert.scheduler.fixed-delay-ms:60000}")
+    @Scheduled(fixedDelayString = "${alert.scheduler.fixed-delay-ms:${market.scheduler.crypto-rate-ms:600000}}")
     public void evaluateAlerts() {
         SchedulerLogSupport.Run run = SchedulerLogSupport.start("AlertScheduler.evaluateAlerts");
         try {

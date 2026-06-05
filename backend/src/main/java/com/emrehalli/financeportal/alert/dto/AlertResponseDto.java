@@ -20,9 +20,6 @@ public class AlertResponseDto {
     private AlertStatus status;
     private LocalDateTime triggeredAt;
     private LocalDateTime createdAt;
-    private BigDecimal currentPrice;
-    private String source;
-    private String lastUpdated;
 }
 
 

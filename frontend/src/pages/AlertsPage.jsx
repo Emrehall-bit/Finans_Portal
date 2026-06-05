@@ -66,6 +66,11 @@ export default function AlertsPage() {
   const passiveAlerts = useMemo(() => rows.filter((item) => item.status === "CANCELLED"), [rows]);
   const triggeredAlerts = useMemo(() => rows.filter((item) => item.status === "TRIGGERED" || item.triggeredAt), [rows]);
 
+  const quotePriceMap = useMemo(
+    () => new Map(quotes.map((q) => [normalizeCode(q.symbol), q.price])),
+    [quotes],
+  );
+
   const matchingQuotes = useMemo(() => {
     const query = symbolSearch.trim().toLowerCase();
     if (!query) return quotes.slice(0, 8);
@@ -279,7 +284,7 @@ export default function AlertsPage() {
                           </td>
                           <td>{formatCondition(item.conditionType, t)}</td>
                           <td className="alerts-money-cell">{formatCurrency(item.targetPrice)}</td>
-                          <td className="alerts-money-cell">{formatCurrency(item.currentPrice)}</td>
+                          <td className="alerts-money-cell">{formatCurrency(quotePriceMap.get(normalizeCode(item.instrumentCode)))}</td>
                           <td>
                             <span className="portfolio-status-pill is-live">{t("alerts.status.active")}</span>
                           </td>

@@ -128,6 +128,20 @@ public class NotificationService {
     }
 
     @Transactional
+    public void createPriceAlertNotification(User user, String title, String message) {
+        Notification notification = Notification.builder()
+                .user(user)
+                .title(title)
+                .message(message)
+                .type(NotificationType.PRICE_ALERT)
+                .targetType(NotificationTargetType.USER)
+                .read(false)
+                .createdBy(null)
+                .build();
+        notificationRepository.save(notification);
+    }
+
+    @Transactional
     public void createSystemBroadcastNotification(String title, String message) {
         Notification notification = Notification.builder()
                 .user(null)

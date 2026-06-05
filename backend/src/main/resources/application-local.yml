@@ -74,6 +74,10 @@ news:
       startup-sync-enabled: true
       fetch-detail-enabled: true
 
+app:
+  logging:
+    path: ${LOG_PATH:logs}
+
 logging:
   level:
     com.emrehalli.financeportal: DEBUG

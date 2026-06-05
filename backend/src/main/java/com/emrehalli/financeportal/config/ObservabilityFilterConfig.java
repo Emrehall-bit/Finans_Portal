@@ -23,7 +23,9 @@ public class ObservabilityFilterConfig {
     public FilterRegistrationBean<HttpRequestLoggingFilter> httpRequestLoggingFilterRegistration() {
         FilterRegistrationBean<HttpRequestLoggingFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new HttpRequestLoggingFilter());
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
+        // OTel ServerHttpObservationFilter runs at HIGHEST_PRECEDENCE+1 (Integer.MIN_VALUE+1).
+        // By running at +10 we are *inside* that scope, so traceId/spanId are in MDC when logRequest() fires.
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);
         registration.setName("httpRequestLoggingFilter");
         return registration;
     }

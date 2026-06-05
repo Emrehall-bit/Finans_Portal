@@ -67,7 +67,8 @@
             <DefaultRolloverStrategy max="10" />
         </RollingFile>
 
-        <!-- Kafka erişilemiyorsa ignoreExceptions=true (default) sayesinde uygulama çökmez -->
+        <!-- Kafka erişilemiyorsa ignoreExceptions=true sayesinde uygulama çökmez.
+             reconnect.backoff.max.ms: Kafka yokken her 100ms'de bağlanmak yerine max 30s bekler → hata spam'i azalır. -->
         <Kafka name="KafkaAppender"
                topic="finance-portal-logs"
                syncSend="false"
@@ -78,12 +79,20 @@
             <Property name="retries">0</Property>
             <Property name="linger.ms">100</Property>
             <Property name="max.block.ms">5000</Property>
+            <Property name="reconnect.backoff.ms">3000</Property>
+            <Property name="reconnect.backoff.max.ms">30000</Property>
         </Kafka>
     </Appenders>
 
     <Loggers>
         <!-- Kafka client loglarının KafkaAppender'a düşmesini engelle (recursive loop önlemi) -->
         <Logger name="org.apache.kafka" level="warn" additivity="false">
+            <AppenderRef ref="ConsoleJson" />
+            <AppenderRef ref="ApplicationFile" />
+        </Logger>
+        <!-- NetworkClient WARN seviyesinde "Connection could not be established / disconnected" spam'i üretir.
+             Kafka erişilemezken her reconnect denemesinde fırlar; ERROR'a çekince sadece gerçek hatalar görünür. -->
+        <Logger name="org.apache.kafka.clients.NetworkClient" level="error" additivity="false">
             <AppenderRef ref="ConsoleJson" />
             <AppenderRef ref="ApplicationFile" />
         </Logger>

@@ -1,9 +1,11 @@
 package com.emrehalli.financeportal.alert.service;
 
+import com.emrehalli.financeportal.admin.notification.service.NotificationService;
 import com.emrehalli.financeportal.alert.dto.AlertResponseDto;
 import com.emrehalli.financeportal.alert.dto.CreateAlertRequest;
 import com.emrehalli.financeportal.alert.entity.Alert;
 import com.emrehalli.financeportal.alert.enums.AlertStatus;
+import com.emrehalli.financeportal.alert.enums.ConditionType;
 import com.emrehalli.financeportal.alert.repository.AlertRepository;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.common.exception.DuplicateResourceException;
@@ -11,13 +13,18 @@ import com.emrehalli.financeportal.common.exception.ResourceNotFoundException;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
 import com.emrehalli.financeportal.user.entity.User;
 import com.emrehalli.financeportal.user.repository.UserRepository;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class AlertService {
@@ -25,15 +32,22 @@ public class AlertService {
     private final AlertRepository alertRepository;
     private final UserRepository userRepository;
     private final MarketQueryService marketQueryService;
+    private final NotificationService notificationService;
+    private final CacheManager cacheManager;
 
     public AlertService(AlertRepository alertRepository,
                         UserRepository userRepository,
-                        MarketQueryService marketQueryService) {
+                        MarketQueryService marketQueryService,
+                        NotificationService notificationService,
+                        CacheManager cacheManager) {
         this.alertRepository = alertRepository;
         this.userRepository = userRepository;
         this.marketQueryService = marketQueryService;
+        this.notificationService = notificationService;
+        this.cacheManager = cacheManager;
     }
 
+    @CacheEvict(cacheNames = "user_alerts", key = "#userId")
     @Transactional
     public AlertResponseDto createAlert(Long userId, CreateAlertRequest request) {
         User user = userRepository.findById(userId)
@@ -80,6 +94,7 @@ public class AlertService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = "user_alerts", key = "#userId")
     @Transactional
     public void cancelAlert(Long userId, Long alertId) {
         if (!userRepository.existsById(userId)) {
@@ -99,7 +114,54 @@ public class AlertService {
 
     @Transactional
     public void evaluateActiveAlerts() {
-        // Automatic trigger evaluation requires a live price feed; no-op without market quotes.
+        List<Alert> activeAlerts = alertRepository.findByStatus(AlertStatus.ACTIVE);
+        if (activeAlerts.isEmpty()) {
+            return;
+        }
+
+        Map<String, List<Alert>> bySymbol = activeAlerts.stream()
+                .collect(Collectors.groupingBy(Alert::getInstrumentCode));
+
+        List<Alert> triggered = new ArrayList<>();
+
+        for (Map.Entry<String, List<Alert>> entry : bySymbol.entrySet()) {
+            var snapshot = marketQueryService.findBySymbol(entry.getKey()).orElse(null);
+            if (snapshot == null || snapshot.price() == null) {
+                continue;
+            }
+
+            BigDecimal currentPrice = snapshot.price();
+
+            for (Alert alert : entry.getValue()) {
+                boolean conditionMet = alert.getConditionType() == ConditionType.ABOVE
+                        ? currentPrice.compareTo(alert.getTargetPrice()) >= 0
+                        : currentPrice.compareTo(alert.getTargetPrice()) <= 0;
+
+                if (conditionMet) {
+                    alert.setStatus(AlertStatus.TRIGGERED);
+                    alert.setTriggeredAt(LocalDateTime.now());
+                    triggered.add(alert);
+                }
+            }
+        }
+
+        if (triggered.isEmpty()) {
+            return;
+        }
+
+        alertRepository.saveAll(triggered);
+
+        var userAlertsCache = cacheManager.getCache("user_alerts");
+        for (Alert alert : triggered) {
+            notificationService.createPriceAlertNotification(
+                    alert.getUser(),
+                    buildNotificationTitle(alert),
+                    buildNotificationMessage(alert)
+            );
+            if (userAlertsCache != null) {
+                userAlertsCache.evict(alert.getUser().getId());
+            }
+        }
     }
 
     private String normalizeSymbol(String symbol) {
@@ -111,8 +173,16 @@ public class AlertService {
                 .toUpperCase();
     }
 
+    private String buildNotificationTitle(Alert alert) {
+        return "Fiyat Alarmı: " + alert.getInstrumentCode();
+    }
+
+    private String buildNotificationMessage(Alert alert) {
+        String direction = alert.getConditionType() == ConditionType.ABOVE ? "üzerine çıktı" : "altına düştü";
+        return alert.getInstrumentCode() + " hedef fiyat " + alert.getTargetPrice() + " " + direction + ".";
+    }
+
     private AlertResponseDto toResponse(Alert alert) {
-        var snapshot = marketQueryService.findBySymbol(alert.getInstrumentCode()).orElse(null);
         return AlertResponseDto.builder()
                 .id(alert.getId())
                 .userId(alert.getUser().getId())
@@ -122,13 +192,6 @@ public class AlertService {
                 .status(alert.getStatus())
                 .triggeredAt(alert.getTriggeredAt())
                 .createdAt(alert.getCreatedAt())
-                .currentPrice(snapshot != null ? snapshot.price() : null)
-                .source(snapshot != null ? snapshot.source() : null)
-                .lastUpdated(snapshot != null && snapshot.fetchedAt() != null ? snapshot.fetchedAt().toString() : null)
                 .build();
     }
 }
-
-
-
-

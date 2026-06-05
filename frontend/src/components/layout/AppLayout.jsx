@@ -434,8 +434,11 @@ export default function AppLayout() {
 
     loadUnreadCount();
 
+    const intervalId = setInterval(loadUnreadCount, 600_000);
+
     return () => {
       active = false;
+      clearInterval(intervalId);
     };
   }, [isAuthenticated]);
 
