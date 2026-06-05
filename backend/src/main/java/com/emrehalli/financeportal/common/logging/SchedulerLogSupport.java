@@ -23,6 +23,7 @@ public final class SchedulerLogSupport {
             long durationMs = Duration.between(startedAt, finishedAt).toMillis();
 
             try (StructuredLogContext ignored = StructuredLogContext.open()
+                    .put(LoggingConstants.LOG_TYPE_KEY, "scheduler")
                     .put(LoggingConstants.SCHEDULER_NAME_KEY, schedulerName)
                     .putInstant(LoggingConstants.STARTED_AT_KEY, startedAt)
                     .putInstant(LoggingConstants.FINISHED_AT_KEY, finishedAt)
@@ -50,6 +51,7 @@ public final class SchedulerLogSupport {
             long durationMs = Duration.between(startedAt, finishedAt).toMillis();
 
             try (StructuredLogContext ignored = StructuredLogContext.open()
+                    .put(LoggingConstants.LOG_TYPE_KEY, "scheduler")
                     .put(LoggingConstants.SCHEDULER_NAME_KEY, schedulerName)
                     .putInstant(LoggingConstants.STARTED_AT_KEY, startedAt)
                     .putInstant(LoggingConstants.FINISHED_AT_KEY, finishedAt)

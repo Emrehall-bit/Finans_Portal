@@ -86,7 +86,16 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
                 LoggingContext.put(LoggingConstants.QUERY_STRING_KEY, SensitiveDataMasker.maskQueryString(requestWrapper.getQueryString()));
             }
 
+            int statusCode = responseWrapper.getStatus();
             log.info("HTTP request completed");
+
+            if (statusCode == 401 || statusCode == 403) {
+                String event = statusCode == 401 ? "UNAUTHORIZED_ACCESS" : "FORBIDDEN_ACCESS";
+                try (StructuredLogContext ignored = StructuredLogContext.open()
+                        .put(LoggingConstants.LOG_TYPE_KEY, "security_event")) {
+                    log.warn("Security event: {}", event);
+                }
+            }
         } finally {
             LoggingContext.remove(LoggingConstants.REQUEST_ID_KEY);
             LoggingContext.remove(LoggingConstants.METHOD_KEY);

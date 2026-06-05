@@ -1,5 +1,8 @@
 package com.emrehalli.financeportal.config.security;
 
+import com.emrehalli.financeportal.common.logging.LoggingConstants;
+import com.emrehalli.financeportal.common.logging.LoggingContext;
+import com.emrehalli.financeportal.common.logging.StructuredLogContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
@@ -13,13 +16,6 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Optional;
 
-/**
- * Global {@link AccessDeniedHandler} that returns a structured JSON 403 response
- * and writes an audit log entry for each denied access attempt.
- *
- * For AI premium endpoints the message is specific; all other endpoints receive
- * a generic "Access denied." response.
- */
 @Component
 public class AiPremiumAccessDeniedHandler implements AccessDeniedHandler {
 
@@ -40,11 +36,17 @@ public class AiPremiumAccessDeniedHandler implements AccessDeniedHandler {
         if (isPremiumAiPath(uri)) {
             message = "This AI feature requires premium access.";
             code    = "PREMIUM_REQUIRED";
-            logger.warn("Premium AI feature access denied. user={}, path={}, result=DENIED", userId, uri);
         } else {
             message = "Access denied.";
             code    = "ACCESS_DENIED";
-            logger.warn("Access denied. user={}, path={}", userId, uri);
+        }
+
+        try (StructuredLogContext ignored = StructuredLogContext.open()
+                .put(LoggingConstants.LOG_TYPE_KEY, "security_event")
+                .put(LoggingConstants.URI_KEY, uri)
+                .put(LoggingConstants.STATUS_KEY, "403")
+                .put(LoggingConstants.USER_ID_KEY, "anonymous".equals(userId) ? null : userId)) {
+            logger.warn("FORBIDDEN_ACCESS code={} uri={} userId={}", code, uri, userId);
         }
 
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);

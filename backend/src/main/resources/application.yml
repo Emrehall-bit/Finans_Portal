@@ -70,6 +70,12 @@ management:
   metrics:
     tags:
       application: finance-portal-backend
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:}
 
 news:
   startup-sync:
