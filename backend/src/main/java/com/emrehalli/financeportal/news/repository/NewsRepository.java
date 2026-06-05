@@ -30,11 +30,14 @@ public interface NewsRepository extends JpaRepository<News, Long>, JpaSpecificat
             where n.id <> :newsId
               and coalesce(n.isKapDisclosure, false) = false
               and n.publishedAt >= :publishedAfter
+              and lower(n.category) = lower(:category)
             order by n.publishedAt desc, n.createdAt desc
             """)
-    List<News> findRecentCandidatesForRelatedNews(
+    List<News> findRelatedByCategorySince(
             @Param("newsId") Long newsId,
-            @Param("publishedAfter") LocalDateTime publishedAfter
+            @Param("category") String category,
+            @Param("publishedAfter") LocalDateTime publishedAfter,
+            Pageable pageable
     );
 
     @Query("""
@@ -43,13 +46,28 @@ public interface NewsRepository extends JpaRepository<News, Long>, JpaSpecificat
             where n.id <> :newsId
               and coalesce(n.isKapDisclosure, false) = false
               and n.publishedAt >= :publishedAfter
+              and lower(n.source) = lower(:source)
+            order by n.publishedAt desc, n.createdAt desc
+            """)
+    List<News> findRelatedBySourceSince(
+            @Param("newsId") Long newsId,
+            @Param("source") String source,
+            @Param("publishedAfter") LocalDateTime publishedAfter,
+            Pageable pageable
+    );
+
+    @Query("""
+            select n
+            from News n
+            where n.id <> :newsId
+              and coalesce(n.isKapDisclosure, false) = false
               and lower(n.category) = lower(:category)
             order by n.publishedAt desc, n.createdAt desc
             """)
-    List<News> findRecentCandidatesForRelatedNewsByCategory(
+    List<News> findRelatedByCategory(
             @Param("newsId") Long newsId,
             @Param("category") String category,
-            @Param("publishedAfter") LocalDateTime publishedAfter
+            Pageable pageable
     );
 
     @Query("""

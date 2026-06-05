@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import AiNewsImpactCard from "../components/ai/AiNewsImpactCard";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import PageHeader from "../components/common/PageHeader";
 import { useNewsDetail, useNewsRelated } from "../hooks/useNewsQueries";
 import { formatNewsDate } from "../utils/dateUtils";
 import {
@@ -22,8 +22,6 @@ import {
   getNewsSourceUrl,
   isKapDisclosure,
 } from "../components/news/newsCardUtils";
-
-const EMPTY_RELATED = { relatedNews: [] };
 
 export default function NewsDetailPage() {
   const { t } = useTranslation();
@@ -64,17 +62,6 @@ export default function NewsDetailPage() {
 
   return (
     <div className="news-page-stack">
-      <PageHeader
-        eyebrow={kapDisclosure ? t("newsDetail.kapEyebrow") : t("newsDetail.eyebrow")}
-        title={item?.title || t("newsDetail.titleFallback")}
-        description={sourceName || t("newsDetail.descriptionFallback")}
-        actions={
-          <Link className="news-detail-back-link" to={backTo}>
-            {t("newsDetail.back")}
-          </Link>
-        }
-      />
-
       {loading ? <LoadingSpinner label={t("newsDetail.loading")} /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
@@ -85,9 +72,28 @@ export default function NewsDetailPage() {
       ) : null}
 
       {!loading && !error && item ? (
-        <section className="news-detail-hero-grid">
+        <section className="news-detail-shell">
+          <header className="news-detail-header panel-surface">
+            <Link className="news-detail-back-link" to={backTo}>
+              <ArrowLeft size={16} aria-hidden="true" />
+              <span>{t("newsDetail.back")}</span>
+            </Link>
+
+            <div className="news-detail-header-copy">
+              <p className="eyebrow">{kapDisclosure ? t("newsDetail.kapEyebrow") : t("newsDetail.eyebrow")}</p>
+              <h1>{item?.title || t("newsDetail.titleFallback")}</h1>
+              <div className="news-detail-meta">
+                <span className="news-card-badge category">{getNewsCategoryLabel(item?.category) || t("newsDetail.defaultCategory")}</span>
+                <span className="news-card-badge provider">{providerLabel}</span>
+                {publishedAtLabel ? <span>{publishedAtLabel}</span> : null}
+                {sourceName ? <span>{sourceName}</span> : null}
+              </div>
+            </div>
+          </header>
+
+          <div className="news-detail-hero-grid">
           <div className="news-detail-main-column">
-            <article className={`panel-surface news-detail-card news-detail-hero-card${kapDisclosure ? " is-kap" : ""}`}>
+            <article className={`panel-surface news-detail-card news-detail-story-card${kapDisclosure ? " is-kap" : ""}`}>
               {!kapDisclosure ? (
                 <div className="news-detail-media-shell">
                   {item.imageUrl && !imageFailed ? (
@@ -126,14 +132,6 @@ export default function NewsDetailPage() {
                 </div>
               ) : null}
 
-              <div className="news-detail-topbar">
-                <div className="news-detail-meta">
-                  <span className="news-card-badge category">{getNewsCategoryLabel(item?.category) || t("newsDetail.defaultCategory")}</span>
-                  <span className="news-card-badge provider">{providerLabel}</span>
-                  {publishedAtLabel ? <span className="muted">{publishedAtLabel}</span> : null}
-                </div>
-              </div>
-
               {kapDisclosure ? (
                 <div className="news-detail-kap-grid">
                   <div className="news-detail-fact">
@@ -154,47 +152,46 @@ export default function NewsDetailPage() {
                   </div>
                 </div>
               ) : null}
-            </article>
 
-            <section className={`panel-surface news-detail-card news-detail-content-card${kapDisclosure ? " is-kap" : ""}`}>
               <div className="news-detail-body">
-                {detailParagraphs.length > 0 ? (
-                  detailParagraphs.map((para, index) =>
-                    para.startsWith("## ") ? (
-                      <h3 key={index} className="news-detail-subheading">{para.slice(3)}</h3>
-                    ) : (
-                      <p key={index} className="news-detail-summary">{para}</p>
+                <div className="news-detail-prose">
+                  {detailParagraphs.length > 0 ? (
+                    detailParagraphs.map((para, index) =>
+                      para.startsWith("## ") ? (
+                        <h3 key={index} className="news-detail-subheading">{para.slice(3)}</h3>
+                      ) : (
+                        <p key={index} className="news-detail-summary">{para}</p>
+                      )
                     )
-                  )
-                ) : (
-                  <p className="news-detail-summary is-fallback">
-                    {kapDisclosure ? t("newsDetail.kapNoSummary") : previewText}
-                  </p>
-                )}
-              </div>
+                  ) : (
+                    <p className="news-detail-summary is-fallback">
+                      {kapDisclosure ? t("newsDetail.kapNoSummary") : previewText}
+                    </p>
+                  )}
+                </div>
 
-              {kapDisclosure ? (
-                <div className="news-detail-actions">
-                  <a
-                    className="primary-button news-detail-kap-cta"
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {t("newsDetail.viewOnKap")}
-                  </a>
+                {(kapDisclosure && item.url) || sourceUrl ? (
+                  <div className="news-detail-actions">
+                    <a
+                      className="news-detail-source-link"
+                      href={kapDisclosure ? item.url : sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <span>
+                        {kapDisclosure
+                          ? t("newsDetail.viewOnKap")
+                          : String(item?.qualityStatus || "").toUpperCase() === "SOURCE_LINK_ONLY"
+                            ? t("news.readAtSource")
+                            : t("newsDetail.openSource")}
+                      </span>
+                      <ExternalLink size={15} aria-hidden="true" />
+                    </a>
+                  </div>
+                ) : null}
+              </div>
+            </article>
                 </div>
-              ) : sourceUrl ? (
-                <div className="news-detail-actions">
-                  <a className="primary-button news-detail-source-link" href={sourceUrl} target="_blank" rel="noreferrer">
-                    {String(item?.qualityStatus || "").toUpperCase() === "SOURCE_LINK_ONLY"
-                      ? t("news.readAtSource")
-                      : t("newsDetail.openSource")}
-                  </a>
-                </div>
-              ) : null}
-          </section>
-          </div>
 
           <aside className="news-detail-side-panel">
             <div className="news-detail-side-sticky">
@@ -209,10 +206,10 @@ export default function NewsDetailPage() {
                 {relatedLoading ? <LoadingSpinner label={t("newsDetail.relatedLoading")} /> : null}
                 {!relatedLoading && relatedError ? <ErrorMessage message={relatedError} /> : null}
                 {!relatedLoading && !relatedError && relatedData.relatedNews.length === 0 ? (
-                  <EmptyState
-                    title={t("newsDetail.relatedNewsEmptyTitle")}
-                    description={t("newsDetail.relatedNewsEmptyDescription")}
-                  />
+                  <div className="news-related-empty">
+                    <strong>{t("newsDetail.relatedNewsEmptyTitle")}</strong>
+                    <span>{t("newsDetail.relatedNewsEmptyDescription")}</span>
+                  </div>
                 ) : null}
 
               {!relatedLoading && !relatedError && relatedData.relatedNews.length > 0 ? (
@@ -245,6 +242,7 @@ export default function NewsDetailPage() {
               {!kapDisclosure ? <AiNewsImpactCard newsId={item.id} /> : null}
             </div>
           </aside>
+          </div>
         </section>
       ) : null}
     </div>

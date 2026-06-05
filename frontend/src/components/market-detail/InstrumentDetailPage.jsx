@@ -25,7 +25,6 @@ import InstrumentFinancialsPanel from "./InstrumentFinancialsPanel";
 import InstrumentFundamentalsPanel from "./InstrumentFundamentalsPanel";
 import FundamentalAnalysis from "../analysis/FundamentalAnalysis";
 import InstrumentHeader from "./InstrumentHeader";
-import InstrumentNewsList from "./InstrumentNewsList";
 import InstrumentKapNewsList from "./InstrumentKapNewsList";
 import InstrumentStatsPanel from "./InstrumentStatsPanel";
 import InstrumentTabs from "./InstrumentTabs";
@@ -54,16 +53,13 @@ export default function InstrumentDetailPage() {
   const [analysis, setAnalysis] = useState(null);
   const [annualHistory, setAnnualHistory] = useState([]);
   const [yearStatsHistory, setYearStatsHistory] = useState([]);
-  const [newsItems, setNewsItems] = useState([]);
   const [watchlistItems, setWatchlistItems] = useState([]);
   const [quoteLoading, setQuoteLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(true);
   const [, setHistoryLoading] = useState(true);
-  const [newsLoading, setNewsLoading] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [quoteError, setQuoteError] = useState("");
   const [analysisError, setAnalysisError] = useState("");
-  const [newsError, setNewsError] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
   const [activeRange, setActiveRange] = useState("3M");
   const [dateRange, setDateRange] = useState(() => buildPresetRange(90));
@@ -246,39 +242,6 @@ export default function InstrumentDetailPage() {
   }, [normalizedSymbol, dateRange, selectedIndicators, isDateRangeInvalid, apiSymbol, t]);
 
   useEffect(() => {
-    if (activeTab !== "news" || !normalizedSymbol) {
-      return;
-    }
-
-    let active = true;
-
-    async function loadNews() {
-      try {
-        setNewsLoading(true);
-        setNewsError("");
-        const page = await getNews({ symbol: normalizedSymbol, size: 8 });
-        if (active) {
-          setNewsItems(page.content ?? []);
-        }
-      } catch (err) {
-        if (active) {
-          setNewsItems([]);
-          setNewsError(extractErrorMessage(err, t("instrumentDetail.newsError")));
-        }
-      } finally {
-        if (active) {
-          setNewsLoading(false);
-        }
-      }
-    }
-
-    loadNews();
-    return () => {
-      active = false;
-    };
-  }, [activeTab, normalizedSymbol, t]);
-
-  useEffect(() => {
     if (!userId || !normalizedSymbol) {
       setWatchlistItems([]);
       return;
@@ -442,11 +405,10 @@ export default function InstrumentDetailPage() {
       chartData,
       financialReports,
       fundamentals,
-      newsItems,
       quote,
       trendLabel: formatTrendLabel(displayTrendDirection),
     }),
-    [analysis, chartData, displayTrendDirection, financialReports, fundamentals, newsItems, quote],
+    [analysis, chartData, displayTrendDirection, financialReports, fundamentals, quote],
   );
   const quoteUnavailable = !quoteLoading && !quoteError && (!quote || quote.price == null);
   const isFavorite = useMemo(
@@ -640,10 +602,6 @@ export default function InstrumentDetailPage() {
                   />
                 ) : null}
               </section>
-            ) : null}
-
-            {activeTab === "news" ? (
-              <InstrumentNewsList loading={newsLoading} error={newsError} items={newsItems} />
             ) : null}
 
             {activeTab === "kapDisclosures" ? (

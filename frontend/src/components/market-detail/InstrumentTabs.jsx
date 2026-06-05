@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-const TABS = ["overview", "chart", "news", "financials", "fundamentals", "kapDisclosures"];
+const TABS = ["overview", "chart", "kapDisclosures", "financials", "fundamentals"];
 
 export default function InstrumentTabs({ activeTab, onChange }) {
   const { t } = useTranslation();

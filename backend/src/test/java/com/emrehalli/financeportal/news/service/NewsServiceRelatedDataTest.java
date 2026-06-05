@@ -7,6 +7,7 @@ import com.emrehalli.financeportal.news.entity.News;
 import com.emrehalli.financeportal.news.repository.NewsProviderSyncStateRepository;
 import com.emrehalli.financeportal.news.repository.NewsRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,7 +38,7 @@ class NewsServiceRelatedDataTest {
                 "INTEREST_BONDS");
 
         when(newsRepository.findById(620L)).thenReturn(Optional.of(mainNews));
-        when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
+        when(newsRepository.findRelatedByCategorySince(anyLong(), anyString(), any(LocalDateTime.class), any(Pageable.class)))
                 .thenReturn(List.of(strongCandidate));
 
         NewsRelatedResponseDto response = service.getRelatedData(620L);
@@ -47,7 +48,7 @@ class NewsServiceRelatedDataTest {
     }
 
     @Test
-    void relatedNewsOnlyCategoryOverlapIsRejected() {
+    void relatedNewsFallsBackToSourceWhenCategoryHasNoResult() {
         NewsRepository newsRepository = mock(NewsRepository.class);
         NewsService service = buildService(newsRepository);
 
@@ -56,18 +57,21 @@ class NewsServiceRelatedDataTest {
                 "Merkez bankasi faiz kararinin ardindan dolar kuru ve altin fiyatlari reaksiyon verdi.",
                 "INTEREST_BONDS");
 
-        News weakCandidate = baseNews(611L,
-                "Enflasyon beklentileri karisik seyretti, analistler tartisiyor",
-                "Ekonomistler genel enflasyon gorunumunu degerlendirdi.",
-                "INTEREST_BONDS");
+        News sourceCandidate = baseNews(611L,
+                "Piyasalarda son durum",
+                "Ayni kaynaktan gelen yeni haber.",
+                "GLOBAL_MARKETS");
 
         when(newsRepository.findById(610L)).thenReturn(Optional.of(mainNews));
-        when(newsRepository.findRecentCandidatesForRelatedNewsByCategory(anyLong(), anyString(), any(LocalDateTime.class)))
-                .thenReturn(List.of(weakCandidate));
+        when(newsRepository.findRelatedByCategorySince(anyLong(), anyString(), any(LocalDateTime.class), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(newsRepository.findRelatedBySourceSince(anyLong(), anyString(), any(LocalDateTime.class), any(Pageable.class)))
+                .thenReturn(List.of(sourceCandidate));
 
         NewsRelatedResponseDto response = service.getRelatedData(610L);
 
-        assertThat(response.relatedNews()).isEmpty();
+        assertThat(response.relatedNews()).hasSize(1);
+        assertThat(response.relatedNews().get(0).id()).isEqualTo(611L);
     }
 
     private NewsService buildService(NewsRepository newsRepository) {

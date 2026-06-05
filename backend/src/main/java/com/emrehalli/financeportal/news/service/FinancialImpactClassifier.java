@@ -232,36 +232,16 @@ public class FinancialImpactClassifier {
             }
         }
 
-        // --- Direct company match (BIST aliases) ---
-        int directCompanyScore = 0;
-        List<String> directSymbols = new ArrayList<>();
-        for (NewsService.InstrumentAlias alias : NewsService.BIST_INSTRUMENT_ALIASES.values()) {
-            if (!"STOCK".equalsIgnoreCase(alias.instrumentType())) continue;
-            for (String keyword : alias.keywords()) {
-                String normalizedKw = normalizeText(keyword);
-                if (!normalizedKw.isBlank() && text.contains(normalizedKw)) {
-                    directCompanyScore = 35;
-                    directSymbols.add(alias.symbol());
-                    matched.add(alias.symbol());
-                    break;
-                }
-            }
-        }
-
         // --- Total score ---
         int totalScore = centralBankScore + rateScore + fxScore + marketScore + macroScore
                 + fiscalScore + goldScore + oilScore + bankingScore + regulatoryScore
-                + globalScore + politicalScore + geopoliticalScore + directCompanyScore;
+                + globalScore + politicalScore + geopoliticalScore;
 
         // --- Impact type (priority order) ---
         ImpactType impactType;
         String reason;
 
-        if (directCompanyScore > 0) {
-            impactType = ImpactType.DIRECT_COMPANY;
-            reason = "Haberde ÅŸirket adÄ±/tiker doÄŸrudan geÃ§iyor: " + directSymbols;
-
-        } else if (centralBankScore >= THRESHOLD_MONETARY_POLICY_CB
+        if (centralBankScore >= THRESHOLD_MONETARY_POLICY_CB
                 || (centralBankScore + rateScore) >= THRESHOLD_MONETARY_POLICY_COMBINED) {
             impactType = ImpactType.MONETARY_POLICY;
             reason = "Merkez bankasÄ±/faiz sinyalleri para politikasÄ± etkisi gÃ¶steriyor";
@@ -325,7 +305,7 @@ public class FinancialImpactClassifier {
             impactType = ImpactType.NOT_MARKET_RELEVANT;
             confidence = "LOW";
             marketRelevant = false;
-        } else if (impactType == ImpactType.DIRECT_COMPANY || totalScore >= THRESHOLD_HIGH_CONFIDENCE) {
+        } else if (totalScore >= THRESHOLD_HIGH_CONFIDENCE) {
             confidence = "HIGH";
             marketRelevant = true;
         } else {

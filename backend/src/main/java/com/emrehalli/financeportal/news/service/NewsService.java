@@ -22,7 +22,6 @@ import com.emrehalli.financeportal.news.entity.NewsFavorite;
 import com.emrehalli.financeportal.news.entity.NewsProviderSyncState;
 import com.emrehalli.financeportal.news.enums.NewsProviderType;
 import com.emrehalli.financeportal.news.enums.NewsScope;
-import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnostics;
 import com.emrehalli.financeportal.news.provider.common.ProviderSyncDiagnosticsAware;
 import com.emrehalli.financeportal.news.provider.common.NewsProvider;
@@ -53,7 +52,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -84,12 +82,8 @@ public class NewsService {
     private static final int DUPLICATE_LOOKBACK_DAYS = 3;
     private static final int MIN_FINANCIAL_RELEVANCE_SCORE = 2;
     private static final int MAX_RELATED_NEWS = 4;
-    private static final int MIN_RELATED_NEWS_SCORE = 55;
-    private static final int MIN_RELATED_NEWS_SCORE_NO_DIRECT_MATCH = 70;
-    private static final int RELATED_NEWS_RECENCY_HOURS = 72;
     private static final int MAX_CATEGORY_REPAIR_LIMIT = 5_000;
     private static final int CATEGORY_REPAIR_SAMPLE_LIMIT = 10;
-    private static final Pattern TOKEN_SPLIT_PATTERN = Pattern.compile("[^\\p{L}\\p{Nd}]+");
     private static final Set<String> TRACKING_QUERY_PARAMS = Set.of(
             "fbclid", "gclid", "mc_cid", "mc_eid", "ref", "ref_src", "spm", "igshid"
     );
@@ -99,36 +93,6 @@ public class NewsService {
             "fed", "bond", "tahvil", "forex", "fx", "doviz", "currency", "kur", "gold", "altin",
             "oil", "petrol", "commodity", "emtia", "crypto", "kripto", "bitcoin", "ethereum",
             "earnings", "bilanco", "revenue", "profit", "kar", "zarar", "disclosure", "kap"
-    );
-    static final Map<String, InstrumentAlias> BIST_INSTRUMENT_ALIASES = createInstrumentAliases();
-    static final Map<String, InstrumentAlias> MARKET_INSTRUMENT_ALIASES = createMarketInstrumentAliases();
-    private static final Map<String, Set<String>> REGION_KEYWORDS = createRegionKeywords();
-    private static final Map<String, Set<String>> INSTITUTION_KEYWORDS = createInstitutionKeywords();
-    private static final Map<String, Set<String>> COMMODITY_KEYWORDS = createCommodityKeywords();
-    private static final Map<String, Set<String>> SECTOR_KEYWORDS = createSectorKeywords();
-    private static final Set<String> GENERIC_MACRO_TOKENS = Set.of(
-            "IHRACAT", "URETIM", "SANAYI", "EKONOMI", "SIRKET", "PIYASA", "KURESEL", "YATIRIM"
-    );
-    private static final Set<String> DEFENSE_STRONG_TOKENS = Set.of(
-            "SAVUNMA", "ASKERI", "NATO", "FUZE", "SILAH", "SAVAS", "CATISMA", "ASELSAN", "ASELS", "BAYKAR", "IHA", "SIHA"
-    );
-    private static final Set<String> GEOPOLITICAL_EVENT_TOKENS = Set.of(
-            "SAVAS", "CATISMA", "KRIZ", "AMBARGO", "YAPTIRIM", "GERILIM", "ASKERI", "SALDIRI", "ATESKES", "MISILLEME"
-    );
-    private static final Set<String> SAFE_HAVEN_TOKENS = Set.of(
-            "GUVENLI LIMAN", "SAFE HAVEN", "RISK OFF", "RISKTEN KACIS"
-    );
-    private static final Set<String> ENERGY_STRONG_TOKENS = Set.of(
-            "PETROL", "BRENT", "AKARYAKIT", "YAKIT", "DOGAL GAZ", "LNG", "RAFINERI", "ENERJI", "OPEC"
-    );
-    private static final Set<String> AUTOMOTIVE_INDUSTRIAL_TOKENS = Set.of(
-            "OTOMOTIV", "ARAC", "FABRIKA", "TEDARIK", "TEDARIK ZINCIRI", "URETIM HATTI", "YAN SANAYI"
-    );
-    private static final Set<String> AUTOMOTIVE_EXPORT_SUPPORT_TOKENS = Set.of(
-            "IHRACAT", "URETIM", "TEDARIK", "FABRIKA", "SATIS", "SANAYI"
-    );
-    private static final Set<String> AUTOMOTIVE_HEAVY_VEHICLE_TOKENS = Set.of(
-            "TRAKTOR", "OTOBUS", "KAMYON", "MINIBUS", "PANELVAN"
     );
 
     private final NewsRepository newsRepository;
@@ -1898,13 +1862,9 @@ public class NewsService {
             return null;
         }
         String symbol = normalizeSymbol(request.getSymbol());
-        String titlePattern = "%" + symbol.toLowerCase(Locale.ROOT) + "%";
-        return (root, query, cb) -> cb.or(
-                cb.equal(cb.upper(root.get("relatedSymbol")), symbol),
-                cb.and(
-                        cb.isNull(root.get("relatedSymbol")),
-                        cb.like(cb.lower(root.get("title")), titlePattern)
-                )
+        return (root, query, cb) -> cb.and(
+                cb.isTrue(root.get("isKapDisclosure")),
+                cb.equal(cb.upper(root.get("relatedSymbol")), symbol)
         );
     }
 
@@ -2026,530 +1986,68 @@ public class NewsService {
     }
 
     private List<RelatedNewsItemDto> resolveRelatedNews(News news) {
-        LocalDateTime basePublishedAt = news.getPublishedAt() != null ? news.getPublishedAt() : LocalDateTime.now();
-        LocalDateTime publishedAfter = basePublishedAt.minusDays(7);
-        ExtractedNewsContext currentContext = extractNewsContext(news);
+        LinkedHashMap<Long, News> related = new LinkedHashMap<>();
+        Pageable firstPage = PageRequest.of(0, MAX_RELATED_NEWS, Sort.by(Sort.Direction.DESC, "publishedAt")
+                .and(Sort.by(Sort.Direction.DESC, "createdAt")));
 
-        return fetchRelatedNewsCandidates(news, publishedAfter).stream()
-                .map(candidate -> scoreRelatedNews(news, currentContext, candidate))
-                .filter(scored -> {
-                    int minScore = scored.hasDirectMatch() ? MIN_RELATED_NEWS_SCORE : MIN_RELATED_NEWS_SCORE_NO_DIRECT_MATCH;
-                    if (scored.score() < minScore) {
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("RelatedNews rejected (low score): sourceId={}, candidateId={}, score={}, required={}, hasDirectMatch={}",
-                                    news.getId(), scored.news().getId(), scored.score(), minScore, scored.hasDirectMatch());
-                        }
-                        return false;
-                    }
-                    return true;
-                })
-                .filter(scored -> !isDuplicateTitle(news.getTitle(), scored.news().getTitle()))
-                .sorted(Comparator
-                        .comparingInt(ScoredRelatedNews::score).reversed()
-                        .thenComparing(scored -> scored.news().getPublishedAt(), Comparator.nullsLast(Comparator.reverseOrder()))
-                        .thenComparing(scored -> scored.news().getImportanceScore(), Comparator.nullsLast(Comparator.reverseOrder())))
+        LocalDateTime basePublishedAt = news.getPublishedAt() != null ? news.getPublishedAt() : LocalDateTime.now();
+        if (hasText(news.getCategory())) {
+            addRelatedNews(related, newsRepository.findRelatedByCategorySince(
+                    news.getId(),
+                    news.getCategory().trim(),
+                    basePublishedAt.minusDays(7),
+                    firstPage
+            ));
+        }
+
+        if (related.size() < MAX_RELATED_NEWS && hasText(news.getSource())) {
+            addRelatedNews(related, newsRepository.findRelatedBySourceSince(
+                    news.getId(),
+                    news.getSource().trim(),
+                    basePublishedAt.minusDays(14),
+                    firstPage
+            ));
+        }
+
+        if (related.size() < MAX_RELATED_NEWS && hasText(news.getCategory())) {
+            addRelatedNews(related, newsRepository.findRelatedByCategory(
+                    news.getId(),
+                    news.getCategory().trim(),
+                    firstPage
+            ));
+        }
+
+        return related.values().stream()
                 .limit(MAX_RELATED_NEWS)
-                .map(scored -> RelatedNewsItemDto.builder()
-                        .id(scored.news().getId())
-                        .title(scored.news().getTitle())
-                        .sourceName(newsPresentationMapper.toResponse(scored.news()).getSourceName())
-                        .category(scored.news().getCategory())
-                        .publishedAt(scored.news().getPublishedAt())
-                        .importanceScore(scored.news().getImportanceScore())
-                        .build())
+                .map(this::toRelatedNewsItem)
                 .toList();
     }
 
-    private boolean isDuplicateTitle(String title1, String title2) {
-        if (!hasText(title1) || !hasText(title2)) {
-            return false;
+    private void addRelatedNews(LinkedHashMap<Long, News> target, List<News> candidates) {
+        if (candidates == null || candidates.isEmpty() || target.size() >= MAX_RELATED_NEWS) {
+            return;
         }
-        Set<String> tokens1 = tokenizeText(normalizeText(title1));
-        Set<String> tokens2 = tokenizeText(normalizeText(title2));
-        if (tokens1.isEmpty() || tokens2.isEmpty()) {
-            return false;
-        }
-        long overlap = tokens1.stream().filter(tokens2::contains).count();
-        int denominator = Math.min(tokens1.size(), tokens2.size());
-        return denominator > 0 && (double) overlap / denominator >= 0.8;
-    }
-
-    private List<News> fetchRelatedNewsCandidates(News news, LocalDateTime publishedAfter) {
-        if (hasText(news.getCategory())) {
-            return newsRepository.findRecentCandidatesForRelatedNewsByCategory(
-                    news.getId(),
-                    news.getCategory().trim(),
-                    publishedAfter
-            );
-        }
-        return newsRepository.findRecentCandidatesForRelatedNews(news.getId(), publishedAfter);
-    }
-
-    private ScoredRelatedNews scoreRelatedNews(News sourceNews, ExtractedNewsContext sourceContext, News candidate) {
-        ExtractedNewsContext candidateContext = extractNewsContext(candidate);
-        int score = 0;
-        boolean hasDirectMatch = false;
-
-        // Kategori eÃ…Å¸leÃ…Å¸mesi tek baÃ…Å¸Ã„Â±na yeterli deÃ„Å¸il; diÃ„Å¸er sinyallerle desteklenmeli
-        if (samePrimaryCategory(sourceNews.getCategory(), candidate.getCategory())) {
-            score += 10;
-        }
-
-        // Kurum overlap (TCMB, FED vb.) Ã¢â€ â€™ gÃƒÂ¼ÃƒÂ§lÃƒÂ¼ makro sinyal
-        int instScore = overlapScore(sourceContext.institutions(), candidateContext.institutions(), 35);
-        if (instScore > 0) {
-            hasDirectMatch = true;
-            score += instScore;
-        }
-
-        // Emtia/enstrÃƒÂ¼man overlap (GOLD, BRENT, USDTRY vb.) Ã¢â€ â€™ gÃƒÂ¼ÃƒÂ§lÃƒÂ¼ tematik sinyal
-        Set<String> sourceCommodityInstrument = union(sourceContext.commodities(), sourceContext.instruments());
-        Set<String> candidateCommodityInstrument = union(candidateContext.commodities(), candidateContext.instruments());
-        int commodScore = overlapScore(sourceCommodityInstrument, candidateCommodityInstrument, 50);
-        if (commodScore > 0) {
-            hasDirectMatch = true;
-            score += commodScore;
-        }
-
-        // Ã…Âirket overlap Ã¢â€ â€™ en gÃƒÂ¼ÃƒÂ§lÃƒÂ¼ sinyal
-        int compScore = overlapScore(sourceContext.companies(), candidateContext.companies(), 70);
-        if (compScore > 0) {
-            hasDirectMatch = true;
-            score += compScore;
-        }
-
-        // AynÃ„Â± KAP Ã…Å¸irketi Ã¢â€ â€™ en yÃƒÂ¼ksek sinyal
-        if (Boolean.TRUE.equals(sourceNews.getIsKapDisclosure())
-                && hasText(sourceNews.getRelatedSymbol())
-                && hasText(candidate.getRelatedSymbol())
-                && sourceNews.getRelatedSymbol().equalsIgnoreCase(candidate.getRelatedSymbol())) {
-            score += 100;
-            hasDirectMatch = true;
-        }
-
-        // Makro konu overlap (faiz, altÃ„Â±n, petrol, dÃƒÂ¶viz vb.)
-        Set<String> sourceMacroTopics = extractMacroTopics(sourceContext);
-        Set<String> candidateMacroTopics = extractMacroTopics(candidateContext);
-        int macroOverlap = overlapScore(sourceMacroTopics, candidateMacroTopics, 35);
-        if (macroOverlap > 0) {
-            hasDirectMatch = true;
-            score += macroOverlap;
-        }
-
-        // BaÃ…Å¸lÃ„Â±k benzerliÃ„Å¸i: ÃƒÂ¼st sÃ„Â±nÃ„Â±rlÃ„Â±
-        score += titleSimilarityScore(sourceContext.titleTokens(), candidateContext.titleTokens());
-
-        // YakÃ„Â±nlÃ„Â±k bonusu
-        if (withinHours(sourceNews.getPublishedAt(), candidate.getPublishedAt(), RELATED_NEWS_RECENCY_HOURS)) {
-            score += 10;
-        }
-
-        if (logger.isDebugEnabled()) {
-            logger.debug("RelatedNews scored: sourceId={}, candidateId={}, score={}, hasDirectMatch={}",
-                    sourceNews.getId(), candidate.getId(), score, hasDirectMatch);
-        }
-        return new ScoredRelatedNews(candidate, score, hasDirectMatch);
-    }
-
-    private Set<String> extractMacroTopics(ExtractedNewsContext context) {
-        Set<String> topics = new LinkedHashSet<>();
-        // INTEREST_RATE: kurum gerektirir veya doÃ„Å¸rudan faiz dili gerektirir (enflasyon tek baÃ…Å¸Ã„Â±na yetmez)
-        if (context.institutions().contains("TCMB") || context.institutions().contains("FED") || context.institutions().contains("ECB")
-                || hasAny(context.tokens(), "FAIZ", "POLITIKA FAIZI")) {
-            topics.add("INTEREST_RATE");
-        }
-        if (context.instruments().contains("USDTRY") || context.instruments().contains("EURTRY")
-                || hasAny(context.tokens(), "KUR", "DOVIZ", "PARITE", "DOLAR")) {
-            topics.add("FX");
-        }
-        if (context.commodities().contains("GOLD") || hasAny(context.tokens(), "ALTIN", "ONS")) {
-            topics.add("GOLD");
-        }
-        if (context.commodities().contains("BRENT") || context.commodities().contains("PETROL")
-                || context.institutions().contains("OPEC")) {
-            topics.add("OIL");
-        }
-        return topics;
-    }
-
-    private ExtractedNewsContext extractNewsContext(News news) {
-        String preview = deriveClassificationPreview(news);
-        String normalizedText = normalizeText(String.join(" ",
-                safeText(news.getRelatedSymbol()),
-                safeText(news.getTitle()),
-                safeText(news.getSummary()),
-                safeText(preview)));
-        Set<String> tokens = tokenizeText(normalizedText);
-        Set<String> titleTokens = tokenizeText(normalizeText(safeText(news.getTitle())));
-        Set<String> regions = collectKeywordMatches(normalizedText, tokens, REGION_KEYWORDS);
-        Set<String> institutions = collectKeywordMatches(normalizedText, tokens, INSTITUTION_KEYWORDS);
-        Set<String> commodities = collectKeywordMatches(normalizedText, tokens, COMMODITY_KEYWORDS);
-        Set<String> sectors = collectKeywordMatches(normalizedText, tokens, SECTOR_KEYWORDS);
-        Set<String> companies = detectCompanySymbols(normalizedText, tokens, news.getRelatedSymbol());
-        Set<String> instruments = detectInstrumentSymbols(normalizedText, tokens, news.getRelatedSymbol());
-
-        return new ExtractedNewsContext(normalizedText, tokens, titleTokens, regions, institutions, commodities, sectors, companies, instruments);
-    }
-
-    private boolean hasStrongCurrencyContext(ExtractedNewsContext context) {
-        if (context.instruments().contains("USDTRY") || context.instruments().contains("EURTRY")) {
-            return true;
-        }
-        boolean hasPairOrCurveLanguage = hasAny(context.tokens(), "KUR", "PARITE", "DOVIZ", "FOREX", "FX");
-        boolean hasCurrencySignal = hasAny(context.tokens(), "DOLAR", "USD", "EURO", "EUR", "TL", "TRY", "STERLIN", "GBP", "YEN", "JPY");
-        boolean hasMacroCatalyst = context.institutions().contains("TCMB")
-                || context.institutions().contains("FED")
-                || context.institutions().contains("ECB")
-                || hasAny(context.tokens(), "FAIZ", "ENFLASYON", "TAHVIL", "BOND");
-        return hasPairOrCurveLanguage || (hasCurrencySignal && hasMacroCatalyst);
-    }
-
-    private boolean hasExplicitMarketContext(ExtractedNewsContext context) {
-        return hasAny(context.tokens(), "PIYASA", "PÃ„Â°YASA", "MARKET", "BORSA", "BIST", "HISSE", "ENDEKS", "RISK", "FIYATLAMA", "YATIRIMCI");
-    }
-
-    private boolean hasGeopoliticalRiskContext(ExtractedNewsContext context) {
-        if (containsOnlyGenericMacroSignals(context)) {
-            return false;
-        }
-        boolean hasEvent = containsAnyToken(context.tokens(), GEOPOLITICAL_EVENT_TOKENS) || hasAny(context.tokens(), "JEOPOLITIK", "JEOPOLÃ„Â°TÃ„Â°K");
-        boolean hasRegionOrActor = context.regions().contains("MIDDLE_EAST")
-                || context.regions().contains("USA")
-                || context.regions().contains("EUROPE")
-                || context.regions().contains("CHINA")
-                || context.institutions().contains("OPEC");
-        return hasEvent && hasRegionOrActor;
-    }
-
-    private boolean hasDefenseContext(
-            ExtractedNewsContext context,
-            boolean hasGeopoliticalRiskContext,
-            int automotiveContextScore,
-            int defenseContextScore
-    ) {
-        if (containsOnlyGenericMacroSignals(context)) {
-            return false;
-        }
-        if (defenseContextScore < 5) {
-            return false;
-        }
-        if (automotiveContextScore >= defenseContextScore + 2) {
-            return false;
-        }
-        boolean hasStrongDefenseKeyword = context.sectors().contains("DEFENSE")
-                || containsAnyToken(context.tokens(), DEFENSE_STRONG_TOKENS)
-                || context.companies().contains("ASELS");
-        return hasStrongDefenseKeyword && (hasGeopoliticalRiskContext || defenseContextScore >= 6);
-    }
-
-    private boolean hasSafeHavenGoldContext(
-            ExtractedNewsContext context,
-            boolean hasRateContext,
-            boolean hasCurrencyContext,
-            boolean hasMarketContext,
-            boolean hasGeopoliticalRiskContext
-    ) {
-        if (containsOnlyGenericMacroSignals(context)) {
-            return false;
-        }
-        boolean hasDirectGoldContext = context.commodities().contains("GOLD")
-                || hasAny(context.tokens(), "ALTIN", "ONS", "ONS ALTIN", "GUMUS", "SILVER");
-        boolean hasSafeHavenSignal = containsAnyPhrase(context.normalizedText(), SAFE_HAVEN_TOKENS);
-        boolean hasRiskOffMacroContext = hasRateContext
-                && hasCurrencyContext
-                && hasMarketContext
-                && hasAny(context.tokens(), "FED", "FAIZ", "ENFLASYON", "RISK", "DALGALANMA", "VOLATILITE");
-        return hasDirectGoldContext || (hasGeopoliticalRiskContext && hasSafeHavenSignal) || (hasRiskOffMacroContext && hasDirectGoldContext);
-    }
-
-    private boolean hasEnergyContext(ExtractedNewsContext context, boolean hasGeopoliticalRiskContext) {
-        if (containsOnlyGenericMacroSignals(context)) {
-            return false;
-        }
-        boolean hasDirectEnergySignal = context.commodities().contains("BRENT")
-                || context.commodities().contains("PETROL")
-                || context.institutions().contains("OPEC")
-                || containsAnyPhrase(context.normalizedText(), ENERGY_STRONG_TOKENS);
-        boolean hasSupplyOrRiskContext = hasAny(context.tokens(), "ARZ", "KESINTI", "INTERRUPTION", "YAPTIRIM", "SAVAS", "FIYAT", "MALIYET");
-        return hasDirectEnergySignal && (hasSupplyOrRiskContext || hasGeopoliticalRiskContext);
-    }
-
-    private boolean hasAutomotiveIndustrialContext(ExtractedNewsContext context, int automotiveContextScore, int defenseContextScore) {
-        boolean hasAutomotiveSignal = containsAnyPhrase(context.normalizedText(), AUTOMOTIVE_INDUSTRIAL_TOKENS)
-                || context.companies().contains("FROTO")
-                || context.companies().contains("TOASO")
-                || context.companies().contains("OTKAR");
-        boolean hasSupportSignal = containsAnyPhrase(context.normalizedText(), AUTOMOTIVE_EXPORT_SUPPORT_TOKENS)
-                || hasAny(context.tokens(), "IHRACAT", "URETIM", "SANAYI", "ARAC");
-        if (!(hasAutomotiveSignal && hasSupportSignal)) {
-            return false;
-        }
-        return automotiveContextScore >= 5 && automotiveContextScore >= defenseContextScore;
-    }
-
-    private boolean containsOnlyGenericMacroSignals(ExtractedNewsContext context) {
-        boolean hasGenericMacro = context.tokens().stream().anyMatch(GENERIC_MACRO_TOKENS::contains);
-        boolean hasStrongNonGenericSignal = !context.institutions().isEmpty()
-                || !context.commodities().isEmpty()
-                || !context.companies().isEmpty()
-                || context.sectors().stream().anyMatch(sector -> !"AUTOMOTIVE".equals(sector))
-                || containsAnyToken(context.tokens(), DEFENSE_STRONG_TOKENS)
-                || containsAnyToken(context.tokens(), GEOPOLITICAL_EVENT_TOKENS)
-                || containsAnyPhrase(context.normalizedText(), ENERGY_STRONG_TOKENS)
-                || hasAny(context.tokens(), "ALTIN", "ONS", "DOLAR", "USD", "EUR", "KUR", "PARITE", "BIST", "HISSE");
-        return hasGenericMacro && !hasStrongNonGenericSignal;
-    }
-
-    private int automotiveContextScore(ExtractedNewsContext context) {
-        int score = 0;
-        score += weightedTokenMatches(context.normalizedText(), AUTOMOTIVE_INDUSTRIAL_TOKENS, 2);
-        score += weightedTokenMatches(context.normalizedText(), AUTOMOTIVE_EXPORT_SUPPORT_TOKENS, 1);
-        score += weightedTokenMatches(context.normalizedText(), AUTOMOTIVE_HEAVY_VEHICLE_TOKENS, 2);
-        if (context.sectors().contains("AUTOMOTIVE")) {
-            score += 3;
-        }
-        if (context.companies().contains("FROTO") || context.companies().contains("TOASO") || context.companies().contains("OTKAR")) {
-            score += 3;
-        }
-        return score;
-    }
-
-    private int defenseContextScore(ExtractedNewsContext context, boolean hasGeopoliticalRiskContext) {
-        int score = 0;
-        score += weightedTokenMatches(context.normalizedText(), DEFENSE_STRONG_TOKENS, 2);
-        if (context.sectors().contains("DEFENSE")) {
-            score += 3;
-        }
-        if (context.companies().contains("ASELS")) {
-            score += 3;
-        }
-        if (hasGeopoliticalRiskContext) {
-            score += 2;
-        }
-        return score;
-    }
-
-    private int geopoliticalContextScore(ExtractedNewsContext context, boolean hasGeopoliticalRiskContext) {
-        if (!hasGeopoliticalRiskContext) {
-            return 0;
-        }
-        return weightedTokenMatches(context.normalizedText(), GEOPOLITICAL_EVENT_TOKENS, 2) + 2;
-    }
-
-    private int weightedTokenMatches(String normalizedText, Set<String> values, int weightPerMatch) {
-        int score = 0;
-        for (String value : values) {
-            String normalized = normalizeText(value);
-            if (hasText(normalized) && normalizedText.contains(normalized)) {
-                score += weightPerMatch;
-            }
-        }
-        return score;
-    }
-
-    private boolean containsAnyToken(Set<String> tokens, Set<String> expectedValues) {
-        for (String value : expectedValues) {
-            String normalized = normalizeText(value);
-            if (hasText(normalized) && tokens.contains(normalized)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean containsAnyPhrase(String normalizedText, Set<String> expectedValues) {
-        for (String value : expectedValues) {
-            String normalized = normalizeText(value);
-            if (hasText(normalized) && normalizedText.contains(normalized)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private Set<String> collectKeywordMatches(String normalizedText, Set<String> tokens, Map<String, Set<String>> keywordMap) {
-        LinkedHashSet<String> matches = new LinkedHashSet<>();
-        for (Map.Entry<String, Set<String>> entry : keywordMap.entrySet()) {
-            if (entry.getValue().stream().anyMatch(keyword -> containsKeyword(normalizedText, tokens, keyword))) {
-                matches.add(entry.getKey());
-            }
-        }
-        return matches;
-    }
-
-    private Set<String> detectCompanySymbols(String normalizedText, Set<String> tokens, String relatedSymbol) {
-        LinkedHashSet<String> matches = new LinkedHashSet<>();
-        for (InstrumentAlias alias : BIST_INSTRUMENT_ALIASES.values()) {
-            if (!InstrumentType.STOCK.name().equalsIgnoreCase(alias.instrumentType())) {
+        for (News candidate : candidates) {
+            if (candidate == null || candidate.getId() == null || target.containsKey(candidate.getId())) {
                 continue;
             }
-            if (matchesInstrumentAlias(normalizedText, tokens, alias)) {
-                matches.add(alias.symbol());
+            target.put(candidate.getId(), candidate);
+            if (target.size() >= MAX_RELATED_NEWS) {
+                return;
             }
         }
-        String normalizedRelatedSymbol = normalizeSymbolValue(relatedSymbol);
-        if (hasText(normalizedRelatedSymbol)) {
-            InstrumentAlias alias = BIST_INSTRUMENT_ALIASES.get(normalizedRelatedSymbol);
-            if (alias != null && InstrumentType.STOCK.name().equalsIgnoreCase(alias.instrumentType())) {
-                matches.add(alias.symbol());
-            }
-        }
-        return matches;
     }
 
-    private Set<String> detectInstrumentSymbols(String normalizedText, Set<String> tokens, String relatedSymbol) {
-        LinkedHashSet<String> matches = new LinkedHashSet<>();
-        for (InstrumentAlias alias : BIST_INSTRUMENT_ALIASES.values()) {
-            if (InstrumentType.STOCK.name().equalsIgnoreCase(alias.instrumentType())) {
-                continue;
-            }
-            if (matchesInstrumentAlias(normalizedText, tokens, alias)) {
-                matches.add(alias.symbol());
-            }
-        }
-        for (InstrumentAlias alias : MARKET_INSTRUMENT_ALIASES.values()) {
-            if (matchesInstrumentAlias(normalizedText, tokens, alias)) {
-                matches.add(alias.symbol());
-            }
-        }
-        String normalizedRelatedSymbol = normalizeSymbolValue(relatedSymbol);
-        if (hasText(normalizedRelatedSymbol) && MARKET_INSTRUMENT_ALIASES.containsKey(normalizedRelatedSymbol)) {
-            matches.add(normalizedRelatedSymbol);
-        }
-        return matches;
+    private RelatedNewsItemDto toRelatedNewsItem(News news) {
+        return RelatedNewsItemDto.builder()
+                .id(news.getId())
+                .title(news.getTitle())
+                .sourceName(newsPresentationMapper.toResponse(news).getSourceName())
+                .category(news.getCategory())
+                .publishedAt(news.getPublishedAt())
+                .importanceScore(news.getImportanceScore())
+                .build();
     }
-
-    private InstrumentAlias resolveKnownInstrumentAlias(String symbol) {
-        if (!hasText(symbol)) {
-            return null;
-        }
-        InstrumentAlias bistAlias = BIST_INSTRUMENT_ALIASES.get(symbol);
-        if (bistAlias != null) {
-            return bistAlias;
-        }
-        return MARKET_INSTRUMENT_ALIASES.get(symbol);
-    }
-
-    private boolean matchesInstrumentAlias(String normalizedText, Set<String> tokens, InstrumentAlias alias) {
-        if (containsKeyword(normalizedText, tokens, alias.symbol())) {
-            return true;
-        }
-        for (String keyword : alias.keywords()) {
-            if (containsKeyword(normalizedText, tokens, keyword)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean samePrimaryCategory(String left, String right) {
-        if (!hasText(left) || !hasText(right)) {
-            return false;
-        }
-        return left.trim().equalsIgnoreCase(right.trim());
-    }
-
-    private int overlapScore(Set<String> left, Set<String> right, int scorePerOverlap) {
-        if (left.isEmpty() || right.isEmpty()) {
-            return 0;
-        }
-        int overlap = (int) left.stream().filter(right::contains).count();
-        return overlap * scorePerOverlap;
-    }
-
-    private Set<String> union(Set<String> left, Set<String> right) {
-        LinkedHashSet<String> merged = new LinkedHashSet<>(left);
-        merged.addAll(right);
-        return merged;
-    }
-
-    private int titleSimilarityScore(Set<String> leftTitleTokens, Set<String> rightTitleTokens) {
-        if (leftTitleTokens.isEmpty() || rightTitleTokens.isEmpty()) {
-            return 0;
-        }
-        long overlap = leftTitleTokens.stream().filter(rightTitleTokens::contains).count();
-        if (overlap == 0) {
-            return 0;
-        }
-        int denominator = Math.max(leftTitleTokens.size(), rightTitleTokens.size());
-        return Math.min(20, (int) Math.round((overlap * 20.0) / denominator));
-    }
-
-    private boolean withinHours(LocalDateTime left, LocalDateTime right, int hours) {
-        if (left == null || right == null) {
-            return false;
-        }
-        return Math.abs(java.time.Duration.between(left, right).toHours()) <= hours;
-    }
-
-    private boolean hasAny(Set<String> tokens, String... values) {
-        for (String value : values) {
-            String normalized = normalizeText(value);
-            if (hasText(normalized) && tokens.contains(normalized)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private int relationTypePriority(String relationType) {
-        return "DIRECT".equalsIgnoreCase(relationType) ? 2 : 1;
-    }
-
-    private String confidenceForScore(int score) {
-        if (score >= 85) {
-            return "HIGH";
-        }
-        if (score >= 55) {
-            return "MEDIUM";
-        }
-        return "LOW";
-    }
-
-    private int confidencePriority(String confidence) {
-        return switch (String.valueOf(confidence).toUpperCase(Locale.ROOT)) {
-            case "HIGH" -> 3;
-            case "MEDIUM" -> 2;
-            default -> 1;
-        };
-    }
-
-    private InstrumentType parseInstrumentType(String value) {
-        if (!hasText(value)) {
-            return null;
-        }
-        try {
-            return InstrumentType.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException exception) {
-            return null;
-        }
-    }
-
-    private Set<String> tokenize(News news) {
-        return tokenizeText(normalizeText(String.join(" ",
-                safeText(news.getTitle()),
-                safeText(news.getSummary()),
-                safeText(news.getCategory()))));
-    }
-
-    private Set<String> tokenizeText(String normalizedText) {
-        return TOKEN_SPLIT_PATTERN.splitAsStream(normalizedText)
-                .map(String::trim)
-                .filter(token -> token.length() >= 3)
-                .collect(Collectors.toSet());
-    }
-
-    private boolean containsKeyword(String normalizedText, Set<String> tokens, String keyword) {
-        if (!hasText(keyword)) {
-            return false;
-        }
-        String normalizedKeyword = normalizeText(keyword);
-        if (normalizedKeyword.contains(" ")) {
-            return normalizedText.contains(normalizedKeyword);
-        }
-        return tokens.contains(normalizedKeyword);
-    }
-
     private String normalizeText(String value) {
         if (!hasText(value)) {
             return "";
@@ -2563,120 +2061,11 @@ public class NewsService {
                 .trim();
     }
 
-    private String normalizeSymbolValue(String value) {
-        if (!hasText(value)) {
-            return null;
-        }
-        return value.replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
-    }
-
     private String safeText(String value) {
         return value == null ? "" : value;
     }
 
-    private static Map<String, InstrumentAlias> createInstrumentAliases() {
-        Map<String, InstrumentAlias> aliases = new LinkedHashMap<>();
-        aliases.put("THYAO", new InstrumentAlias("THYAO", "TÃƒÆ’Ã‚Â¼rk Hava YollarÃƒâ€Ã‚Â±", InstrumentType.STOCK.name(), Set.of("THYAO", "TURK HAVA YOLLARI", "THY", "TURKISH AIRLINES")));
-        aliases.put("ASELS", new InstrumentAlias("ASELS", "Aselsan", InstrumentType.STOCK.name(), Set.of("ASELS", "ASELSAN")));
-        aliases.put("AKBNK", new InstrumentAlias("AKBNK", "Akbank", InstrumentType.STOCK.name(), Set.of("AKBNK", "AKBANK")));
-        aliases.put("BIMAS", new InstrumentAlias("BIMAS", "BÃƒâ€Ã‚Â°M", InstrumentType.STOCK.name(), Set.of("BIMAS", "BIM", "BIM BIRLESIK", "BIRLESIK MAGAZALAR")));
-        aliases.put("KCHOL", new InstrumentAlias("KCHOL", "KoÃƒÆ’Ã‚Â§ Holding", InstrumentType.STOCK.name(), Set.of("KCHOL", "KOC HOLDING", "KOC")));
-        aliases.put("TUPRS", new InstrumentAlias("TUPRS", "TÃƒÆ’Ã‚Â¼praÃƒâ€¦Ã…Â¸", InstrumentType.STOCK.name(), Set.of("TUPRS", "TUPRAS")));
-        aliases.put("GARAN", new InstrumentAlias("GARAN", "Garanti BBVA", InstrumentType.STOCK.name(), Set.of("GARAN", "GARANTI", "GARANTI BBVA")));
-        aliases.put("ISCTR", new InstrumentAlias("ISCTR", "Ãƒâ€Ã‚Â°Ãƒâ€¦Ã…Â¸ BankasÃƒâ€Ã‚Â±", InstrumentType.STOCK.name(), Set.of("ISCTR", "IS BANKASI", "TURKIYE IS BANKASI", "ISBANK")));
-        aliases.put("YKBNK", new InstrumentAlias("YKBNK", "YapÃƒâ€Ã‚Â± Kredi", InstrumentType.STOCK.name(), Set.of("YKBNK", "YAPI KREDI")));
-        aliases.put("EREGL", new InstrumentAlias("EREGL", "EreÃƒâ€Ã…Â¸li Demir ÃƒÆ’Ã¢â‚¬Â¡elik", InstrumentType.STOCK.name(), Set.of("EREGL", "EREGLI", "ERDEMIR", "EREGLI DEMIR CELIK")));
-        aliases.put("SISE", new InstrumentAlias("SISE", "Ãƒâ€¦Ã‚ÂiÃƒâ€¦Ã…Â¸ecam", InstrumentType.STOCK.name(), Set.of("SISE", "SISECAM", "TURKIYE SISE VE CAM")));
-        aliases.put("FROTO", new InstrumentAlias("FROTO", "Ford Otosan", InstrumentType.STOCK.name(), Set.of("FROTO", "FORD OTOSAN", "FORD")));
-        aliases.put("TOASO", new InstrumentAlias("TOASO", "TofaÃƒâ€¦Ã…Â¸", InstrumentType.STOCK.name(), Set.of("TOASO", "TOFAS")));
-        aliases.put("OTKAR", new InstrumentAlias("OTKAR", "Otokar", InstrumentType.STOCK.name(), Set.of("OTKAR", "OTOKAR")));
-        aliases.put("MGROS", new InstrumentAlias("MGROS", "Migros", InstrumentType.STOCK.name(), Set.of("MGROS", "MIGROS")));
-        aliases.put("KRDMD", new InstrumentAlias("KRDMD", "Kardemir", InstrumentType.STOCK.name(), Set.of("KRDMD", "KARDEMIR")));
-        aliases.put("AKSEN", new InstrumentAlias("AKSEN", "Aksa Enerji", InstrumentType.STOCK.name(), Set.of("AKSEN", "AKSA ENERJI")));
-        aliases.put("ENJSA", new InstrumentAlias("ENJSA", "Enerjisa", InstrumentType.STOCK.name(), Set.of("ENJSA", "ENERJISA")));
-        aliases.put("CIMSA", new InstrumentAlias("CIMSA", "ÃƒÆ’Ã¢â‚¬Â¡imsa", InstrumentType.STOCK.name(), Set.of("CIMSA")));
-        aliases.put("OYAKC", new InstrumentAlias("OYAKC", "OYAK ÃƒÆ’Ã¢â‚¬Â¡imento", InstrumentType.STOCK.name(), Set.of("OYAKC", "OYAK CIMENTO")));
-        aliases.put("SAHOL", new InstrumentAlias("SAHOL", "SabancÃƒâ€Ã‚Â± Holding", InstrumentType.STOCK.name(), Set.of("SAHOL", "SABANCI HOLDING", "SABANCI")));
-        aliases.put("PGSUS", new InstrumentAlias("PGSUS", "Pegasus", InstrumentType.STOCK.name(), Set.of("PGSUS", "PEGASUS")));
-        aliases.put("TAVHL", new InstrumentAlias("TAVHL", "TAV Havalimanlari", InstrumentType.STOCK.name(), Set.of("TAVHL", "TAV", "TAV HAVALIMANLARI")));
-        aliases.put("XU100", new InstrumentAlias("XU100", "BIST 100", InstrumentType.INDEX.name(), Set.of("XU100", "BIST100", "BIST 100")));
-        return aliases;
-    }
-
-    private static Map<String, InstrumentAlias> createMarketInstrumentAliases() {
-        Map<String, InstrumentAlias> aliases = new LinkedHashMap<>();
-        aliases.put("USDTRY", new InstrumentAlias("USDTRY", "USD/TRY", InstrumentType.FX.name(), Set.of("USDTRY", "USD/TRY", "DOLAR/TL", "DOLAR TL", "USD TL", "DOLAR KURU", "KUR")));
-        aliases.put("EURTRY", new InstrumentAlias("EURTRY", "EUR/TRY", InstrumentType.FX.name(), Set.of("EURTRY", "EUR/TRY", "EURO/TL", "EURO TL", "EUR TL", "EURO KURU", "PARITE")));
-        aliases.put("GOLD", new InstrumentAlias("GOLD", "Altin", InstrumentType.COMMODITY.name(), Set.of("GOLD", "ALTIN", "ONS ALTIN", "ONS", "XAUUSD")));
-        aliases.put("GRAM_ALTIN", new InstrumentAlias("GRAM_ALTIN", "Gram Altin", InstrumentType.COMMODITY.name(), Set.of("GRAM_ALTIN", "GRAM ALTIN", "ALTIN GRAM")));
-        aliases.put("BRENT", new InstrumentAlias("BRENT", "Brent Petrol", InstrumentType.COMMODITY.name(), Set.of("BRENT", "PETROL", "HAM PETROL", "AKARYAKIT")));
-        aliases.put("XBANK", new InstrumentAlias("XBANK", "BankacÃ„Â±lÃ„Â±k Endeksi", InstrumentType.INDEX.name(), Set.of("XBANK", "BANKACILIK ENDEKSI")));
-        return aliases;
-    }
-
-    private static Map<String, Set<String>> createRegionKeywords() {
-        Map<String, Set<String>> keywords = new LinkedHashMap<>();
-        keywords.put("USA", Set.of("ABD", "AMERIKA", "WASHINGTON"));
-        keywords.put("EUROPE", Set.of("AVRUPA", "AB", "ECB", "EURO BOLGESI", "ALMANYA", "FRANSA", "INGILTERE", "UK"));
-        keywords.put("TURKIYE", Set.of("TURKIYE", "TURK", "ANKARA", "ISTANBUL", "TCMB", "BDDK", "SPK"));
-        keywords.put("CHINA", Set.of("CIN", "PEKIN", "BEIJING"));
-        keywords.put("MIDDLE_EAST", Set.of("ORTA DOGU", "IRAN", "ISRAIL", "KORFEZ", "SUUDI", "OPEC"));
-        return keywords;
-    }
-
-    private static Map<String, Set<String>> createInstitutionKeywords() {
-        Map<String, Set<String>> keywords = new LinkedHashMap<>();
-        keywords.put("TCMB", Set.of("TCMB", "MERKEZ BANKASI", "TURKIYE CUMHURIYET MERKEZ BANKASI"));
-        keywords.put("FED", Set.of("FED", "FEDERAL REZERV", "FEDERAL RESERVE", "FOMC"));
-        keywords.put("ECB", Set.of("ECB", "AVRUPA MERKEZ BANKASI", "EUROPEAN CENTRAL BANK"));
-        keywords.put("BDDK", Set.of("BDDK", "BANKACILIK DUZENLEME", "BANKACILIK DUZENLEME VE DENETLEME KURUMU"));
-        keywords.put("SPK", Set.of("SPK", "SERMAYE PIYASASI KURULU"));
-        keywords.put("OPEC", Set.of("OPEC", "OPEC+", "PETROL IHRAC EDEN ULKELER ORGUTU"));
-        return keywords;
-    }
-
-    private static Map<String, Set<String>> createCommodityKeywords() {
-        Map<String, Set<String>> keywords = new LinkedHashMap<>();
-        keywords.put("PETROL", Set.of("PETROL", "HAM PETROL", "AKARYAKIT"));
-        keywords.put("BRENT", Set.of("BRENT"));
-        keywords.put("GOLD", Set.of("ALTIN", "ONS ALTIN", "ONS", "GOLD"));
-        keywords.put("SILVER", Set.of("GUMUS", "SILVER"));
-        return keywords;
-    }
-
-    private static Map<String, Set<String>> createSectorKeywords() {
-        Map<String, Set<String>> keywords = new LinkedHashMap<>();
-        keywords.put("BANKING", Set.of("BANKACILIK", "BANKA", "MEVDUAT", "KREDI"));
-        keywords.put("AVIATION", Set.of("HAVACILIK", "HAVAYOLU", "UCUS", "YOLCU"));
-        keywords.put("DEFENSE", Set.of("SAVUNMA", "ASKERI", "NATO", "FUZE", "SILAH", "SAVAS", "CATISMA", "ASELSAN", "BAYKAR"));
-        keywords.put("FOOD", Set.of("GIDA", "PERAKENDE", "MARKET", "TUKETIM"));
-        keywords.put("ENERGY", Set.of("ENERJI", "PETROL", "DOGAL GAZ", "BRENT", "AKARYAKIT", "LNG", "RAFINERI", "OPEC"));
-        keywords.put("TOURISM", Set.of("TURIZM", "OTEL", "TATIL", "SEYAHAT"));
-        keywords.put("AUTOMOTIVE", Set.of("OTOMOTIV", "ARAC", "TEDARIK", "FABRIKA", "YAN SANAYI"));
-        return keywords;
-    }
-
     private record QueryContext(NewsScope scope, Set<NewsProviderType> providers) {
-    }
-
-    record InstrumentAlias(String symbol, String name, String instrumentType, Set<String> keywords) {
-    }
-
-
-    private record ExtractedNewsContext(
-            String normalizedText,
-            Set<String> tokens,
-            Set<String> titleTokens,
-            Set<String> regions,
-            Set<String> institutions,
-            Set<String> commodities,
-            Set<String> sectors,
-            Set<String> companies,
-            Set<String> instruments
-    ) {
-    }
-
-    private record ScoredRelatedNews(News news, int score, boolean hasDirectMatch) {
     }
 
     private record ValidationResult(
@@ -2769,6 +2158,8 @@ public class NewsService {
         }
     }
 }
+
+
 
 
 
