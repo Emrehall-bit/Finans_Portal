@@ -97,5 +97,108 @@
   ],
   "defaultRole": {
     "name": "USER"
+  },
+  "components": {
+    "org.keycloak.storage.UserStorageProvider": [
+      {
+        "id": "ldap-provider",
+        "name": "openldap",
+        "providerId": "ldap",
+        "subComponents": {
+          "org.keycloak.storage.ldap.mappers.LDAPStorageMapper": [
+            {
+              "id": "ldap-username-mapper",
+              "name": "username",
+              "providerId": "user-attribute-ldap-mapper",
+              "subComponents": {},
+              "config": {
+                "ldap.attribute":             ["uid"],
+                "is.mandatory.in.ldap":       ["true"],
+                "read.only":                  ["true"],
+                "always.read.value.from.ldap":["false"],
+                "user.model.attribute":       ["username"]
+              }
+            },
+            {
+              "id": "ldap-email-mapper",
+              "name": "email",
+              "providerId": "user-attribute-ldap-mapper",
+              "subComponents": {},
+              "config": {
+                "ldap.attribute":             ["mail"],
+                "is.mandatory.in.ldap":       ["false"],
+                "read.only":                  ["false"],
+                "always.read.value.from.ldap":["false"],
+                "user.model.attribute":       ["email"]
+              }
+            },
+            {
+              "id": "ldap-firstname-mapper",
+              "name": "first name",
+              "providerId": "user-attribute-ldap-mapper",
+              "subComponents": {},
+              "config": {
+                "ldap.attribute":             ["givenName"],
+                "is.mandatory.in.ldap":       ["false"],
+                "read.only":                  ["false"],
+                "always.read.value.from.ldap":["false"],
+                "user.model.attribute":       ["firstName"]
+              }
+            },
+            {
+              "id": "ldap-lastname-mapper",
+              "name": "last name",
+              "providerId": "user-attribute-ldap-mapper",
+              "subComponents": {},
+              "config": {
+                "ldap.attribute":             ["sn"],
+                "is.mandatory.in.ldap":       ["true"],
+                "read.only":                  ["false"],
+                "always.read.value.from.ldap":["false"],
+                "user.model.attribute":       ["lastName"]
+              }
+            },
+            {
+              "id": "ldap-fullname-mapper",
+              "name": "full name",
+              "providerId": "full-name-ldap-mapper",
+              "subComponents": {},
+              "config": {
+                "ldap.full.name.attribute": ["cn"],
+                "read.only":               ["false"],
+                "write.only":              ["true"]
+              }
+            }
+          ]
+        },
+        "config": {
+          "enabled":                ["true"],
+          "priority":               ["0"],
+          "editMode":               ["WRITABLE"],
+          "syncRegistrations":      ["true"],
+          "vendor":                 ["other"],
+          "usernameLDAPAttribute":  ["uid"],
+          "rdnLDAPAttribute":       ["uid"],
+          "uuidLDAPAttribute":      ["entryUUID"],
+          "userObjectClasses":      ["inetOrgPerson"],
+          "connectionUrl":          ["ldap://openldap:389"],
+          "usersDn":                ["ou=users,dc=financeportal,dc=local"],
+          "authType":               ["simple"],
+          "bindDn":                 ["cn=admin,dc=financeportal,dc=local"],
+          "bindCredential":         ["ldapadmin123"],
+          "searchScope":            ["1"],
+          "validatePasswordPolicy": ["false"],
+          "trustEmail":             ["true"],
+          "useTruststoreSpi":       ["never"],
+          "connectionPooling":      ["true"],
+          "pagination":             ["true"],
+          "importEnabled":          ["true"],
+          "batchSizeForSync":       ["1000"],
+          "fullSyncPeriod":         ["-1"],
+          "changedSyncPeriod":      ["-1"],
+          "cachePolicy":            ["DEFAULT"]
+        }
+      }
+    ]
   }
 }

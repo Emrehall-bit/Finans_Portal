@@ -1,0 +1,23 @@
+# Seed — yalnızca ilk başlatmada uygulanır (openldap_data volume boşsa).
+# Volume zaten varsa yeniden uygulanmaz; sıfırlamak için:
+#   docker compose down && docker volume rm infra_openldap_data infra_openldap_config
+#
+# cn=readonly bu dosyada tanımlanmaz — osixia/openldap image'ı
+# LDAP_READONLY_USER=true env değişkeni ile otomatik oluşturur.
+
+dn: ou=users,dc=financeportal,dc=local
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=groups,dc=financeportal,dc=local
+objectClass: organizationalUnit
+ou: groups
+
+dn: uid=ldaptest,ou=users,dc=financeportal,dc=local
+objectClass: inetOrgPerson
+uid: ldaptest
+cn: LDAP Test
+givenName: LDAP
+sn: Test
+mail: ldaptest@financeportal.local
+userPassword: ldaptest123

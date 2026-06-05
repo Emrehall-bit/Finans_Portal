@@ -11,6 +11,32 @@
       retries: 5
     restart: always
 
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: finance_portal_openldap
+    environment:
+      LDAP_ORGANISATION: "Finance Portal"
+      LDAP_DOMAIN: financeportal.local
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-ldapadmin123}
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: readonly
+      LDAP_READONLY_USER_PASSWORD: ${LDAP_READONLY_PASSWORD:-ldapreadonly123}
+      LDAP_TLS: "false"
+    ports:
+      - "389:389"
+    volumes:
+      - openldap_data:/var/lib/ldap
+      - openldap_config:/etc/ldap/slapd.d
+      - ./backend/docker/openldap/ldifs:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
+    command: ["--loglevel", "warning", "--copy-service"]
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost -D 'cn=admin,dc=financeportal,dc=local' -w \"$$LDAP_ADMIN_PASSWORD\" -b 'dc=financeportal,dc=local' -s base 2>&1 | grep -q 'result: 0'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
   postgres:
     image: postgres:16
     container_name: finance_portal_postgres
@@ -71,6 +97,8 @@
     depends_on:
       keycloak-db-init:
         condition: service_completed_successfully
+      openldap:
+        condition: service_healthy
     restart: unless-stopped
 
   backend:
@@ -185,6 +213,8 @@
 
 volumes:
   finance_portal_pgdata:
+  openldap_data:
+  openldap_config:
   prometheus_data:
   grafana_data:
   opensearch_data:
