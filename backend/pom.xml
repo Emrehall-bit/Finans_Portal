@@ -212,6 +212,12 @@
             <version>2.3.0-alpha</version>
             <scope>runtime</scope>
         </dependency>
+
+        <!-- Log4j2 Kafka Appender için Kafka producer istemcisi -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-api</artifactId>

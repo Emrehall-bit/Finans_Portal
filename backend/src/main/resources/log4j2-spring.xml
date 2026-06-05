@@ -66,9 +66,27 @@
             </Policies>
             <DefaultRolloverStrategy max="10" />
         </RollingFile>
+
+        <!-- Kafka erişilemiyorsa ignoreExceptions=true (default) sayesinde uygulama çökmez -->
+        <Kafka name="KafkaAppender"
+               topic="finance-portal-logs"
+               syncSend="false"
+               ignoreExceptions="true">
+            <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json" />
+            <Property name="bootstrap.servers">${env:KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}</Property>
+            <Property name="acks">0</Property>
+            <Property name="retries">0</Property>
+            <Property name="linger.ms">100</Property>
+            <Property name="max.block.ms">5000</Property>
+        </Kafka>
     </Appenders>
 
     <Loggers>
+        <!-- Kafka client loglarının KafkaAppender'a düşmesini engelle (recursive loop önlemi) -->
+        <Logger name="org.apache.kafka" level="warn" additivity="false">
+            <AppenderRef ref="ConsoleJson" />
+            <AppenderRef ref="ApplicationFile" />
+        </Logger>
         <Logger name="org.springframework.web" level="info" additivity="true" />
         <Logger name="org.hibernate.SQL" level="off" additivity="false" />
         <Logger name="org.hibernate.orm.jdbc.bind" level="off" additivity="false" />
@@ -76,6 +94,7 @@
             <AppenderRef ref="ConsoleJson" />
             <AppenderRef ref="AccessFile" />
             <AppenderRef ref="ErrorFile" />
+            <AppenderRef ref="KafkaAppender" />
         </Logger>
         <Logger name="com.emrehalli.financeportal.admin.service.AdminAuditLogService" level="info" additivity="true">
             <AppenderRef ref="AuditFile" />
@@ -84,6 +103,7 @@
             <AppenderRef ref="ConsoleJson" />
             <AppenderRef ref="AuditFile" />
             <AppenderRef ref="ErrorFile" />
+            <AppenderRef ref="KafkaAppender" />
         </Logger>
         <Logger name="com.emrehalli.financeportal.alert.scheduler" level="info" additivity="true">
             <AppenderRef ref="SchedulerFile" />
@@ -119,6 +139,7 @@
                 <AppenderRef ref="ConsoleJson" />
                 <AppenderRef ref="ApplicationFile" />
                 <AppenderRef ref="ErrorFile" />
+                <AppenderRef ref="KafkaAppender" />
             </Root>
         </SpringProfile>
 
@@ -127,6 +148,7 @@
                 <AppenderRef ref="ConsoleJson" />
                 <AppenderRef ref="ApplicationFile" />
                 <AppenderRef ref="ErrorFile" />
+                <AppenderRef ref="KafkaAppender" />
             </Root>
         </SpringProfile>
     </Loggers>
