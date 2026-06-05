@@ -7,8 +7,8 @@
 | Log4j2 | ✅ log4j2-spring.xml + JSON template |
 | JSON format (timestamp/level/service/logger/thread/message/exception/traceId/spanId/requestId/userId) | ✅ 48+ alan |
 | INFO/WARN/ERROR/DEBUG seviyeleri | ✅ |
-| OpenSearch log aktarımı (Fluent Bit) | ✅ |
-| Kafka opsiyonu | 📋 belgelenmiş (aşağıya bkz.) |
+| OpenSearch log aktarımı (Kafka → Consumer) | ✅ |
+| Kafka pipeline | ✅ KRaft, Log4j2 Appender, Java consumer |
 | OpenTelemetry entegrasyonu | ✅ micrometer-tracing-bridge-otel, sampling %100 |
 | Temel metrikler (request count, response time, error rate, JVM, DB pool) | ✅ Actuator + Micrometer + Prometheus |
 | Trace/span log correlation | ✅ traceId/spanId MDC'de |
@@ -20,7 +20,7 @@
 | Harici servis izleme | ✅ ExternalProviderLogInterceptor |
 | Hassas veri maskeleme | ✅ SensitiveDataMasker |
 
-Faz 1 observability setup'i Prometheus, Grafana, Fluent Bit, OpenSearch ve OpenSearch Dashboards bilesenlerinden olusur.
+Observability stack Prometheus, Grafana, Kafka log pipeline, OpenSearch ve OpenSearch Dashboards bilesenlerinden olusur.
 
 ## Servis URL'leri
 
@@ -30,6 +30,7 @@ Faz 1 observability setup'i Prometheus, Grafana, Fluent Bit, OpenSearch ve OpenS
 - Grafana: http://localhost:3001
 - OpenSearch: http://localhost:9200
 - OpenSearch Dashboards: http://localhost:5601
+- Tempo (Grafana Explore): http://localhost:3001 → Explore → Tempo
 
 Grafana varsayilan development bilgileri:
 
@@ -92,12 +93,6 @@ Host mount:
 
 ```text
 ../backend/logs:/var/log/finance-portal
-```
-
-Fluent Bit de ayni container path'inden okur:
-
-```text
-/var/log/finance-portal/*.log
 ```
 
 ## Grafana Dashboard
@@ -357,30 +352,6 @@ Mevcut gunluk index icinde `durationMs` daha once `text` olarak olustuysa OpenSe
 
 Faz 1 stabilizasyonunda veri kaybi riski olmasin diye mevcut index silinmez ve otomatik reindex yapilmaz.
 
-## Fluent Bit JSON Parsing
-
-Tum log dosyalari ayni JSON parser ile okunur:
-
-```text
-Parser json
-```
-
-Parser tanimi:
-
-```text
-infra/observability/fluent-bit/parsers.conf
-```
-
-Tail input normal tek satir JSON kayitlari field field parse eder. Ek olarak parser filter vardir:
-
-```text
-Key_Name log
-Parser json
-Preserve_Key Off
-```
-
-Bu filter, OpenSearch'e `log: "{\"timestamp\":\"...\"}"` gibi tek string olarak dusme riski olan kayitlarda `log` alaninin icindeki JSON'u da acmayi dener.
-
 ## Audit Architecture
 
 Audit logging, business logic'i degistirmeden HTTP/security katmaninda uretilir.
@@ -391,7 +362,7 @@ Ana bilesenler:
 - `AuditEvent`: Standart audit event modelidir.
 - `AuditEventLogger`: `AUDIT` logger uzerinden structured JSON audit log uretir.
 - `audit.log`: Audit eventlerin yazildigi dosyadir.
-- Fluent Bit: `audit.log` dosyasini `/var/log/finance-portal/audit.log` pathinden okuyup OpenSearch'e gonderir.
+- Kafka pipeline: Log4j2 `AUDIT` logger → KafkaAppender → `finance-portal-logs` topic → Java consumer → OpenSearch.
 
 Audit event alanlari:
 
@@ -577,47 +548,6 @@ Uygulama secenekleri:
 - Gunluk index pattern uzerinden periyodik cleanup job
 - Snapshot alinmadan audit/error indexlerini silmeme
 
-## Fluent Bit Troubleshooting
-
-Config:
-
-```text
-infra/observability/fluent-bit/fluent-bit.conf
-```
-
-Izlenen dosyalar:
-
-```text
-/var/log/finance-portal/application.log
-/var/log/finance-portal/access.log
-/var/log/finance-portal/error.log
-/var/log/finance-portal/audit.log
-/var/log/finance-portal/scheduler.log
-```
-
-Kontroller:
-
-```powershell
-docker logs finance-portal-fluent-bit --tail 100
-docker exec finance-portal-fluent-bit ls -la /var/log/finance-portal
-docker run --rm -v infra_fluent_bit_state:/state busybox ls -la /state
-```
-
-Yeni log gelmiyorsa:
-
-- Backend'in ilgili `.log` dosyasina satir yazdigini dogrula.
-- Fluent Bit mount path'i ile backend log path'i ayni mi kontrol et.
-- Tail DB offset dosyalari eski pozisyonda kalmis olabilir.
-- JSON satirlari tek satir ve UTF-8 olmali.
-- OpenSearch output loglarinda `_bulk` status `200` ve `errors:false` beklenir.
-
-Access offset reset ornegi:
-
-```powershell
-docker run --rm -v infra_fluent_bit_state:/state busybox sh -c "rm -f /state/fluent-bit-finance-portal-access.db*"
-docker compose -f infra/docker-compose.yml restart fluent-bit
-```
-
 ## Prometheus Target DOWN Troubleshooting
 
 Target durumunu kontrol et:
@@ -646,6 +576,63 @@ Yaygin nedenler:
 - Docker network veya port mapping hatali.
 - Local firewall host erisimini engelliyor.
 
+## Grafana Tempo Distributed Tracing
+
+Tempo OTLP alıcısı ile trace'leri kabul eder, Grafana üzerinden görüntülenir (ayrı UI gerektirmez).
+
+**Trace görüntüleme:** Grafana (`http://localhost:3001`) → Explore → Datasource: **Tempo** → Service Name: `finance-portal-backend`
+
+Backend (lokalde çalışırken) `application.yml` default endpoint'i kullanır:
+
+```text
+http://localhost:4318/v1/traces   (OTLP HTTP)
+```
+
+Tempo port `4317` (gRPC) ve `4318` (HTTP) OTLP'yi host'a açar. Backend başlatılınca trace'ler otomatik akmaya başlar.
+
+Backend Docker'a taşınınca `docker-compose.yml` backend servisindeki TODO satırı açılır:
+
+```yaml
+OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+```
+
+## TODO — Backend Docker Geçişi
+
+Backend lokalde çalıştığı sürece aşağıdakiler gerekli değildir. Backend `docker compose up` ile ayağa kaldırılacağında yapılacaklar:
+
+**`infra/docker-compose.yml` — backend service environment:**
+
+```yaml
+# Yorum satırlarını ac:
+KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+```
+
+**`infra/observability/prometheus/prometheus-docker.yml`:**
+
+```yaml
+# host.docker.internal:8080 → backend:8080
+- targets:
+    - backend:8080
+```
+
+**`infra/docker-compose.yml` — backend depends_on:**
+
+```yaml
+# Tempo bağımlılığı eklenebilir (opsiyonel):
+tempo:
+  condition: service_started
+```
+
+## TODO — OpenSearch Dashboards Index Pattern
+
+UI üzerinden manuel yapılır (otomatize edilemez):
+
+1. http://localhost:5601 → **Discover** → **Create index pattern**
+2. Pattern: `finance-portal-logs-*`
+3. Time field: `@timestamp`
+4. Save
+
 ## OpenTelemetry Tracing
 
 Bağımlılıklar (`pom.xml`):
@@ -666,45 +653,17 @@ management:
       endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:}  # boş = OTLP export devre dışı
 ```
 
-Collector dağıtımı olmadan traceId/spanId MDC'de üretilir ve her JSON log satırında bulunur. Trace export için `OTEL_EXPORTER_OTLP_ENDPOINT` env değişkeni ile Jaeger/Tempo gibi bir collector hedeflenir.
+Collector dağıtımı olmadan traceId/spanId MDC'de üretilir ve her JSON log satırında bulunur. Trace export için `OTEL_EXPORTER_OTLP_ENDPOINT` env değişkeni ile Tempo hedeflenir.
 
-## Kafka Log Pipeline Kararı
+## Log Pipeline
 
-İsterde log4j → Kafka → consumer → OpenSearch akışı talep edilmiştir. Aşağıdaki karar değerlendirmesi uygulanmıştır:
+Aktif akış: `Log4j2 → KafkaAppender → finance-portal-logs topic → Java consumer → OpenSearch`
 
-| Seçenek | Mevcut Durumda Uygulanabilirlik |
-|---------|-------------------------------|
-| Fluent Bit → OpenSearch | ✅ Aktif, çalışıyor, tam entegre |
-| Kafka → Consumer → OpenSearch | Proje infra'sında Kafka yok; Kafka + consumer + zookeeper eklenmesi +3 servis demektir |
-
-**Alınan karar:** Fluent Bit pipeline aktif olarak kullanılmaktadır. Kafka isteri için iki yaklaşım sunulmaktadır:
-
-### A) Log4j2 Kafka Appender (Demo/Ek servis)
-
-`pom.xml`'e `log4j-kafka` appender eklenir, `log4j2-spring.xml`'e Kafka appender tanımlanır, docker-compose'a Kafka + Zookeeper eklenir. Log consumer olarak Kafka Connect sink veya basit Spring Boot consumer yazılır.
-
-Bu yaklaşım için gerekli ek:
-```xml
-<!-- pom.xml'e eklenecek -->
-<dependency>
-    <groupId>org.apache.kafka</groupId>
-    <artifactId>kafka-clients</artifactId>
-</dependency>
-```
-
-```xml
-<!-- log4j2-spring.xml'e eklenecek appender -->
-<Kafka name="KafkaAppender" topic="finance-portal-logs">
-    <JsonTemplateLayout eventTemplateUri="classpath:log4j2-json-event-template.json"/>
-    <Property name="bootstrap.servers">${env:KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}</Property>
-</Kafka>
-```
-
-### B) Mevcut Fluent Bit (Aktif)
-
-Mevcut akış: `log dosyaları → Fluent Bit → OpenSearch`
-
-Bu akış, Kafka'nın sağladığı dayanıklı kuyruk garantilerini sağlamaz; ancak küçük-orta ölçekli bir proje için yeterlidir. Dosya tabanlı buffering (`fluent-bit/state/*.db`) veri kaybını minimize eder.
+Bileşenler:
+- **KafkaAppender**: `backend/src/main/resources/log4j2-spring.xml`, `syncSend=false`, `ignoreExceptions=true`
+- **Kafka**: KRaft modu, 3 partition, 7 gün retention
+- **Java consumer**: `infra/kafka-log-consumer/`, Spring Kafka batch listener, Java HttpClient ile bulk insert
+- **Index**: `finance-portal-logs-YYYY.MM.DD`
 
 ## Güvenlik Olayları Log Mimarisi
 
@@ -743,13 +702,13 @@ log_type: "security_event"
 - [x] HTTP server request metrics
 
 ### Log Pipeline
-- [x] Fluent Bit → OpenSearch akışı
+- [x] Kafka pipeline (Log4j2 → Kafka → consumer → OpenSearch)
 - [x] Index template (finance-portal-logs-*)
 - [x] Auto-apply (opensearch-init container)
-- [x] JSON parsing doğru
+- [x] @timestamp + traceId/spanId tüm kayıtlarda dolu
 
 ### Prometheus + Grafana
-- [x] Prometheus docker target (`backend:8080`)
+- [x] Prometheus docker target (`host.docker.internal:8080`)
 - [x] 5 alert rule tanımlı
 - [x] Grafana provisioned datasource
 - [x] Grafana provisioned dashboard (65KB)

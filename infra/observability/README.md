@@ -1,6 +1,6 @@
 # Observability
 
-Finance Portal observability stack contains Prometheus, Grafana, Fluent Bit, OpenSearch, and OpenSearch Dashboards.
+Finance Portal observability stack contains Prometheus, Grafana, Kafka log pipeline, OpenSearch, and OpenSearch Dashboards.
 
 ## Run
 
@@ -16,6 +16,7 @@ docker compose up -d
 - Grafana: http://localhost:3001
 - OpenSearch: http://localhost:9200
 - OpenSearch Dashboards: http://localhost:5601
+- Tempo traces (Grafana Explore): http://localhost:3001 → Explore → Tempo
 - Local backend metrics: http://localhost:8080/actuator/prometheus
 
 ## Grafana
@@ -56,12 +57,6 @@ backend/logs
 ```
 
 Project-root `logs` is not used.
-
-Fluent Bit reads backend log files from:
-
-```text
-/var/log/finance-portal/*.log
-```
 
 OpenSearch index pattern:
 

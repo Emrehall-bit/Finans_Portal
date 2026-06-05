@@ -117,6 +117,9 @@
       KEYCLOAK_ISSUER_URI: http://localhost:8081/realms/finance-portal
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/finance-portal/protocol/openid-connect/certs
       LOG_PATH: /var/log/finance-portal
+      # TODO(docker-gecis): Asagidaki iki satiri backend Docker'a tasininca ac
+      # KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318/v1/traces
     ports:
       - "8080:8080"
     volumes:
@@ -225,20 +228,6 @@
       - opensearch
     restart: unless-stopped
 
-  fluent-bit:
-    image: fluent/fluent-bit:latest
-    container_name: finance-portal-fluent-bit
-    volumes:
-      - ./observability/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
-      - ./observability/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
-      - ../backend/logs:/var/log/finance-portal:ro
-      - fluent_bit_state:/fluent-bit/state
-    depends_on:
-      opensearch-init:
-        condition: service_completed_successfully
-      backend:
-        condition: service_started
-    restart: unless-stopped
 
   kafka:
     image: apache/kafka:latest
@@ -298,6 +287,18 @@
         condition: service_healthy
     restart: unless-stopped
 
+  tempo:
+    image: grafana/tempo:latest
+    container_name: finance-portal-tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP — backend localhost:4318 ile doğrudan bağlanır
+    restart: unless-stopped
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: finance-portal-kafka-ui
@@ -318,6 +319,6 @@ volumes:
   prometheus_data:
   grafana_data:
   opensearch_data:
-  fluent_bit_state:
   kafka_data:
+  tempo_data:
 
