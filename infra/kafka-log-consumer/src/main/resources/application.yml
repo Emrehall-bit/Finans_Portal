@@ -1,0 +1,29 @@
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:finance-portal-log-consumer}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: 500
+    listener:
+      type: batch
+      ack-mode: manual
+  main:
+    web-application-type: none
+
+kafka:
+  topic: ${KAFKA_TOPIC:finance-portal-logs}
+
+opensearch:
+  url: ${OPENSEARCH_URL:http://opensearch:9200}
+  index-prefix: ${OPENSEARCH_INDEX_PREFIX:finance-portal-logs}
+
+logging:
+  level:
+    root: INFO
+    com.emrehalli.financeportal.logconsumer: INFO
+    org.apache.kafka: WARN
+    org.springframework.kafka: INFO

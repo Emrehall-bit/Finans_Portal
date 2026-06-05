@@ -280,6 +280,24 @@
         condition: service_healthy
     restart: "no"
 
+  kafka-log-consumer:
+    build:
+      context: ./kafka-log-consumer
+    container_name: finance-portal-kafka-log-consumer
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_TOPIC: finance-portal-logs
+      OPENSEARCH_URL: http://opensearch:9200
+      OPENSEARCH_INDEX_PREFIX: finance-portal-logs
+      BULK_SIZE: "100"
+      FLUSH_INTERVAL_SEC: "5"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    restart: unless-stopped
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: finance-portal-kafka-ui
