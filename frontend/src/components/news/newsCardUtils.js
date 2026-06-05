@@ -1,4 +1,4 @@
-import { formatNewsDate } from "../../utils/dateUtils.js";
+import { formatNewsDate, formatNewsLocalDate } from "../../utils/dateUtils.js";
 
 const PROVIDER_LABELS = {
   AA_RSS: "Anadolu Ajansı",
@@ -102,6 +102,11 @@ export function isKapDisclosure(item) {
   return Boolean(item?.isKapDisclosure) || String(item?.provider || "").toUpperCase() === "KAP";
 }
 
+function usesLocalNewsTime(item) {
+  const provider = String(item?.provider || item?.source || "").toUpperCase();
+  return isKapDisclosure(item) || provider === "AA_RSS";
+}
+
 export function getNewsSourceName(item) {
   return item?.sourceName?.trim() || getNewsProviderLabel(item?.provider || item?.source);
 }
@@ -133,7 +138,8 @@ export function getNewsDateValue(item) {
 }
 
 export function formatNewsPublishedAt(item, emptyLabel = "Tarih bilgisi alinamadi") {
-  const formatted = formatNewsDate(getNewsDateValue(item));
+  const formatter = usesLocalNewsTime(item) ? formatNewsLocalDate : formatNewsDate;
+  const formatted = formatter(getNewsDateValue(item));
   return formatted || emptyLabel;
 }
 
@@ -316,4 +322,3 @@ export function resolveKapDisclosureGroup(title) {
     label: subtitle.length > 38 ? subtitle.substring(0, 38) + "…" : subtitle,
   };
 }
-

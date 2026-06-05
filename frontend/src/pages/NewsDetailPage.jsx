@@ -8,10 +8,9 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { useNewsDetail, useNewsRelated } from "../hooks/useNewsQueries";
-import { formatNewsDate } from "../utils/dateUtils";
 import {
   buildNewsPlaceholderLabel,
-  getNewsDateValue,
+  formatNewsPublishedAt,
   getNewsCategoryLabelI18n,
   getNewsDisclosureTypeLabel,
   getNewsFallbackLogoUrl,
@@ -58,7 +57,7 @@ export default function NewsDetailPage() {
   const qualityLabel = getNewsQualityStatusLabel(item?.qualityStatus);
   const disclosureTypeLabel = getNewsDisclosureTypeLabel(item?.disclosureType);
   const providerLabel = getNewsProviderLabel(item?.provider || item?.source || "-");
-  const publishedAtLabel = formatNewsDate(getNewsDateValue(item));
+  const publishedAtLabel = formatNewsPublishedAt(item, "");
 
   const detailParagraphs = useMemo(() => {
     const baseContent = item?.summary?.trim() || item?.contentPreview?.trim() || "";
@@ -325,14 +324,11 @@ function RelatedCard({ relatedItem, onClick, t }) {
       <div className="news-related-content">
         <div className="news-related-card-top">
           <span className="news-related-source-badge">{provider}</span>
-          <span className="news-related-date">{formatNewsDate(getNewsDateValue(relatedItem))}</span>
+          <span className="news-related-date">{formatNewsPublishedAt(relatedItem, "")}</span>
         </div>
         <strong className="news-related-title" title={relatedItem.title || t("news.titleMissing")}>
           {relatedItem.title || t("news.titleMissing")}
         </strong>
-        <div className="news-related-meta">
-          <span className="news-related-meta-source" title={relatedItem.sourceName || "-"}>{relatedItem.sourceName || "-"}</span>
-        </div>
       </div>
     </button>
   );

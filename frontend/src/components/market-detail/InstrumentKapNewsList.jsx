@@ -2,8 +2,8 @@ import { useTranslation } from "react-i18next";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
-import { formatNewsDate } from "../../utils/dateUtils";
 import {
+  formatNewsPublishedAt,
   getNewsDateValue,
   resolveKapDisclosureGroup,
   normalizeKapText,
@@ -56,7 +56,7 @@ export default function InstrumentKapNewsList({ loading, error, items }) {
                     <span className={`kap-type-badge ${group.key}`}>{group.label}</span>
                   </div>
                   <time className="instrument-kap-date" dateTime={getNewsDateValue(item) || ""}>
-                    {formatNewsDate(getNewsDateValue(item))}
+                    {formatNewsPublishedAt(item, "")}
                   </time>
                 </div>
 

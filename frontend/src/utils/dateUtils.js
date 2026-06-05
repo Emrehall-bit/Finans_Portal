@@ -54,6 +54,34 @@ export function formatNewsDate(value) {
   return NEWS_DATE_FORMATTER.format(parsed);
 }
 
+export function formatNewsLocalDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  if (value instanceof Date || typeof value === "number") {
+    return formatNewsDate(value);
+  }
+
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const raw = value.trim();
+  if (!raw || BACKEND_DATE_WITH_TIMEZONE_RE.test(raw)) {
+    return formatNewsDate(raw);
+  }
+
+  const normalized = raw.replace(/\s+/, "T");
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/);
+  if (!match) {
+    return formatNewsDate(raw);
+  }
+
+  const [, year, month, day, hour, minute] = match;
+  return `${day}.${month}.${year} ${hour}:${minute}`;
+}
+
 export function formatRelativeNewsTime(value, now = new Date()) {
   const parsed = parseBackendDate(value);
   const reference = parseBackendDate(now) ?? now;

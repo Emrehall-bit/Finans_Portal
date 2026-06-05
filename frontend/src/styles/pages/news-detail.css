@@ -928,16 +928,16 @@
 .news-detail-shell .news-detail-back-link {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 7px;
   width: fit-content;
-  min-height: 26px;
-  padding: 0 10px;
+  min-height: 34px;
+  padding: 0 14px;
   border: 1px solid rgba(76, 127, 255, 0.16);
   border-radius: 999px;
   background: rgba(76, 127, 255, 0.07);
   color: #315ec5;
-  font-size: 0.77rem;
-  font-weight: 600;
+  font-size: 0.86rem;
+  font-weight: 700;
   text-decoration: none;
   box-shadow: none;
 }
@@ -981,7 +981,7 @@
 
 .news-detail-shell .news-detail-hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-columns: minmax(0, 1fr) clamp(340px, 27vw, 400px);
   gap: 18px;
   align-items: start;
 }
@@ -1314,24 +1314,6 @@
   -webkit-box-orient: vertical;
 }
 
-.news-detail-shell .news-related-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  color: #718098;
-  font-size: 0.72rem;
-  font-weight: 500;
-  min-width: 0;
-}
-
-.news-detail-shell .news-related-meta span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .news-related-empty {
   display: grid;
   gap: 4px;
@@ -1483,13 +1465,6 @@
   flex-shrink: 0;
 }
 
-.news-detail-shell .news-related-meta-source {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .news-detail-shell .ai-news-impact-card {
   border-color: rgba(245, 158, 11, 0.22);
   background: linear-gradient(160deg, rgba(255, 252, 244, 0.97) 0%, rgba(255, 255, 255, 0.98) 100%);
@@ -1516,7 +1491,9 @@
 .news-detail-shell .news-detail-article-header {
   display: grid;
   gap: 10px;
+  position: relative;
   padding: 22px clamp(20px, 4vw, 44px) 18px;
+  padding-right: clamp(180px, 18vw, 220px);
 }
 
 .news-detail-shell .news-detail-article-header + .news-detail-media-shell {
@@ -1527,9 +1504,19 @@
   padding-top: 0;
 }
 
+.news-detail-shell .news-detail-article-header .news-detail-back-link {
+  position: absolute;
+  top: 22px;
+  right: clamp(20px, 4vw, 44px);
+}
+
 @media (max-width: 720px) {
   .news-detail-shell .news-detail-article-header {
     padding: 18px 18px 14px;
+  }
+
+  .news-detail-shell .news-detail-article-header .news-detail-back-link {
+    position: static;
   }
 }
 
