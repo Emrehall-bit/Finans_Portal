@@ -104,12 +104,19 @@ export default function DashboardPage() {
   const [alertModal, setAlertModal] = useState({ isOpen: false, symbol: null, displaySymbol: null, currentPrice: null });
   const watchlistPopoverRef = useRef(null);
 
-  const effectiveWidgetPortfolioId = selectedWidgetPortfolioId ?? portfolios[0]?.portfolioId ?? null;
+  const bestSnapshotId = portfolioSnapshots.length
+    ? portfolioSnapshots.reduce((best, curr) =>
+        toNumber(curr?.summary?.currentValue ?? curr?.summary?.totalCurrentValue) >
+        toNumber(best?.summary?.currentValue ?? best?.summary?.totalCurrentValue) ? curr : best
+      )?.portfolioId
+    : null;
+  const effectiveWidgetPortfolioId = selectedWidgetPortfolioId ?? bestSnapshotId ?? portfolios[0]?.portfolioId ?? null;
   const selectedWidgetSnapshot = portfolioSnapshots.find((s) => s.portfolioId === effectiveWidgetPortfolioId) ?? null;
   const selectedWidgetTotalValue = toNumber(
     selectedWidgetSnapshot?.summary?.currentValue ?? selectedWidgetSnapshot?.summary?.totalCurrentValue,
   );
   const widgetHoldings = selectedWidgetSnapshot?.holdings ?? [];
+  const widgetPortfolioName = portfolios.find((p) => p.portfolioId === effectiveWidgetPortfolioId)?.portfolioName ?? null;
 
   const sectionErrors = {
     market: quotesError ? t("dashboard.marketError") : null,
@@ -673,8 +680,11 @@ export default function DashboardPage() {
                   <div className="panel-head">
                     <div>
                       <h3 className="dashboard-section-title">Portföy Özeti</h3>
+                      {widgetPortfolioName ? (
+                        <span className="dash-portfolio-panel-name">{widgetPortfolioName}</span>
+                      ) : null}
                     </div>
-                    <Link to="/portfolio" className="panel-text-link">{t("Portföyünü görüntüle") ?? "Tümünü Gör"}</Link>
+                    <Link to="/portfolio" state={{ portfolioId: effectiveWidgetPortfolioId }} className="panel-text-link">{t("Portföyünü görüntüle") ?? "Tümünü Gör"}</Link>
                   </div>
 
                   {hasPortfolio && portfolioDistributionData.length > 0 ? (

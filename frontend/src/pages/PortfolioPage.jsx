@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
@@ -136,6 +137,8 @@ export default function PortfolioPage() {
   const { formatAmount, convertAmount, currency } = useCurrency();
   const { toast, showToast } = useToast();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navPortfolioId = location.state?.portfolioId ?? null;
   const [selectedPortfolioId, setSelectedPortfolioId] = useState(null);
   const [error, setError] = useState("");
   const [watchlist, setWatchlist] = useState([]);
@@ -192,9 +195,10 @@ export default function PortfolioPage() {
     }
     setSelectedPortfolioId((current) => {
       if (current && portfolios.some((p) => p.portfolioId === current)) return current;
+      if (navPortfolioId && portfolios.some((p) => p.portfolioId === navPortfolioId)) return navPortfolioId;
       return portfolios[0].portfolioId;
     });
-  }, [portfolios]);
+  }, [portfolios, navPortfolioId]);
 
   // Load watchlist when user changes
   useEffect(() => {

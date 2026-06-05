@@ -1124,6 +1124,15 @@ html[data-theme="dark"] .dash-watchlist-row:hover {
   line-height: 1.5;
 }
 
+.dash-portfolio-panel-name {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  letter-spacing: 0.01em;
+}
+
 /* ── KPI Alarm kartı bell butonu ────────────────────────────────── */
 .dash-kpi-bell-btn {
   cursor: pointer;
