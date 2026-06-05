@@ -759,6 +759,56 @@
 
 .ai-news-impact-icon  { color: var(--news-accent); }
 
+.ai-news-impact-trigger.is-cta {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 18px 20px 16px;
+}
+
+.ai-news-impact-cta-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.ai-news-impact-cta-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-news-impact-cta-header h3 {
+  margin: 0;
+  font-size: 0.97rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.ai-news-impact-cta-desc {
+  margin: 0;
+  font-size: 0.83rem;
+  line-height: 1.56;
+  color: var(--text-soft);
+}
+
+.ai-news-impact-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  min-height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: #b45309;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
 .ai-news-impact-badge {
   background: rgba(245, 158, 11, 0.15);
   color: var(--news-accent);

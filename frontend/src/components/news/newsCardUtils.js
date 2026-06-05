@@ -142,6 +142,14 @@ export function getNewsCategoryLabel(category) {
   return CATEGORY_LABELS[normalized] || formatNewsCategoryLabel(category) || null;
 }
 
+export function getNewsCategoryLabelI18n(category, t) {
+  if (!category) return null;
+  const normalized = category.toUpperCase().replace(/[-\s]+/g, "_");
+  const translated = t(`news.newsCategories.${normalized}`, { defaultValue: "" });
+  if (translated) return translated;
+  return getNewsCategoryLabel(category);
+}
+
 export function formatNewsCategoryLabel(category) {
   if (!category) {
     return null;

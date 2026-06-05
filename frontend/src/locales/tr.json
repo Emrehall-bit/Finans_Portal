@@ -328,6 +328,28 @@
       "date": "Tarih",
       "source": "Kaynak",
       "quality": "İçerik durumu"
+    },
+    "newsCategories": {
+      "GENERAL_ECONOMY": "Genel Ekonomi",
+      "GLOBAL_MARKETS": "Küresel Piyasalar",
+      "FX": "Döviz",
+      "STOCKS": "Hisse Senetleri",
+      "INTEREST_BONDS": "Faiz & Tahvil",
+      "GOLD_COMMODITY": "Altın & Emtia",
+      "BANKING": "Bankacılık",
+      "CRYPTO": "Kripto",
+      "ENERGY": "Enerji",
+      "GEOPOLITICS": "Jeopolitik",
+      "COMPANY": "Şirket Haberleri",
+      "ECONOMY": "Ekonomi",
+      "GENERAL": "Gündem",
+      "SPECIAL_DISCLOSURE": "Özel Durum",
+      "FINANCIAL_REPORT": "Finansal Rapor",
+      "DISCLOSURE": "KAP Bildirimi",
+      "GENERAL_MEETING": "Genel Kurul",
+      "DIVIDEND": "Kar Payı",
+      "BUYBACK": "Geri Alım",
+      "CAPITAL_INCREASE": "Sermaye Artırımı"
     }
   },
   "markets": {
@@ -2098,9 +2120,10 @@
     },
     "newsImpact": {
       "title": "AI Etki Analizi",
-      "startTitle": "Yapay Zeka Etki Analizini Başlat",
+      "startTitle": "Yapay Zeka Etki Analizi",
       "readySubtitle": "Analiz hazır, detayları görüntüleyebilirsiniz.",
-      "startSubtitle": "AI ile analiz et",
+      "startSubtitle": "Bu haberin piyasalar, sektörler ve yatırımcı algısı üzerindeki olası etkilerini analiz edin.",
+      "startBtnLabel": "Analizi Başlat",
       "guestDescription": "Bu haberin finansal ve sektörel AI yorumunu görmek için giriş yapın.",
       "premiumDescription": "Haberin finansal, sektörel ve piyasa etkisini yorumlayan gelişmiş AI analizi premium üyelere özeldir.",
       "error": "AI etki analizi şu anda üretilemedi.",

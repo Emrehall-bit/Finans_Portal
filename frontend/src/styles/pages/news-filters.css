@@ -174,53 +174,17 @@
   font-weight: 700;
 }
 
-.news-card-shell.kap .news-kap-card-inner {
-  padding-top: 44px;
-}
-
 .news-kap-header {
-  position: relative;
-  padding-right: 56px; /* space for the favorite button */
-}
-
-.news-kap-header .news-card-favorite-btn {
-  position: absolute;
-  left: 6px; /* place near the company name */
-  top: 12px;
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
   align-items: center;
-  justify-content: center;
 }
 
 .news-load-more-button:hover:not(:disabled) {
   border-color: rgba(76, 127, 255, 0.28);
   background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(237, 244, 255, 1));
   transform: translateY(-1px);
-}
-
-/* Final minimal overrides: news stars 20px, KAP stars 18px; shift KAP button slightly left */
-.news-card-shell.kap .news-kap-card-inner {
-  padding-left: 56px !important;
-  padding-top: 12px !important;
-}
-
-.news-card-shell.kap .news-card-favorite-btn {
-  left: 6px !important; /* moved 6px left */
-  right: auto !important;
-  top: 12px !important;
-}
-
-/* Specific, minimal overrides to ensure no larger rule overrides these sizes */
-body .news-grid-portal .news-card-shell .news-card-favorite-btn svg {
-  width: 20px !important;
-  height: 20px !important;
-}
-
-body .news-card-shell.kap .news-card-favorite-btn svg {
-  width: 18px !important;
-  height: 18px !important;
 }
 
 .news-featured-hero {
@@ -245,15 +209,6 @@ body .news-card-shell.kap .news-card-favorite-btn svg {
 .news-featured-copy h2 {
   margin: 0;
   color: var(--text-main);
-body .news-grid-portal .news-card-shell .news-card-favorite-btn .news-card-favorite-icon {
-  width: 20px !important;
-  height: 20px !important;
-}
-
-body .news-card-shell.kap .news-card-favorite-btn .news-card-favorite-icon {
-  width: 18px !important;
-  height: 18px !important;
-}
   font-size: clamp(1.8rem, 3vw, 2.8rem);
   line-height: 1.15;
 }
@@ -294,7 +249,7 @@ body .news-card-shell.kap .news-card-favorite-btn .news-card-favorite-icon {
   place-items: center;
   color: #234694;
   font-size: 1.8rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   position: relative;
 }

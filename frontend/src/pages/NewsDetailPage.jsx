@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Sparkles } from "lucide-react";
 import AiNewsImpactCard from "../components/ai/AiNewsImpactCard";
 import { extractErrorMessage } from "../api/responseUtils";
 import EmptyState from "../components/common/EmptyState";
@@ -12,7 +12,7 @@ import { formatNewsDate } from "../utils/dateUtils";
 import {
   buildNewsPlaceholderLabel,
   getNewsDateValue,
-  getNewsCategoryLabel,
+  getNewsCategoryLabelI18n,
   getNewsDisclosureTypeLabel,
   getNewsFallbackLogoUrl,
   getNewsPreviewText,
@@ -33,6 +33,14 @@ export default function NewsDetailPage() {
     : "/news";
   const [imageFailed, setImageFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
+  const [isAiDrawerOpen, setAiDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isAiDrawerOpen) return undefined;
+    function onKey(e) { if (e.key === "Escape") setAiDrawerOpen(false); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isAiDrawerOpen]);
 
   const { data: item = null, isLoading: loading, error: detailError } = useNewsDetail(id);
   const { data: relatedRaw, isLoading: relatedLoading, error: relatedQueryError } = useNewsRelated(id);
@@ -72,28 +80,40 @@ export default function NewsDetailPage() {
       ) : null}
 
       {!loading && !error && item ? (
+        <>
         <section className="news-detail-shell">
-          <header className="news-detail-header panel-surface">
-            <Link className="news-detail-back-link" to={backTo}>
-              <ArrowLeft size={16} aria-hidden="true" />
-              <span>{t("newsDetail.back")}</span>
-            </Link>
-
-            <div className="news-detail-header-copy">
-              <p className="eyebrow">{kapDisclosure ? t("newsDetail.kapEyebrow") : t("newsDetail.eyebrow")}</p>
-              <h1>{item?.title || t("newsDetail.titleFallback")}</h1>
-              <div className="news-detail-meta">
-                <span className="news-card-badge category">{getNewsCategoryLabel(item?.category) || t("newsDetail.defaultCategory")}</span>
-                <span className="news-card-badge provider">{providerLabel}</span>
-                {publishedAtLabel ? <span>{publishedAtLabel}</span> : null}
-                {sourceName ? <span>{sourceName}</span> : null}
-              </div>
-            </div>
-          </header>
-
           <div className="news-detail-hero-grid">
           <div className="news-detail-main-column">
             <article className={`panel-surface news-detail-card news-detail-story-card${kapDisclosure ? " is-kap" : ""}`}>
+              <div className="news-detail-article-header">
+                <Link className="news-detail-back-link" to={backTo}>
+                  <ArrowLeft size={14} aria-hidden="true" />
+                  <span>{t("newsDetail.back")}</span>
+                </Link>
+                <div className="news-detail-header-copy">
+                  <div className="news-detail-header-eyebrow">
+                    <span className="news-detail-cat-badge">
+                      {getNewsCategoryLabelI18n(item?.category, t) || (kapDisclosure ? t("newsDetail.kapEyebrow") : t("newsDetail.defaultCategory"))}
+                    </span>
+                    <span className="news-detail-eyebrow-sep" aria-hidden="true">•</span>
+                    <span className="news-detail-eyebrow-provider">{providerLabel}</span>
+                    {sourceName && sourceName !== providerLabel ? (
+                      <>
+                        <span className="news-detail-eyebrow-sep" aria-hidden="true">•</span>
+                        <span className="news-detail-eyebrow-source">{sourceName}</span>
+                      </>
+                    ) : null}
+                    {publishedAtLabel ? (
+                      <>
+                        <span className="news-detail-eyebrow-sep" aria-hidden="true">•</span>
+                        <span className="news-detail-eyebrow-date">{publishedAtLabel}</span>
+                      </>
+                    ) : null}
+                  </div>
+                  <h1>{item?.title || t("newsDetail.titleFallback")}</h1>
+                </div>
+              </div>
+
               {!kapDisclosure ? (
                 <div className="news-detail-media-shell">
                   {item.imageUrl && !imageFailed ? (
@@ -160,11 +180,11 @@ export default function NewsDetailPage() {
                       para.startsWith("## ") ? (
                         <h3 key={index} className="news-detail-subheading">{para.slice(3)}</h3>
                       ) : (
-                        <p key={index} className="news-detail-summary">{para}</p>
+                        <p key={index} className={`news-detail-summary${index === 0 ? " is-lead" : ""}`}>{para}</p>
                       )
                     )
                   ) : (
-                    <p className="news-detail-summary is-fallback">
+                    <p className="news-detail-summary is-lead is-fallback">
                       {kapDisclosure ? t("newsDetail.kapNoSummary") : previewText}
                     </p>
                   )}
@@ -215,36 +235,105 @@ export default function NewsDetailPage() {
               {!relatedLoading && !relatedError && relatedData.relatedNews.length > 0 ? (
                   <div className="news-related-list">
                     {relatedData.relatedNews.map((relatedItem) => (
-                      <button
+                      <RelatedCard
                         key={relatedItem.id}
-                        type="button"
-                        className="news-related-card news-related-news-card"
+                        relatedItem={relatedItem}
                         onClick={() => navigate(`/news/${relatedItem.id}`)}
-                      >
-                        <div className="news-related-card-top">
-                          <span className="news-card-badge category">
-                            {getNewsCategoryLabel(relatedItem.category) || t("newsDetail.defaultCategory")}
-                          </span>
-                        </div>
-                        <strong className="news-related-title" title={relatedItem.title || t("news.titleMissing")}>
-                          {relatedItem.title || t("news.titleMissing")}
-                        </strong>
-                        <div className="news-related-meta">
-                          <span title={relatedItem.sourceName || "-"}>{relatedItem.sourceName || "-"}</span>
-                          <span>{formatNewsDate(getNewsDateValue(relatedItem))}</span>
-                        </div>
-                      </button>
+                        t={t}
+                      />
                     ))}
                   </div>
                 ) : null}
               </section>
 
-              {!kapDisclosure ? <AiNewsImpactCard newsId={item.id} /> : null}
+              {!kapDisclosure ? (
+                <button type="button" className="news-ai-drawer-trigger" onClick={() => setAiDrawerOpen(true)}>
+                  <div className="news-ai-drawer-trigger-header">
+                    <span className="news-ai-drawer-trigger-icon" aria-hidden="true"><Sparkles size={15} /></span>
+                    <div>
+                      <h3 className="news-ai-drawer-trigger-title">{t("aiCards.newsImpact.startTitle")}</h3>
+                      <p className="news-ai-drawer-trigger-sub">{t("aiCards.newsImpact.startSubtitle")}</p>
+                    </div>
+                  </div>
+                  <div className="news-ai-drawer-trigger-cta" aria-hidden="true">
+                    {t("aiCards.newsImpact.startBtnLabel")}
+                  </div>
+                </button>
+              ) : null}
             </div>
           </aside>
           </div>
         </section>
+
+        {!kapDisclosure && isAiDrawerOpen ? (
+          <div
+            className="news-ai-drawer-overlay"
+            role="presentation"
+            onClick={() => setAiDrawerOpen(false)}
+          >
+            <div
+              className="news-ai-drawer-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("aiCards.newsImpact.title")}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="news-ai-drawer-header">
+                <div className="news-ai-drawer-title-group">
+                  <h3 className="news-ai-drawer-title">{t("aiCards.newsImpact.title")}</h3>
+                  <p className="news-ai-drawer-sub" title={item.title}>{item.title}</p>
+                </div>
+                <button
+                  type="button"
+                  className="news-ai-drawer-close"
+                  aria-label={t("common.close")}
+                  onClick={() => setAiDrawerOpen(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="news-ai-drawer-body">
+                <AiNewsImpactCard newsId={item.id} autoLoad />
+              </div>
+            </div>
+          </div>
+        ) : null}
+        </>
       ) : null}
     </div>
+  );
+}
+
+function RelatedCard({ relatedItem, onClick, t }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const provider = getNewsProviderLabel(relatedItem?.provider || relatedItem?.source || relatedItem?.sourceName || "-");
+
+  return (
+    <button type="button" className="news-related-card" onClick={onClick}>
+      <div className="news-related-thumb" aria-hidden="true">
+        {relatedItem.imageUrl && !imgFailed ? (
+          <img
+            src={relatedItem.imageUrl}
+            alt=""
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <span className="news-related-thumb-label">{buildNewsPlaceholderLabel(relatedItem)}</span>
+        )}
+      </div>
+      <div className="news-related-content">
+        <div className="news-related-card-top">
+          <span className="news-related-source-badge">{provider}</span>
+          <span className="news-related-date">{formatNewsDate(getNewsDateValue(relatedItem))}</span>
+        </div>
+        <strong className="news-related-title" title={relatedItem.title || t("news.titleMissing")}>
+          {relatedItem.title || t("news.titleMissing")}
+        </strong>
+        <div className="news-related-meta">
+          <span className="news-related-meta-source" title={relatedItem.sourceName || "-"}>{relatedItem.sourceName || "-"}</span>
+        </div>
+      </div>
+    </button>
   );
 }

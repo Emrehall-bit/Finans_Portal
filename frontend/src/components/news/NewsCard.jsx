@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Star } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import {
   buildNewsPlaceholderLabel,
   formatNewsPublishedAt,
@@ -43,22 +43,9 @@ function Placeholder({ item, providerLabel, logoUrl, logoFailed, onLogoError }) 
 
 function FavoriteButton({ active, busy, onToggle, t, size = 20 }) {
   if (!onToggle) return null;
-  const btnRef = useRef(null);
-
-  useEffect(() => {
-    const btn = btnRef.current;
-    if (!btn) return;
-    const svg = btn.querySelector('svg');
-    if (!svg) return;
-    // set inline styles with priority important to override stylesheet !important
-    svg.style.setProperty('width', `${size}px`, 'important');
-    svg.style.setProperty('height', `${size}px`, 'important');
-    svg.style.setProperty('transform', 'none', 'important');
-  }, [size]);
 
   return (
     <button
-      ref={btnRef}
       type="button"
       className={`news-card-favorite-btn${active ? " is-active" : ""}`}
       onClick={(event) => {
@@ -70,10 +57,10 @@ function FavoriteButton({ active, busy, onToggle, t, size = 20 }) {
       aria-label={active ? t("news.removeFavorite") : t("news.addFavorite")}
       title={active ? t("news.removeFavorite") : t("news.addFavorite")}
     >
-      <Star
+      <Bookmark
         className="news-card-favorite-icon"
         size={size}
-        strokeWidth={1.6}
+        strokeWidth={1.9}
         fill={active ? "currentColor" : "none"}
         aria-hidden="true"
       />
@@ -128,7 +115,7 @@ function NewsCardContent({ item, onClick, assetKey, isFavorite, favoriteBusy, on
               busy={favoriteBusy}
               onToggle={onFavoriteToggle ? () => onFavoriteToggle(item) : null}
               t={t}
-              size={18}
+              size={17}
             />
           </div>
 
@@ -161,6 +148,7 @@ function NewsCardContent({ item, onClick, assetKey, isFavorite, favoriteBusy, on
         busy={favoriteBusy}
         onToggle={onFavoriteToggle ? () => onFavoriteToggle(item) : null}
         t={t}
+        size={21}
       />
       <button className="news-card-main" onClick={() => onClick(item)} type="button">
         <div className="news-card-media">

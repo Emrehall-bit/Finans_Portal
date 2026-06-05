@@ -9,6 +9,8 @@ public record RelatedNewsItemDto(
         Long id,
         String title,
         String sourceName,
+        String provider,
+        String imageUrl,
         String category,
         LocalDateTime publishedAt,
         Integer importanceScore

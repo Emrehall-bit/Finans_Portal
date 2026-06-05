@@ -70,7 +70,8 @@ export default function PaginationControls({
   const { t } = useTranslation();
   const classes = ["news-pagination-card", `is-${variant}`, className].filter(Boolean).join(" ");
   const visiblePages = buildVisiblePages(currentPage, totalPages);
-  const pageSummary = `${t("pagination.page")} ${currentPage + 1}${totalPages > 0 ? ` / ${totalPages}` : ""}`;
+  const safeCurrentPage = totalPages > 0 ? currentPage + 1 : 0;
+  const pageSummary = `${t("pagination.page")} ${safeCurrentPage} / ${Math.max(totalPages, 0)}`;
   const totalSummary = t("pagination.totalNews", { count: totalElements });
 
   if (variant === "news-top") {

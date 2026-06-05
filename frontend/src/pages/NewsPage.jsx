@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Check, SlidersHorizontal, Star, X } from "lucide-react";
+import { Bookmark, Check, SlidersHorizontal, X } from "lucide-react";
 import { addNewsFavorite, removeNewsFavorite } from "../api/newsApi";
 import { newsKeys } from "../api/queryKeys";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -354,7 +354,7 @@ export default function NewsPage() {
       onClick={handleToggleFavoritesFilter}
       aria-pressed={favoritesOnly}
     >
-      <Star size={15} strokeWidth={2.2} fill={favoritesOnly ? "currentColor" : "none"} aria-hidden="true" />
+      <Bookmark size={15} strokeWidth={2} fill={favoritesOnly ? "currentColor" : "none"} aria-hidden="true" />
       <span>{t("news.favoritesFilter")}</span>
     </button>
   );
@@ -470,7 +470,7 @@ export default function NewsPage() {
         </aside>
 
         <div className="news-content-column">
-          {!error && newsPage.totalPages > 0 ? (
+          {!error ? (
             <PaginationControls
               className="news-pagination-card-top"
               variant="news-top"
@@ -478,8 +478,8 @@ export default function NewsPage() {
               totalPages={newsPage.totalPages}
               totalElements={newsPage.totalElements}
               loading={loading}
-              isFirstPage={newsPage.first || currentPage === 0}
-              isLastPage={newsPage.last || currentPage >= newsPage.totalPages - 1}
+              isFirstPage={newsPage.totalPages <= 0 || newsPage.first || currentPage === 0}
+              isLastPage={newsPage.totalPages <= 0 || newsPage.last || currentPage >= newsPage.totalPages - 1}
               onPrevious={handlePreviousPage}
               onNext={handleNextPage}
               onPageChange={handlePageChange}

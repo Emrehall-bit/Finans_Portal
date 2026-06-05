@@ -335,6 +335,28 @@
       "date": "Date",
       "source": "Source",
       "quality": "Content status"
+    },
+    "newsCategories": {
+      "GENERAL_ECONOMY": "General Economy",
+      "GLOBAL_MARKETS": "Global Markets",
+      "FX": "Forex",
+      "STOCKS": "Stocks",
+      "INTEREST_BONDS": "Interest & Bonds",
+      "GOLD_COMMODITY": "Gold & Commodities",
+      "BANKING": "Banking",
+      "CRYPTO": "Crypto",
+      "ENERGY": "Energy",
+      "GEOPOLITICS": "Geopolitics",
+      "COMPANY": "Company News",
+      "ECONOMY": "Economy",
+      "GENERAL": "News",
+      "SPECIAL_DISCLOSURE": "Special Disclosure",
+      "FINANCIAL_REPORT": "Financial Report",
+      "DISCLOSURE": "KAP Disclosure",
+      "GENERAL_MEETING": "General Meeting",
+      "DIVIDEND": "Dividend",
+      "BUYBACK": "Buyback",
+      "CAPITAL_INCREASE": "Capital Increase"
     }
   },
   "markets": {
@@ -2105,9 +2127,10 @@
     },
     "newsImpact": {
       "title": "AI Impact Analysis",
-      "startTitle": "Start AI Impact Analysis",
+      "startTitle": "AI Impact Analysis",
       "readySubtitle": "Analysis is ready, you can view the details.",
-      "startSubtitle": "Analyze with AI",
+      "startSubtitle": "Analyze the potential impact of this news on markets, sectors, and investor sentiment.",
+      "startBtnLabel": "Start Analysis",
       "guestDescription": "Sign in to view the AI financial and sector commentary for this news item.",
       "premiumDescription": "Advanced AI analysis interpreting the financial, sector, and market impact of this news is available to premium members.",
       "error": "AI impact analysis is currently unavailable.",

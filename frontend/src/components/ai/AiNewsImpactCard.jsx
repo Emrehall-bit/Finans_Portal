@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
@@ -14,7 +14,7 @@ import { useAuth } from "../../auth/AuthContext";
 import AiLockedCard from "./AiLockedCard";
 import AiResponseMeta from "./AiResponseMeta";
 
-export default function AiNewsImpactCard({ newsId }) {
+export default function AiNewsImpactCard({ newsId, autoLoad = false }) {
   const { isAuthenticated, isPremium } = useAuth();
   const { t, i18n } = useTranslation();
   const [data, setData] = useState(null);
@@ -22,6 +22,26 @@ export default function AiNewsImpactCard({ newsId }) {
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!autoLoad || !isPremium || !newsId) return;
+    let cancelled = false;
+    async function load() {
+      try {
+        setLoading(true);
+        setError("");
+        const result = await getAiNewsImpactAnalysis(newsId, i18n.language);
+        if (!cancelled) { setData(result ?? null); setHasLoaded(true); }
+      } catch {
+        if (!cancelled) { setData(null); setError(t("aiCards.newsImpact.error")); }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoad, isPremium, newsId]);
 
   async function handleToggle() {
     const nextExpanded = !expanded;
@@ -64,31 +84,71 @@ export default function AiNewsImpactCard({ newsId }) {
     );
   }
 
+  if (autoLoad) {
+    const showLoading = loading || (!hasLoaded && !error);
+    return (
+      <div className="ai-news-impact-drawer-content">
+        {showLoading ? <ImpactSkeleton t={t} /> : null}
+        {!showLoading && error ? <p className="ai-state-message error">{error}</p> : null}
+        {!showLoading && !error && data ? <ImpactContent data={data} t={t} /> : null}
+        {data ? (
+          <div className="ai-card-footer">
+            <AiResponseMeta metadata={data.metadata} />
+          </div>
+        ) : null}
+        <p className="ai-disclaimer">
+          <Info size={13} aria-hidden="true" />
+          <span>{t("aiCards.disclaimer")}</span>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <section className={`ai-card ai-news-impact-card ai-news-impact-card--toggle${expanded ? " is-expanded" : ""}`}>
       <div className="ai-card-glow ai-news-impact-glow" aria-hidden="true" />
 
-      <button type="button" className="ai-news-impact-trigger" onClick={handleToggle}>
-        <div className="ai-news-impact-trigger-main">
-          <span className="ai-card-icon ai-news-impact-icon" aria-hidden="true">
-            {hasLoaded ? <Brain size={17} /> : <Sparkles size={17} />}
-          </span>
-          <div>
-            <h3>{hasLoaded ? t("aiCards.newsImpact.title") : t("aiCards.newsImpact.startTitle")}</h3>
-            <p>{hasLoaded ? t("aiCards.newsImpact.readySubtitle") : t("aiCards.newsImpact.startSubtitle")}</p>
+      <button
+        type="button"
+        className={`ai-news-impact-trigger${!hasLoaded && !expanded ? " is-cta" : ""}`}
+        onClick={handleToggle}
+      >
+        {!hasLoaded && !expanded ? (
+          <div className="ai-news-impact-cta-layout">
+            <div className="ai-news-impact-cta-header">
+              <span className="ai-card-icon ai-news-impact-icon" aria-hidden="true">
+                <Sparkles size={16} />
+              </span>
+              <h3>{t("aiCards.newsImpact.startTitle")}</h3>
+            </div>
+            <p className="ai-news-impact-cta-desc">{t("aiCards.newsImpact.startSubtitle")}</p>
+            <div className="ai-news-impact-cta-btn" aria-hidden="true">
+              <span>{t("aiCards.newsImpact.startBtnLabel")}</span>
+            </div>
           </div>
-        </div>
-
-        <div className="ai-news-impact-trigger-actions">
-          <span className="ai-card-badge ai-news-impact-badge">
-            {hasLoaded ? t("aiCards.newsImpact.readyBadge") : t("aiCards.newsImpact.aiBadge")}
-          </span>
-          <ChevronDown
-            size={18}
-            className={`ai-news-impact-chevron${expanded ? " is-expanded" : ""}`}
-            aria-hidden="true"
-          />
-        </div>
+        ) : (
+          <>
+            <div className="ai-news-impact-trigger-main">
+              <span className="ai-card-icon ai-news-impact-icon" aria-hidden="true">
+                {hasLoaded ? <Brain size={17} /> : <Sparkles size={17} />}
+              </span>
+              <div>
+                <h3>{hasLoaded ? t("aiCards.newsImpact.title") : t("aiCards.newsImpact.startTitle")}</h3>
+                <p>{hasLoaded ? t("aiCards.newsImpact.readySubtitle") : t("aiCards.newsImpact.startSubtitle")}</p>
+              </div>
+            </div>
+            <div className="ai-news-impact-trigger-actions">
+              <span className="ai-card-badge ai-news-impact-badge">
+                {hasLoaded ? t("aiCards.newsImpact.readyBadge") : t("aiCards.newsImpact.aiBadge")}
+              </span>
+              <ChevronDown
+                size={18}
+                className={`ai-news-impact-chevron${expanded ? " is-expanded" : ""}`}
+                aria-hidden="true"
+              />
+            </div>
+          </>
+        )}
       </button>
 
       <div className={`ai-news-impact-collapsible${expanded ? " is-expanded" : ""}`}>

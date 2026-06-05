@@ -81,7 +81,7 @@ public class NewsService {
     private static final int MIN_SUMMARY_LENGTH = 80;
     private static final int DUPLICATE_LOOKBACK_DAYS = 3;
     private static final int MIN_FINANCIAL_RELEVANCE_SCORE = 2;
-    private static final int MAX_RELATED_NEWS = 4;
+    private static final int MAX_RELATED_NEWS = 10;
     private static final int MAX_CATEGORY_REPAIR_LIMIT = 5_000;
     private static final int CATEGORY_REPAIR_SAMPLE_LIMIT = 10;
     private static final Set<String> TRACKING_QUERY_PARAMS = Set.of(
@@ -2043,6 +2043,8 @@ public class NewsService {
                 .id(news.getId())
                 .title(news.getTitle())
                 .sourceName(newsPresentationMapper.toResponse(news).getSourceName())
+                .provider(news.getProvider())
+                .imageUrl(news.getImageUrl())
                 .category(news.getCategory())
                 .publishedAt(news.getPublishedAt())
                 .importanceScore(news.getImportanceScore())
