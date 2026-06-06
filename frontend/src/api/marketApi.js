@@ -113,19 +113,23 @@ export async function screenMarkets(params = {}) {
 }
 
 export async function getMarketQuotes() {
-  const [aggregateResult, fxResult, indexResult, commodityResult] = await Promise.allSettled([
-    getMarkets(),
+  const [fxResult, indexResult, commodityResult, cryptoResult, stockResult, fundResult] = await Promise.allSettled([
     getMarketsByType("FX"),
     getMarketsByType("INDEX"),
     getMarketsByType("COMMODITY"),
+    getMarketsByType("CRYPTO"),
+    getMarketsByType("STOCK"),
+    getMarketsByType("FUND"),
   ]);
 
-  const aggregateQuotes = aggregateResult.status === "fulfilled" ? aggregateResult.value : [];
   const fxQuotes = fxResult.status === "fulfilled" ? fxResult.value : [];
   const indexQuotes = indexResult.status === "fulfilled" ? indexResult.value : [];
   const commodityQuotes = commodityResult.status === "fulfilled" ? commodityResult.value : [];
+  const cryptoQuotes = cryptoResult.status === "fulfilled" ? cryptoResult.value : [];
+  const stockQuotes = stockResult.status === "fulfilled" ? stockResult.value : [];
+  const fundQuotes = fundResult.status === "fulfilled" ? fundResult.value : [];
 
-  return mergeUniqueMarketQuotes(aggregateQuotes, fxQuotes, indexQuotes, commodityQuotes);
+  return mergeUniqueMarketQuotes(fxQuotes, indexQuotes, commodityQuotes, cryptoQuotes, stockQuotes, fundQuotes);
 }
 
 export async function getMarketTapeQuotes() {
@@ -141,7 +145,7 @@ export async function getMarketTapeConfig() {
 export async function getMarketBySymbol(symbol, options = {}) {
   const params = options?.type ? { type: options.type } : undefined;
   const { data } = await axiosClient.get(`${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}`, { params });
-  return normalizeObjectPayload(data);
+  return normalizeDetailQuote(normalizeObjectPayload(data), options?.type);
 }
 
 export async function getMarketQuote(symbol) {
@@ -297,7 +301,7 @@ function mapFxQuote(item) {
 
   return {
     symbol: instrumentSymbol,
-    displayName: item.name ?? (normalizedSource && displayCode ? `${displayCode}/TRY` : displayCode),
+    displayName: item.name ?? displayCode,
     price: item.last ?? item.sellRate ?? item.sellingRate ?? item.sell ?? item.ask ?? item.buyRate ?? item.buyingRate ?? item.buy ?? item.bid,
     changeRate: item.changePercent ?? item.dailyChangePercent ?? item.changeRate ?? null,
     source: normalizedSource,
@@ -306,6 +310,8 @@ function mapFxQuote(item) {
     buyRate: item.buyRate ?? item.buyingRate ?? item.buy ?? item.alis ?? item.bid ?? null,
     sellRate: item.sellRate ?? item.sellingRate ?? item.sell ?? item.satis ?? item.ask ?? null,
     code: displayCode,
+    displayUnit: item.displayUnit ?? "CURRENCY",
+    currency: item.currency ?? "TRY",
   };
 }
 
@@ -326,6 +332,8 @@ function mapCryptoQuote(item) {
     buyRate: null,
     sellRate: null,
     code: item.symbol,
+    displayUnit: item.displayUnit ?? "CURRENCY",
+    currency: item.currency ?? "TRY",
   };
 }
 
@@ -342,6 +350,8 @@ function mapStockQuote(item) {
     sellRate: null,
     code: item.symbol,
     openPrice: item.openPrice ?? null,
+    displayUnit: item.displayUnit ?? "CURRENCY",
+    currency: item.currency ?? "TRY",
   };
 }
 
@@ -375,6 +385,8 @@ function mapFundQuote(item) {
     getiri1y: item.getiri1y ?? null,
     getiri3y: item.getiri3y ?? null,
     getiri5y: item.getiri5y ?? null,
+    displayUnit: item.displayUnit ?? "CURRENCY",
+    currency: item.currency ?? "TRY",
   };
 }
 
@@ -435,6 +447,21 @@ function mapFuturesQuote(item) {
     buyRate: null,
     sellRate: null,
     code: item.contractCode,
+    displayUnit: item.displayUnit ?? "CURRENCY",
+    currency: item.currency ?? "TRY",
+  };
+}
+
+function normalizeDetailQuote(item, fallbackType = "") {
+  if (!item || typeof item !== "object") {
+    return item;
+  }
+  const type = normalizeInstrumentType(item.instrumentType || item.type || fallbackType);
+  return {
+    ...item,
+    instrumentType: item.instrumentType || item.type || type,
+    displayUnit: item.displayUnit ?? (type === "INDEX" ? "POINT" : "CURRENCY"),
+    currency: item.currency ?? (type === "INDEX" ? null : "TRY"),
   };
 }
 
@@ -450,6 +477,8 @@ function mapBondQuote(item) {
     buyRate: null,
     sellRate: null,
     code: item.bondCode,
+    displayUnit: item.displayUnit ?? "RATE",
+    currency: item.currency ?? null,
   };
 }
 
@@ -465,6 +494,8 @@ function mapIndexQuote(item) {
     buyRate: null,
     sellRate: null,
     code: item.symbol,
+    displayUnit: item.displayUnit ?? "POINT",
+    currency: item.currency ?? null,
   };
 }
 
@@ -480,6 +511,8 @@ function mapCommodityQuote(item) {
     buyRate: null,
     sellRate: null,
     code: item.symbol,
+    displayUnit: item.displayUnit ?? "CURRENCY",
+    currency: item.currency ?? "TRY",
   };
 }
 
@@ -498,6 +531,8 @@ function mapMarketTapeQuote(item) {
     buyRate: null,
     sellRate: null,
     code: displayCode,
+    displayUnit: item.displayUnit ?? (normalizeInstrumentType(item.instrumentType) === "INDEX" ? "POINT" : "CURRENCY"),
+    currency: item.currency ?? (normalizeInstrumentType(item.instrumentType) === "INDEX" ? null : "TRY"),
   };
 }
 

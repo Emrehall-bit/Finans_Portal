@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { formatNumber } from "../../utils/formatters";
+import { formatInstrumentValue, isPointBasedInstrument } from "../../utils/formatters";
 import { formatMarketChange } from "./marketDetailUtils";
 import { CurrencyToggle } from "../../currency/CurrencyContext";
 
@@ -21,6 +21,7 @@ export default function InstrumentHeader({
   const { t } = useTranslation();
   const changeNumeric = Number(changeRate);
   const isPositive = Number.isFinite(changeNumeric) ? changeNumeric >= 0 : false;
+  const isPointBased = isPointBasedInstrument({ instrumentType });
 
   return (
     <section className="panel-surface instrument-detail-hero">
@@ -43,16 +44,16 @@ export default function InstrumentHeader({
         </div>
 
         <div className="idh-price-area">
-          <strong className="idh-price">{price != null ? formatNumber(price) : "—"}</strong>
+          <strong className="idh-price">{price != null ? formatInstrumentValue(price, { instrumentType, currency }) : "-"}</strong>
           <div className="idh-meta-tags">
             {source ? <span className="idh-tag">{source}</span> : null}
             {instrumentType ? <span className="idh-tag">{instrumentType}</span> : null}
-            {currency ? <span className="idh-tag">{currency}</span> : null}
+            {!isPointBased && currency ? <span className="idh-tag">{currency}</span> : null}
           </div>
         </div>
 
         <div className="idh-controls">
-          <CurrencyToggle />
+          {!isPointBased ? <CurrencyToggle /> : null}
           <div className="idh-actions">
             <button type="button" className="secondary-button" onClick={onFavoriteToggle} disabled={favoriteBusy}>
               {favoriteBusy ? t("instrumentDetail.processing") : isFavorite ? t("instrumentDetail.removeFavorite") : t("instrumentDetail.addFavorite")}
@@ -60,12 +61,11 @@ export default function InstrumentHeader({
             <button type="button" className="secondary-button" onClick={onOpenAlert}>
               {t("instrumentDetail.createAlert")}
             </button>
-            <button type="button" onClick={onOpenPortfolio}>
-              {t("instrumentDetail.addToPortfolio")}
-            </button>
+            {onOpenPortfolio ? (<button type="button" onClick={onOpenPortfolio}>{t("instrumentDetail.addToPortfolio")}</button>) : null}
           </div>
         </div>
       </div>
     </section>
   );
 }
+

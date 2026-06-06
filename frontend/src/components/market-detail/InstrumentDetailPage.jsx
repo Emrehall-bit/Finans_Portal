@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { getMarketHistory, getMarketBySymbol, getTechnicalAnalysis } from "../../api/marketApi";
 import { getNews } from "../../api/newsApi";
 import { getCompanyFundamentals, getCompanyFinancials } from "../../api/companyApi";
@@ -19,8 +28,9 @@ import AuthRequiredModal from "../common/AuthRequiredModal";
 import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
+import { useTheme } from "../../theme/ThemeContext";
 import useToast from "../../hooks/useToast";
-import { formatNumber } from "../../utils/formatters";
+import { isPointBasedInstrument } from "../../utils/formatters";
 import AddToPortfolioModal from "./AddToPortfolioModal";
 import CreateAlertModal from "./CreateAlertModal";
 import InstrumentChartPanel from "./InstrumentChartPanel";
@@ -42,6 +52,14 @@ import {
   resolveTrendDirection,
 } from "./marketDetailUtils";
 
+const OVERVIEW_RANGE_PRESETS = [
+  { key: "1M", months: 1 },
+  { key: "3M", months: 3 },
+  { key: "6M", months: 6 },
+  { key: "1Y", years: 1 },
+  { key: "MAX", years: 10 },
+];
+
 export default function InstrumentDetailPage() {
   const { t } = useTranslation();
   const { symbol = "" } = useParams();
@@ -57,20 +75,24 @@ export default function InstrumentDetailPage() {
   const [quote, setQuote] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [annualHistory, setAnnualHistory] = useState([]);
+  const [overviewHistory, setOverviewHistory] = useState([]);
   const [yearStatsHistory, setYearStatsHistory] = useState([]);
   const [quoteLoading, setQuoteLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(true);
+  const [overviewHistoryLoading, setOverviewHistoryLoading] = useState(true);
   const [, setHistoryLoading] = useState(true);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [quoteError, setQuoteError] = useState("");
   const [analysisError, setAnalysisError] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
   const [activeRange, setActiveRange] = useState("3M");
+  const [overviewRange, setOverviewRange] = useState("3M");
   const [dateRange, setDateRange] = useState(() => buildPresetRange({ months: 3 }));
   const [selectedIndicators, setSelectedIndicators] = useState(() => new Set(DEFAULT_INDICATORS));
   const [isPortfolioModalOpen, setPortfolioModalOpen] = useState(false);
   const [isAlertModalOpen, setAlertModalOpen] = useState(false);
   const [isAuthRequiredModalOpen, setAuthRequiredModalOpen] = useState(false);
+  const [aiAnalysisStarted, setAiAnalysisStarted] = useState(false);
 
   const [fundamentals, setFundamentals] = useState(null);
   const [fundamentalsLoading, setFundamentalsLoading] = useState(false);
@@ -101,6 +123,7 @@ export default function InstrumentDetailPage() {
     () => resolveInstrumentType(quote?.instrumentType || instrumentType, apiSymbol || normalizedSymbol),
     [quote?.instrumentType, instrumentType, apiSymbol, normalizedSymbol],
   );
+  const isPointBased = isPointBasedInstrument({ instrumentType: resolvedInstrumentType, displayUnit: quote?.displayUnit });
 
   useEffect(() => {
     if (!normalizedSymbol) {
@@ -171,6 +194,44 @@ export default function InstrumentDetailPage() {
       active = false;
     };
   }, [normalizedSymbol, activeRange, dateRange, quote?.source, resolvedInstrumentType, apiSymbol]);
+
+  useEffect(() => {
+    if (!normalizedSymbol) {
+      setOverviewHistory([]);
+      setOverviewHistoryLoading(false);
+      return;
+    }
+
+    let active = true;
+    const preset = OVERVIEW_RANGE_PRESETS.find((item) => item.key === overviewRange) ?? OVERVIEW_RANGE_PRESETS[1];
+
+    async function loadOverviewHistory() {
+      try {
+        setOverviewHistoryLoading(true);
+        const nextHistory = await getMarketHistory(apiSymbol, {
+          ...buildPresetRange(preset),
+          source: quote?.source,
+          type: resolvedInstrumentType,
+        });
+        if (active) {
+          setOverviewHistory(Array.isArray(nextHistory) ? nextHistory : []);
+        }
+      } catch {
+        if (active) {
+          setOverviewHistory([]);
+        }
+      } finally {
+        if (active) {
+          setOverviewHistoryLoading(false);
+        }
+      }
+    }
+
+    loadOverviewHistory();
+    return () => {
+      active = false;
+    };
+  }, [normalizedSymbol, overviewRange, quote?.source, resolvedInstrumentType, apiSymbol]);
 
   useEffect(() => {
     if (!normalizedSymbol) {
@@ -354,7 +415,7 @@ export default function InstrumentDetailPage() {
     [analysis, annualHistory],
   );
   const displayChartData = useMemo(() => {
-    if (currency === "TRY") return chartData;
+    if (currency === "TRY" || isPointBased) return chartData;
     return chartData.map((point) => ({
       ...point,
       close: convertAmount(point.close),
@@ -362,7 +423,15 @@ export default function InstrumentDetailPage() {
       sma20: point.sma20 != null ? convertAmount(point.sma20) : null,
       sma50: point.sma50 != null ? convertAmount(point.sma50) : null,
     }));
-  }, [chartData, currency, convertAmount]);
+  }, [chartData, currency, convertAmount, isPointBased]);
+  const overviewChartData = useMemo(() => buildChartData([], overviewHistory), [overviewHistory]);
+  const displayOverviewChartData = useMemo(() => {
+    if (currency === "TRY" || isPointBased) return overviewChartData;
+    return overviewChartData.map((point) => ({
+      ...point,
+      close: point.close != null ? convertAmount(point.close) : null,
+    }));
+  }, [overviewChartData, currency, convertAmount, isPointBased]);
   const displayTrendDirection = useMemo(
     () => resolveTrendDirection(analysis?.trendDirection, chartData),
     [analysis?.trendDirection, chartData],
@@ -488,10 +557,10 @@ export default function InstrumentDetailPage() {
         favoriteBusy={favoriteBusy}
         onFavoriteToggle={handleFavoriteToggle}
         onOpenAlert={handleOpenAlertModal}
-        onOpenPortfolio={handleOpenPortfolioModal}
+        onOpenPortfolio={isPointBased ? null : handleOpenPortfolioModal}
       />
 
-      <InstrumentTabs activeTab={activeTab} onChange={setActiveTab} />
+      <InstrumentTabs activeTab={activeTab} onChange={setActiveTab} instrumentType={instrumentType} />
 
       {quoteLoading ? <LoadingSpinner label={t("instrumentDetail.loading")} /> : null}
       {quoteError ? <ErrorMessage message={quoteError} /> : null}
@@ -507,43 +576,30 @@ export default function InstrumentDetailPage() {
           <div className="instrument-detail-main-column">
             {activeTab === "overview" ? (
               <section className="instrument-overview-stack">
-                {resolvedInstrumentType === "STOCK" ? (
-                  <AiUnifiedAnalysisCard
-                    symbol={displaySymbol}
-                    instrumentType="STOCK"
-                  />
-                ) : null}
-
-                <section className="panel-surface instrument-overview-card">
+                <section className="panel-surface instrument-overview-card instrument-overview-chart-card">
                   <div className="panel-head">
                     <div>
-                      <p className="eyebrow">{t("instrumentDetail.overviewEyebrow")}</p>
-                      <h3>{t("instrumentDetail.overviewTitle")}</h3>
+                      <h3>Fiyat Hareketi</h3>
                     </div>
+                    <OverviewRangeSelector
+                      activeRange={overviewRange}
+                      onRangeChange={setOverviewRange}
+                      presets={OVERVIEW_RANGE_PRESETS}
+                    />
                   </div>
 
-                  <div className="instrument-overview-summary">
-                    <div className="instrument-overview-metric">
-                      <span>{t("instrumentDetail.latestPrice")}</span>
-                      <strong>{formatNumber(latestPrice)}</strong>
-                    </div>
-                    <div className="instrument-overview-metric">
-                      <span>Günlük değişim</span>
-                      <strong className={getChangeClass(quote?.changeRate)}>{formatSignedPercent(quote?.changeRate)}</strong>
-                    </div>
-                    <div className="instrument-overview-metric">
-                      <span>{t("instrumentDetail.trend")}</span>
-                      <strong>{analysisLoading ? "Hazırlanıyor" : formatTrendLabel(displayTrendDirection)}</strong>
-                    </div>
-                    <div className="instrument-overview-metric">
-                      <span>{t("instrumentDetail.dataPoints")}</span>
-                      <strong>{analysisLoading ? "-" : formatNumber(chartData.length, 0)}</strong>
-                    </div>
-                  </div>
+                  <OverviewPriceChart
+                    chartData={displayOverviewChartData}
+                    currency={currency}
+                    isPointBased={isPointBased}
+                    loading={overviewHistoryLoading}
+                  />
 
-                  <div className="instrument-overview-brief">
-                    <strong>Kısa piyasa özeti</strong>
-                    <p>{buildOverviewMarketSummary(quote, displayTrendDirection, chartData.length, analysisLoading)}</p>
+                  <div className="instrument-overview-chart-footer">
+                    <p>Mum grafik, çizim araçları ve teknik göstergeler için Teknik Analiz ekranına geçin.</p>
+                    <Link className="secondary-button instrument-overview-link" to={buildAnalysisPath(apiSymbol, resolvedInstrumentType)}>
+                      Teknik Analize Git
+                    </Link>
                   </div>
                 </section>
               </section>
@@ -562,6 +618,7 @@ export default function InstrumentDetailPage() {
                   error={analysisError}
                   chartData={displayChartData}
                   currency={currency}
+                  instrumentType={resolvedInstrumentType}
                 />
 
                 {supportsTechnicalAi(resolvedInstrumentType) ? (
@@ -613,6 +670,28 @@ export default function InstrumentDetailPage() {
 
           <div className="instrument-detail-side-column">
             <InstrumentStatsPanel stats={stats} />
+            {activeTab === "overview" ? (
+              aiAnalysisStarted ? (
+                <AiUnifiedAnalysisCard
+                  symbol={apiSymbol}
+                  instrumentType={resolvedInstrumentType}
+                />
+              ) : (
+                <section className="panel-surface instrument-overview-ai-card">
+                  <div>
+                    <h3>Yapay zekâ yorumu</h3>
+                    <p>Bu enstrümanı mevcut fiyat hareketi ve veriler üzerinden yapay zekâ ile yorumlayın.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="secondary-button instrument-overview-link"
+                    onClick={() => setAiAnalysisStarted(true)}
+                  >
+                    AI Analizini Başlat
+                  </button>
+                </section>
+              )
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -645,6 +724,88 @@ export default function InstrumentDetailPage() {
   );
 }
 
+function OverviewRangeSelector({ activeRange, onRangeChange, presets }) {
+  return (
+    <div className="overview-timeframes" aria-label="Fiyat hareketi zaman aralığı">
+      {presets.map((preset) => (
+        <button
+          key={preset.key}
+          type="button"
+          className={`overview-timeframe-button${activeRange === preset.key ? " active" : ""}`}
+          onClick={() => onRangeChange(preset.key)}
+        >
+          {formatOverviewRangeLabel(preset.key)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function OverviewPriceChart({ chartData, currency, isPointBased, loading }) {
+  const { chartTheme } = useTheme();
+  const hasData = chartData.length > 0;
+
+  return (
+    <div className="instrument-overview-price-panel">
+      {loading ? <LoadingSpinner label="Fiyat hareketi yükleniyor" /> : null}
+      {!loading && !hasData ? (
+        <EmptyState title="Fiyat verisi bulunamadı" description="Bu aralık için fiyat geçmişi geldiğinde grafik burada gösterilecek." />
+      ) : null}
+
+      {!loading && hasData ? (
+        <div className="instrument-overview-chart-wrap terminal-chart-shell">
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={chartData} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="4 4" stroke={chartTheme.grid} strokeOpacity={0.45} />
+              <XAxis
+                dataKey="dateKey"
+                stroke={chartTheme.axis}
+                tickFormatter={formatCompactChartDate}
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11 }}
+              />
+              <YAxis
+                stroke={chartTheme.axis}
+                tickFormatter={(value) => formatOverviewAxisValue(value, currency, isPointBased)}
+                tickLine={false}
+                axisLine={false}
+                width={76}
+                tick={{ fontSize: 11 }}
+              />
+              <Tooltip content={<OverviewChartTooltip chartTheme={chartTheme} currency={currency} isPointBased={isPointBased} />} />
+              <Line
+                type="monotone"
+                dataKey="close"
+                name="Fiyat"
+                stroke={chartTheme.priceLine}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function OverviewChartTooltip({ active, payload, chartTheme, currency, isPointBased }) {
+  if (!active || !payload?.length) return null;
+
+  const point = payload[0]?.payload;
+  return (
+    <div className="chart-tooltip terminal-tooltip" style={{ backgroundColor: chartTheme.tooltipBg, borderColor: chartTheme.tooltipBorder, color: chartTheme.tooltipText }}>
+      <strong>{point?.fullDate || point?.dateKey || "-"}</strong>
+      <div className="chart-tooltip-row">
+        <span>Fiyat</span>
+        <strong>{formatOverviewPrice(payload[0]?.value, currency, isPointBased)}</strong>
+      </div>
+    </div>
+  );
+}
+
 function buildHistoryRequest(activeRange, dateRange, source, type) {
   return {
     ...(source ? { source } : {}),
@@ -652,6 +813,52 @@ function buildHistoryRequest(activeRange, dateRange, source, type) {
     from: dateRange?.from,
     to: dateRange?.to,
   };
+}
+
+function formatOverviewRangeLabel(key) {
+  return {
+    "1M": "1A",
+    "3M": "3A",
+    "6M": "6A",
+    "1Y": "1Y",
+    MAX: "MAX",
+  }[key] ?? key;
+}
+
+function formatCompactChartDate(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleDateString("tr-TR", { month: "short", day: "numeric" });
+}
+
+function formatOverviewAxisValue(value, currency, isPointBased = false) {
+  if (value == null || Number.isNaN(Number(value))) return "";
+
+  const prefix = isPointBased ? "" : currency === "USD" ? "$" : "₺";
+  const numeric = Math.abs(Number(value));
+  if (numeric >= 1_000_000) return `${prefix}${(Number(value) / 1_000_000).toFixed(1)}M`;
+  if (numeric >= 1_000) return `${prefix}${(Number(value) / 1_000).toFixed(1)}K`;
+  return `${prefix}${Number(value).toLocaleString("tr-TR", { maximumFractionDigits: 2 })}`;
+}
+
+function formatOverviewPrice(value, currency, isPointBased = false) {
+  if (value == null || Number.isNaN(Number(value))) return "-";
+  const prefix = isPointBased ? "" : currency === "USD" ? "$" : "₺";
+  return `${prefix}${Number(value).toLocaleString("tr-TR", { maximumFractionDigits: 2 })}`;
+}
+
+function buildAnalysisPath(symbol, instrumentType) {
+  const params = new URLSearchParams();
+  if (symbol) params.set("symbol", symbol);
+  if (instrumentType) params.set("type", instrumentType);
+  params.set("tool", "advanced");
+  const query = params.toString();
+  return query ? `/analysis?${query}` : "/analysis";
 }
 
 function normalizeCode(value) {
@@ -675,44 +882,6 @@ function isNonTcmbFxSymbol(symbol, instrumentType) {
   const normalizedSymbol = String(symbol || "").trim().toUpperCase();
   const providerMatch = normalizedSymbol.match(/^([A-Z_]+):[A-Z]{2,4}:(BUY|SELL)$/);
   return Boolean(providerMatch && providerMatch[1] !== "TCMB");
-}
-
-function formatSignedPercent(value) {
-  if (value === null || value === undefined || value === "") {
-    return "-";
-  }
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return String(value);
-  }
-  return `${numeric >= 0 ? "+" : ""}${formatNumber(numeric, 2)}%`;
-}
-
-function getChangeClass(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric) || numeric === 0) {
-    return "";
-  }
-  return numeric > 0 ? "market-up" : "market-down";
-}
-
-function buildOverviewMarketSummary(quote, trendDirection, dataPointCount, loading) {
-  if (loading) {
-    return "Piyasa özeti hazırlanıyor; fiyat, günlük değişim ve kısa trend bilgisi yüklendikçe güncellenecek.";
-  }
-
-  const change = Number(quote?.changeRate);
-  const trend = formatTrendLabel(trendDirection).toLocaleLowerCase("tr-TR");
-  const priceText = formatNumber(quote?.price);
-  const dataText = formatNumber(dataPointCount, 0);
-
-  if (Number.isFinite(change) && change > 0) {
-    return `Son fiyat ${priceText}; günlük hareket pozitif. Kısa trend ${trend}, analiz ${dataText} veri noktası üzerinden özetleniyor.`;
-  }
-  if (Number.isFinite(change) && change < 0) {
-    return `Son fiyat ${priceText}; günlük hareket negatif. Kısa trend ${trend}, görünüm ${dataText} veri noktasıyla izleniyor.`;
-  }
-  return `Son fiyat ${priceText}; günlük hareket yatay veya sınırlı. Kısa trend ${trend}, ${dataText} veri noktasıyla özetleniyor.`;
 }
 
 function resolveInstrumentType(value, symbol) {

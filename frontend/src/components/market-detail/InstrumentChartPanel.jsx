@@ -16,6 +16,7 @@ import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { useTheme } from "../../theme/ThemeContext";
 import { DEFAULT_INDICATORS, formatChartDate, RANGE_PRESETS } from "./marketDetailUtils";
+import { formatInstrumentValue, isPointBasedInstrument } from "../../utils/formatters";
 
 export default function InstrumentChartPanel({
   activeRange,
@@ -28,6 +29,7 @@ export default function InstrumentChartPanel({
   error,
   chartData,
   currency = "TRY",
+  instrumentType,
   presets = RANGE_PRESETS,
   emptyTitle,
   emptyDescription,
@@ -40,15 +42,19 @@ export default function InstrumentChartPanel({
   const hasData = chartData.length > 0;
   const resolvedEmptyTitle = emptyTitle || t("instrumentDetail.chartEmptyTitle");
   const resolvedEmptyDescription = emptyDescription || t("instrumentDetail.chartEmptyDescription");
+  const isPointBased = isPointBasedInstrument({ instrumentType });
 
   const formatYAxis = useCallback((value) => {
     if (value == null || Number.isNaN(Number(value))) return "";
+    if (isPointBased) {
+      return formatInstrumentValue(value, { instrumentType, displayUnit: "POINT", includeUnit: false });
+    }
     const prefix = currency === "USD" ? "$" : "₺";
     const num = Math.abs(Number(value));
     if (num >= 1_000_000) return `${prefix}${(Number(value) / 1_000_000).toFixed(1)}M`;
     if (num >= 1_000) return `${prefix}${(Number(value) / 1_000).toFixed(1)}K`;
     return `${prefix}${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  }, [currency]);
+  }, [currency, instrumentType, isPointBased]);
 
   return (
     <section className="panel-surface instrument-chart-panel">
@@ -187,3 +193,5 @@ function ChartTooltip({ active, payload, label, chartTheme, formatValue }) {
     </div>
   );
 }
+
+

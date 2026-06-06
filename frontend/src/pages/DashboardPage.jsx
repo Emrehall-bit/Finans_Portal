@@ -18,7 +18,7 @@ import { useMarketQuotes } from "../hooks/useMarketQueries";
 import { useNewsList } from "../hooks/useNewsQueries";
 import { useUserPortfolios } from "../hooks/usePortfolioQueries";
 import { useUserWatchlist } from "../hooks/useWatchlistQueries";
-import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
+import { formatCurrency, formatDateTime, formatInstrumentValue, formatNumber, formatPercent } from "../utils/formatters";
 import { formatInstrumentCode } from "../utils/instrumentUtils";
 import { buildNewsPlaceholderLabel } from "../components/news/newsCardUtils";
 import GuestLockOverlay from "../components/common/GuestLockOverlay";
@@ -586,7 +586,7 @@ export default function DashboardPage() {
                                   {row.secondLine ? <span>{row.secondLine}</span> : null}
                                 </div>
                                 <div className="dashboard-watchlist-popover-metrics">
-                                  <span>{formatCurrency(row.price)}</span>
+                                  <span>{formatInstrumentValue(row.price, row)}</span>
                                   <span className={changeClass}>{formatMarketChange(row.changeRate)}</span>
                                 </div>
                               </Link>

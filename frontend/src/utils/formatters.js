@@ -6,6 +6,7 @@ export function formatDateTime(value) {
 }
 
 const ISO_CURRENCY_CODES = new Set(["TRY", "USD", "EUR", "GBP"]);
+const INDEX_CODES = new Set(["BIST100", "BIST30", "BIST50", "XU100", "XU030", "XU050"]);
 
 export function formatNumber(value, maxFractionDigits = 4) {
   if (value === null || value === undefined || value === "") return "-";
@@ -37,6 +38,42 @@ export function formatCurrency(value, currency = "TRY") {
   } catch {
     return `${numeric.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${normalizedCurrency}`;
   }
+}
+
+export function isPointBasedInstrument(instrumentOrType) {
+  const instrumentType = typeof instrumentOrType === "string"
+    ? instrumentOrType
+    : instrumentOrType?.instrumentType ?? instrumentOrType?.type;
+  const displayUnit = typeof instrumentOrType === "object" ? instrumentOrType?.displayUnit : null;
+  const code = typeof instrumentOrType === "object"
+    ? instrumentOrType?.symbol ?? instrumentOrType?.code ?? instrumentOrType?.instrumentCode
+    : null;
+  return String(displayUnit || "").trim().toUpperCase() === "POINT"
+    || String(instrumentType || "").trim().toUpperCase() === "INDEX"
+    || INDEX_CODES.has(String(code || "").trim().toUpperCase());
+}
+
+export function formatInstrumentValue(value, options = {}) {
+  if (value === null || value === undefined || value === "") return "-";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return String(value);
+  const safeOptions = options ?? {};
+
+  if (isPointBasedInstrument(safeOptions)) {
+    const formatted = formatNumber(numeric, safeOptions.maximumFractionDigits ?? 2);
+    if (safeOptions.includeUnit === false) {
+      return formatted;
+    }
+    const locale = String(safeOptions.locale || "").toLowerCase();
+    const unit = locale.startsWith("en") ? "pts" : "puan";
+    return `${formatted} ${unit}`;
+  }
+
+  const currency = safeOptions.currency || "TRY";
+  if (typeof safeOptions.currencyFormatter === "function") {
+    return safeOptions.currencyFormatter(numeric);
+  }
+  return formatCurrency(numeric, currency);
 }
 
 export function parseFinancialNumber(value, unitMultiplier = 1) {

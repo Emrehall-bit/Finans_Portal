@@ -15,75 +15,74 @@ import useToast from "../hooks/useToast";
 import { useMarketQuotes, useMarketScreen } from "../hooks/useMarketQueries";
 import { useUserWatchlist } from "../hooks/useWatchlistQueries";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
-import { formatNumber } from "../utils/formatters";
-import { formatInstrumentCode } from "../utils/instrumentUtils";
+import { formatInstrumentValue, formatNumber } from "../utils/formatters";
+import { formatInstrumentCode, getFxCodeLabel } from "../utils/instrumentUtils";
 import { getCountryCodeForInstrument } from "../utils/currencyToCountryMap";
 
 const CATEGORY_OPTIONS = ["FX", "CRYPTO", "STOCK", "FUND", "FUTURES", "BOND", "INDEX", "COMMODITY", "FAVORITES"];
-const CURRENCY_CONVERTIBLE_CATEGORIES = new Set(["STOCK", "FUND", "COMMODITY", "INDEX", "FUTURES"]);
+const CURRENCY_CONVERTIBLE_CATEGORIES = new Set(["STOCK", "FUND", "COMMODITY", "FUTURES"]);
 const DEFAULT_SORT_OPTIONS = [
-  { value: "name", label: "Ada göre" },
-  { value: "price_desc", label: "Fiyat yüksekten" },
-  { value: "price_asc", label: "Fiyat düşükten" },
-  { value: "change_desc", label: "Günlük değişim yüksekten" },
-  { value: "change_asc", label: "Günlük değişim düşükten" },
+  { value: "name", labelKey: "markets.filters.sortOptions.name" },
+  { value: "price_desc", labelKey: "markets.filters.sortOptions.priceDesc" },
+  { value: "price_asc", labelKey: "markets.filters.sortOptions.priceAsc" },
+  { value: "change_desc", labelKey: "markets.filters.sortOptions.changeDesc" },
+  { value: "change_asc", labelKey: "markets.filters.sortOptions.changeAsc" },
 ];
 const BIST_TIER_OPTIONS = [
-  { value: "", label: "Tümü" },
+  { value: "", labelKey: "markets.filters.all" },
   { value: "BIST30", label: "BIST30" },
   { value: "BIST50", label: "BIST50" },
   { value: "BIST100", label: "BIST100" },
 ];
 
 const STOCK_SECTOR_OPTIONS = [
-  { value: "", label: "Tümü" },
-  { value: "BANKING", label: "Bankacılık" },
-  { value: "FINANCIALS", label: "Mali Kuruluşlar" },
-  { value: "TECHNOLOGY_DEFENSE", label: "Teknoloji & Savunma" },
-  { value: "TELECOM", label: "Telekom" },
-  { value: "TRANSPORT_TOURISM", label: "Ulaştırma & Turizm" },
-  { value: "HEALTH_SPORTS", label: "Sağlık & Spor" },
-  { value: "ENERGY", label: "Enerji" },
-  { value: "CHEMICALS_PETROLEUM", label: "Kimya & Petrol" },
-  { value: "INDUSTRIAL", label: "Sınai" },
-  { value: "FOOD_RETAIL", label: "Gıda & Perakende" },
+  { value: "", labelKey: "markets.filters.all" },
+  { value: "BANKING", labelKey: "markets.filters.stockSectors.BANKING" },
+  { value: "FINANCIALS", labelKey: "markets.filters.stockSectors.FINANCIALS" },
+  { value: "TECHNOLOGY_DEFENSE", labelKey: "markets.filters.stockSectors.TECHNOLOGY_DEFENSE" },
+  { value: "TELECOM", labelKey: "markets.filters.stockSectors.TELECOM" },
+  { value: "TRANSPORT_TOURISM", labelKey: "markets.filters.stockSectors.TRANSPORT_TOURISM" },
+  { value: "HEALTH_SPORTS", labelKey: "markets.filters.stockSectors.HEALTH_SPORTS" },
+  { value: "ENERGY", labelKey: "markets.filters.stockSectors.ENERGY" },
+  { value: "CHEMICALS_PETROLEUM", labelKey: "markets.filters.stockSectors.CHEMICALS_PETROLEUM" },
+  { value: "INDUSTRIAL", labelKey: "markets.filters.stockSectors.INDUSTRIAL" },
+  { value: "FOOD_RETAIL", labelKey: "markets.filters.stockSectors.FOOD_RETAIL" },
 ];
 
 const STOCK_RANK_SORT_OPTIONS = [
-  { value: "change_desc", label: "En Çok Yükselen" },
-  { value: "change_asc", label: "En Çok Düşen" },
-  { value: "pe_asc", label: "En Düşük F/K" },
-  { value: "pb_asc", label: "En Düşük PD/DD" },
-  { value: "roe_desc", label: "En Yüksek ROE" },
-  { value: "roa_desc", label: "En Yüksek ROA" },
-  { value: "revenue_growth_desc", label: "En Hızlı Büyüyen" },
-  { value: "debt_to_equity", label: "En Düşük Borçluluk" },
-  { value: "market_cap_desc", label: "En Büyük Piyasa Değeri" },
-  { value: "name", label: "Ada göre" },
-  { value: "price_desc", label: "Fiyat yüksekten" },
-  { value: "price_asc", label: "Fiyat düşükten" },
+  { value: "change_desc", labelKey: "markets.filters.sortOptions.topGainers" },
+  { value: "change_asc", labelKey: "markets.filters.sortOptions.topLosers" },
+  { value: "pe_asc", labelKey: "markets.filters.sortOptions.lowestPe" },
+  { value: "pb_asc", labelKey: "markets.filters.sortOptions.lowestPb" },
+  { value: "roe_desc", labelKey: "markets.filters.sortOptions.highestRoe" },
+  { value: "roa_desc", labelKey: "markets.filters.sortOptions.highestRoa" },
+  { value: "revenue_growth_desc", labelKey: "markets.filters.sortOptions.fastestGrowing" },
+  { value: "debt_to_equity", labelKey: "markets.filters.sortOptions.lowestDebt" },
+  { value: "market_cap_desc", labelKey: "markets.filters.sortOptions.largestMarketCap" },
+  { value: "name", labelKey: "markets.filters.sortOptions.name" },
+  { value: "price_desc", labelKey: "markets.filters.sortOptions.priceDesc" },
+  { value: "price_asc", labelKey: "markets.filters.sortOptions.priceAsc" },
 ];
 const STOCK_BASIC_SORT_OPTIONS = [
-  { value: "name", label: "Ada göre" },
-  { value: "change_desc", label: "En Çok Yükselen" },
-  { value: "change_asc", label: "En Çok Düşen" },
+  { value: "name", labelKey: "markets.filters.sortOptions.name" },
+  { value: "change_desc", labelKey: "markets.filters.sortOptions.topGainers" },
+  { value: "change_asc", labelKey: "markets.filters.sortOptions.topLosers" },
 ];
 const SEARCH_DEBOUNCE_MS = 275;
-const INSTRUMENT_TYPE_LABELS = {
-  FX: "Döviz", FOREX: "Döviz", CURRENCY: "Döviz",
-  STOCK: "Hisse", CRYPTO: "Kripto", FUND: "Fon",
-  FUTURES: "Vadeli", BOND: "Tahvil", INDEX: "Endeks", COMMODITY: "Emtia",
+const INSTRUMENT_TYPE_CATEGORY_KEYS = {
+  FOREX: "FX",
+  CURRENCY: "FX",
 };
 const FX_SOURCE_MODES = [
   { value: "TCMB", label: "TCMB" },
   { value: "AKBANK", label: "AKBANK" },
-  { value: "COMPARE", label: "Karşılaştır" },
+  { value: "COMPARE", labelKey: "markets.filters.compare" },
 ];
 const AKBANK_VISIBLE_CODES = new Set(["AUD", "AZN", "CAD", "CHF", "CNY", "EUR", "GBP", "JPY", "KRW", "KWD", "QAR", "RUB", "USD"]);
 const FX_PROVIDER_SYMBOL_PATTERN = /^[A-Z_]+:[A-Z]{2,4}:(BUY|SELL)$/;
 
 export default function MarketsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { userId, login } = useAuth();
@@ -122,6 +121,7 @@ export default function MarketsPage() {
   const isFavoritesTab = categoryFilter === "FAVORITES";
   const isStockTab = categoryFilter === "STOCK";
   const isFxTab = categoryFilter === "FX";
+  const isFundTab = categoryFilter === "FUND";
 
 
   useEffect(() => {
@@ -132,7 +132,7 @@ export default function MarketsPage() {
     setFilterMode("basic");
   }, [categoryFilter, isStockTab]);
 
-  const { data: allQuotes = [], isLoading: loadingAll } = useMarketQuotes({ enabled: true });
+  const { data: allQuotes = [], isLoading: loadingAll } = useMarketQuotes({ enabled: isFavoritesTab });
 
   const screenParams = useMemo(() => ({
     type: categoryFilter,
@@ -200,15 +200,23 @@ export default function MarketsPage() {
     ? ""
     : (screenError ? extractErrorMessage(screenError, t("markets.loadError")) : "");
 
-  const formatRateConverted = useCallback((value) => {
+  const formatRateConverted = useCallback((value, item = null) => {
     if (value === null || value === undefined || value === "") {
       return "-";
+    }
+    if (item && String(item.instrumentType || item.marketCategory || "").toUpperCase() === "INDEX") {
+      return formatInstrumentValue(value, {
+        instrumentType: "INDEX",
+        displayUnit: item.displayUnit,
+        includeUnit: true,
+        locale: i18n.resolvedLanguage,
+      });
     }
     if (CURRENCY_CONVERTIBLE_CATEGORIES.has(categoryFilter)) {
       return formatAmount(Number(value));
     }
     return formatRate(value);
-  }, [categoryFilter, formatAmount]);
+  }, [categoryFilter, formatAmount, i18n.resolvedLanguage]);
 
   const visibleQuotes = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
@@ -291,26 +299,27 @@ export default function MarketsPage() {
     }
 
     const chips = [];
-    if (minPrice) chips.push({ key: "minPrice", label: "Fiyat > " + minPrice });
-    if (maxPrice) chips.push({ key: "maxPrice", label: "Fiyat < " + maxPrice });
-    if (minChangePercent) chips.push({ key: "minChangePercent", label: "Günlük > " + minChangePercent + "%" });
-    if (maxChangePercent) chips.push({ key: "maxChangePercent", label: "Günlük < " + maxChangePercent + "%" });
+    if (minPrice) chips.push({ key: "minPrice", label: t("markets.filters.chips.priceGreater", { value: minPrice }) });
+    if (maxPrice) chips.push({ key: "maxPrice", label: t("markets.filters.chips.priceLess", { value: maxPrice }) });
+    if (minChangePercent) chips.push({ key: "minChangePercent", label: t("markets.filters.chips.dailyGreater", { value: minChangePercent }) });
+    if (maxChangePercent) chips.push({ key: "maxChangePercent", label: t("markets.filters.chips.dailyLess", { value: maxChangePercent }) });
     if (minPe) chips.push({ key: "minPe", label: "F/K > " + minPe });
     if (maxPe) chips.push({ key: "maxPe", label: "F/K < " + maxPe });
     if (minPb) chips.push({ key: "minPb", label: "PD/DD > " + minPb });
     if (maxPb) chips.push({ key: "maxPb", label: "PD/DD < " + maxPb });
     if (minRoe) chips.push({ key: "minRoe", label: "ROE > " + minRoe });
     if (minRoa) chips.push({ key: "minRoa", label: "ROA > " + minRoa });
-    if (maxDebtToEquity) chips.push({ key: "maxDebtToEquity", label: "Borç/Özkaynak < " + maxDebtToEquity });
-    if (minRevenueGrowth) chips.push({ key: "minRevenueGrowth", label: "Hasılat büyümesi > " + minRevenueGrowth });
-    if (minNetProfitGrowth) chips.push({ key: "minNetProfitGrowth", label: "Net kâr büyümesi > " + minNetProfitGrowth });
-    if (sectorFilter) chips.push({ key: "sector", label: "Sektör: " + sectorFilter });
-    if (marketFilter) chips.push({ key: "market", label: "Pazar: " + marketFilter });
-    if (onlyWithFundamentals) chips.push({ key: "onlyWithFundamentals", label: "Temel analiz var" });
-    if (bistTierFilter) chips.push({ key: "bistTier", label: "Endeks: " + bistTierFilter });
+    if (maxDebtToEquity) chips.push({ key: "maxDebtToEquity", label: t("markets.filters.chips.debtLess", { value: maxDebtToEquity }) });
+    if (minRevenueGrowth) chips.push({ key: "minRevenueGrowth", label: t("markets.filters.chips.revenueGrowthGreater", { value: minRevenueGrowth }) });
+    if (minNetProfitGrowth) chips.push({ key: "minNetProfitGrowth", label: t("markets.filters.chips.netProfitGrowthGreater", { value: minNetProfitGrowth }) });
+    if (sectorFilter) chips.push({ key: "sector", label: t("markets.filters.chips.sector", { value: sectorFilter }) });
+    if (marketFilter) chips.push({ key: "market", label: t("markets.filters.chips.market", { value: marketFilter }) });
+    if (onlyWithFundamentals) chips.push({ key: "onlyWithFundamentals", label: t("markets.filters.chips.withFundamentals") });
+    if (bistTierFilter) chips.push({ key: "bistTier", label: t("markets.filters.chips.index", { value: bistTierFilter }) });
     if (stockSectorFilter) {
-      const sectorLabel = STOCK_SECTOR_OPTIONS.find((o) => o.value === stockSectorFilter)?.label ?? stockSectorFilter;
-      chips.push({ key: "stockSector", label: "Sektör: " + sectorLabel });
+      const sectorOption = STOCK_SECTOR_OPTIONS.find((o) => o.value === stockSectorFilter);
+      const sectorLabel = sectorOption?.labelKey ? t(sectorOption.labelKey) : (sectorOption?.label ?? stockSectorFilter);
+      chips.push({ key: "stockSector", label: t("markets.filters.chips.sector", { value: sectorLabel }) });
     }
     return chips;
   }, [
@@ -333,6 +342,7 @@ export default function MarketsPage() {
     sectorFilter,
     stockSectorFilter,
     marketFilter,
+    t,
   ]);
 
   const hasAdvancedFilters = activeAdvancedFilterChips.length > 0;
@@ -467,26 +477,26 @@ export default function MarketsPage() {
         </section>
 
         <div className="market-results-layout">
-          <aside className="market-filter-card" aria-label="Filtreler">
+          <aside className="market-filter-card" aria-label={t("markets.filters.title")}>
             <div className="market-filter-card-head">
-              <strong>Filtreler</strong>
+              <strong>{t("markets.filters.title")}</strong>
             </div>
             {isStockTab ? (
               <div className="market-filter-mode-toggle">
-                <button type="button" className={"market-filter-mode-btn" + (filterMode === "basic" ? " is-active" : "")} onClick={() => setFilterMode("basic")}>Basit</button>
-                <button type="button" className={"market-filter-mode-btn" + (filterMode === "advanced" ? " is-active" : "")} onClick={() => setFilterMode("advanced")}>Gelişmiş</button>
+                <button type="button" className={"market-filter-mode-btn" + (filterMode === "basic" ? " is-active" : "")} onClick={() => setFilterMode("basic")}>{t("markets.filters.basic")}</button>
+                <button type="button" className={"market-filter-mode-btn" + (filterMode === "advanced" ? " is-active" : "")} onClick={() => setFilterMode("advanced")}>{t("markets.filters.advanced")}</button>
               </div>
             ) : null}
             <div className="market-advanced-shell">
               <div className="market-advanced-grid">
                 {isStockTab ? (
                   <div className="market-filter-section">
-                    <div className="market-filter-section-head"><h4>Endeks</h4></div>
+                    <div className="market-filter-section-head"><h4>{t("markets.filters.index")}</h4></div>
                     <div className="market-filter-option-list" role="list">
                       {BIST_TIER_OPTIONS.map((option) => (
                         <button key={option.value} type="button" className={"market-filter-option " + (bistTierFilter === option.value ? "is-selected" : "")} onClick={() => setBistTierFilter(option.value)}>
                           <span className="market-filter-option-indicator" aria-hidden="true" />
-                          <span>{option.label}</span>
+                          <span>{option.labelKey ? t(option.labelKey) : option.label}</span>
                         </button>
                       ))}
                     </div>
@@ -494,12 +504,12 @@ export default function MarketsPage() {
                 ) : null}
                 {isStockTab && filterMode === "advanced" ? (
                   <div className="market-filter-section">
-                    <div className="market-filter-section-head"><h4>Sektör</h4></div>
+                    <div className="market-filter-section-head"><h4>{t("markets.filters.sector")}</h4></div>
                     <div className="market-filter-option-list" role="list">
                       {STOCK_SECTOR_OPTIONS.map((option) => (
                         <button key={option.value} type="button" className={"market-filter-option " + (stockSectorFilter === option.value ? "is-selected" : "")} onClick={() => setStockSectorFilter(option.value)}>
                           <span className="market-filter-option-indicator" aria-hidden="true" />
-                          <span>{option.label}</span>
+                          <span>{option.labelKey ? t(option.labelKey) : option.label}</span>
                         </button>
                       ))}
                     </div>
@@ -512,26 +522,26 @@ export default function MarketsPage() {
                       {FX_SOURCE_MODES.map((option) => (
                         <button key={option.value} type="button" className={"market-filter-option " + (fxSourceMode === option.value ? "is-selected" : "")} onClick={() => setFxSourceMode(option.value)}>
                           <span className="market-filter-option-indicator" aria-hidden="true" />
-                          <span>{option.label}</span>
+                          <span>{option.labelKey ? t(option.labelKey) : option.label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
                 ) : null}
                 <div className="market-filter-section">
-                  <div className="market-filter-section-head"><h4>Sıralama</h4></div>
+                  <div className="market-filter-section-head"><h4>{t("markets.filters.sorting")}</h4></div>
                   <div className="market-filter-option-list" role="list">
                     {(isStockTab ? (filterMode === "advanced" ? STOCK_RANK_SORT_OPTIONS : STOCK_BASIC_SORT_OPTIONS) : DEFAULT_SORT_OPTIONS).map((option) => (
                       <button key={option.value} type="button" className={"market-filter-option " + (sortBy === option.value ? "is-selected" : "")} onClick={() => setSortBy(option.value)}>
                         <span className="market-filter-option-indicator" aria-hidden="true" />
-                        <span>{option.label}</span>
+                        <span>{option.labelKey ? t(option.labelKey) : option.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
             </div>
-            <button type="button" className="market-filter-clear" onClick={clearAllMarketFilters}>Temizle</button>
+            <button type="button" className="market-filter-clear" onClick={clearAllMarketFilters}>{t("markets.filters.clear")}</button>
             {hasAdvancedFilters ? <div className="market-active-filter-row market-active-filter-row--inline">{activeAdvancedFilterChips.map((chip) => (<button key={chip.key} type="button" className="market-active-filter-chip" onClick={() => clearAdvancedFilter(chip.key)}><span>{chip.label}</span><span aria-hidden>x</span></button>))}</div> : null}
           </aside>
 
@@ -539,9 +549,9 @@ export default function MarketsPage() {
             {loading ? (viewMode === "cards" ? <MarketCardSkeleton /> : <MarketTableSkeleton />) : null}
             {error ? <ErrorMessage message={error} /> : null}
             {!loading && !error && displayedCount === 0 ? <div className="market-contained-empty"><EmptyState title={isFavoritesTab ? (userId ? t("markets.favoritesEmptyTitle") : t("markets.favoritesLoginHint")) : t("markets.emptyTitle")} description={isFavoritesTab && userId ? t("markets.favoritesEmptyDescription") : t("markets.emptyDescription")} /></div> : null}
-            {!loading && !error && isFxTab && fxSourceMode === "COMPARE" && fxComparisonRows.length > 0 ? <MarketFxComparisonTable rows={fxComparisonRows} navigate={navigate} formatRateConverted={formatRateConverted} /> : null}
-            {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteTable quotes={visibleQuotes} isFxTab={isFxTab} isFavoritesTab={isFavoritesTab} isStockTab={isStockTab} sortBy={sortBy} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
-            {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteCards quotes={visibleQuotes} isFxTab={isFxTab} isStockTab={isStockTab} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
+            {!loading && !error && isFxTab && fxSourceMode === "COMPARE" && fxComparisonRows.length > 0 ? <MarketFxComparisonTable rows={fxComparisonRows} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
+            {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteTable quotes={visibleQuotes} isFxTab={isFxTab} isFavoritesTab={isFavoritesTab} isStockTab={isStockTab} isFundTab={isFundTab} sortBy={sortBy} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} locale={i18n.resolvedLanguage} /> : null}
+            {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteCards quotes={visibleQuotes} isFxTab={isFxTab} isStockTab={isStockTab} isFundTab={isFundTab} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} locale={i18n.resolvedLanguage} /> : null}
           </div>
           </div>
       </div>
@@ -565,18 +575,16 @@ function MarketCardSkeleton() {
   );
 }
 
-function MarketFxComparisonTable({ rows, navigate, formatRateConverted }) {
+function MarketFxComparisonTable({ rows, navigate, formatRateConverted, t }) {
   return (
     <div className="table-wrap finance-market-table-wrap finance-market-scroll-wrap">
-      <table className="finance-market-table">
+      <table className="finance-market-table fx-compare-table">
         <thead>
           <tr>
-            <th>Döviz</th>
-            <th>TCMB Alış</th>
-            <th>TCMB Satış</th>
-            <th>AKBANK Alış</th>
-            <th>AKBANK Satış</th>
-            <th>Satış Farkı %</th>
+            <th>{t("markets.categories.FX")}</th>
+            <th>TCMB</th>
+            <th>AKBANK</th>
+            <th>{t("markets.filters.differencePercent")}</th>
           </tr>
         </thead>
         <tbody>
@@ -584,14 +592,58 @@ function MarketFxComparisonTable({ rows, navigate, formatRateConverted }) {
             <tr key={row.code}>
               <td>
                 <button type="button" className="finance-table-row-button" onClick={() => navigate(buildMarketDetailPath(row.detailSymbol, "FX"))}>
-                  <strong>{row.code}</strong>
+                  <span className="finance-table-symbol finance-table-symbol--with-flag">
+                    <span className="market-instrument-flag-row">
+                      {(() => { const cc = getCountryCodeForInstrument({ code: row.code }, "FX"); return cc ? <ReactCountryFlag countryCode={cc} svg style={{ width: "2em", height: "2em", borderRadius: "2px", display: "block", flexShrink: 0 }} title={cc} alt="" /> : null; })()}
+                      <strong className="fx-compare-code">{row.code}</strong>
+                    </span>
+                  </span>
                 </button>
               </td>
-              <td>{formatRateConverted(row.tcmb?.buyRate)}</td>
-              <td>{formatRateConverted(row.tcmb?.sellRate ?? row.tcmb?.price)}</td>
-              <td>{formatRateConverted(row.akbank?.buyRate)}</td>
-              <td>{formatRateConverted(row.akbank?.sellRate ?? row.akbank?.price)}</td>
-              <td className={getChangeToneClass(row.sellDiffPct)}>{formatMarketChange(row.sellDiffPct)}</td>
+              <td>
+                <div className="fx-compare-cell">
+                  <div className="fx-compare-row">
+                    <span className="fx-compare-label">{t("markets.columns.buy")}</span>
+                    <span className="fx-compare-value">{formatRateConverted(row.tcmb?.buyRate)}</span>
+                  </div>
+                  <div className="fx-compare-row">
+                    <span className="fx-compare-label">{t("markets.columns.sell")}</span>
+                    <span className="fx-compare-value">{formatRateConverted(row.tcmb?.sellRate ?? row.tcmb?.price)}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div className="fx-compare-cell">
+                  <div className="fx-compare-row">
+                    <span className="fx-compare-label">{t("markets.columns.buy")}</span>
+                    <span className="fx-compare-value">{formatRateConverted(row.akbank?.buyRate)}</span>
+                  </div>
+                  <div className="fx-compare-row">
+                    <span className="fx-compare-label">{t("markets.columns.sell")}</span>
+                    <span className="fx-compare-value">{formatRateConverted(row.akbank?.sellRate ?? row.akbank?.price)}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {row.sellDiffPct === null ? (
+                  <span className="tone-muted">-</span>
+                ) : (
+                  <div className="fx-diff-cell">
+                    <div className="fx-diff-row">
+                      <span className="fx-diff-label">En ucuz:</span>
+                      <span className="fx-diff-cheap">{row.sellDiffPct > 0 ? "TCMB" : "AKBANK"}</span>
+                    </div>
+                    <div className="fx-diff-row">
+                      <span className="fx-diff-label">En pahalı:</span>
+                      <span className="fx-diff-expensive">{row.sellDiffPct > 0 ? "AKBANK" : "TCMB"}</span>
+                    </div>
+                    <div className="fx-diff-row">
+                      <span className="fx-diff-label">Fark:</span>
+                      <span className="fx-diff-pct">{formatMarketChange(Math.abs(row.sellDiffPct))}</span>
+                    </div>
+                  </div>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -600,9 +652,9 @@ function MarketFxComparisonTable({ rows, navigate, formatRateConverted }) {
   );
 }
 
-function MarketQuoteTable({ quotes, isFxTab, isFavoritesTab, isStockTab, sortBy, watchlistItems, favoriteBusyKey, onFavoriteToggle, navigate, formatRateConverted, t }) {
-  const metricCol = resolveStockMetricCol(isStockTab, sortBy);
-  const tableClass = isFxTab ? "market-data-table--fx" : isFavoritesTab ? "market-data-table--favorites" : metricCol ? "market-data-table--compact market-data-table--with-metric" : "market-data-table--compact";
+function MarketQuoteTable({ quotes, isFxTab, isFavoritesTab, isStockTab, isFundTab, sortBy, watchlistItems, favoriteBusyKey, onFavoriteToggle, navigate, formatRateConverted, t, locale }) {
+  const metricCol = resolveStockMetricCol(isStockTab, sortBy, t);
+  const tableClass = isFxTab ? "market-data-table--fx" : isFundTab ? "market-data-table--fund" : isFavoritesTab ? "market-data-table--favorites" : metricCol ? "market-data-table--compact market-data-table--with-metric" : "market-data-table--compact";
   return (
     <div className="table-wrap finance-market-table-wrap market-data-table-wrap">
       <table className={"finance-market-table market-data-table " + tableClass}>
@@ -613,6 +665,9 @@ function MarketQuoteTable({ quotes, isFxTab, isFavoritesTab, isStockTab, sortBy,
             {isFavoritesTab ? <th>{t("markets.columns.type")}</th> : null}
             <th>{t("markets.columns.lastPrice")}</th>
             <th>{t("markets.columns.change")}</th>
+            {isFundTab ? <th>{t("markets.fundColumns.fundType")}</th> : null}
+            {isFundTab ? <th className="market-number-cell">{t("markets.fundColumns.risk")}</th> : null}
+            {isFundTab ? <th className="market-number-cell">{t("markets.fundColumns.getiri1y")}</th> : null}
             {metricCol ? <th className="market-number-cell">{metricCol.label}</th> : null}
             {isFxTab ? <th>{t("markets.columns.buy")}</th> : null}
             {isFxTab ? <th>{t("markets.columns.sell")}</th> : null}
@@ -629,17 +684,20 @@ function MarketQuoteTable({ quotes, isFxTab, isFavoritesTab, isStockTab, sortBy,
                 </td>
                 <td>
                   <button type="button" className="finance-table-row-button" onClick={() => navigate(buildMarketDetailPath(getMarketActionSymbol(item), item.instrumentType))}>
-                    <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="table" />
+                    <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="table" locale={locale} />
                   </button>
                 </td>
                 {isFavoritesTab ? (
-                  <td><span className="market-type-badge">{formatInstrumentTypeLabel(item.marketCategory || item.instrumentType)}</span></td>
+                  <td><span className="market-type-badge">{formatInstrumentTypeLabel(item.marketCategory || item.instrumentType, t)}</span></td>
                 ) : null}
-                <td className="market-number-cell">{formatRateConverted(item.sellRate ?? resolveLastPrice(item))}</td>
+                <td className="market-number-cell">{formatRateConverted(item.sellRate ?? resolveLastPrice(item), item)}</td>
                 <td className={"market-change-cell " + getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</td>
+                {isFundTab ? <td><span className="market-fund-type-chip">{formatFundType(item.fundType)}</span></td> : null}
+                {isFundTab ? <td className="market-number-cell">{formatFundRisk(item.riskDegeri)}</td> : null}
+                {isFundTab ? <td className={"market-number-cell " + getChangeToneClass(item.getiri1y)}>{formatFundReturn(item.getiri1y)}</td> : null}
                 {metricCol ? <td className="market-number-cell">{metricCol.getValue(item)}</td> : null}
-                {isFxTab ? <td className="market-number-cell">{formatRateConverted(item.buyRate)}</td> : null}
-                {isFxTab ? <td className="market-number-cell">{formatRateConverted(item.sellRate)}</td> : null}
+                {isFxTab ? <td className="market-number-cell">{formatRateConverted(item.buyRate, item)}</td> : null}
+                {isFxTab ? <td className="market-number-cell">{formatRateConverted(item.sellRate, item)}</td> : null}
               </tr>
             );
           })}
@@ -649,7 +707,7 @@ function MarketQuoteTable({ quotes, isFxTab, isFavoritesTab, isStockTab, sortBy,
   );
 }
 
-function MarketQuoteCards({ quotes, isFxTab, isStockTab, watchlistItems, favoriteBusyKey, onFavoriteToggle, navigate, formatRateConverted, t }) {
+function MarketQuoteCards({ quotes, isFxTab, isStockTab, isFundTab, watchlistItems, favoriteBusyKey, onFavoriteToggle, navigate, formatRateConverted, t, locale }) {
   return (
     <div className="market-card-grid markets-card-scroll-wrap">
       {quotes.map((item) => {
@@ -659,19 +717,19 @@ function MarketQuoteCards({ quotes, isFxTab, isStockTab, watchlistItems, favorit
           <div key={`${item.symbol}-${item.source}-${item.marketCategory}-card`} className="market-quote-card-wrap">
             <button type="button" className="market-quote-card" onClick={() => navigate(buildMarketDetailPath(getMarketActionSymbol(item), item.instrumentType))}>
               <div className="market-quote-card-top">
-                <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="card" />
+                <MarketInstrumentLabel item={item} categoryFilter={item.marketCategory} variant="card" locale={locale} />
               </div>
 
               <div className="market-quote-card-body">
                 {isFxTab ? (
                   <>
                     <div>
-                      <span className="eyebrow">Alış</span>
-                      <strong>{formatRateConverted(item.buyRate)}</strong>
+                      <span className="eyebrow">{t("markets.columns.buy")}</span>
+                      <strong>{formatRateConverted(item.buyRate, item)}</strong>
                     </div>
                     <div>
-                      <span className="eyebrow">Satış</span>
-                      <strong>{formatRateConverted(item.sellRate ?? item.price)}</strong>
+                      <span className="eyebrow">{t("markets.columns.sell")}</span>
+                      <strong>{formatRateConverted(item.sellRate ?? item.price, item)}</strong>
                     </div>
                     <div>
                       <span className="eyebrow">{t("markets.columns.change")}</span>
@@ -682,7 +740,7 @@ function MarketQuoteCards({ quotes, isFxTab, isStockTab, watchlistItems, favorit
                   <>
                     <div>
                       <span className="eyebrow">{t("markets.columns.lastPrice")}</span>
-                      <strong>{formatRateConverted(item.buyRate ?? item.sellRate ?? item.price)}</strong>
+                      <strong>{formatRateConverted(item.buyRate ?? item.sellRate ?? item.price, item)}</strong>
                     </div>
                     <div>
                       <span className="eyebrow">{t("markets.columns.change")}</span>
@@ -694,14 +752,13 @@ function MarketQuoteCards({ quotes, isFxTab, isStockTab, watchlistItems, favorit
 
               {isStockTab ? (
                 <div className="market-quote-card-foot">
-                  {renderFundamentalSummary(item)}
+                  {renderFundamentalSummary(item, t)}
                 </div>
-              ) : (
-                <div className="market-quote-card-foot">
-                  <span>{formatCategoryLabel(item.marketCategory, t)}</span>
-                  <strong className={getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</strong>
+              ) : isFundTab ? (
+                <div className="market-quote-card-foot market-fund-card-foot">
+                  {renderFundSummary(item, t)}
                 </div>
-              )}
+              ) : null}
             </button>
 
             <div className="market-quote-card-floating-star">
@@ -718,16 +775,22 @@ function MarketQuoteCards({ quotes, isFxTab, isStockTab, watchlistItems, favorit
   );
 }
 
-function MarketInstrumentLabel({ item, categoryFilter, variant = "table" }) {
+function MarketInstrumentLabel({ item, categoryFilter, variant = "table", locale = "tr" }) {
   const countryCode = getCountryCodeForInstrument(item, categoryFilter);
   const codeLabel = item.code || formatInstrumentCode(item.symbol) || "-";
   const rawName = item.displayName || item.instrumentType || "-";
-  const nameLabel = rawName.includes("||")
-    ? rawName.split("||").filter((s) => s && s !== "TYPE").join(" / ")
-    : rawName;
+  const normalizedCategory = String(categoryFilter || item.instrumentType || "").toUpperCase();
+  const normalizedCode = String(codeLabel || "").toUpperCase();
+  const parsedNameLabel = parseInstrumentNameLabel(rawName);
+  const isFxDuplicateName = normalizedCategory === "FX"
+    && [normalizedCode, `${normalizedCode}/TRY`].includes(String(parsedNameLabel).toUpperCase());
+  const fxCodeNameLabel = normalizedCategory === "FX" ? getFxCodeLabel(codeLabel, locale) : "";
+  const nameLabel = isFxDuplicateName && fxCodeNameLabel !== normalizedCode ? fxCodeNameLabel : parsedNameLabel;
+  const showNameLabel = nameLabel && nameLabel !== "-" && String(nameLabel).toUpperCase() !== normalizedCode;
+  const flagSize = variant === "card" ? "2.05em" : "1.5em";
   const flagStyle = {
-    width: "1.5em",
-    height: "1.5em",
+    width: flagSize,
+    height: flagSize,
     borderRadius: "2px",
     display: "block",
     flexShrink: 0,
@@ -738,9 +801,9 @@ function MarketInstrumentLabel({ item, categoryFilter, variant = "table" }) {
       <div className={"market-instrument-card-root " + (variant === "watch" ? "market-instrument-card-root--watch" : "")}>
         <div className="market-instrument-flag-row">
           {countryCode ? <ReactCountryFlag countryCode={countryCode} svg style={flagStyle} title={countryCode} alt="" /> : null}
-          <div className="market-instrument-card-text">
+          <div className={"market-instrument-card-text " + (normalizedCategory === "FX" ? "market-instrument-card-text--inline" : "")}>
             <strong>{codeLabel}</strong>
-            <p>{nameLabel}</p>
+            {showNameLabel ? <p>{nameLabel}</p> : null}
           </div>
         </div>
       </div>
@@ -751,10 +814,24 @@ function MarketInstrumentLabel({ item, categoryFilter, variant = "table" }) {
     <span className="finance-table-symbol finance-table-symbol--with-flag">
       <span className="market-instrument-flag-row">
         {countryCode ? <ReactCountryFlag countryCode={countryCode} svg style={flagStyle} title={countryCode} alt="" /> : null}
-        <strong title={nameLabel}>{codeLabel}</strong>
+        <span className="market-instrument-text-stack">
+          <strong title={nameLabel}>{codeLabel}</strong>
+          {showNameLabel ? <span title={nameLabel}>{nameLabel}</span> : null}
+        </span>
       </span>
     </span>
   );
+}
+
+function parseInstrumentNameLabel(rawName) {
+  const text = String(rawName || "").trim();
+  if (!text) return "-";
+  if (text.includes("||TYPE||")) {
+    return text.split("||TYPE||")[0]?.trim() || text;
+  }
+  return text.includes("||")
+    ? text.split("||").filter((s) => s && s !== "TYPE").join(" / ")
+    : text;
 }
 
 function FavoriteStarButton({ active, disabled, onToggle }) {
@@ -775,9 +852,9 @@ function FavoriteStarButton({ active, disabled, onToggle }) {
   );
 }
 
-function renderFundamentalSummary(item) {
+function renderFundamentalSummary(item, t) {
   if (!hasFundamentals(item)) {
-    return <span className="market-fundamental-empty">Temel analiz yok</span>;
+    return <span className="market-fundamental-empty">{t("markets.filters.noFundamentals")}</span>;
   }
 
   return (
@@ -785,6 +862,26 @@ function renderFundamentalSummary(item) {
       <span className="terminal-badge muted">F/K {formatRatioValue(item.peRatio)}</span>
       <span className="terminal-badge muted">PD/DD {formatRatioValue(item.pbRatio)}</span>
       <span className="terminal-badge muted">ROE {formatPercentValue(item.roe)}</span>
+    </div>
+  );
+}
+
+function renderFundSummary(item, t) {
+  const badges = [
+    item.fundType ? { key: "type", label: formatFundType(item.fundType) } : null,
+    item.riskDegeri ? { key: "risk", label: `${t("markets.fundColumns.risk")} ${formatFundRisk(item.riskDegeri)}` } : null,
+    item.getiri1y != null ? { key: "return1y", label: `${t("markets.fundColumns.getiri1y")} ${formatFundReturn(item.getiri1y)}`, tone: getChangeToneClass(item.getiri1y) } : null,
+  ].filter(Boolean);
+
+  if (badges.length === 0) {
+    return <span className="market-fundamental-empty">{t("markets.fundColumns.noMetadata")}</span>;
+  }
+
+  return (
+    <div className="market-fund-badge-row">
+      {badges.map((badge) => (
+        <span key={badge.key} className={"market-fund-badge " + (badge.tone || "")}>{badge.label}</span>
+      ))}
     </div>
   );
 }
@@ -845,8 +942,10 @@ function formatCategoryLabel(value, t) {
   return t(`markets.categories.${value}`, { defaultValue: value ?? "-" });
 }
 
-function formatInstrumentTypeLabel(type) {
-  return INSTRUMENT_TYPE_LABELS[String(type || "").toUpperCase()] ?? (type || "-");
+function formatInstrumentTypeLabel(type, t) {
+  const normalizedType = String(type || "").toUpperCase();
+  const categoryKey = INSTRUMENT_TYPE_CATEGORY_KEYS[normalizedType] ?? normalizedType;
+  return t(`markets.categories.${categoryKey}`, { defaultValue: type || "-" });
 }
 
 function formatMarketChange(value) {
@@ -873,6 +972,23 @@ function formatPercentValue(value) {
   return Number.isFinite(numeric) ? `%${(numeric * 100).toFixed(2)}` : "-";
 }
 
+function formatFundType(value) {
+  if (!value) return "-";
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function formatFundRisk(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  return String(value);
+}
+
+function formatFundReturn(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return String(value);
+  return `%${numeric.toFixed(2)}`;
+}
+
 function formatCompactValue(value) {
   if (value === null || value === undefined) return "-";
   const n = Number(value);
@@ -882,16 +998,16 @@ function formatCompactValue(value) {
   return n.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 }
 
-function resolveStockMetricCol(isStockTab, sortBy) {
+function resolveStockMetricCol(isStockTab, sortBy, t) {
   if (!isStockTab) return null;
   switch (sortBy) {
     case "pe_asc":              return { label: "F/K",        getValue: (item) => formatRatioValue(item.peRatio) };
     case "pb_asc":              return { label: "PD/DD",      getValue: (item) => formatRatioValue(item.pbRatio) };
     case "roe_desc":            return { label: "ROE",        getValue: (item) => formatPercentValue(item.roe) };
     case "roa_desc":            return { label: "ROA",        getValue: (item) => formatPercentValue(item.roa) };
-    case "debt_to_equity":      return { label: "Borç/ÖzS",  getValue: (item) => formatRatioValue(item.debtToEquity) };
-    case "revenue_growth_desc": return { label: "Gelir Büy.", getValue: (item) => formatPercentValue(item.revenueGrowth) };
-    case "market_cap_desc":     return { label: "Piy. Değ.", getValue: (item) => formatCompactValue(item.marketCap) };
+    case "debt_to_equity":      return { label: t("markets.filters.metrics.debtEquity"), getValue: (item) => formatRatioValue(item.debtToEquity) };
+    case "revenue_growth_desc": return { label: t("markets.filters.metrics.revenueGrowth"), getValue: (item) => formatPercentValue(item.revenueGrowth) };
+    case "market_cap_desc":     return { label: t("markets.filters.metrics.marketCap"), getValue: (item) => formatCompactValue(item.marketCap) };
     default: return null;
   }
 }
@@ -975,13 +1091,15 @@ function mapScreenItem(item) {
   return {
     symbol,
     code: isFxItem ? fxCode : item.symbol,
-    displayName: item.name ?? (isFxItem && fxCode ? `${fxCode}/TRY` : item.symbol),
+    displayName: item.name ?? (isFxItem && fxCode ? fxCode : item.symbol),
     buyRate: item.buyPrice ?? null,
     sellRate: item.sellPrice ?? null,
     price: item.lastPrice,
     changeRate: item.sellChangePercent ?? item.changePercent,
     source,
     instrumentType: normalizedType || item.type,
+    displayUnit: item.displayUnit ?? (normalizedType === "INDEX" ? "POINT" : null),
+    currency: item.currency ?? (normalizedType === "INDEX" ? null : "TRY"),
     marketCategory: normalizedType || item.type,
     sector: item.sector,
     market: item.market,
@@ -995,6 +1113,15 @@ function mapScreenItem(item) {
     debtToEquity: item.debtToEquity,
     revenueGrowth: item.revenueGrowth,
     netProfitGrowth: item.netProfitGrowth,
+    fundType: item.fundType ?? null,
+    riskDegeri: item.riskDegeri ?? null,
+    getiri1a: item.getiri1a ?? null,
+    getiri3a: item.getiri3a ?? null,
+    getiri6a: item.getiri6a ?? null,
+    getiriYb: item.getiriYb ?? null,
+    getiri1y: item.getiri1y ?? null,
+    getiri3y: item.getiri3y ?? null,
+    getiri5y: item.getiri5y ?? null,
     calculatedAt: item.calculatedAt,
     dataTimestamp: item.dataTimestamp,
     bistTier: item.bistTier ?? null,

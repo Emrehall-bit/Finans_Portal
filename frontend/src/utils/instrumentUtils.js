@@ -1,8 +1,8 @@
 const FX_CODE_LABELS_BY_LOCALE = {
   tr: {
-    USD: "Dolar",
+    USD: "Amerikan Doları",
     EUR: "Euro",
-    GBP: "Sterlin",
+    GBP: "İngiliz Sterlini",
     AUD: "Avustralya Doları",
     CAD: "Kanada Doları",
     CHF: "İsviçre Frangı",

@@ -268,7 +268,6 @@ export function buildStats(quote, annualHistory = []) {
     { label: i18n.t("stats.open"), value: openPrice === null ? "-" : formatNumber(openPrice), tone: openPrice === null ? "muted" : "neutral" },
     { label: i18n.t("stats.volume"), value: volume === null ? "-" : formatNumber(volume, 0), tone: volume === null ? "muted" : "neutral" },
     { label: i18n.t("stats.yearRange"), value: annualRange, tone: "neutral" },
-    { label: i18n.t("stats.dataSource"), value: quote?.source || "-", tone: "neutral" },
     { label: i18n.t("stats.lastUpdate"), value: formatDateTime(priceTime), tone: "neutral" },
   ];
 }

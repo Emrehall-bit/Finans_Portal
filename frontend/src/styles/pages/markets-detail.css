@@ -203,7 +203,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.78fr);
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .instrument-chart-panel,
@@ -219,52 +219,116 @@
   gap: 16px;
 }
 
-.instrument-overview-summary {
+.instrument-overview-price-panel {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+  min-height: 0;
 }
 
-.instrument-overview-metric {
-  padding: 20px 22px;
-  border-radius: 20px;
-  background: rgba(15, 23, 42, 0.03);
-  border: 1px solid rgba(148, 163, 184, 0.14);
+.instrument-overview-stack,
+.instrument-overview-chart-card {
+  height: 100%;
+}
+
+.instrument-overview-chart-card {
   display: grid;
-  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
-.instrument-overview-metric span {
+.overview-timeframes {
+  display: inline-grid;
+  grid-template-columns: repeat(5, minmax(38px, 1fr));
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  background: rgba(248, 250, 255, 0.78);
+}
+
+.overview-timeframe-button {
+  min-height: 30px;
+  min-width: 38px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
   color: var(--text-soft);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.instrument-overview-metric strong {
-  font-size: 1.7rem;
+  font-size: 0.76rem;
   font-weight: 700;
-  line-height: 1.05;
-  color: var(--text-main);
+  box-shadow: none;
 }
 
-.instrument-overview-brief {
+.overview-timeframe-button:hover,
+.overview-timeframe-button:focus-visible {
+  background: rgba(76, 127, 255, 0.08);
+  color: var(--accent);
+  filter: none;
+}
+
+.overview-timeframe-button.active {
+  background: rgba(76, 127, 255, 0.13);
+  color: var(--accent);
+}
+
+.instrument-overview-chart-wrap {
+  min-height: 280px;
+  border-radius: 14px;
+  overflow: hidden;
+  padding: 4px 0 0;
+}
+
+.instrument-overview-chart-card .panel-head {
+  align-items: start;
+  gap: 14px;
+}
+
+.instrument-overview-chart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-top: 14px;
-  padding: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 18px;
-  background: rgba(76, 127, 255, 0.055);
+  padding-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
 }
 
-.instrument-overview-brief strong {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--text-main);
-}
-
-.instrument-overview-brief p {
+.instrument-overview-chart-footer p {
+  max-width: 620px;
   margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.instrument-overview-link {
+  width: fit-content;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.instrument-overview-ai-card {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+  align-content: space-between;
+  min-height: 174px;
+}
+
+.instrument-overview-ai-card h3,
+.instrument-overview-ai-card p {
+  margin: 0;
+}
+
+.instrument-overview-ai-card h3 {
+  color: var(--text-main);
+  font-size: 1.08rem;
+}
+
+.instrument-overview-ai-card p:not(.eyebrow) {
+  margin-top: 8px;
   color: var(--text-soft);
   line-height: 1.55;
 }
@@ -498,7 +562,6 @@
 }
 
 @media (max-width: 920px) {
-  .instrument-overview-summary,
   .instrument-action-grid {
     grid-template-columns: 1fr;
   }
@@ -511,6 +574,21 @@
 
   .instrument-detail-price-block {
     justify-items: start;
+  }
+
+  .instrument-overview-chart-card .panel-head,
+  .instrument-overview-chart-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .overview-timeframes {
+    width: 100%;
+  }
+
+  .instrument-overview-link {
+    width: 100%;
   }
 }
 
@@ -568,6 +646,87 @@
 
 .market-terminal-page .finance-market-table tbody tr:last-child td {
   border-bottom: 0;
+}
+
+.market-terminal-page .fx-compare-table th:nth-child(1),
+.market-terminal-page .fx-compare-table td:nth-child(1) { width: 18%; }
+.market-terminal-page .fx-compare-table th:nth-child(2),
+.market-terminal-page .fx-compare-table td:nth-child(2),
+.market-terminal-page .fx-compare-table th:nth-child(3),
+.market-terminal-page .fx-compare-table td:nth-child(3) { width: 25%; }
+.market-terminal-page .fx-compare-table th:nth-child(4),
+.market-terminal-page .fx-compare-table td:nth-child(4) { width: 32%; }
+
+.market-terminal-page .fx-compare-table td {
+  vertical-align: top;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.market-terminal-page .fx-compare-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.market-terminal-page .fx-compare-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 0.88rem;
+}
+
+.market-terminal-page .fx-compare-label {
+  font-size: 0.68rem;
+  color: var(--text-soft);
+  font-weight: 500;
+  min-width: 26px;
+}
+
+.market-terminal-page .fx-compare-value {
+  font-weight: 600;
+}
+
+.market-terminal-page .fx-compare-table td:first-child {
+  vertical-align: middle;
+}
+
+.market-terminal-page .fx-compare-table .fx-compare-code {
+  font-size: 1rem;
+}
+
+.market-terminal-page .fx-diff-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.market-terminal-page .fx-diff-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 0.82rem;
+}
+
+.market-terminal-page .fx-diff-label {
+  font-size: 0.68rem;
+  color: var(--text-soft);
+  font-weight: 500;
+  min-width: 54px;
+}
+
+.market-terminal-page .fx-diff-cheap {
+  font-weight: 600;
+  color: var(--market-positive);
+}
+
+.market-terminal-page .fx-diff-expensive {
+  font-weight: 600;
+  color: var(--market-negative);
+}
+
+.market-terminal-page .fx-diff-pct {
+  font-weight: 600;
 }
 
 .market-terminal-page .finance-table-symbol {
@@ -1107,7 +1266,17 @@ html[data-theme="dark"] .icp-date-field input[type="date"] {
   background: rgba(30, 41, 59, 0.4);
 }
 
-html[data-theme="dark"] .instrument-overview-metric {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(51, 65, 85, 0.3);
+html[data-theme="dark"] .overview-timeframes {
+  background: rgba(15, 23, 42, 0.78);
+  border-color: rgba(71, 85, 105, 0.35);
+}
+
+html[data-theme="dark"] .overview-timeframe-button.active {
+  background: rgba(96, 165, 250, 0.16);
+  color: #60a5fa;
+}
+
+html[data-theme="dark"] .instrument-overview-ai-card {
+  background: rgba(15, 23, 42, 0.92);
+  border-color: rgba(148, 163, 184, 0.14);
 }
