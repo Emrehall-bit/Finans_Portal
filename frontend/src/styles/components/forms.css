@@ -1,41 +1,78 @@
 .currency-toggle {
   display: inline-flex;
-  gap: 2px;
-  background: rgba(0, 0, 0, 0.06);
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
   border-radius: 999px;
-  padding: 3px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: #ffffff;
+  overflow: hidden;
 }
 
 html[data-theme="dark"] .currency-toggle {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(71, 85, 105, 0.55);
 }
 
 .currency-toggle-btn {
-  padding: 5px 14px;
-  border-radius: 999px;
+  flex: 1 1 0;
+  height: 34px;
+  padding: 0 14px;
   border: none;
+  border-radius: 0;
   background: transparent;
-  color: var(--text-soft);
-  font-size: 0.75rem;
-  font-weight: 700;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-  line-height: 1.4;
   white-space: nowrap;
   letter-spacing: 0.02em;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+/* Center divider */
+.currency-toggle-btn + .currency-toggle-btn {
+  border-left: 1px solid rgba(203, 213, 225, 0.9);
+}
+
+html[data-theme="dark"] .currency-toggle-btn + .currency-toggle-btn {
+  border-left-color: rgba(71, 85, 105, 0.55);
+}
+
+/* Divider turns blue-tinted when either half is active */
+.currency-toggle-btn.is-active + .currency-toggle-btn,
+.currency-toggle-btn + .currency-toggle-btn.is-active {
+  border-left-color: rgba(37, 99, 235, 0.22);
+}
+
+.currency-toggle-btn:not(.is-active):hover,
+.currency-toggle-btn:not(.is-active):focus-visible {
+  background: rgba(37, 99, 235, 0.05);
+  color: #2563eb;
 }
 
 .currency-toggle-btn.is-active {
-  background: var(--panel-strong, #fff);
-  color: var(--text-main);
-  box-shadow: none;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
   font-weight: 700;
+}
+
+html[data-theme="dark"] .currency-toggle-btn.is-active {
+  background: rgba(99, 155, 235, 0.18);
+  color: #93c5fd;
 }
 
 .currency-toggle-btn:disabled,
 .currency-toggle-btn.is-unavailable {
   opacity: 0.42;
   cursor: not-allowed;
+}
+
+/* Simulation inline toggle — size override only, split design from base */
+.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn {
+  height: 30px;
+  padding: 0 11px;
+  font-size: 0.74rem;
 }
 
 input,
@@ -68,72 +105,6 @@ textarea::placeholder {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-}
-
-.currency-toggle.simulation-lab-inline-currency-toggle {
-  display: inline-flex;
-  gap: 0;
-  padding: 0 !important;
-  border: 0;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none;
-  backdrop-filter: none;
-  outline: none;
-  overflow: visible;
-}
-
-.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn {
-  min-width: 44px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 0;
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent !important;
-  color: #7b8fb0;
-  font-size: 0.72rem;
-  font-weight: 800;
-  box-shadow: none;
-  line-height: 1.2;
-  position: relative;
-}
-
-.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn:hover,
-.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn:focus-visible {
-  background: transparent !important;
-  color: #5f769a;
-}
-
-.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn + .currency-toggle-btn::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 1px;
-  height: 16px;
-  background: rgba(47, 99, 216, 0.16);
-  transform: translateY(-50%);
-}
-
-.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn.is-active {
-  background: #2f63d8 !important;
-  color: #ffffff;
-  font-weight: 800;
-  box-shadow: none;
-}
-
-.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn.is-active::before,
-.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn.is-active + .currency-toggle-btn::before {
-  opacity: 0;
-}
-
-.currency-toggle.simulation-lab-inline-currency-toggle .currency-toggle-btn.is-unavailable {
-  color: #93a7ca !important;
-  -webkit-text-fill-color: #93a7ca;
-  opacity: 1;
-  filter: none;
-  cursor: default;
 }
 
 .auth-button-group {

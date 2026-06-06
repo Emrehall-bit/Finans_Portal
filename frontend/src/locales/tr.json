@@ -1684,6 +1684,13 @@
       "emptyDescription": "Tarih ve tutar girildiğinde mevcut market history verisi ile sonuç hesaplanır.",
       "insufficientData": "Simülasyon için yeterli veri bulunamadı.",
       "calculateError": "Geçmiş simülasyonu hesaplanamadı.",
+      "singleMode": "Tek Enstrüman",
+      "compareMode": "Karşılaştırmalı",
+      "compareInstrumentsLabel": "Enstrümanlar",
+      "compareAddPlaceholder": "Enstrüman ekle",
+      "compareMinInstruments": "En az 2 enstrüman seçin.",
+      "compareEmptyCopy": "Enstrümanları seçip hesapla butonuna basın.",
+      "compareBest": "En yüksek",
       "cards": {
         "buyPrice": "Alış fiyatı",
         "currentPrice": "Bugünkü fiyat",

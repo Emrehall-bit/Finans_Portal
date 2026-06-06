@@ -219,8 +219,8 @@ export default function SimpleAnalysisChart({
                   tickFormatter={(value) => `${axisLabel}${formatAxisNumber(value)}`}
                 />
                 <Tooltip content={<SimpleTooltip chartTheme={chartTheme} axisLabel={axisLabel} />} />
-                <Area type="monotone" dataKey="close" stroke="none" fill="url(#simple-analysis-fill)" />
-                <Line type="monotone" dataKey="close" name={t("instrumentDetail.price")} stroke="#2563eb" strokeWidth={2.8} dot={false} />
+                <Area type="monotone" dataKey="close" stroke="none" fill="url(#simple-analysis-fill)" activeDot={false} />
+                <Line type="monotone" dataKey="close" name={t("instrumentDetail.price")} stroke="#2563eb" strokeWidth={2.8} dot={false} activeDot={{ r: 5, fill: "#2563eb", stroke: "#fff", strokeWidth: 2 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

@@ -497,7 +497,6 @@ html[data-theme="dark"] .simple-analysis-metric span {
 }
 
 html[data-theme="dark"] .analysis-mode-toggle,
-html[data-theme="dark"] .currency-toggle.analysis-currency-toggle,
 html[data-theme="dark"] .simple-analysis-ranges {
   background: rgba(15, 23, 42, 0.9);
   border-color: rgba(51, 65, 85, 0.5);

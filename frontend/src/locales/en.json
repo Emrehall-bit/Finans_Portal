@@ -1691,6 +1691,13 @@
       "emptyDescription": "When date and amount are entered, the result is calculated using market history data.",
       "insufficientData": "Not enough data was found for the simulation.",
       "calculateError": "Past simulation could not be calculated.",
+      "singleMode": "Single Instrument",
+      "compareMode": "Comparative",
+      "compareInstrumentsLabel": "Instruments",
+      "compareAddPlaceholder": "Add instrument",
+      "compareMinInstruments": "Select at least 2 instruments.",
+      "compareEmptyCopy": "Select instruments and press calculate.",
+      "compareBest": "Best",
       "cards": {
         "buyPrice": "Buy price",
         "currentPrice": "Current price",

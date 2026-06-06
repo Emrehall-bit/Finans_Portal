@@ -6,20 +6,11 @@ import {
   CalendarDays,
   FlaskConical,
   History,
-  Layers3,
   Search,
   TrendingUp,
+  X,
 } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { getMarketHistory, getMarketQuote } from "../api/marketApi";
+import { getMarketQuote, getPriceOnDate } from "../api/marketApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
 import ErrorMessage from "../components/common/ErrorMessage";
@@ -27,9 +18,9 @@ import LoadingSpinner from "../components/common/LoadingSpinner";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { useInstrumentSearch, useMarketBySymbol } from "../hooks/useMarketQueries";
 import { usePortfolioSummary, useUserPortfolios } from "../hooks/usePortfolioQueries";
-import { formatCurrency, formatNumber, formatPercent } from "../utils/formatters";
+import { formatNumber, formatPercent } from "../utils/formatters";
 
-const FUTURE_PERCENT_PRESETS = [-20, -10, -5, 5, 10, 25];
+const MAX_COMPARE_INSTRUMENTS = 5;
 
 export default function SimulationPage() {
   const { t } = useTranslation();
@@ -83,19 +74,40 @@ const PastSimulationPanel = memo(function PastSimulationPanel({ onResult, result
   const { t } = useTranslation();
   const pastDateRef = useRef(null);
   const pastAmountRef = useRef(null);
+  const compareDateRef = useRef(null);
+  const compareAmountRef = useRef(null);
+
+  const [pastMode, setPastMode] = useState("single");
   const [pastAttempted, setPastAttempted] = useState(false);
-  const [pastForm, setPastForm] = useState({
-    instrumentCode: "",
-    instrumentLabel: "",
-  });
+  const [pastForm, setPastForm] = useState({ instrumentCode: "", instrumentLabel: "", instrumentType: "" });
   const [pastLoading, setPastLoading] = useState(false);
   const [pastError, setPastError] = useState("");
+
+  const [compareInstruments, setCompareInstruments] = useState([]);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState("");
+  const [compareResult, setCompareResult] = useState(null);
+  const [compareAttempted, setCompareAttempted] = useState(false);
 
   const handlePastInstrumentChange = useCallback((option) => {
     setPastForm({
       instrumentCode: option?.value ?? "",
       instrumentLabel: option?.label ?? "",
+      instrumentType: option?.type ?? "",
     });
+  }, []);
+
+  const handleAddCompareInstrument = useCallback((option) => {
+    if (!option?.value) return;
+    setCompareInstruments((prev) => {
+      if (prev.length >= MAX_COMPARE_INSTRUMENTS) return prev;
+      if (prev.some((i) => i.code === option.value)) return prev;
+      return [...prev, { code: option.value, label: option.label, type: option.type }];
+    });
+  }, []);
+
+  const handleRemoveCompareInstrument = useCallback((code) => {
+    setCompareInstruments((prev) => prev.filter((i) => i.code !== code));
   }, []);
 
   async function handlePastSimulation(event) {
@@ -109,16 +121,12 @@ const PastSimulationPanel = memo(function PastSimulationPanel({ onResult, result
       const amount = Number(pastAmountRef.current?.value ?? "");
       const instrumentCode = normalizeCode(pastForm.instrumentCode);
 
-      const [history, currentQuote] = await Promise.all([
-        getMarketHistory(instrumentCode, {
-          from: simulationDate,
-          to: simulationDate,
-        }),
+      const [historicalPoint, currentQuote] = await Promise.all([
+        getPriceOnDate(instrumentCode, simulationDate),
         getMarketQuote(instrumentCode),
       ]);
 
-      const historicalPoint = history?.[0] ?? null;
-      const historicalPrice = Number(historicalPoint?.closePrice);
+      const historicalPrice = Number(historicalPoint?.price);
       const currentPrice = Number(currentQuote?.price);
 
       if (!Number.isFinite(historicalPrice) || !Number.isFinite(currentPrice) || !Number.isFinite(amount) || amount <= 0) {
@@ -136,7 +144,8 @@ const PastSimulationPanel = memo(function PastSimulationPanel({ onResult, result
         kind: "past",
         heading: t("simulation.ui.pastPanelTitle"),
         sourceLabel: t("simulation.ui.pastSourceLabel"),
-        selectedLabel: pastForm.instrumentLabel || instrumentCode,
+        selectedLabel: getInstrumentResultLabel(pastForm.instrumentLabel || instrumentCode, instrumentCode),
+        instrumentType: pastForm.instrumentType || currentQuote?.instrumentType,
         scenarioLabel: simulationDate,
         primaryLabel: t("simulation.ui.metrics.currentValue"),
         primaryValue: todayValue,
@@ -145,8 +154,8 @@ const PastSimulationPanel = memo(function PastSimulationPanel({ onResult, result
         profitLoss,
         secondaryValue: amount,
         secondaryLabel: t("simulation.ui.metrics.initialInvestment"),
-        metaLine: t("simulation.ui.quantityValue", { value: formatNumber(quantity, 4) }),
-        supportLine: historicalPoint?.priceDate || simulationDate,
+        metaLine: t("simulation.ui.quantityValue", { value: formatNumber(Math.trunc(quantity), 0) }),
+        supportLine: historicalPoint?.date || simulationDate,
         sourceDetail: currentQuote?.source || historicalPoint?.source || "-",
         chartData: [
           { label: t("simulation.ui.chartLabels.buy"), value: amount },
@@ -158,6 +167,92 @@ const PastSimulationPanel = memo(function PastSimulationPanel({ onResult, result
       setPastError(extractErrorMessage(err, t("simulation.past.calculateError")));
     } finally {
       setPastLoading(false);
+    }
+  }
+
+  async function handleCompareSimulation(event) {
+    event.preventDefault();
+    setCompareAttempted(true);
+    setCompareLoading(true);
+    setCompareError("");
+
+    try {
+      const date = compareDateRef.current?.value ?? "";
+      const amount = Number(compareAmountRef.current?.value ?? "");
+
+      if (!date || !amount || amount <= 0 || compareInstruments.length < 2) {
+        setCompareError(t("simulation.past.compareMinInstruments", "En az 2 enstrüman seçin."));
+        setCompareLoading(false);
+        return;
+      }
+
+      const rows = await Promise.all(
+        compareInstruments.map(async (inst) => {
+          try {
+            const code = normalizeCode(inst.code);
+            const [historicalPoint, currentQuote] = await Promise.all([
+              getPriceOnDate(code, date),
+              getMarketQuote(code),
+            ]);
+
+            const historicalPrice = Number(historicalPoint?.price);
+            const currentPrice = Number(currentQuote?.price);
+
+            if (!Number.isFinite(historicalPrice) || !Number.isFinite(currentPrice)) {
+              return null;
+            }
+
+            const quantity = amount / historicalPrice;
+            const todayValue = quantity * currentPrice;
+            const profitLoss = todayValue - amount;
+            const percentReturn = (profitLoss / amount) * 100;
+
+            return {
+              code: inst.code,
+              label: inst.label.split(" - ")[0],
+              historicalPrice,
+              currentPrice,
+              quantity,
+              todayValue,
+              profitLoss,
+              percentReturn,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      const validRows = rows.filter(Boolean).sort((a, b) => b.percentReturn - a.percentReturn);
+
+      if (!validRows.length) {
+        setCompareError(t("simulation.past.insufficientData"));
+        setCompareLoading(false);
+        return;
+      }
+
+      const resultObj = {
+        id: `compare-${date}-${amount}-${compareInstruments.map((i) => i.code).join(",")}`,
+        kind: "compare",
+        heading: t("simulation.past.compareMode", "Karşılaştırmalı"),
+        sourceLabel: t("simulation.past.compareMode", "Karşılaştırmalı"),
+        selectedLabel: `${validRows.length} enstrüman`,
+        scenarioLabel: date,
+        date,
+        amount,
+        rows: validRows,
+        profitLoss: validRows[0]?.profitLoss ?? 0,
+        percentReturn: validRows[0]?.percentReturn ?? 0,
+        primaryValue: validRows[0]?.todayValue ?? 0,
+        createdAt: new Date().toISOString(),
+      };
+
+      setCompareResult(resultObj);
+      onResult(resultObj);
+    } catch (err) {
+      setCompareError(extractErrorMessage(err, t("simulation.past.calculateError")));
+    } finally {
+      setCompareLoading(false);
     }
   }
 
@@ -174,61 +269,218 @@ const PastSimulationPanel = memo(function PastSimulationPanel({ onResult, result
           </div>
         </div>
 
-        <form className="simulation-lab-form" onSubmit={handlePastSimulation}>
-          <div className="simulation-lab-field">
-            <SearchableInstrumentField
-              required
-              value={pastForm.instrumentCode}
-              selectedLabel={pastForm.instrumentLabel}
-              placeholder={t("simulation.past.instrumentPlaceholder")}
-              searchPlaceholder={t("simulation.past.instrumentPlaceholder")}
-              onChange={handlePastInstrumentChange}
-            />
-          </div>
-
-          <div className="simulation-lab-inline-fields">
-            <label className="simulation-lab-field">
-              <span>{t("simulation.ui.dateLabel")}</span>
-              <div className="simulation-lab-input-wrap">
-                <CalendarDays size={16} aria-hidden="true" />
-                <input ref={pastDateRef} required type="date" defaultValue="" />
-              </div>
-            </label>
-
-            <label className="simulation-lab-field">
-              <span>{t("simulation.ui.amountLabel")}</span>
-              <div className="simulation-lab-input-wrap simulation-lab-input-wrap--with-toggle">
-                <input
-                  ref={pastAmountRef}
-                  required
-                  type="number"
-                  step="any"
-                  min="0.01"
-                  defaultValue=""
-                  placeholder={t("simulation.ui.amountPlaceholder")}
-                />
-                <CurrencyToggle className="simulation-lab-inline-currency-toggle" />
-              </div>
-            </label>
-          </div>
-
-          <button type="submit" className="simulation-lab-primary-button" disabled={pastLoading}>
-            {pastLoading ? t("simulation.past.submitting") : t("simulation.ui.pastSubmit")}
+        <div className="simulation-lab-mode-switch">
+          <button
+            type="button"
+            className={pastMode === "single" ? "simulation-lab-mode-chip active" : "simulation-lab-mode-chip"}
+            onClick={() => setPastMode("single")}
+          >
+            {t("simulation.past.singleMode", "Tek Enstrüman")}
           </button>
-        </form>
+          <button
+            type="button"
+            className={pastMode === "compare" ? "simulation-lab-mode-chip active" : "simulation-lab-mode-chip"}
+            onClick={() => setPastMode("compare")}
+          >
+            {t("simulation.past.compareMode", "Karşılaştırmalı")}
+          </button>
+        </div>
 
-        <div className={`simulation-lab-inline-feedback${pastAttempted ? " is-visible" : ""}`}>
-          {pastLoading ? <LoadingSpinner label={t("simulation.past.submitting")} /> : null}
-          {!pastLoading && pastError ? <ErrorMessage message={pastError} /> : null}
+        {pastMode === "single" ? (
+          <form className="simulation-lab-form" onSubmit={handlePastSimulation}>
+            <div className="simulation-lab-field">
+              <SearchableInstrumentField
+                required
+                value={pastForm.instrumentCode}
+                selectedLabel={pastForm.instrumentLabel}
+                placeholder={t("simulation.past.instrumentPlaceholder")}
+                searchPlaceholder={t("simulation.past.instrumentPlaceholder")}
+                onChange={handlePastInstrumentChange}
+              />
+            </div>
+
+            <div className="simulation-lab-inline-fields">
+              <label className="simulation-lab-field">
+                <span>{t("simulation.ui.dateLabel")}</span>
+                <div className="simulation-lab-input-wrap">
+                  <CalendarDays size={16} aria-hidden="true" />
+                  <input ref={pastDateRef} required type="date" defaultValue="" />
+                </div>
+              </label>
+
+              <label className="simulation-lab-field">
+                <span>{t("simulation.ui.amountLabel")}</span>
+                <div className="simulation-lab-input-wrap simulation-lab-input-wrap--with-toggle">
+                  <input
+                    ref={pastAmountRef}
+                    required
+                    type="number"
+                    step="any"
+                    min="0.01"
+                    defaultValue=""
+                    placeholder={t("simulation.ui.amountPlaceholder")}
+                  />
+                  <CurrencyToggle className="simulation-lab-inline-currency-toggle" />
+                </div>
+              </label>
+            </div>
+
+            <button type="submit" className="simulation-lab-primary-button" disabled={pastLoading}>
+              {pastLoading ? t("simulation.past.submitting") : t("simulation.ui.pastSubmit")}
+            </button>
+          </form>
+        ) : (
+          <form className="simulation-lab-form" onSubmit={handleCompareSimulation}>
+            <div className="simulation-lab-inline-fields">
+              <label className="simulation-lab-field">
+                <span>{t("simulation.ui.amountLabel")}</span>
+                <div className="simulation-lab-input-wrap simulation-lab-input-wrap--with-toggle">
+                  <input
+                    ref={compareAmountRef}
+                    required
+                    type="number"
+                    step="any"
+                    min="0.01"
+                    defaultValue=""
+                    placeholder={t("simulation.ui.amountPlaceholder")}
+                  />
+                  <CurrencyToggle className="simulation-lab-inline-currency-toggle" />
+                </div>
+              </label>
+
+              <label className="simulation-lab-field">
+                <span>{t("simulation.ui.dateLabel")}</span>
+                <div className="simulation-lab-input-wrap">
+                  <CalendarDays size={16} aria-hidden="true" />
+                  <input ref={compareDateRef} required type="date" defaultValue="" />
+                </div>
+              </label>
+            </div>
+
+            <div className="simulation-lab-field">
+              <span>
+                {t("simulation.past.compareInstrumentsLabel", "Enstrümanlar")}
+                {" "}
+                <span className="simulation-lab-compare-count">
+                  ({compareInstruments.length}/{MAX_COMPARE_INSTRUMENTS})
+                </span>
+              </span>
+              {compareInstruments.length < MAX_COMPARE_INSTRUMENTS && (
+                <SearchableInstrumentField
+                  value=""
+                  selectedLabel=""
+                  placeholder={t("simulation.past.compareAddPlaceholder", "Enstrüman ekle")}
+                  searchPlaceholder={t("simulation.past.compareAddPlaceholder", "Enstrüman ekle")}
+                  onChange={handleAddCompareInstrument}
+                />
+              )}
+              {compareInstruments.length > 0 && (
+                <div className="simulation-lab-compare-chips">
+                  {compareInstruments.map((inst) => (
+                    <span key={inst.code} className="simulation-lab-compare-chip">
+                      {inst.label.split(" - ")[0]}
+                      <button
+                        type="button"
+                        className="simulation-lab-compare-chip-remove"
+                        onClick={() => handleRemoveCompareInstrument(inst.code)}
+                        aria-label={`${inst.code} kaldır`}
+                      >
+                        <X size={11} strokeWidth={2.5} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="simulation-lab-primary-button"
+              disabled={compareLoading || compareInstruments.length < 2}
+            >
+              {compareLoading ? t("simulation.past.submitting") : t("simulation.ui.pastSubmit")}
+            </button>
+          </form>
+        )}
+
+        <div className={`simulation-lab-inline-feedback${(pastMode === "single" ? pastAttempted : compareAttempted) ? " is-visible" : ""}`}>
+          {pastMode === "single" ? (
+            <>
+              {pastLoading ? <LoadingSpinner label={t("simulation.past.submitting")} /> : null}
+              {!pastLoading && pastError ? <ErrorMessage message={pastError} /> : null}
+            </>
+          ) : (
+            <>
+              {compareLoading ? <LoadingSpinner label={t("simulation.past.submitting")} /> : null}
+              {!compareLoading && compareError ? <ErrorMessage message={compareError} /> : null}
+            </>
+          )}
         </div>
       </div>
 
-      <InlineSimulationResult
-        result={result}
-        emptyTitle={t("simulation.ui.emptyTitle")}
-        emptyCopy={t("simulation.ui.pastEmptyCopy")}
-      />
+      {pastMode === "single" ? (
+        <InlineSimulationResult
+          result={result}
+          emptyTitle={t("simulation.ui.emptyTitle")}
+          emptyCopy={t("simulation.ui.pastEmptyCopy")}
+        />
+      ) : (
+        <CompareResultSection
+          result={compareResult}
+          emptyTitle={t("simulation.ui.emptyTitle")}
+          emptyCopy={t("simulation.past.compareEmptyCopy", "Enstrümanları seçip hesapla butonuna basın.")}
+        />
+      )}
     </section>
+  );
+});
+
+const CompareResultSection = memo(function CompareResultSection({ result, emptyTitle, emptyCopy }) {
+  const { formatAmount } = useCurrency();
+
+  return (
+    <div className={result ? "simulation-lab-result-section is-ready" : "simulation-lab-result-section"}>
+      <div className="simulation-lab-result-section-inner">
+        {!result ? (
+          <div className="simulation-lab-empty-result">
+            <strong>{emptyTitle}</strong>
+            <p>{emptyCopy}</p>
+          </div>
+        ) : (
+          <div className="simulation-lab-compare-stack">
+            <div className="simulation-lab-compare-table-wrap">
+              <table className="simulation-lab-compare-table">
+                <thead>
+                  <tr>
+                    <th>Enstrüman</th>
+                    <th>Bugünkü Değer</th>
+                    <th>Getiri</th>
+                    <th>Getiri %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, idx) => (
+                    <tr key={row.code} className={idx === 0 ? "simulation-lab-compare-row--best" : ""}>
+                      <td><strong>{row.label}</strong></td>
+                      <td>{formatAmount(row.todayValue)}</td>
+                      <td className={row.profitLoss >= 0 ? "tone-positive" : "tone-negative"}>
+                        {row.profitLoss >= 0 ? "+" : ""}{formatAmount(row.profitLoss)}
+                      </td>
+                      <td className={row.percentReturn >= 0 ? "tone-positive" : "tone-negative"}>
+                        <strong>{formatSignedPercent(row.percentReturn)}</strong>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="simulation-lab-compare-summary">
+              {buildCompareSummary(result.rows, result.amount, result.date, formatAmount)}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 });
 
@@ -236,13 +488,14 @@ const FutureSimulationPanel = memo(function FutureSimulationPanel({ onResult, re
   const { t } = useTranslation();
   const { userId } = useAuth();
   const futurePercentInputRef = useRef(null);
-  const [selectedPercentPreset, setSelectedPercentPreset] = useState(null);
+  const futureQuantityInputRef = useRef(null);
   const [futureAttempted, setFutureAttempted] = useState(false);
   const [futureLoading, setFutureLoading] = useState(false);
   const [futureForm, setFutureForm] = useState({
     mode: "instrument",
     instrumentCode: "",
     instrumentLabel: "",
+    instrumentType: "",
     portfolioId: "",
   });
 
@@ -288,18 +541,12 @@ const FutureSimulationPanel = memo(function FutureSimulationPanel({ onResult, re
       ...current,
       instrumentCode: option?.value ?? "",
       instrumentLabel: option?.label ?? "",
+      instrumentType: option?.type ?? "",
     }));
   }, []);
 
   const handleFuturePortfolioChange = useCallback((value) => {
     setFutureForm((current) => ({ ...current, portfolioId: value }));
-  }, []);
-
-  const handleFuturePercentPreset = useCallback((value) => {
-    if (futurePercentInputRef.current) {
-      futurePercentInputRef.current.value = value;
-    }
-    setSelectedPercentPreset(Number(value));
   }, []);
 
   const error = portfoliosError || instrumentQuoteError
@@ -323,31 +570,39 @@ const FutureSimulationPanel = memo(function FutureSimulationPanel({ onResult, re
 
     if (futureForm.mode === "instrument") {
       const basePrice = Number(selectedInstrumentQuote?.price ?? selectedInstrumentQuote?.sellRate ?? selectedInstrumentQuote?.buyRate);
+      const quantityInput = futureQuantityInputRef.current?.value ?? "";
+      const quantity = quantityInput === "" ? 1 : Number(quantityInput);
       if (!Number.isFinite(basePrice)) {
         setFutureLoading(false);
         return;
       }
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        setFutureLoading(false);
+        return;
+      }
 
-      const projectedValue = basePrice * (1 + ratio);
+      const currentValue = basePrice * quantity;
+      const projectedValue = currentValue * (1 + ratio);
       onResult({
-        id: `future-instrument-${futureForm.instrumentCode}-${percentChange}`,
+        id: `future-instrument-${futureForm.instrumentCode}-${percentChange}-${quantity}`,
         kind: "future",
         heading: t("simulation.ui.futurePanelTitle"),
         sourceLabel: t("simulation.ui.futureInstrumentSourceLabel"),
-        selectedLabel: futureForm.instrumentLabel || futureForm.instrumentCode,
+        selectedLabel: getInstrumentResultLabel(futureForm.instrumentLabel || futureForm.instrumentCode, futureForm.instrumentCode),
+        instrumentType: futureForm.instrumentType || selectedInstrumentQuote?.instrumentType,
         scenarioLabel: `${percentChange > 0 ? "+" : ""}${percentChange}%`,
         primaryLabel: t("simulation.ui.metrics.projectedResult"),
         primaryValue: projectedValue,
-        totalReturn: projectedValue - basePrice,
+        totalReturn: projectedValue - currentValue,
         percentReturn: percentChange,
-        profitLoss: projectedValue - basePrice,
-        secondaryValue: basePrice,
-        secondaryLabel: t("simulation.ui.metrics.currentPrice"),
-        metaLine: selectedInstrumentQuote?.source || t("simulation.ui.liveMarketData"),
+        profitLoss: projectedValue - currentValue,
+        secondaryValue: currentValue,
+        secondaryLabel: t("simulation.ui.metrics.currentValue"),
+        metaLine: t("simulation.ui.quantityValue", { value: formatNumber(Math.trunc(quantity), 0) }),
         supportLine: t("simulation.ui.manualScenario"),
         sourceDetail: futureForm.mode === "instrument" ? t("simulation.ui.instrumentBasedCalculation") : t("simulation.ui.portfolioBasedCalculation"),
         chartData: [
-          { label: t("simulation.ui.chartLabels.today"), value: basePrice },
+          { label: t("simulation.ui.chartLabels.today"), value: currentValue },
           { label: t("simulation.ui.chartLabels.scenario"), value: projectedValue },
         ],
         createdAt: new Date().toISOString(),
@@ -371,6 +626,7 @@ const FutureSimulationPanel = memo(function FutureSimulationPanel({ onResult, re
       heading: t("simulation.ui.futurePanelTitle"),
       sourceLabel: t("simulation.ui.futurePortfolioSourceLabel"),
       selectedLabel: selectedPortfolioLabel,
+      instrumentType: "PORTFOLIO",
       scenarioLabel: `${percentChange > 0 ? "+" : ""}${percentChange}%`,
       primaryLabel: t("simulation.ui.metrics.projectedResult"),
       primaryValue: projectedValue,
@@ -448,36 +704,49 @@ const FutureSimulationPanel = memo(function FutureSimulationPanel({ onResult, re
               </label>
             )}
 
-            <div className="simulation-lab-field">
-              <span>{t("simulation.ui.percentLabel")}</span>
-              <div className="simulation-lab-input-wrap simulation-lab-input-wrap--with-toggle">
-                <input
-                  ref={futurePercentInputRef}
-                  type="number"
-                  step="any"
-                  defaultValue=""
-                  onChange={() => setSelectedPercentPreset(null)}
-                  placeholder={t("simulation.future.percentPlaceholder")}
-                />
-                <CurrencyToggle className="simulation-lab-inline-currency-toggle" />
-              </div>
-              <div className="simulation-lab-preset-row" aria-label={t("simulation.future.percentChange")}>
-                {FUTURE_PERCENT_PRESETS.map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    className={selectedPercentPreset === preset ? "simulation-lab-preset-chip active" : "simulation-lab-preset-chip"}
-                    onClick={() => handleFuturePercentPreset(String(preset))}
-                  >
-                    {preset > 0 ? `+${preset}%` : `${preset}%`}
+            <div className="future-scenario-percent-panel">
+              <div className="future-scenario-percent-layout">
+                <div className="future-scenario-input-row">
+                  <label className="future-scenario-mini-field" htmlFor="future-percent-change">
+                    <span className="future-scenario-percent-label">{t("simulation.ui.percentLabel")}</span>
+                    <div className="simulation-lab-input-wrap simulation-lab-input-wrap--with-toggle future-scenario-percent-input">
+                      <input
+                        id="future-percent-change"
+                        ref={futurePercentInputRef}
+                        type="number"
+                        step="any"
+                        defaultValue=""
+                        placeholder={t("simulation.future.percentPlaceholder")}
+                      />
+                      <CurrencyToggle className="simulation-lab-inline-currency-toggle" />
+                    </div>
+                  </label>
+
+                  {futureForm.mode === "instrument" ? (
+                    <label className="future-scenario-mini-field">
+                      <span className="future-scenario-percent-label">Miktar</span>
+                      <div className="simulation-lab-input-wrap future-scenario-quantity-input">
+                        <input
+                          ref={futureQuantityInputRef}
+                          type="number"
+                          step="any"
+                          min="0.0001"
+                          defaultValue=""
+                          placeholder="Adet / lot"
+                          aria-label="Adet veya lot sayısı"
+                        />
+                      </div>
+                    </label>
+                  ) : null}
+                </div>
+
+                <div className="future-scenario-percent-actions">
+                  <button type="submit" className="simulation-lab-primary-button future-scenario-submit" disabled={futureLoading || instrumentQuoteLoading}>
+                    {futureLoading ? t("simulation.future.submitting") : t("simulation.future.submit")}
                   </button>
-                ))}
+                </div>
               </div>
             </div>
-
-            <button type="submit" className="simulation-lab-primary-button" disabled={futureLoading || instrumentQuoteLoading}>
-              {futureLoading ? t("simulation.future.submitting") : t("simulation.future.submit")}
-            </button>
           </form>
         ) : null}
 
@@ -496,7 +765,6 @@ const FutureSimulationPanel = memo(function FutureSimulationPanel({ onResult, re
 });
 
 const InlineSimulationResult = memo(function InlineSimulationResult({ result, emptyTitle, emptyCopy }) {
-  const { t } = useTranslation();
   const { formatAmount } = useCurrency();
   const positive = Number(result?.profitLoss) >= 0;
 
@@ -512,9 +780,15 @@ const InlineSimulationResult = memo(function InlineSimulationResult({ result, em
           <div className="simulation-lab-result-stack">
             <div className="simulation-lab-result-hero">
               <div className="simulation-lab-result-copy">
-                <span className="simulation-lab-result-eyebrow">{result.sourceLabel}</span>
-                <strong>{result.selectedLabel}</strong>
-                <p>{result.scenarioLabel}</p>
+                <div className="simulation-lab-result-title-row">
+                  <strong>{result.selectedLabel}</strong>
+                  {result.instrumentType ? (
+                    <span className="simulation-lab-result-type-badge">
+                      {formatInstrumentTypeLabel(result.instrumentType)}
+                    </span>
+                  ) : null}
+                </div>
+                <p>{result.secondaryLabel}: {formatAmount(result.secondaryValue)} · {result.supportLine}</p>
               </div>
               <div className={positive ? "simulation-lab-result-badge is-positive" : "simulation-lab-result-badge is-negative"}>
                 {positive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
@@ -522,38 +796,19 @@ const InlineSimulationResult = memo(function InlineSimulationResult({ result, em
               </div>
             </div>
 
-            <div className="simulation-lab-result-summary">
-              <div className="simulation-lab-result-value">
-                <span>{result.primaryLabel}</span>
-                <h3>{formatAmount(result.primaryValue)}</h3>
-                <p>{result.secondaryLabel}: {formatAmount(result.secondaryValue)}</p>
-              </div>
-
-              <div className="simulation-lab-chart-card">
-                <MiniScenarioChart data={result.chartData} positive={positive} />
-              </div>
+            <div className="simulation-lab-result-value">
+              <span>{result.primaryLabel}</span>
+              <h3>{formatAmount(result.primaryValue)}</h3>
             </div>
 
-            <div className="simulation-lab-metric-grid">
-              <ResultMetric label={t("simulation.ui.metrics.totalReturn")} value={formatAmount(result.totalReturn)} tone={result.totalReturn >= 0 ? "positive" : "negative"} />
-              <ResultMetric label={t("simulation.ui.metrics.percentChange")} value={formatSignedPercent(result.percentReturn)} tone={result.percentReturn >= 0 ? "positive" : "negative"} />
-              <ResultMetric label={t("simulation.ui.metrics.profitLoss")} value={formatAmount(result.profitLoss)} tone={result.profitLoss >= 0 ? "positive" : "negative"} />
-              <ResultMetric label={t("simulation.ui.metrics.selectedAsset")} value={result.selectedLabel} />
-            </div>
-
-            <div className="simulation-lab-result-meta">
-              <div>
-                <span>{t("simulation.ui.meta.scenarioSummary")}</span>
-                <strong>{result.supportLine}</strong>
-              </div>
-              <div>
-                <span>{t("simulation.ui.meta.detail")}</span>
-                <strong>{result.metaLine}</strong>
-              </div>
-              <div>
-                <span>{t("simulation.ui.meta.dateOrSource")}</span>
-                <strong>{result.sourceDetail}</strong>
-              </div>
+            <div className="simulation-lab-result-foot">
+              <span className="simulation-lab-result-return">
+                <span className="simulation-lab-result-return-label">Toplam Getiri:</span>
+                <span className={result.totalReturn >= 0 ? "simulation-lab-result-return-value is-positive" : "simulation-lab-result-return-value is-negative"}>
+                  {result.totalReturn >= 0 ? "+" : ""}{formatAmount(result.totalReturn)}
+                </span>
+              </span>
+              <small>{result.metaLine}</small>
             </div>
           </div>
         )}
@@ -562,83 +817,53 @@ const InlineSimulationResult = memo(function InlineSimulationResult({ result, em
   );
 });
 
-const MiniScenarioChart = memo(function MiniScenarioChart({ data, positive }) {
-  if (!Array.isArray(data) || data.length === 0) {
-    return null;
-  }
-
-  const stroke = positive ? "#16835e" : "#c24a4a";
-  const fill = positive ? "rgba(22, 131, 94, 0.14)" : "rgba(194, 74, 74, 0.14)";
-
-  return (
-    <ResponsiveContainer width="100%" height={124}>
-      <AreaChart data={data} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id={`simulation-chart-fill-${positive ? "up" : "down"}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={stroke} stopOpacity={0.28} />
-            <stop offset="100%" stopColor={stroke} stopOpacity={0.02} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid vertical={false} stroke="rgba(148, 163, 184, 0.18)" />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 11 }} />
-        <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
-        <Tooltip
-          formatter={(value) => formatCurrency(Number(value))}
-          labelStyle={{ color: "#203252" }}
-          contentStyle={{
-            borderRadius: 14,
-            border: "1px solid rgba(203, 213, 225, 0.9)",
-            boxShadow: "0 12px 28px rgba(15, 23, 42, 0.08)",
-          }}
-        />
-        <Area
-          type="monotone"
-          dataKey="value"
-          stroke={stroke}
-          strokeWidth={2.5}
-          fill={fill}
-          fillOpacity={1}
-          activeDot={{ r: 4 }}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-});
-
 const SimulationHistoryPanel = memo(function SimulationHistoryPanel({ results, formatAmount }) {
   const { t } = useTranslation();
   return (
     <section className="panel-surface simulation-lab-history-card">
       <div className="simulation-lab-history-head">
-        <div>
-          <h2>{t("simulation.ui.recentTitle")}</h2>
-          <p>{t("simulation.ui.recentDescription")}</p>
-        </div>
+        <h2>{t("simulation.ui.recentTitle")}</h2>
       </div>
 
       {!results.length ? (
-        <div className="simulation-lab-empty-history">
-          <strong>{t("simulation.ui.recentEmptyTitle")}</strong>
-          <p>{t("simulation.ui.recentEmptyDescription")}</p>
-        </div>
+        <p className="simulation-lab-history-empty-inline">{t("simulation.ui.recentEmptyTitle")}</p>
       ) : (
         <div className="simulation-lab-history-scroller">
-          {results.map((item) => (
-            <article key={item.id} className="simulation-lab-history-tile">
-              <div className="simulation-lab-history-tile-top">
-                <span className="simulation-lab-history-tile-tag">{item.sourceLabel}</span>
-                <strong className={item.profitLoss >= 0 ? "is-positive" : "is-negative"}>
-                  {formatSignedPercent(item.percentReturn)}
+          {results.map((item) =>
+            item.kind === "compare" ? (
+              <article key={item.id} className="simulation-lab-history-tile">
+                <div className="simulation-lab-history-tile-top">
+                  <span className="simulation-lab-history-tile-tag">{t("simulation.past.compareMode", "Karşılaştırmalı")}</span>
+                  <strong className={item.rows?.[0]?.percentReturn >= 0 ? "is-positive" : "is-negative"}>
+                    {formatSignedPercent(item.rows?.[0]?.percentReturn)}
+                  </strong>
+                </div>
+                <strong className="simulation-lab-history-tile-title">
+                  {formatAmount(item.amount)} · {item.rows?.length} enstrüman
                 </strong>
-              </div>
-              <strong className="simulation-lab-history-tile-title">{item.selectedLabel}</strong>
-              <p>{item.scenarioLabel}</p>
-              <div className="simulation-lab-history-tile-foot">
-                <span>{formatAmount(item.primaryValue)}</span>
-                <small>{item.heading}</small>
-              </div>
-            </article>
-          ))}
+                <p>{t("simulation.past.compareBest", "En yüksek")}: {item.rows?.[0]?.label}</p>
+                <div className="simulation-lab-history-tile-foot">
+                  <span>{item.date}</span>
+                  <small>{t("simulation.past.compareMode", "Karşılaştırmalı")}</small>
+                </div>
+              </article>
+            ) : (
+              <article key={item.id} className="simulation-lab-history-tile">
+                <div className="simulation-lab-history-tile-top">
+                  <span className="simulation-lab-history-tile-tag">{item.sourceLabel}</span>
+                  <strong className={item.profitLoss >= 0 ? "is-positive" : "is-negative"}>
+                    {formatSignedPercent(item.percentReturn)}
+                  </strong>
+                </div>
+                <strong className="simulation-lab-history-tile-title">{item.selectedLabel}</strong>
+                <p>{item.scenarioLabel}</p>
+                <div className="simulation-lab-history-tile-foot">
+                  <span>{formatAmount(item.primaryValue)}</span>
+                  <small>{item.heading}</small>
+                </div>
+              </article>
+            ),
+          )}
         </div>
       )}
     </section>
@@ -655,15 +880,19 @@ const SearchableInstrumentField = memo(function SearchableInstrumentField({
 }) {
   const [search, setSearch] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const searchInputRef = useRef(null);
   const debouncedSearch = useDebouncedValue(search, 180);
   const { data: results = [] } = useInstrumentSearch(debouncedSearch, { staleTime: 60_000 });
   const showResults = isFocused && debouncedSearch.trim().length >= 2;
+  const hasSelection = Boolean(value);
+  const selectionText = hasSelection ? getInstrumentChipText(selectedLabel || value) : placeholder;
 
   const filteredOptions = useMemo(
     () => results.slice(0, 24).map((item) => ({
       key: `${item.code}-${item.type}`,
       value: item.code,
       label: `${item.code}${item.name ? ` - ${item.name}` : ""}`,
+      type: item.type,
     })),
     [results],
   );
@@ -673,17 +902,35 @@ const SearchableInstrumentField = memo(function SearchableInstrumentField({
       <div className="simulation-lab-input-wrap simulation-lab-input-wrap--search">
         <Search size={16} aria-hidden="true" />
         <input
+          ref={searchInputRef}
           type="text"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setIsFocused(true);
+          }}
           onFocus={() => setIsFocused(true)}
           onBlur={() => window.setTimeout(() => setIsFocused(false), 120)}
           placeholder={searchPlaceholder}
         />
       </div>
 
-      <div className="simulation-lab-search-selection">
-        <span>{selectedLabel || value || placeholder}</span>
+      <div className={hasSelection ? "simulation-lab-search-selection has-selection" : "simulation-lab-search-selection"}>
+        {hasSelection ? (
+          <span className="simulation-lab-selected-chip">
+            <strong>{selectionText}</strong>
+            <button
+              type="button"
+              className="simulation-lab-selected-chip-remove"
+              onClick={() => onChange(null)}
+              aria-label={`${selectionText} kaldır`}
+            >
+              <X size={12} strokeWidth={2.5} />
+            </button>
+          </span>
+        ) : (
+          <span>{selectionText}</span>
+        )}
         {required && !value ? <input type="hidden" required value="" readOnly /> : null}
       </div>
 
@@ -699,6 +946,7 @@ const SearchableInstrumentField = memo(function SearchableInstrumentField({
                 onChange(item);
                 setSearch("");
                 setIsFocused(false);
+                searchInputRef.current?.blur();
               }}
             >
               {item.label}
@@ -733,14 +981,35 @@ const PortfolioOptionsSelect = memo(function PortfolioOptionsSelect({
   );
 });
 
-const ResultMetric = memo(function ResultMetric({ label, value, tone = "neutral" }) {
-  return (
-    <div className={`simulation-lab-metric-card simulation-lab-metric-card--${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-});
+function buildCompareSummary(rows, amount, date, formatAmount) {
+  if (!rows?.length) return "";
+  const best = rows[0];
+  if (best.percentReturn >= 0) {
+    return `${date} tarihinde ${formatAmount(amount)} ile ${best.label} alındığında, bugün ${formatAmount(best.todayValue)} değerine ulaşılırdı — seçilen enstrümanlar arasında en yüksek getiri.`;
+  }
+  return `${date} tarihinde seçilen enstrümanların tümü değer kaybetti. ${best.label} (${formatSignedPercent(best.percentReturn)}) bu seçenekler arasında en az kaybettiren oldu.`;
+}
+
+function getInstrumentResultLabel(label, fallbackCode) {
+  return getInstrumentChipText(label) || normalizeCode(fallbackCode);
+}
+
+function formatInstrumentTypeLabel(type) {
+  const normalized = String(type || "").trim().toUpperCase();
+  const labels = {
+    STOCK: "Hisse",
+    FUND: "Fon",
+    CRYPTO: "Kripto",
+    FX: "Döviz",
+    COMMODITY: "Emtia",
+    INDEX: "Endeks",
+    FUTURES: "Vadeli",
+    BOND: "Tahvil",
+    PORTFOLIO: "Portföy",
+  };
+
+  return labels[normalized] || normalized || "Enstrüman";
+}
 
 function normalizeCode(value) {
   if (value == null) {
@@ -753,6 +1022,10 @@ function normalizeCode(value) {
   }
 
   return rawValue.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+
+function getInstrumentChipText(label) {
+  return String(label || "").split(" - ")[0].trim();
 }
 
 function formatSignedPercent(value) {

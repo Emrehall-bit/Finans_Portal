@@ -265,16 +265,23 @@ public class CommodityService {
                         .sourceName(SourceName.CALCULATED)
                         .build()));
 
+        BigDecimal changeRate = priceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument)
+                .map(MarketPrice::getPriceValue)
+                .filter(prev -> prev.signum() > 0)
+                .map(prev -> price.subtract(prev).divide(prev, 6, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100)).setScale(4, RoundingMode.HALF_UP))
+                .orElse(null);
+
         priceRepository.save(MarketPrice.builder()
                 .instrument(instrument)
                 .priceValue(price)
-                .changeRate(null)
+                .changeRate(changeRate)
                 .priceTimestamp(timestamp)
                 .sourceName(SourceName.CALCULATED)
                 .build());
 
-        log.info("Calculated commodity saved: code={} price={} instrumentId={}", code, price, instrument.getId());
-        putCacheSilently(buildCacheKey(code), toResponse(instrument, price, null, timestamp));
+        log.info("Calculated commodity saved: code={} price={} changeRate={} instrumentId={}", code, price, changeRate, instrument.getId());
+        putCacheSilently(buildCacheKey(code), toResponse(instrument, price, changeRate, timestamp));
         savedSymbols.add(code);
     }
 
