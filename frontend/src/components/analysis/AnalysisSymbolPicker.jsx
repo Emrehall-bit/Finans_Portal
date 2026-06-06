@@ -1,75 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Plus, Search, Star, X } from "lucide-react";
+import { ChevronDown, Search, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "../../currency/CurrencyContext";
+import { formatInstrumentValue } from "../../utils/formatters";
 import { formatInstrumentCode, getFxCodeLabel } from "../../utils/instrumentUtils";
 
 export default function AnalysisSymbolPicker({
   quotes,
   primarySymbol,
-  selectedSymbols,
   primaryContext,
   primaryQuote = null,
   currencyToggle = null,
   chartMode,
-  showComparison = true,
   onChartModeChange,
   onPrimaryChange,
-  onToggleComparisonSymbol,
-  showInlineComparisonChips = false,
   isFavorite = false,
   favoriteBusy = false,
   onFavoriteToggle,
 }) {
   const { t, i18n } = useTranslation();
   const { formatAmount } = useCurrency();
-  const [search, setSearch] = useState("");
-  const [compareOpen, setCompareOpen] = useState(false);
-  const popoverRef = useRef(null);
 
-  const filteredQuotes = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const pool = quotes.filter((item) => item.symbol !== primarySymbol);
-
-    if (!query) {
-      // İlk açılışta tek tip (FX) yerine türler arası dengeli öneri göster
-      return buildBalancedSuggestions(pool, 10);
-    }
-
-    // Arama yapıldığında tüm enstrüman havuzunda ara (mevcut davranış)
-    return pool
-      .filter((item) =>
-        item.symbol?.toLowerCase().includes(query) || item.displayName?.toLowerCase().includes(query))
-      .slice(0, 10);
-  }, [quotes, search, primarySymbol]);
-
-  const comparisonSymbols = useMemo(
-    () => selectedSymbols.filter((symbol) => symbol !== primarySymbol),
-    [selectedSymbols, primarySymbol],
-  );
   const advancedHeaderPrice = primaryQuote?.sellRate ?? primaryQuote?.price ?? null;
   const advancedHeaderChange = primaryQuote?.changeRate ?? null;
-
-  useEffect(() => {
-    if (!compareOpen) return undefined;
-
-    function handleOutside(event) {
-      if (popoverRef.current && !popoverRef.current.contains(event.target)) {
-        setCompareOpen(false);
-      }
-    }
-
-    function handleKeyDown(event) {
-      if (event.key === "Escape") setCompareOpen(false);
-    }
-
-    document.addEventListener("mousedown", handleOutside);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleOutside);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [compareOpen]);
 
   return (
     <div className="analysis-hero-shell">
@@ -79,7 +32,15 @@ export default function AnalysisSymbolPicker({
             <h1>{primaryContext?.symbolLine || "-"}</h1>
             {advancedHeaderPrice != null ? (
               <div className="analysis-hero-price-block">
-                <strong>{formatAmount(advancedHeaderPrice)}</strong>
+                <strong>
+                  {formatInstrumentValue(advancedHeaderPrice, {
+                    instrumentType: primaryQuote?.instrumentType,
+                    displayUnit: primaryQuote?.displayUnit,
+                    currency: primaryQuote?.currency,
+                    currencyFormatter: formatAmount,
+                    locale: i18n.resolvedLanguage,
+                  })}
+                </strong>
                 {advancedHeaderChange != null ? (
                   <span className={advancedHeaderChange >= 0 ? "is-positive" : "is-negative"}>
                     {advancedHeaderChange >= 0 ? "+" : ""}
@@ -131,83 +92,24 @@ export default function AnalysisSymbolPicker({
                 >
                   {t("analysis.advancedChart")}
                 </button>
+                <button
+                  type="button"
+                  className={`analysis-mode-btn${chartMode === "comparison" ? " active" : ""}`}
+                  onClick={() => onChartModeChange("comparison")}
+                >
+                  {t("analysis.comparisonChart")}
+                </button>
               </div>
-            </div>
-          ) : null}
-
-          {showComparison ? (
-            <div className="analysis-compare-actions" ref={popoverRef}>
-              <button
-                type="button"
-                className={`analysis-header-compare-btn${compareOpen ? " active" : ""}`}
-                onClick={() => setCompareOpen((current) => !current)}
-              >
-                <Plus size={17} strokeWidth={2.1} />
-                <span>{t("analysis.symbolPicker.searchComparison")}</span>
-              </button>
-
-              {compareOpen ? (
-                <div className="analysis-compare-popover" role="dialog" aria-label={t("analysis.symbolPicker.searchComparison")}>
-                  <label className="analysis-compare-search">
-                    <Search size={14} strokeWidth={2} />
-                    <input
-                      autoFocus
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder={t("analysis.symbolPicker.searchPlaceholder")}
-                    />
-                  </label>
-
-                  <div className="analysis-compare-results">
-                    {filteredQuotes.length === 0 ? (
-                      <div className="analysis-compare-empty">{t("analysis.symbolPicker.emptySelection")}</div>
-                    ) : filteredQuotes.map((item) => {
-                      const active = selectedSymbols.includes(item.symbol);
-                      return (
-                        <button
-                          key={`${item.symbol}-${item.source}`}
-                          type="button"
-                          className={`analysis-compare-option${active ? " active" : ""}`}
-                          onClick={() => onToggleComparisonSymbol(item.symbol)}
-                        >
-                          <strong>{formatInstrumentLabel(item)}</strong>
-                          <span>{resolveInstrumentTitle(item, i18n.resolvedLanguage) || item.instrumentType || "-"}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
             </div>
           ) : null}
         </div>
       </div>
-
-      {showInlineComparisonChips && comparisonSymbols.length > 0 ? (
-        <div className="analysis-inline-compare-row">
-          {comparisonSymbols.map((symbol) => (
-            <button
-              key={symbol}
-              type="button"
-              className="analysis-compare-chip"
-              onClick={() => onToggleComparisonSymbol(symbol)}
-              title={t("common.remove")}
-            >
-              <span className="analysis-chip-avatar">{symbol.slice(0, 2)}</span>
-              <span>{formatSelectedSymbol(symbol, quotes)}</span>
-              <X size={12} strokeWidth={2.2} />
-            </button>
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }
 
 const SUGGESTION_TYPE_ORDER = ["FX", "CRYPTO", "STOCK", "FUND", "COMMODITY", "FUTURES", "BOND", "INDEX"];
 
-// Boş aramada türler arası dengeli (round-robin) öneri listesi üretir.
-// Veri olmayan türler sessizce atlanır.
 function buildBalancedSuggestions(pool, limit) {
   const byType = new Map();
   for (const item of pool) {
@@ -445,8 +347,4 @@ function resolveInstrumentTitle(item, locale) {
   }
 
   return displayCode || "-";
-}
-
-function formatSelectedSymbol(symbol, quotes) {
-  return quotes.find((item) => item.symbol === symbol)?.code || formatInstrumentCode(symbol);
 }

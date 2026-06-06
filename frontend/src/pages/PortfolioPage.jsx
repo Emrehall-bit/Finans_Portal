@@ -21,6 +21,7 @@ import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import { useBenchmarkReturn } from "../hooks/useMarketQueries";
 import useToast from "../hooks/useToast";
 import { usePortfolioDetails, usePortfolioPerformance, usePortfolioRisk, useUserPortfolios } from "../hooks/usePortfolioQueries";
 import { useTheme } from "../theme/ThemeContext";
@@ -40,6 +41,13 @@ const PERFORMANCE_RANGE_PRESETS = [
   { key: "1Y", label: "1 Yıl", months: 12 },
   { key: "5Y", label: "5 Yıl", months: 60 },
   { key: "MAX", label: "Tümü", months: null },
+];
+const PORTFOLIO_BENCHMARK_OPTIONS = [
+  { code: "CPI_TR", type: "MACRO", label: "TÜFE" },
+  { code: "XU100", type: "INDEX", label: "BIST100" },
+  { code: "XU030", type: "INDEX", label: "BIST30" },
+  { code: "TCMB:USD:SELL", type: "INSTRUMENT", label: "USDTRY" },
+  { code: "GRAM_ALTIN", type: "INSTRUMENT", label: "Gram Altın" },
 ];
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const PORTFOLIO_WIDGET_LAYOUTS_STORAGE_KEY = "fp:portfolio:widget-layouts:v2";
@@ -150,6 +158,7 @@ export default function PortfolioPage() {
   const [widgetBreakpoint, setWidgetBreakpoint] = useState("lg");
   const [isActivityModalOpen, setActivityModalOpen] = useState(false);
   const [performanceRangeKey, setPerformanceRangeKey] = useState("3M");
+  const [portfolioBenchmarkCode, setPortfolioBenchmarkCode] = useState("CPI_TR");
   const [holdingsFilterKey, setHoldingsFilterKey] = useState("ALL");
   const [holdingsSortKey, setHoldingsSortKey] = useState("WEIGHT");
   const [isAiDrawerOpen, setAiDrawerOpen] = useState(false);
@@ -164,10 +173,20 @@ export default function PortfolioPage() {
   // ── React Query data fetching ───────────────────────────────────────────────
   const { data: portfolios = [], isLoading: loadingList } = useUserPortfolios(userId);
   const performanceParams = useMemo(() => buildPerformanceHistoryParams(performanceRangeKey), [performanceRangeKey]);
+  const portfolioBenchmarkOption = useMemo(
+    () => PORTFOLIO_BENCHMARK_OPTIONS.find((item) => item.code === portfolioBenchmarkCode) ?? PORTFOLIO_BENCHMARK_OPTIONS[0],
+    [portfolioBenchmarkCode],
+  );
   const { data: selectedPortfolio = null, isLoading: loadingDetail } = usePortfolioDetails(selectedPortfolioId);
   const { data: performanceHistory = null, isLoading: loadingPerformanceHistory, error: performanceQueryError } = usePortfolioPerformance(selectedPortfolioId, performanceParams);
+  const {
+    data: portfolioBenchmarkReturn = null,
+    isLoading: loadingPortfolioBenchmark,
+    error: portfolioBenchmarkQueryError,
+  } = useBenchmarkReturn(portfolioBenchmarkOption.code, portfolioBenchmarkOption.type, performanceParams.from, performanceParams.to);
   const { data: riskSummary = null, error: riskQueryError } = usePortfolioRisk(selectedPortfolioId);
   const performanceHistoryError = performanceQueryError ? extractErrorMessage(performanceQueryError, "Performans geçmişi yüklenemedi.") : "";
+  const portfolioBenchmarkError = portfolioBenchmarkQueryError ? extractErrorMessage(portfolioBenchmarkQueryError, "Benchmark verisi yüklenemedi.") : "";
   const riskSummaryError = riskQueryError ? extractErrorMessage(riskQueryError, "Risk analizi yüklenemedi.") : "";
 
   // Initialize selectedPortfolioId from portfolio list
@@ -352,8 +371,9 @@ export default function PortfolioPage() {
     searchDebounceRef.current = setTimeout(async () => {
       try {
         const results = await searchInstruments(value, 20, true);
-        setInstrumentResults(results);
-        setInstrumentSearchOpen(results.length > 0);
+        const investableResults = results.filter((item) => String(item?.type || item?.instrumentType || "").toUpperCase() !== "INDEX");
+        setInstrumentResults(investableResults);
+        setInstrumentSearchOpen(investableResults.length > 0);
       } catch {
         setInstrumentResults([]);
         setInstrumentSearchOpen(false);
@@ -362,6 +382,9 @@ export default function PortfolioPage() {
   }, []);
 
   function selectInstrument(instrument) {
+    if (String(instrument?.type || instrument?.instrumentType || "").toUpperCase() === "INDEX") {
+      return;
+    }
     setHoldingForm((current) => ({ ...current, instrumentCode: instrument.code, buyPrice: "", purchaseDate: "" }));
     setInstrumentSearch(formatInstrumentSearchValue(instrument));
     setInstrumentResults([]);
@@ -655,6 +678,10 @@ export default function PortfolioPage() {
     performanceFirstPoint && toNumber(performanceFirstPoint.totalValue) > 0 && performanceDelta != null
       ? (performanceDelta / toNumber(performanceFirstPoint.totalValue)) * 100
       : null;
+  const portfolioBenchmarkSummary = useMemo(
+    () => buildPortfolioBenchmarkSummary(performanceDeltaPercent, portfolioBenchmarkReturn, portfolioBenchmarkOption, t),
+    [performanceDeltaPercent, portfolioBenchmarkReturn, portfolioBenchmarkOption, t],
+  );
 
   const activityItems = useMemo(() => {
     const rows = [...holdings]
@@ -1042,6 +1069,35 @@ export default function PortfolioPage() {
                             {performanceDeltaPercent == null ? "-" : formatPercent(performanceDeltaPercent)}
                           </strong>
                         </div>
+                      </div>
+
+                      <div className="portfolio-benchmark-strip">
+                        <div className="portfolio-benchmark-copy">
+                          <span>{t("portfolio.benchmark.eyebrow")}</span>
+                          <strong>{t("portfolio.benchmark.title")}</strong>
+                          <p>
+                            {portfolioBenchmarkOption.type === "MACRO"
+                              ? t("portfolio.benchmark.macroDescription")
+                              : t("portfolio.benchmark.relativeDescription")}
+                          </p>
+                        </div>
+                        <div className="portfolio-benchmark-selector" role="group" aria-label="Portföy benchmark seçimi">
+                          {PORTFOLIO_BENCHMARK_OPTIONS.map((option) => (
+                            <button
+                              key={option.code}
+                              type="button"
+                              className={`portfolio-benchmark-chip${portfolioBenchmarkCode === option.code ? " active" : ""}`}
+                              onClick={() => setPortfolioBenchmarkCode(option.code)}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                        <PortfolioBenchmarkMetrics
+                          summary={portfolioBenchmarkSummary}
+                          loading={loadingPortfolioBenchmark}
+                          error={portfolioBenchmarkError}
+                        />
                       </div>
 
                       <div className="portfolio-performance-chart-shell">
@@ -1569,6 +1625,67 @@ function PortfolioPerformanceTooltip({ active, payload, label, chartTheme, curre
   );
 }
 
+function PortfolioBenchmarkMetrics({ summary, loading, error }) {
+  const { t } = useTranslation();
+
+  if (loading) {
+    return <span className="portfolio-benchmark-empty">{t("portfolio.benchmark.loading")}</span>;
+  }
+  if (error) {
+    return <span className="portfolio-benchmark-empty">{error}</span>;
+  }
+  if (!summary) {
+    return <span className="portfolio-benchmark-empty">{t("portfolio.benchmark.empty")}</span>;
+  }
+
+  return (
+    <div className="portfolio-benchmark-metrics">
+      <div className="portfolio-benchmark-metric">
+        <span>{summary.baseLabel}</span>
+        <strong className={getPnLTextClass(summary.portfolioReturnPct)}>{formatPercent(summary.portfolioReturnPct)}</strong>
+      </div>
+      <div className="portfolio-benchmark-metric">
+        <span>{summary.benchmarkLabel}</span>
+        <strong>{formatPercent(summary.benchmarkReturnPct)}</strong>
+      </div>
+      <div className="portfolio-benchmark-metric">
+        <span>{summary.resultLabel}</span>
+        <strong className={getPnLTextClass(summary.resultPct)}>{formatPercent(summary.resultPct)}</strong>
+      </div>
+      <div className="portfolio-benchmark-metric portfolio-benchmark-metric--status">
+        <span>{t("portfolio.benchmark.status")}</span>
+        <strong className={`portfolio-benchmark-status ${summary.isAbove ? "above" : "below"}`}>{summary.statusLabel}</strong>
+      </div>
+    </div>
+  );
+}
+
+function buildPortfolioBenchmarkSummary(portfolioReturnPercent, benchmarkReturnDecimal, benchmarkOption, t) {
+  if (!Number.isFinite(Number(portfolioReturnPercent)) || !Number.isFinite(Number(benchmarkReturnDecimal))) {
+    return null;
+  }
+  const portfolioReturn = Number(portfolioReturnPercent) / 100;
+  const benchmarkReturn = Number(benchmarkReturnDecimal);
+  const isMacro = benchmarkOption?.type === "MACRO";
+  const result = isMacro
+    ? ((1 + portfolioReturn) / (1 + benchmarkReturn)) - 1
+    : portfolioReturn - benchmarkReturn;
+  const isAbove = result >= 0;
+
+  return {
+    baseLabel: t("portfolio.benchmark.portfolioReturn"),
+    benchmarkLabel: isMacro ? t("portfolio.benchmark.inflation") : benchmarkOption?.label || "Benchmark",
+    resultLabel: isMacro ? t("portfolio.benchmark.realReturn") : t("portfolio.benchmark.relativeReturn"),
+    statusLabel: isMacro
+      ? (isAbove ? t("portfolio.benchmark.aboveInflation") : t("portfolio.benchmark.belowInflation"))
+      : (isAbove ? t("portfolio.benchmark.aboveBenchmark") : t("portfolio.benchmark.belowBenchmark")),
+    portfolioReturnPct: portfolioReturn * 100,
+    benchmarkReturnPct: benchmarkReturn * 100,
+    resultPct: result * 100,
+    isAbove,
+  };
+}
+
 function formatCompactNumber(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
@@ -1914,7 +2031,3 @@ function buildAssetCategorySummary(holdings, totalValue) {
     weight: totalValue > 0 ? (item.value / totalValue) * 100 : 0,
   }));
 }
-
-
-
-

@@ -123,6 +123,16 @@ export async function getFundamentalHistory(instrumentCode) {
   }
 }
 
+export async function getBenchmarkComparison(params = {}) {
+  try {
+    const res = await axiosClient.get("/api/v1/technical-analysis/benchmark", { params });
+    return res.data?.data ?? res.data;
+  } catch (err) {
+    console.error("Benchmark karşılaştırma alınamadı:", err?.response?.status ?? err.message);
+    throw err;
+  }
+}
+
 export async function getFinancialData(instrumentCode, periodType = "ANNUAL") {
   try {
     const res = await axiosClient.get(`/api/v1/analysis/fundamental/${encodeURIComponent(instrumentCode)}/financials`, {

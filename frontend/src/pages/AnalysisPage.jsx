@@ -9,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { addWatchlistItem, removeWatchlistItem } from "../api/watchlistApi";
 import { watchlistKeys } from "../api/queryKeys";
 import { useUserWatchlist } from "../hooks/useWatchlistQueries";
-import { useComparisonAnalysis, useMarketHistory, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
+import { useBenchmarkComparison, useComparisonAnalysis, useMarketHistory, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
 import useToast from "../hooks/useToast";
 import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPanel";
 import AnalysisSymbolPicker from "../components/analysis/AnalysisSymbolPicker";
@@ -20,6 +20,7 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { formatInstrumentCode, getFxCodeLabel } from "../utils/instrumentUtils";
+import { isPointBasedInstrument } from "../utils/formatters";
 
 const DEFAULT_ANALYSIS_INDICATORS_PARAM = DEFAULT_INDICATORS.join(",");
 const AdvancedChart = lazy(() => import("../components/analysis/AdvancedChart"));
@@ -34,13 +35,11 @@ export default function AnalysisPage() {
   const [searchParams] = useSearchParams();
   const routeInstrumentType = String(searchParams.get("type") || "").trim().toUpperCase();
   const [primarySymbol, setPrimarySymbol] = useState(() => searchParams.get("symbol") || "");
-  const [selectedSymbols, setSelectedSymbols] = useState(() => {
-    const sym = searchParams.get("symbol");
-    return sym ? [sym] : [];
-  });
   const [activeRange, setActiveRange] = useState("3M");
   const [dateRange, setDateRange] = useState(() => buildPresetRange(90));
-  const [comparisonMode, setComparisonMode] = useState("normalized");
+  const [comparisonMode, setComparisonMode] = useState("benchmark");
+  const [benchmarkCode, setBenchmarkCode] = useState("CPI_TR");
+  const [benchmarkType, setBenchmarkType] = useState("MACRO");
   const [chartMode, setChartMode] = useState(() => (searchParams.get("tool") ? "advanced" : "simple"));
   const [fundamentalsOpen, setFundamentalsOpen] = useState(false);
   const [noteAdding, setNoteAdding] = useState(false);
@@ -51,6 +50,7 @@ export default function AnalysisPage() {
   const initialHighlightTool = searchParams.get("tool") || null;
   const presetPrice = searchParams.get("preset") ? Number(searchParams.get("preset")) : null;
   const isSimpleChartMode = chartMode === "simple";
+  const isComparisonMode = chartMode === "comparison";
 
   const { data: rawQuotes = [], isLoading: quotesLoading, error: quotesQueryError } = useMarketQuotes();
   const quotes = useMemo(() => (Array.isArray(rawQuotes) ? rawQuotes : []), [rawQuotes]);
@@ -66,6 +66,7 @@ export default function AnalysisPage() {
     () => buildInstrumentContext(primarySymbol, primaryQuote, i18n.resolvedLanguage),
     [primarySymbol, primaryQuote, i18n.resolvedLanguage],
   );
+  const primaryIsPointBased = isPointBasedInstrument(primaryQuote);
   const quotesError = quotesQueryError ? extractErrorMessage(quotesQueryError, t("analysis.quotesError")) : "";
 
   const favoriteCandidates = useMemo(() => {
@@ -83,11 +84,9 @@ export default function AnalysisPage() {
   const isFavorite = !!favoriteItem;
   const favoriteItemId = favoriteItem?.id;
 
-
   useEffect(() => {
     if (quotes.length > 0 && !primarySymbol) {
       setPrimarySymbol(quotes[0]?.symbol || "");
-      setSelectedSymbols((current) => (current.length > 0 ? current : quotes[0]?.symbol ? [quotes[0].symbol] : []));
     }
   }, [quotes, primarySymbol]);
 
@@ -104,9 +103,10 @@ export default function AnalysisPage() {
   const { data: analysis = null, isLoading: analysisLoading, error: analysisQueryError } = useTechnicalAnalysis(
     primaryApiSymbol,
     analysisParams,
-    { enabled: !!(primaryApiSymbol && dateRange.from && dateRange.to) },
+    { enabled: !isComparisonMode && !!(primaryApiSymbol && dateRange.from && dateRange.to) },
   );
   const analysisError = analysisQueryError ? resolveAnalysisErrorMessage(analysisQueryError, t) : "";
+
   const historyParams = useMemo(
     () => ({
       from: dateRange.from,
@@ -122,37 +122,43 @@ export default function AnalysisPage() {
     { enabled: isSimpleChartMode && !!(primaryApiSymbol && dateRange.from && dateRange.to) },
   );
 
-  const comparisonSuggestions = useMemo(
-    () => deriveComparisonSuggestions(quotes, primarySymbol).map((symbol) => ({
-      symbol,
-      label: resolveChipLabel(symbol, quotes),
-    })),
-    [quotes, primarySymbol],
-  );
-
-  const comparisonParams = useMemo(
-    () =>
-      selectedSymbols.length >= 2 && dateRange.from && dateRange.to
-        ? {
-            symbols: selectedSymbols
-              .map((symbol) => resolveApiSymbol(
-                symbol,
-                quotes.find((q) => q.symbol === symbol || q.code === symbol),
-                symbol === primarySymbol ? routeInstrumentType : "",
-              ))
-              .join(","),
-            from: dateRange.from,
-            to: dateRange.to,
-        }
-        : null,
-    [selectedSymbols, dateRange, quotes, primarySymbol, routeInstrumentType],
-  );
+  // For price-mode instrument comparison in comparison workspace
+  const comparisonParams = useMemo(() => {
+    if (!isComparisonMode || comparisonMode !== "price" || benchmarkType !== "INSTRUMENT") return null;
+    if (!primaryApiSymbol || !benchmarkCode || !dateRange.from || !dateRange.to) return null;
+    const benchmarkQuote = quotes.find((q) => q.symbol === benchmarkCode || q.code === benchmarkCode);
+    const resolvedBenchmarkCode = resolveApiSymbol(benchmarkCode, benchmarkQuote, "");
+    return {
+      symbols: [primaryApiSymbol, resolvedBenchmarkCode || benchmarkCode].join(","),
+      from: dateRange.from,
+      to: dateRange.to,
+    };
+  }, [isComparisonMode, comparisonMode, benchmarkType, primaryApiSymbol, benchmarkCode, dateRange, quotes]);
 
   const { data: comparison = null, isLoading: comparisonLoading, error: comparisonQueryError } = useComparisonAnalysis(
     comparisonParams,
     { enabled: !!comparisonParams },
   );
   const comparisonError = comparisonQueryError ? resolveComparisonErrorMessage(comparisonQueryError, t) : "";
+
+  const benchmarkParams = useMemo(
+    () =>
+      isComparisonMode
+      && benchmarkType !== "SECTOR"
+      && primaryApiSymbol
+      && benchmarkCode
+      && benchmarkType
+      && dateRange.from
+      && dateRange.to
+        ? { baseCode: primaryApiSymbol, benchmarkCode, benchmarkType, from: dateRange.from, to: dateRange.to }
+        : null,
+    [isComparisonMode, benchmarkType, primaryApiSymbol, benchmarkCode, dateRange],
+  );
+  const { data: benchmarkData = null, isLoading: benchmarkLoading, error: benchmarkQueryError } = useBenchmarkComparison(
+    benchmarkParams,
+    { enabled: !!benchmarkParams },
+  );
+  const benchmarkError = benchmarkQueryError ? extractErrorMessage(benchmarkQueryError, t("analysis.benchmarkError")) : "";
 
   const analysisPoints = useMemo(
     () => (Array.isArray(analysis?.points) ? analysis.points : []),
@@ -171,7 +177,7 @@ export default function AnalysisPage() {
   const simpleChartLoading = analysisLoading || (!hasAnalysisPoints && historyLoading);
   const simpleChartError = !hasChartData ? analysisError : "";
   const displayChartData = useMemo(() => {
-    if (currency === "TRY") return quoteAlignedChartData;
+    if (currency === "TRY" || primaryIsPointBased) return quoteAlignedChartData;
     return quoteAlignedChartData.map((point) => ({
       ...point,
       open: point.open != null ? convertAmount(point.open) : null,
@@ -183,31 +189,19 @@ export default function AnalysisPage() {
       sma50: point.sma50 != null ? convertAmount(point.sma50) : null,
       rsi14: point.rsi14,
     }));
-  }, [quoteAlignedChartData, currency, convertAmount]);
+  }, [quoteAlignedChartData, currency, convertAmount, primaryIsPointBased]);
 
   function handlePrimaryChange(symbol) {
     setPrimarySymbol(symbol);
-    setSelectedSymbols(symbol ? [symbol] : []);
   }
 
-  function handleToggleComparisonSymbol(symbol) {
-    setSelectedSymbols((current) => {
-      if (current.includes(symbol)) {
-        const next = current.filter((item) => item !== symbol);
-        if (primarySymbol === symbol) {
-          setPrimarySymbol(next[0] || "");
-        }
-        return next;
-      }
-
-      const next = [...current, symbol].slice(0, 5);
-      if (!primarySymbol) {
-        setPrimarySymbol(symbol);
-      }
-      return next;
-    });
-    if (!selectedSymbols.includes(symbol)) {
-      showToast("success", t("analysis.comparisonAdded", { defaultValue: "Enstrüman karşılaştırmaya eklendi" }));
+  function handleBenchmarkChange(code, type) {
+    setBenchmarkCode(code);
+    setBenchmarkType(type);
+    if (type === "MACRO") {
+      setComparisonMode("benchmark");
+    } else if (type !== "INSTRUMENT" && comparisonMode === "price") {
+      setComparisonMode("normalized");
     }
   }
 
@@ -360,16 +354,12 @@ export default function AnalysisPage() {
                   <AnalysisSymbolPicker
                     quotes={quotes}
                     primarySymbol={primarySymbol}
-                    selectedSymbols={selectedSymbols}
                     primaryContext={primaryContext}
                     primaryQuote={primaryQuote}
-                    currencyToggle={<CurrencyToggle className="analysis-currency-toggle" />}
+                    currencyToggle={!primaryIsPointBased && !isComparisonMode ? <CurrencyToggle className="analysis-currency-toggle" /> : null}
                     chartMode={chartMode}
-                    showComparison
-                    showInlineComparisonChips={false}
                     onChartModeChange={setChartMode}
                     onPrimaryChange={handlePrimaryChange}
-                    onToggleComparisonSymbol={handleToggleComparisonSymbol}
                     isFavorite={isFavorite}
                     favoriteBusy={favoriteBusy}
                     onFavoriteToggle={handleFavoriteToggle}
@@ -377,21 +367,22 @@ export default function AnalysisPage() {
 
                   <div className="analysis-terminal-body">
                     {isSimpleChartMode ? (
-                        <SimpleAnalysisChart
-                          activeRange={activeRange}
-                          onRangeChange={handleRangeChange}
-                          loading={simpleChartLoading}
-                          error={simpleChartError}
-                          chartData={displayChartData}
-                          presets={ANALYSIS_RANGE_PRESETS}
-                          quote={primaryQuote}
-                          analysis={analysis}
-                          primaryContext={primaryContext}
-                          onOpenAdvanced={() => setChartMode("advanced")}
-                          onAddToNotes={handleAddToNotes}
-                          noteAdding={noteAdding}
-                        />
-                    ) : (
+                      <SimpleAnalysisChart
+                        activeRange={activeRange}
+                        onRangeChange={handleRangeChange}
+                        loading={simpleChartLoading}
+                        error={simpleChartError}
+                        chartData={displayChartData}
+                        presets={ANALYSIS_RANGE_PRESETS}
+                        quote={primaryQuote}
+                        analysis={analysis}
+                        primaryContext={primaryContext}
+                        onOpenAdvanced={() => setChartMode("advanced")}
+                        onAddToNotes={handleAddToNotes}
+                        noteAdding={noteAdding}
+                      />
+                    ) : null}
+                    {chartMode === "advanced" ? (
                       <Suspense fallback={<LoadingSpinner label={t("analysis.chartLoading")} />}>
                         <AdvancedChart
                           instrumentCode={primaryApiSymbol}
@@ -407,7 +398,25 @@ export default function AnalysisPage() {
                           noteAdding={noteAdding}
                         />
                       </Suspense>
-                    )}
+                    ) : null}
+                    {isComparisonMode ? (
+                      <AnalysisComparisonPanel
+                        comparison={comparison}
+                        loading={comparisonLoading}
+                        error={comparisonError}
+                        mode={comparisonMode}
+                        onModeChange={setComparisonMode}
+                        primarySymbol={primarySymbol}
+                        primaryQuote={primaryQuote}
+                        quotes={quotes}
+                        benchmarkData={benchmarkData}
+                        benchmarkLoading={benchmarkLoading}
+                        benchmarkError={benchmarkError}
+                        benchmarkCode={benchmarkCode}
+                        benchmarkType={benchmarkType}
+                        onBenchmarkChange={handleBenchmarkChange}
+                      />
+                    ) : null}
                   </div>
                 </div>
               ) : (
@@ -417,7 +426,7 @@ export default function AnalysisPage() {
               )}
             </section>
 
-            {primarySymbol && ["STOCK", "FUND"].includes(primaryQuote?.instrumentType) ? (
+            {primarySymbol && !isComparisonMode && ["STOCK", "FUND"].includes(primaryQuote?.instrumentType) ? (
               <section className="panel-surface analysis-fundamentals-shell">
                 <button
                   type="button"
@@ -441,21 +450,6 @@ export default function AnalysisPage() {
                 ) : null}
               </section>
             ) : null}
-
-            {primarySymbol ? (
-              <AnalysisComparisonPanel
-                loading={comparisonLoading}
-                error={comparisonError}
-                comparison={comparison}
-                mode={comparisonMode}
-                onModeChange={setComparisonMode}
-                suggestions={comparisonSuggestions}
-                selectedSymbols={selectedSymbols}
-                primarySymbol={primarySymbol}
-                quotes={quotes}
-                onToggleSymbol={handleToggleComparisonSymbol}
-              />
-            ) : null}
           </div>
         </section>
       ) : null}
@@ -472,7 +466,7 @@ function buildInstrumentContext(primarySymbol, primaryQuote, locale) {
   return {
     symbolLine,
     title: resolveContextTitle(primaryQuote, displayCode, normalizedType, locale),
-    metaLine: [normalizedType, normalizedSource].filter(Boolean).join(" \u2022 "),
+    metaLine: [normalizedType, normalizedSource].filter(Boolean).join(" • "),
   };
 }
 
@@ -487,37 +481,6 @@ function resolveContextTitle(primaryQuote, displayCode, normalizedType, locale) 
   }
 
   return displayCode;
-}
-
-function deriveComparisonSuggestions(quotes, primarySymbol, limit = 4) {
-  const seenTypes = new Set();
-  const result = [];
-
-  for (const quote of quotes) {
-    const sym = quote.symbol || quote.code;
-    if (!sym || sym === primarySymbol) continue;
-    const type = String(quote.instrumentType || "").toUpperCase();
-    if (!seenTypes.has(type)) {
-      result.push(sym);
-      seenTypes.add(type);
-    }
-    if (result.length >= limit) break;
-  }
-
-  if (result.length < limit) {
-    for (const quote of quotes) {
-      const sym = quote.symbol || quote.code;
-      if (!sym || sym === primarySymbol || result.includes(sym)) continue;
-      result.push(sym);
-      if (result.length >= limit) break;
-    }
-  }
-
-  return result;
-}
-
-function resolveChipLabel(symbol, quotes) {
-  return quotes.find((item) => item.symbol === symbol)?.code || formatInstrumentCode(symbol) || symbol;
 }
 
 function resolveAnalysisErrorMessage(error, t) {
@@ -595,9 +558,7 @@ function resolveApiSymbol(symbol, quote, fallbackInstrumentType = "") {
   return rawSymbol;
 }
 
-// Backend WatchlistService.normalizeSymbol ile birebir aynı olmalı:
-// instrumentCode kaydedilirken tüm noktalama silinip uppercase yapılıyor
-// (örn. "TCMB:AUD:SELL" -> "TCMBAUDSELL"). Eşleşme için aynı dönüşüm uygulanır.
+// Backend WatchlistService.normalizeSymbol ile birebir aynı olmalı
 function normalizeWatchlistCode(value) {
   if (value == null) return "";
   return String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();

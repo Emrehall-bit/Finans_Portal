@@ -16,7 +16,7 @@ import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { useTheme } from "../../theme/ThemeContext";
-import { formatCurrency, formatNumber } from "../../utils/formatters";
+import { formatInstrumentValue, formatNumber, isPointBasedInstrument } from "../../utils/formatters";
 import { useCurrency } from "../../currency/CurrencyContext";
 import { formatAxisNumber } from "./analysisUtils";
 import {
@@ -47,6 +47,7 @@ export default function SimpleAnalysisChart({
   const { chartTheme } = useTheme();
   const { convertAmount, currency } = useCurrency();
   const instrumentType = quote?.instrumentType;
+  const isPointBased = isPointBasedInstrument(quote);
   const hasData = chartData.length > 0;
   const latestPoint = hasData ? chartData.at(-1) : null;
   const previousPoint = chartData.length > 1 ? chartData.at(-2) : null;
@@ -55,7 +56,7 @@ export default function SimpleAnalysisChart({
     [analysis, chartData],
   );
   const rawLastPrice = firstFinite(resolveQuoteLatestPrice(quote), analysis?.latestPrice);
-  const lastPrice = rawLastPrice != null ? convertAmount(rawLastPrice) : latestPoint?.close;
+  const lastPrice = rawLastPrice != null ? (isPointBased ? rawLastPrice : convertAmount(rawLastPrice)) : latestPoint?.close;
   const dailyChange = firstFinite(quote?.changeRate, analysis?.latestChangePct, derivePercentChange(previousPoint?.close, latestPoint?.close));
   const volumeValue = firstFinite(
     quote?.volume,
@@ -86,7 +87,7 @@ export default function SimpleAnalysisChart({
     [analysis, chartData, latestRsi, activeRange, instrumentType],
   );
   const insufficientIndicators = useMemo(() => detectInsufficientChartIndicators(chartData), [chartData]);
-  const axisLabel = currency === "USD" ? "$" : "\u20ba";
+  const axisLabel = isPointBased ? "" : currency === "USD" ? "$" : "\u20ba";
 
   const [scaledDomain, setScaledDomain] = useState(null);
 
@@ -117,7 +118,9 @@ export default function SimpleAnalysisChart({
   const metrics = [
     {
       label: t("instrumentDetail.latestPrice"),
-      value: lastPrice != null ? formatCurrency(lastPrice, currency) : "-",
+      value: lastPrice != null
+        ? formatInstrumentValue(lastPrice, { instrumentType, displayUnit: quote?.displayUnit, currency })
+        : "-",
       tone: "neutral",
       sparkTone: "positive",
     },
@@ -216,9 +219,9 @@ export default function SimpleAnalysisChart({
                   width={78}
                   tick={{ fontSize: 12 }}
                   tickMargin={12}
-                  tickFormatter={(value) => `${axisLabel}${formatAxisNumber(value)}`}
+                  tickFormatter={(value) => formatChartPriceValue(value, axisLabel, quote)}
                 />
-                <Tooltip content={<SimpleTooltip chartTheme={chartTheme} axisLabel={axisLabel} />} />
+                <Tooltip content={<SimpleTooltip chartTheme={chartTheme} axisLabel={axisLabel} quote={quote} />} />
                 <Area type="monotone" dataKey="close" stroke="none" fill="url(#simple-analysis-fill)" activeDot={false} />
                 <Line type="monotone" dataKey="close" name={t("instrumentDetail.price")} stroke="#2563eb" strokeWidth={2.8} dot={false} activeDot={{ r: 5, fill: "#2563eb", stroke: "#fff", strokeWidth: 2 }} />
               </LineChart>
@@ -306,11 +309,11 @@ export default function SimpleAnalysisChart({
               <div className="simple-sr-card">
                 <div className={`simple-sr-row ${supportResistance.levelMode === "closeBand" ? "simple-sr-row--band" : "simple-sr-row--resistance"}`}>
                   <span>{supportResistance.levelMode === "closeBand" ? t("analysis.chart.techPanel.rangeHigh") : t("analysis.chart.techPanel.resistance")}</span>
-                  <strong>{axisLabel}{formatNumber(supportResistance.resistance, 2)}</strong>
+                  <strong>{formatChartPointValue(supportResistance.resistance, axisLabel, quote)}</strong>
                 </div>
                 <div className={`simple-sr-row ${supportResistance.levelMode === "closeBand" ? "simple-sr-row--band" : "simple-sr-row--support"}`}>
                   <span>{supportResistance.levelMode === "closeBand" ? t("analysis.chart.techPanel.rangeLow") : t("analysis.chart.techPanel.support")}</span>
-                  <strong>{axisLabel}{formatNumber(supportResistance.support, 2)}</strong>
+                  <strong>{formatChartPointValue(supportResistance.support, axisLabel, quote)}</strong>
                 </div>
               </div>
             ) : null}
@@ -329,6 +332,7 @@ export default function SimpleAnalysisChart({
                   latestRsi,
                   supportResistance,
                   axisLabel,
+                  quote,
                 }))}
               >
                 <BookmarkPlus size={15} strokeWidth={2.2} />
@@ -407,7 +411,7 @@ function TooltipHint({ text }) {
 }
 
 
-function SimpleTooltip({ active, payload, label, chartTheme, axisLabel }) {
+function SimpleTooltip({ active, payload, label, chartTheme, axisLabel, quote }) {
   if (!active || !payload?.length) {
     return null;
   }
@@ -428,7 +432,7 @@ function SimpleTooltip({ active, payload, label, chartTheme, axisLabel }) {
       {rows.map((item) => (
         <div key={item.dataKey} className="chart-tooltip-row">
           <span>{item.name}</span>
-          <strong>{axisLabel}{formatAxisNumber(item.value)}</strong>
+          <strong>{formatChartPriceValue(item.value, axisLabel, quote)}</strong>
         </div>
       ))}
     </div>
@@ -673,9 +677,9 @@ function sparkColor(tone) {
   }
 }
 
-function buildAnalysisNoteContent({ primaryContext, activeRange, lastPrice, rangeChangePct, summary, latestRsi, supportResistance, axisLabel }) {
+function buildAnalysisNoteContent({ primaryContext, activeRange, lastPrice, rangeChangePct, summary, latestRsi, supportResistance, axisLabel, quote }) {
   const val = (v, digits = 2) =>
-    v == null || !Number.isFinite(Number(v)) ? "-" : `${axisLabel}${Number(v).toFixed(digits)}`;
+    v == null || !Number.isFinite(Number(v)) ? "-" : formatChartPointValue(v, axisLabel, quote, digits);
   const pct = (v) =>
     v == null || !Number.isFinite(Number(v)) ? "-" : `${Number(v) >= 0 ? "+" : ""}${Number(v).toFixed(2)}%`;
   const str = (v) => (v != null && String(v).trim() ? String(v).trim() : "-");
@@ -698,5 +702,19 @@ function buildAnalysisNoteContent({ primaryContext, activeRange, lastPrice, rang
     "",
     `Tarih: ${date}`,
   ].filter((line) => line !== null).join("\n");
+}
+
+function formatChartPriceValue(value, axisLabel, quote = null) {
+  if (quote && isPointBasedInstrument(quote)) {
+    return formatInstrumentValue(value, { instrumentType: "INDEX", displayUnit: "POINT", includeUnit: false });
+  }
+  return `${axisLabel}${formatAxisNumber(value)}`;
+}
+
+function formatChartPointValue(value, axisLabel, quote = null, digits = 2) {
+  if (quote && isPointBasedInstrument(quote)) {
+    return formatInstrumentValue(value, { instrumentType: "INDEX", displayUnit: "POINT", maximumFractionDigits: digits });
+  }
+  return `${axisLabel}${formatNumber(value, digits)}`;
 }
 

@@ -16,7 +16,7 @@
   },
   "common": {
     "language": "Language",
-    "turkish": "Türkçe",
+    "turkish": "TÃ¼rkÃ§e",
     "english": "English",
     "save": "Save",
     "cancel": "Cancel",
@@ -44,7 +44,7 @@
     "dashboard": "Dashboard",
     "markets": "Markets",
     "portfolio": "Portfolio",
-    "analysis": "Analysis",
+    "analysis": "Analysis & Comparison",
     "news": "News",
     "alerts": "Alerts / Notes",
     "simulation": "Simulation",
@@ -153,8 +153,8 @@
       "alertsTitle": "Active alerts",
       "alertsSubtitle": "Rules waiting to trigger",
       "alertsTrend": "Warning",
-      "addAlert": "Add Alert →",
-      "addPortfolio": "Add Portfolio →",
+      "addAlert": "Add Alert â†’",
+      "addPortfolio": "Add Portfolio â†’",
       "heatmapTitle": "Market Heatmap",
       "marketTabs": {
         "gainers": "Top gainers",
@@ -231,7 +231,7 @@
       "title": "Portfolio Summary",
       "empty": "No holdings in this portfolio yet.",
       "units": "units",
-      "goPortfolio": "Go to Portfolio Management →"
+      "goPortfolio": "Go to Portfolio Management â†’"
     },
     "aiDrawer": {
       "title": "Market Analysis",
@@ -309,7 +309,7 @@
       "globalMarkets": "Global Markets"
     },
     "filterProviders": {
-      "aa": "Anadolu Ajansı",
+      "aa": "Anadolu AjansÄ±",
       "cnbc": "CNBC",
       "guardian": "The Guardian",
       "kap": "KAP",
@@ -318,7 +318,7 @@
     "openNews": "Open news",
     "openDisclosure": "Open disclosure",
     "readAtSource": "Read at source",
-    "viewOfficialKap": "Open Official KAP Disclosure ↗",
+    "viewOfficialKap": "Open Official KAP Disclosure â†—",
     "addFavorite": "Add news to favorites",
     "removeFavorite": "Remove news from favorites",
     "favoriteAdded": "News added to favorites.",
@@ -389,6 +389,65 @@
     "listTitle": "Market flow",
     "tableView": "Table",
     "cardView": "Cards",
+    "filters": {
+      "title": "Filters",
+      "basic": "Basic",
+      "advanced": "Advanced",
+      "index": "Index",
+      "sector": "Sector",
+      "sorting": "Sorting",
+      "clear": "Clear",
+      "all": "All",
+      "compare": "Compare",
+      "differencePercent": "Sell Diff",
+      "noFundamentals": "No fundamentals",
+      "metrics": {
+        "debtEquity": "Debt/Equity",
+        "revenueGrowth": "Rev. Growth",
+        "marketCap": "Market Cap"
+      },
+      "sortOptions": {
+        "name": "By name",
+        "priceDesc": "Price high to low",
+        "priceAsc": "Price low to high",
+        "changeDesc": "Daily change high to low",
+        "changeAsc": "Daily change low to high",
+        "topGainers": "Top Gainers",
+        "topLosers": "Top Losers",
+        "lowestPe": "Lowest P/E",
+        "lowestPb": "Lowest P/B",
+        "highestRoe": "Highest ROE",
+        "highestRoa": "Highest ROA",
+        "fastestGrowing": "Fastest Growing",
+        "lowestDebt": "Lowest Debt",
+        "largestMarketCap": "Largest Market Cap"
+      },
+      "stockSectors": {
+        "BANKING": "Banking",
+        "FINANCIALS": "Financials",
+        "TECHNOLOGY_DEFENSE": "Technology & Defense",
+        "TELECOM": "Telecom",
+        "TRANSPORT_TOURISM": "Transportation & Tourism",
+        "HEALTH_SPORTS": "Health & Sports",
+        "ENERGY": "Energy",
+        "CHEMICALS_PETROLEUM": "Chemicals & Petroleum",
+        "INDUSTRIAL": "Industrials",
+        "FOOD_RETAIL": "Food & Retail"
+      },
+      "chips": {
+        "priceGreater": "Price > {{value}}",
+        "priceLess": "Price < {{value}}",
+        "dailyGreater": "Daily > {{value}}%",
+        "dailyLess": "Daily < {{value}}%",
+        "debtLess": "Debt/Equity < {{value}}",
+        "revenueGrowthGreater": "Revenue growth > {{value}}",
+        "netProfitGrowthGreater": "Net profit growth > {{value}}",
+        "sector": "Sector: {{value}}",
+        "market": "Market: {{value}}",
+        "withFundamentals": "Has fundamentals",
+        "index": "Index: {{value}}"
+      }
+    },
     "loading": "Loading market data...",
     "loadError": "Failed to load market data.",
     "emptyTitle": "No market data found",
@@ -409,7 +468,9 @@
     },
     "fundColumns": {
       "umbrellaType": "Umbrella Fund Type",
+      "fundType": "Fund Type",
       "risk": "Risk",
+      "noMetadata": "No fund metadata",
       "getiri1a": "1 Month",
       "getiri3a": "3 Months",
       "getiri6a": "6 Months",
@@ -513,6 +574,23 @@
     "historyTitle": "Performance chart",
     "historyEmptyTitle": "No performance history",
     "historyEmptyDescription": "When historical performance is available for this portfolio, it will appear here as a chart.",
+    "benchmark": {
+      "eyebrow": "Benchmark",
+      "title": "Portfolio vs inflation",
+      "macroDescription": "The real value of your portfolio return after CPI inflation for the same period.",
+      "relativeDescription": "Your portfolio return compared with the selected reference.",
+      "loading": "Loading benchmark data...",
+      "empty": "No benchmark data found for this period.",
+      "portfolioReturn": "Portfolio return",
+      "inflation": "CPI",
+      "realReturn": "Real return",
+      "relativeReturn": "Relative performance",
+      "status": "Status",
+      "aboveInflation": "Above inflation",
+      "belowInflation": "Below inflation",
+      "aboveBenchmark": "Above reference",
+      "belowBenchmark": "Below reference"
+    },
     "holdingsEyebrow": "Asset Table",
     "holdingsTitle": "Holdings",
     "emptyHoldingsTitle": "No assets",
@@ -554,8 +632,8 @@
     }
   },
   "analysis": {
-    "eyebrow": "Technical Analysis",
-    "title": "Analysis Lab",
+    "eyebrow": "Analysis & Comparison",
+    "title": "Analysis & Comparison",
     "description": "Manage single-instrument analysis and multi-symbol comparison in an isolated workspace.",
     "quotesLoading": "Loading instrument list...",
     "quotesError": "Failed to load instrument list.",
@@ -576,8 +654,49 @@
       "modeLabel": "Comparison mode",
       "normalized": "Normalized",
       "price": "Price",
+      "benchmark": "Relative / Real",
+      "noData": "No comparison data available for this period.",
+      "benchmarkTitle": "Inflation & Benchmark comparison",
       "simpleStripHint": "Compare instruments for a better analysis.",
       "activeCount": "{{count}} active"
+    },
+    "benchmarkError": "Benchmark data could not be loaded.",
+    "benchmark": {
+      "loading": "Loading benchmark...",
+      "selectInstrument": "Select a benchmark and set the date range.",
+      "referenceType": "Reference type",
+      "reference": "Reference",
+      "searchPlaceholder": "Search instrument...",
+      "noReferenceResults": "No suitable reference found.",
+      "macroDescription": "When CPI is selected, the difference is calculated with the real return formula.",
+      "relativeDescription": "For instruments and indices, the difference is base return minus benchmark return.",
+      "types": {
+        "MACRO": "Inflation",
+        "INDEX": "Index",
+        "INSTRUMENT": "Instrument",
+        "SECTOR": "Sector"
+      },
+      "sectorOnly": "Sector comparison is only available for stocks.",
+      "sectorEmpty": "Sector comparison could not be generated for this stock.",
+      "sectorLabel": "Sector Average",
+      "baseReturn": "Nominal Return",
+      "inflationReturn": "Inflation Return",
+      "benchmarkReturn": "Benchmark Return",
+      "realReturn": "Real Return",
+      "relativeReturn": "Relative Return",
+      "status": "Status",
+      "statuses": {
+        "ABOVE_INFLATION": "Above inflation",
+        "BELOW_INFLATION": "Below inflation",
+        "ABOVE_BENCHMARK": "Above benchmark",
+        "BELOW_BENCHMARK": "Below benchmark"
+      },
+      "presets": {
+        "tufe": "CPI",
+        "bist100": "BIST100",
+        "bist30": "BIST30",
+        "gold": "Gold"
+      }
     },
     "insight": {
       "eyebrow": "Indicators",
@@ -609,6 +728,10 @@
     },
     "simpleChart": "Simple Chart",
     "advancedChart": "Advanced Chart",
+    "comparisonChart": "Comparison",
+    "comparisonWorkspace": {
+      "summaryTitle": "Comparison Summary"
+    },
     "comparisonEmpty": {
       "title": "Add a second instrument for comparison",
       "description": "Tap one of the suggestions below, or use + Compare in the toolbar to add a symbol.",
@@ -1145,20 +1268,20 @@
       "commodityDerive": {
         "eyebrow": "Commodity calc",
         "title": "Calculate Commodities",
-        "description": "Calculate Turkish gold/silver commodities (Gram Altın, Çeyrek, etc.) from GOLD_USD, SILVER_USD and USDTRY.",
+        "description": "Calculate Turkish gold/silver commodities (Gram AltÄ±n, Ã‡eyrek, etc.) from GOLD_USD, SILVER_USD and USDTRY.",
         "action": "Calculate Commodities"
       },
       "internalCommodityHistory": {
-        "eyebrow": "Step 1 — Raw Inputs",
+        "eyebrow": "Step 1 â€” Raw Inputs",
         "title": "GOLD_USD & SILVER_USD History Backfill",
         "description": "Fetch GC=F and SI=F daily OHLCV bars from Yahoo Finance and persist ONE_DAY INTERNAL history for GOLD_USD and SILVER_USD. Required before derived commodity history can be generated.",
         "action": "Fetch Raw Commodity History",
         "daysPlaceholder": "Days (e.g. 365)"
       },
       "commodityHistory": {
-        "eyebrow": "Step 2 — Derived",
+        "eyebrow": "Step 2 â€” Derived",
         "title": "Derived Commodity History Backfill",
-        "description": "Match GOLD_USD + USDTRY and SILVER_USD + USDTRY records by day and generate CALCULATED ONE_DAY history for Gram Altın, Çeyrek Altın, Yarım Altın, Tam Altın, Cumhuriyet Altını and Gümüş Gram.",
+        "description": "Match GOLD_USD + USDTRY and SILVER_USD + USDTRY records by day and generate CALCULATED ONE_DAY history for Gram AltÄ±n, Ã‡eyrek AltÄ±n, YarÄ±m AltÄ±n, Tam AltÄ±n, Cumhuriyet AltÄ±nÄ± and GÃ¼mÃ¼ÅŸ Gram.",
         "action": "Generate Derived History",
         "daysPlaceholder": "Days (e.g. 365)"
       },
@@ -1426,7 +1549,7 @@
         "description": "This action is irreversible. All your data will be permanently deleted.",
         "action": "Delete Account",
         "confirmTitle": "Permanently delete account",
-        "confirmDescription": "This cannot be undone. Type \"onaylıyorum.\" below to continue.",
+        "confirmDescription": "This cannot be undone. Type \"onaylÄ±yorum.\" below to continue.",
         "confirmLabel": "Confirmation phrase",
         "confirmAction": "Permanently Delete My Account",
         "deleting": "Deleting...",
