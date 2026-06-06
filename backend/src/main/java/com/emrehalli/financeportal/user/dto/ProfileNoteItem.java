@@ -20,4 +20,6 @@ public class ProfileNoteItem {
     private String createdAt;
 
     private String updatedAt;
+
+    private Boolean pinned;
 }

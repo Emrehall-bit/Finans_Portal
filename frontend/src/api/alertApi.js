@@ -12,7 +12,12 @@ export async function createAlert(userId, payload) {
   return normalizeApiResponse(response).data ?? null;
 }
 
-export async function cancelAlert(userId, alertId) {
-  const response = await axiosClient.patch(`${API_CONFIG.ENDPOINTS.alerts}/${userId}/${alertId}/cancel`);
+export async function updateAlert(userId, alertId, payload) {
+  const response = await axiosClient.put(`${API_CONFIG.ENDPOINTS.alerts}/${userId}/${alertId}`, payload);
+  return normalizeApiResponse(response).data ?? null;
+}
+
+export async function deleteAlert(userId, alertId) {
+  const response = await axiosClient.delete(`${API_CONFIG.ENDPOINTS.alerts}/${userId}/${alertId}`);
   return normalizeApiResponse(response).success;
 }

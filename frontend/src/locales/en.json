@@ -1488,8 +1488,10 @@
     "creating": "Creating...",
     "createSuccess": "Alert created.",
     "createError": "Alert could not be created.",
-    "cancelSuccess": "Alert deactivated.",
-    "cancelError": "Alert could not be cancelled.",
+    "updateSuccess": "Alert updated.",
+    "updateError": "Alert could not be updated.",
+    "deleteSuccess": "Alert deleted.",
+    "deleteError": "Alert could not be deleted.",
     "cards": {
       "activeTitle": "Active alerts",
       "activeSubtitle": "Rules waiting to trigger",
@@ -1524,17 +1526,24 @@
     "status": {
       "active": "Active"
     },
-    "deactivate": "Deactivate",
+    "editAlert": "Edit",
+    "deleteAlert": "Delete",
+    "editModalEyebrow": "Edit Alert",
+    "editModalTitle": "Update price rule",
+    "updating": "Updating...",
     "noSource": "No source",
     "triggeredLabel": "{{symbol}} alert triggered",
+    "newAlarm": "New Alert",
+    "popular": "Popular instruments",
     "modalEyebrow": "Create Alert",
     "modalTitle": "New price rule",
     "searchInstrument": "Search instrument",
-    "searchPlaceholder": "BTCUSDT, THYAO, USDTRY...",
-    "thresholdValue": "Threshold value",
+    "searchPlaceholder": "Search instrument",
+    "thresholdValue": "Target price",
     "selectedSymbol": "Selected symbol",
     "lastPrice": "Last price:",
     "noData": "No data",
+    "noInstrumentSelected": "No instrument selected yet",
     "conditions": {
       "above": "If price goes above",
       "below": "If price goes below"
@@ -1548,7 +1557,11 @@
       "saveError": "Note could not be saved",
       "createdAt": "Created",
       "updatedAt": "Updated",
-      "technicalAnalysisNote": "Technical analysis note"
+      "technicalAnalysisNote": "Technical analysis note",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "pinned": "Note pinned.",
+      "unpinned": "Note unpinned."
     }
   },
   "newsDetail": {

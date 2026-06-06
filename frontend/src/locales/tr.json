@@ -1481,8 +1481,10 @@
     "creating": "Oluşturuluyor...",
     "createSuccess": "Alarm oluşturuldu.",
     "createError": "Alarm oluşturulamadı.",
-    "cancelSuccess": "Alarm pasife alındı.",
-    "cancelError": "Alarm iptal edilemedi.",
+    "updateSuccess": "Alarm güncellendi.",
+    "updateError": "Alarm güncellenemedi.",
+    "deleteSuccess": "Alarm silindi.",
+    "deleteError": "Alarm silinemedi.",
     "cards": {
       "activeTitle": "Aktif alarmlar",
       "activeSubtitle": "Tetik bekleyen kurallar",
@@ -1517,17 +1519,24 @@
     "status": {
       "active": "Aktif"
     },
-    "deactivate": "Pasife al",
+    "editAlert": "Düzenle",
+    "deleteAlert": "Sil",
+    "editModalEyebrow": "Alarm Düzenle",
+    "editModalTitle": "Fiyat kuralını güncelle",
+    "updating": "Güncelleniyor...",
     "noSource": "Kaynak yok",
     "triggeredLabel": "{{symbol}} alarmı tetiklendi",
     "modalEyebrow": "Alarm Oluştur",
     "modalTitle": "Yeni fiyat kuralı",
+    "newAlarm": "Yeni Alarm",
+    "popular": "Popüler enstrümanlar",
     "searchInstrument": "Enstrüman ara",
-    "searchPlaceholder": "BTCUSDT, THYAO, USDTRY...",
-    "thresholdValue": "Eşik değer",
+    "searchPlaceholder": "Enstrüman ara",
+    "thresholdValue": "Hedef fiyat",
     "selectedSymbol": "Seçili sembol",
     "lastPrice": "Son fiyat:",
     "noData": "Veri yok",
+    "noInstrumentSelected": "Henüz bir enstrüman seçmediniz",
     "conditions": {
       "above": "Fiyat üstüne çıkarsa",
       "below": "Fiyat altına düşerse"
@@ -1541,7 +1550,11 @@
       "saveError": "Not kaydedilemedi",
       "createdAt": "Oluşturuldu",
       "updatedAt": "Güncellendi",
-      "technicalAnalysisNote": "Teknik analiz notu"
+      "technicalAnalysisNote": "Teknik analiz notu",
+      "pin": "Sabitle",
+      "unpin": "Sabiti kaldır",
+      "pinned": "Not sabitlendi.",
+      "unpinned": "Sabit kaldırıldı."
     }
   },
   "newsDetail": {

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Maximize2, Pencil, Plus, Trash2, X } from "lucide-react";
-import { cancelAlert, createAlert, getUserAlerts } from "../api/alertApi";
+import { Check, Maximize2, Pencil, Pin, Plus, Trash2, X } from "lucide-react";
+import { createAlert, deleteAlert, getUserAlerts, updateAlert } from "../api/alertApi";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
-import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { useMarketQuotes } from "../hooks/useMarketQueries";
 import useToast from "../hooks/useToast";
 import { formatCurrency, formatDateTime, formatNumber } from "../utils/formatters";
+
+const POPULAR_SYMBOLS = ["BTC", "THYAO", "EUR", "USD", "GBP", "TUPRS", "AKBNK"];
 
 export default function AlertsPage() {
   const { t } = useTranslation();
@@ -25,11 +26,19 @@ export default function AlertsPage() {
     conditionType: "ABOVE",
     targetPrice: "",
   });
+  const [editingAlert, setEditingAlert] = useState(null);
+  const [editForm, setEditForm] = useState({ instrumentCode: "", conditionType: "ABOVE", targetPrice: "" });
+  const [editSymbolSearch, setEditSymbolSearch] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
   const { toast, showToast } = useToast();
   const { data: quotes = [], isLoading: quotesLoading } = useMarketQuotes({ enabled: !!userId });
 
   // ── Notes state ──
   const [notes, setNotes] = useState([]);
+  const sortedNotes = useMemo(
+    () => [...notes].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)),
+    [notes],
+  );
   const [addingNote, setAddingNote] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
   const [editingId, setEditingId] = useState(null);
@@ -63,7 +72,6 @@ export default function AlertsPage() {
   }
 
   const activeAlerts = useMemo(() => rows.filter((item) => item.status === "ACTIVE"), [rows]);
-  const passiveAlerts = useMemo(() => rows.filter((item) => item.status === "CANCELLED"), [rows]);
   const triggeredAlerts = useMemo(() => rows.filter((item) => item.status === "TRIGGERED" || item.triggeredAt), [rows]);
 
   const quotePriceMap = useMemo(
@@ -73,7 +81,14 @@ export default function AlertsPage() {
 
   const matchingQuotes = useMemo(() => {
     const query = symbolSearch.trim().toLowerCase();
-    if (!query) return quotes.slice(0, 8);
+    if (!query) {
+      return POPULAR_SYMBOLS
+        .map((kw) => quotes.find((q) => {
+          const primary = formatAlertInstrument(q.symbol, q.source).primary;
+          return primary === kw || primary.startsWith(kw);
+        }))
+        .filter(Boolean);
+    }
     return quotes.filter((item) =>
       item.symbol?.toLowerCase().includes(query) || item.displayName?.toLowerCase().includes(query),
     ).slice(0, 8);
@@ -110,7 +125,6 @@ export default function AlertsPage() {
     event.preventDefault();
     try {
       setSaving(true);
-      setError("");
       await createAlert(userId, {
         instrumentCode: form.instrumentCode,
         conditionType: form.conditionType,
@@ -120,19 +134,54 @@ export default function AlertsPage() {
       closeCreateModal();
       await loadData();
     } catch (err) {
-      setError(extractErrorMessage(err, t("alerts.createError")));
+      showToast("error", extractErrorMessage(err, t("alerts.createError")));
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleCancel(alertId) {
+  function openEditModal(alert) {
+    setEditingAlert(alert);
+    setEditForm({
+      instrumentCode: alert.instrumentCode,
+      conditionType: alert.conditionType,
+      targetPrice: String(alert.targetPrice),
+    });
+    setEditSymbolSearch(formatAlertInstrument(alert.instrumentCode).primary);
+  }
+
+  function closeEditModal() {
+    setEditingAlert(null);
+    setEditForm({ instrumentCode: "", conditionType: "ABOVE", targetPrice: "" });
+    setEditSymbolSearch("");
+  }
+
+  async function handleUpdate(event) {
+    event.preventDefault();
     try {
-      await cancelAlert(userId, alertId);
-      showToast("success", t("alerts.cancelSuccess"));
+      setEditSaving(true);
+      await updateAlert(userId, editingAlert.id, {
+        instrumentCode: editForm.instrumentCode,
+        conditionType: editForm.conditionType,
+        targetPrice: Number(editForm.targetPrice),
+      });
+      showToast("success", t("alerts.updateSuccess"));
+      closeEditModal();
       await loadData();
     } catch (err) {
-      setError(extractErrorMessage(err, t("alerts.cancelError")));
+      showToast("error", extractErrorMessage(err, t("alerts.updateError")));
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleDelete(alertId) {
+    try {
+      await deleteAlert(userId, alertId);
+      showToast("success", t("alerts.deleteSuccess"));
+      await loadData();
+    } catch (err) {
+      showToast("error", extractErrorMessage(err, t("alerts.deleteError")));
     }
   }
 
@@ -228,38 +277,63 @@ export default function AlertsPage() {
     await saveNotes(updated);
   }
 
+  async function togglePin(noteId) {
+    if (notesSaving) return;
+    const updated = notes.map((n) => (n.id === noteId ? { ...n, pinned: !n.pinned } : n));
+    const isPinned = updated.find((n) => n.id === noteId)?.pinned;
+    setNotes(updated);
+    showToast("success", isPinned ? t("alerts.notes.pinned") : t("alerts.notes.unpinned"));
+    await saveNotes(updated);
+  }
+
   return (
     <div className="dashboard-stack alerts-management-shell">
       <section className="alerts-hero-card">
-        <div className="alerts-hero-copy">
-          <p className="eyebrow">{t("alerts.eyebrow")}</p>
-          <h1>{t("alerts.title")}</h1>
-          <p>{t("alerts.description")}</p>
+        <h2 className="alerts-hero-title">{t("alerts.eyebrow")}</h2>
+        <div className="alerts-hero-actions">
+          <button type="button" className="alerts-primary-action" onClick={openCreateModal}>
+            <Plus size={17} strokeWidth={2.5} />
+            <span>{t("alerts.create")}</span>
+          </button>
+          {!addingNote && !editingId && (
+            <button type="button" className="alerts-primary-action alerts-primary-action--secondary" onClick={startAddNote} disabled={notesSaving}>
+              <Plus size={17} strokeWidth={2.5} />
+              <span>{t("alerts.notes.add", "Not Ekle")}</span>
+            </button>
+          )}
         </div>
-        <button type="button" className="alerts-primary-action" onClick={openCreateModal}>
-          <Plus size={17} strokeWidth={2.5} />
-          <span>{t("alerts.create")}</span>
-        </button>
       </section>
 
-      {toast ? <div className={`status-box ${toast.type}`}>{toast.message}</div> : null}
+      {toast ? (
+        <div key={toast.id} className={`toast-notify ${toast.type}`}>
+          {toast.type === "success" ? (
+            <Check size={15} strokeWidth={2.5} className="toast-notify-icon" />
+          ) : (
+            <X size={15} strokeWidth={2.5} className="toast-notify-icon" />
+          )}
+          <span>{toast.message}</span>
+        </div>
+      ) : null}
       {error ? <ErrorMessage message={error} /> : null}
       {loading || quotesLoading ? <LoadingSpinner label={t("alerts.loading")} /> : null}
 
       {!loading && !quotesLoading ? (
         <>
           <section className="alerts-layout-grid">
+            <div className="alerts-left-stack">
             <section className="panel-surface alerts-panel alerts-active-panel">
               <div className="panel-head">
                 <div>
-                  <p className="eyebrow">{t("alerts.activeEyebrow")}</p>
                   <h3>{t("alerts.activeTitle")}</h3>
                 </div>
                 <span className="summary-chip">{t("alerts.activeCount", { count: activeAlerts.length })}</span>
               </div>
 
               {activeAlerts.length === 0 ? (
-                <EmptyState title={t("alerts.emptyActiveTitle")} description={t("alerts.emptyActiveDescription")} />
+                <div className="alerts-empty-soft">
+                  <strong>{t("alerts.emptyActiveTitle")}</strong>
+                  <p>{t("alerts.emptyActiveDescription")}</p>
+                </div>
               ) : (
                 <div className="table-wrap">
                   <table>
@@ -269,7 +343,6 @@ export default function AlertsPage() {
                         <th>{t("alerts.table.condition")}</th>
                         <th>{t("alerts.table.threshold")}</th>
                         <th>{t("alerts.table.lastPrice")}</th>
-                        <th>{t("alerts.table.status")}</th>
                         <th>{t("alerts.table.action")}</th>
                       </tr>
                     </thead>
@@ -279,19 +352,30 @@ export default function AlertsPage() {
                           <td>
                             <div className="alerts-instrument-cell">
                               <strong>{formatAlertInstrument(item.instrumentCode).primary}</strong>
-                              <span>{formatAlertInstrument(item.instrumentCode, item.source).secondary}</span>
                             </div>
                           </td>
                           <td>{formatCondition(item.conditionType, t)}</td>
                           <td className="alerts-money-cell">{formatCurrency(item.targetPrice)}</td>
                           <td className="alerts-money-cell">{formatCurrency(quotePriceMap.get(normalizeCode(item.instrumentCode)))}</td>
                           <td>
-                            <span className="portfolio-status-pill is-live">{t("alerts.status.active")}</span>
-                          </td>
-                          <td>
-                            <button type="button" className="alerts-deactivate-button" onClick={() => handleCancel(item.id)}>
-                              {t("alerts.deactivate")}
-                            </button>
+                            <div className="alerts-action-row">
+                              <button
+                                type="button"
+                                className="icon-action-button"
+                                onClick={() => openEditModal(item)}
+                                title={t("alerts.editAlert")}
+                              >
+                                <Pencil size={14} strokeWidth={2} />
+                              </button>
+                              <button
+                                type="button"
+                                className="icon-action-button icon-action-button--danger"
+                                onClick={() => handleDelete(item.id)}
+                                title={t("alerts.deleteAlert")}
+                              >
+                                <Trash2 size={14} strokeWidth={2} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -301,154 +385,118 @@ export default function AlertsPage() {
               )}
             </section>
 
-            <aside className="alerts-side-stack">
-              <section className="panel-surface alerts-panel alerts-notification-panel">
+            <section className="panel-surface alerts-panel alerts-triggered-panel">
+              <div className="panel-head">
+                <div>
+                  <h3>{t("alerts.notificationsTitle")}</h3>
+                </div>
+                <span className="summary-chip">{formatNumber(triggeredAlerts.length, 0)}</span>
+              </div>
+
+              {triggeredAlerts.length === 0 ? (
+                <div className="alerts-empty-soft">
+                  <strong>{t("alerts.emptyTriggeredTitle")}</strong>
+                  <p>{t("alerts.emptyTriggeredDescription")}</p>
+                </div>
+              ) : (
+                <div className="alerts-triggered-list">
+                  {triggeredAlerts.map((item) => (
+                    <article key={item.id} className="finance-notification-card">
+                      <strong>{t("alerts.triggeredLabel", { symbol: formatAlertInstrument(item.instrumentCode).primary })}</strong>
+                      <p>{formatCondition(item.conditionType, t)} {formatCurrency(item.targetPrice)}</p>
+                      <span>{formatDateTime(item.triggeredAt || item.lastUpdated)}</span>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+            </div>
+
+            {userId ? (
+              <section className="panel-surface alerts-notes-panel">
                 <div className="panel-head">
                   <div>
-                    <p className="eyebrow">{t("alerts.notificationsEyebrow")}</p>
-                    <h3>{t("alerts.notificationsTitle")}</h3>
+                    <h3>{t("alerts.notes.title", "Kişisel Notlar")}</h3>
                   </div>
                 </div>
 
-                <div className="alerts-notification-section">
-                  <div className="alerts-subsection-head">
-                    <strong>{t("alerts.triggeredSectionTitle", "Son tetiklenenler")}</strong>
-                    <span>{formatNumber(triggeredAlerts.length, 0)}</span>
-                  </div>
-                {triggeredAlerts.length === 0 ? (
-                  <div className="alerts-empty-soft">
-                    <strong>{t("alerts.emptyTriggeredTitle")}</strong>
-                    <p>{t("alerts.emptyTriggeredDescription")}</p>
-                  </div>
-                ) : (
-                  <div className="finance-notification-list">
-                    {triggeredAlerts.map((item) => (
-                      <article key={item.id} className="finance-notification-card">
-                        <strong>{t("alerts.triggeredLabel", { symbol: formatAlertInstrument(item.instrumentCode).primary })}</strong>
-                        <p>
-                          {formatCondition(item.conditionType, t)} {formatCurrency(item.targetPrice)}
-                        </p>
-                        <span>{formatDateTime(item.triggeredAt || item.lastUpdated)}</span>
-                      </article>
-                    ))}
-                  </div>
+                {notes.length === 0 && !addingNote && (
+                  <p className="alerts-notes-empty">
+                    {t("alerts.notes.empty", "Henüz not eklenmemiş.")}
+                  </p>
                 )}
-                </div>
 
-                <div className="alerts-notification-section">
-                  <div className="alerts-subsection-head">
-                    <strong>{t("alerts.passiveTitle")}</strong>
-                    <span>{formatNumber(passiveAlerts.length, 0)}</span>
-                  </div>
-                {passiveAlerts.length === 0 ? (
-                  <div className="alerts-empty-soft">
-                    <strong>{t("alerts.emptyPassiveTitle")}</strong>
-                    <p>{t("alerts.emptyPassiveDescription")}</p>
-                  </div>
-                ) : (
-                  <div className="alerts-archive-list">
-                    {passiveAlerts.map((item) => (
-                      <div key={item.id} className="alerts-archive-card">
-                        <strong>{formatAlertInstrument(item.instrumentCode).primary}</strong>
-                        <p>
-                          {formatCondition(item.conditionType, t)} {formatCurrency(item.targetPrice)}
-                        </p>
-                        <span>{formatDateTime(item.createdAt)}</span>
-                      </div>
-                    ))}
+                {sortedNotes.length > 0 && (
+                  <div className={`alerts-notes-scroll-wrap${sortedNotes.length > 3 ? " has-overflow" : ""}`}>
+                    <ul className="alerts-notes-list">
+                      {sortedNotes.map((note) => (
+                        <li key={note.id} className={`alerts-note-item${note.pinned ? " alerts-note-item--pinned" : ""}`}>
+                          {editingId === note.id ? (
+                            <NoteEditForm
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              onSave={confirmEdit}
+                              onCancel={cancelEdit}
+                              saving={notesSaving}
+                            />
+                          ) : (
+                            <>
+                              <div className="alerts-note-header">
+                                <div className="alerts-note-header-main">
+                                  {isTechnicalAnalysisNote(note) ? (
+                                    <span className="alerts-note-source-badge">{formatTechnicalAnalysisNoteLabel(t)}</span>
+                                  ) : null}
+                                  <p className="alerts-note-content">{note.content}</p>
+                                </div>
+                                <div className="alerts-note-header-actions">
+                                  <button
+                                    type="button"
+                                    className={`alerts-note-pin-btn${note.pinned ? " alerts-note-pin-btn--active" : ""}`}
+                                    onClick={() => togglePin(note.id)}
+                                    title={note.pinned ? t("alerts.notes.unpin") : t("alerts.notes.pin")}
+                                    disabled={notesSaving}
+                                  >
+                                    <Pin size={12} strokeWidth={2} fill={note.pinned ? "currentColor" : "none"} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="alerts-note-expand-btn"
+                                    onClick={() => setExpandedNoteId(note.id)}
+                                    title="Görüntüle / Düzenle"
+                                  >
+                                    <Maximize2 size={13} strokeWidth={2} />
+                                  </button>
+                                </div>
+                              </div>
+                              <span className="alerts-note-date">
+                                {formatNoteDate(note.updatedAt && note.updatedAt !== note.createdAt ? note.updatedAt : note.createdAt)}
+                              </span>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
-                </div>
+
+                {addingNote && (
+                  <NoteEditForm
+                    value={newNoteText}
+                    onChange={(e) => setNewNoteText(e.target.value)}
+                    onSave={confirmAdd}
+                    onCancel={cancelAdd}
+                    saving={notesSaving}
+                    placeholder={t(
+                      "alerts.notes.placeholder",
+                      "AKBNK bilançosunu incele\nUSD 50 olursa tekrar değerlendir\nTakip edilmesi gereken hisseler...",
+                    )}
+                    autoFocus
+                  />
+                )}
               </section>
-            </aside>
+            ) : null}
           </section>
         </>
-      ) : null}
-
-      {/* ── Kişisel Notlar ── */}
-      {userId ? (
-        <section className="panel-surface alerts-notes-panel">
-          <div className="panel-head">
-            <div>
-              <p className="eyebrow">{t("alerts.notes.eyebrow", "Notlarım")}</p>
-              <h3>{t("alerts.notes.title", "Kişisel Notlar")}</h3>
-            </div>
-            {!addingNote && !editingId && (
-              <button
-                type="button"
-                className="secondary-button alerts-notes-add-btn"
-                onClick={startAddNote}
-                disabled={notesSaving}
-              >
-                <Plus size={14} strokeWidth={2.5} />
-                <span>{t("alerts.notes.add", "Not Ekle")}</span>
-              </button>
-            )}
-          </div>
-
-          {notes.length === 0 && !addingNote && (
-            <p className="alerts-notes-empty">
-              {t("alerts.notes.empty", "Henüz not eklenmemiş.")}
-            </p>
-          )}
-
-          {notes.length > 0 && (
-            <div className={`alerts-notes-scroll-wrap${notes.length > 3 ? " has-overflow" : ""}`}>
-              <ul className="alerts-notes-list">
-                {notes.map((note) => (
-                  <li key={note.id} className="alerts-note-item">
-                    {editingId === note.id ? (
-                      <NoteEditForm
-                        value={editingText}
-                        onChange={(e) => setEditingText(e.target.value)}
-                        onSave={confirmEdit}
-                        onCancel={cancelEdit}
-                        saving={notesSaving}
-                      />
-                    ) : (
-                      <>
-                        <div className="alerts-note-header">
-                          <div className="alerts-note-header-main">
-                            {isTechnicalAnalysisNote(note) ? (
-                              <span className="alerts-note-source-badge">{formatTechnicalAnalysisNoteLabel(t)}</span>
-                            ) : null}
-                            <p className="alerts-note-content">{note.content}</p>
-                          </div>
-                          <button
-                            type="button"
-                            className="alerts-note-expand-btn"
-                            onClick={() => setExpandedNoteId(note.id)}
-                            title="Görüntüle / Düzenle"
-                          >
-                            <Maximize2 size={13} strokeWidth={2} />
-                          </button>
-                        </div>
-                        <span className="alerts-note-date">
-                          {formatNoteDate(note.updatedAt && note.updatedAt !== note.createdAt ? note.updatedAt : note.createdAt)}
-                        </span>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {addingNote && (
-            <NoteEditForm
-              value={newNoteText}
-              onChange={(e) => setNewNoteText(e.target.value)}
-              onSave={confirmAdd}
-              onCancel={cancelAdd}
-              saving={notesSaving}
-              placeholder={t(
-                "alerts.notes.placeholder",
-                "AKBNK bilançosunu incele\nUSD 50 olursa tekrar değerlendir\nTakip edilmesi gereken hisseler...",
-              )}
-              autoFocus
-            />
-          )}
-        </section>
       ) : null}
 
       {expandedNoteId && (() => {
@@ -480,6 +528,15 @@ export default function AlertsPage() {
                 <>
                   <p className="alerts-note-popup-content">{note.content}</p>
                   <div className="alerts-note-popup-actions">
+                    <button
+                      type="button"
+                      className={`secondary-button alerts-note-popup-btn${note.pinned ? " alerts-note-popup-btn--pinned" : ""}`}
+                      disabled={notesSaving}
+                      onClick={() => { togglePin(note.id); closePopup(); }}
+                    >
+                      <Pin size={14} strokeWidth={2} fill={note.pinned ? "currentColor" : "none"} />
+                      <span>{note.pinned ? t("alerts.notes.unpin") : t("alerts.notes.pin")}</span>
+                    </button>
                     <button
                       type="button"
                       className="secondary-button alerts-note-popup-btn"
@@ -534,84 +591,204 @@ export default function AlertsPage() {
 
       {isModalOpen ? (
         <div className="modal-backdrop" role="presentation" onClick={closeCreateModal}>
-          <div className="auth-modal alerts-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <div className="portfolio-action-modal-head">
-              <div>
-                <p className="eyebrow">{t("alerts.modalEyebrow")}</p>
-                <h3>{t("alerts.modalTitle")}</h3>
-              </div>
-              <button type="button" className="secondary-button" onClick={closeCreateModal}>
-                {t("common.close")}
+          <div className="alert-create-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+
+            <div className="alert-create-modal-head">
+              <h3 className="alert-create-modal-title">{t("alerts.newAlarm", "Yeni Alarm")}</h3>
+              <button type="button" className="alert-create-modal-close" onClick={closeCreateModal} aria-label={t("common.close")}>
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
 
-            <form className="instrument-action-form" onSubmit={handleSubmit}>
-              <label className="portfolio-field">
-                <span>{t("alerts.searchInstrument")}</span>
+            <form className="alert-create-form" onSubmit={handleSubmit}>
+
+              <div className="alert-create-field">
                 <input
+                  className="alert-create-input"
                   value={symbolSearch}
                   onChange={(event) => {
                     const value = event.target.value;
                     setSymbolSearch(value);
                     setForm((current) => ({ ...current, instrumentCode: normalizeCode(value) }));
                   }}
-                  placeholder={t("alerts.searchPlaceholder")}
+                  placeholder={t("alerts.searchPlaceholder", "Enstrüman ara")}
                 />
-              </label>
-
-              <div className="alerts-picker-grid">
-                {matchingQuotes.map((item) => (
-                  <button
-                    key={`${item.symbol}-${item.source}`}
-                    type="button"
-                    className={`analysis-picker-card${normalizeCode(form.instrumentCode) === normalizeCode(item.symbol) ? " active" : ""}`}
-                    onClick={() => selectInstrument(item)}
-                  >
-                    <strong>{formatAlertInstrument(item.symbol, item.source).primary}</strong>
-                    <span>{formatAlertInstrument(item.symbol, item.source).secondary || item.displayName || "-"}</span>
-                  </button>
-                ))}
+                {matchingQuotes.length > 0 && (
+                  <div className="alert-create-suggestions">
+                    <span className="alert-create-suggestions-label">{t("alerts.popular", "Popüler enstrümanlar")}</span>
+                    <div className="alert-create-chips">
+                      {matchingQuotes.map((item) => (
+                        <button
+                          key={`${item.symbol}-${item.source}`}
+                          type="button"
+                          className={`alert-create-chip${normalizeCode(form.instrumentCode) === normalizeCode(item.symbol) ? " active" : ""}`}
+                          onClick={() => selectInstrument(item)}
+                        >
+                          {formatAlertInstrument(item.symbol, item.source).primary}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="instrument-action-grid">
-                <label className="portfolio-field">
-                  <span>{t("alerts.table.condition")}</span>
-                  <select
-                    value={form.conditionType}
-                    onChange={(event) => setForm((current) => ({ ...current, conditionType: event.target.value }))}
-                  >
-                    <option value="ABOVE">{t("alerts.conditions.above")}</option>
-                    <option value="BELOW">{t("alerts.conditions.below")}</option>
-                  </select>
-                </label>
-                <label className="portfolio-field">
-                  <span>{t("alerts.thresholdValue")}</span>
-                  <input
-                    required
-                    type="number"
-                    step="any"
-                    min="0.0001"
-                    value={form.targetPrice}
-                    onChange={(event) => setForm((current) => ({ ...current, targetPrice: event.target.value }))}
-                  />
-                </label>
+              <div className="alert-create-segmented">
+                <button
+                  type="button"
+                  className={`alert-create-segment${form.conditionType === "ABOVE" ? " active" : ""}`}
+                  onClick={() => setForm((current) => ({ ...current, conditionType: "ABOVE" }))}
+                >
+                  {t("alerts.conditions.above", "Üstüne çıkarsa")}
+                </button>
+                <button
+                  type="button"
+                  className={`alert-create-segment${form.conditionType === "BELOW" ? " active" : ""}`}
+                  onClick={() => setForm((current) => ({ ...current, conditionType: "BELOW" }))}
+                >
+                  {t("alerts.conditions.below", "Altına düşerse")}
+                </button>
               </div>
 
-              <div className="alerts-selected-quote">
-                <span>{t("alerts.selectedSymbol")}</span>
-                <strong>{formatAlertInstrument(form.instrumentCode, selectedQuote?.source).primary}</strong>
-                <p>{t("alerts.lastPrice")} {selectedQuote ? formatCurrency(selectedQuote.price, selectedQuote.currency || "TRY") : t("alerts.noData")}</p>
+              <div className="alert-create-price-wrap">
+                <input
+                  className="alert-create-input alert-create-price-input"
+                  required
+                  type="number"
+                  step="any"
+                  min="0.0001"
+                  value={form.targetPrice}
+                  onChange={(event) => setForm((current) => ({ ...current, targetPrice: event.target.value }))}
+                  placeholder={t("alerts.thresholdValue", "Hedef fiyat")}
+                />
+                {selectedQuote?.currency && (
+                  <span className="alert-create-currency">{selectedQuote.currency}</span>
+                )}
               </div>
 
-              <div className="instrument-action-footer">
-                <button type="submit" disabled={saving || !form.instrumentCode}>
-                  {saving ? t("alerts.creating") : t("alerts.create")}
+              <p className="alert-create-info">
+                {t("alerts.lastPrice", "Son fiyat:")} {
+                  !form.instrumentCode
+                    ? t("alerts.noInstrumentSelected", "Henüz bir enstrüman seçmediniz")
+                    : selectedQuote
+                      ? formatCurrency(selectedQuote.price, selectedQuote.currency || "TRY")
+                      : t("alerts.noData", "Veri yok")
+                }
+              </p>
+
+              <div className="alert-create-footer">
+                <button type="button" className="secondary-button" onClick={closeCreateModal}>
+                  {t("common.cancel", "İptal")}
+                </button>
+                <button type="submit" className="alert-create-submit" disabled={saving || !form.instrumentCode}>
+                  {saving ? t("alerts.creating", "Oluşturuluyor...") : t("alerts.create", "Alarm Oluştur")}
                 </button>
               </div>
             </form>
           </div>
         </div>
       ) : null}
+
+      {editingAlert ? (() => {
+        const editSelectedQuote = quotes.find(
+          (item) => normalizeCode(item.symbol) === normalizeCode(editForm.instrumentCode),
+        ) || null;
+        const editMatchingQuotes = (() => {
+          const query = editSymbolSearch.trim().toLowerCase();
+          if (!query) return quotes.slice(0, 8);
+          return quotes.filter((item) =>
+            item.symbol?.toLowerCase().includes(query) || item.displayName?.toLowerCase().includes(query),
+          ).slice(0, 8);
+        })();
+
+        return (
+          <div className="modal-backdrop" role="presentation" onClick={closeEditModal}>
+            <div className="auth-modal alerts-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+              <div className="portfolio-action-modal-head">
+                <div>
+                  <p className="eyebrow">{t("alerts.editModalEyebrow")}</p>
+                  <h3>{t("alerts.editModalTitle")}</h3>
+                </div>
+                <button type="button" className="secondary-button" onClick={closeEditModal}>
+                  {t("common.close")}
+                </button>
+              </div>
+
+              <form className="instrument-action-form" onSubmit={handleUpdate}>
+                <label className="portfolio-field">
+                  <span>{t("alerts.searchInstrument")}</span>
+                  <input
+                    value={editSymbolSearch}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setEditSymbolSearch(value);
+                      setEditForm((current) => ({ ...current, instrumentCode: normalizeCode(value) }));
+                    }}
+                    placeholder={t("alerts.searchPlaceholder")}
+                  />
+                </label>
+
+                <div className="alerts-picker-grid">
+                  {editMatchingQuotes.map((item) => (
+                    <button
+                      key={`${item.symbol}-${item.source}`}
+                      type="button"
+                      className={`analysis-picker-card${normalizeCode(editForm.instrumentCode) === normalizeCode(item.symbol) ? " active" : ""}`}
+                      onClick={() => {
+                        const displaySymbol = formatAlertInstrument(item.symbol, item.source).primary;
+                        setEditForm((current) => ({
+                          ...current,
+                          instrumentCode: item.symbol || "",
+                          targetPrice: current.targetPrice || String(item.price) || "",
+                        }));
+                        setEditSymbolSearch(displaySymbol === "-" ? item.symbol || "" : displaySymbol);
+                      }}
+                    >
+                      <strong>{formatAlertInstrument(item.symbol, item.source).primary}</strong>
+                      <span>{formatAlertInstrument(item.symbol, item.source).secondary || item.displayName || "-"}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="instrument-action-grid">
+                  <label className="portfolio-field">
+                    <span>{t("alerts.table.condition")}</span>
+                    <select
+                      value={editForm.conditionType}
+                      onChange={(event) => setEditForm((current) => ({ ...current, conditionType: event.target.value }))}
+                    >
+                      <option value="ABOVE">{t("alerts.conditions.above")}</option>
+                      <option value="BELOW">{t("alerts.conditions.below")}</option>
+                    </select>
+                  </label>
+                  <label className="portfolio-field">
+                    <span>{t("alerts.thresholdValue")}</span>
+                    <input
+                      required
+                      type="number"
+                      step="any"
+                      min="0.0001"
+                      value={editForm.targetPrice}
+                      onChange={(event) => setEditForm((current) => ({ ...current, targetPrice: event.target.value }))}
+                    />
+                  </label>
+                </div>
+
+                <div className="alerts-selected-quote">
+                  <span>{t("alerts.selectedSymbol")}</span>
+                  <strong>{formatAlertInstrument(editForm.instrumentCode, editSelectedQuote?.source).primary}</strong>
+                  <p>{t("alerts.lastPrice")} {editSelectedQuote ? formatCurrency(editSelectedQuote.price, editSelectedQuote.currency || "TRY") : t("alerts.noData")}</p>
+                </div>
+
+                <div className="instrument-action-footer">
+                  <button type="submit" disabled={editSaving || !editForm.instrumentCode}>
+                    {editSaving ? t("alerts.updating") : t("common.save")}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })() : null}
     </div>
   );
 }

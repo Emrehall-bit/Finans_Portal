@@ -2,14 +2,16 @@ package com.emrehalli.financeportal.alert.controller;
 
 import com.emrehalli.financeportal.alert.dto.AlertResponseDto;
 import com.emrehalli.financeportal.alert.dto.CreateAlertRequest;
+import com.emrehalli.financeportal.alert.dto.UpdateAlertRequest;
 import com.emrehalli.financeportal.alert.service.AlertService;
 import com.emrehalli.financeportal.common.i18n.AppMessageSource;
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,15 +53,28 @@ public class AlertController {
                 .build();
     }
 
-    @PatchMapping("/{userId}/{alertId}/cancel")
-    public ApiResponse<Void> cancelAlert(@PathVariable Long userId,
+    @PutMapping("/{userId}/{alertId}")
+    public ApiResponse<AlertResponseDto> updateAlert(@PathVariable Long userId,
+                                                     @PathVariable Long alertId,
+                                                     @Valid @RequestBody UpdateAlertRequest request) {
+        AlertResponseDto response = alertService.updateAlert(userId, alertId, request);
+
+        return ApiResponse.<AlertResponseDto>builder()
+                .success(true)
+                .data(response)
+                .message(appMessageSource.get("alert.updated"))
+                .build();
+    }
+
+    @DeleteMapping("/{userId}/{alertId}")
+    public ApiResponse<Void> deleteAlert(@PathVariable Long userId,
                                          @PathVariable Long alertId) {
-        alertService.cancelAlert(userId, alertId);
+        alertService.deleteAlert(userId, alertId);
 
         return ApiResponse.<Void>builder()
                 .success(true)
                 .data(null)
-                .message(appMessageSource.get("alert.cancelled"))
+                .message(appMessageSource.get("alert.deleted"))
                 .build();
     }
 }

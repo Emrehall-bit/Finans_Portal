@@ -21,6 +21,8 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     @EntityGraph(attributePaths = "user")
     Optional<Alert> findByIdAndUserId(Long id, Long userId);
 
+    List<Alert> findByUserIdAndStatusOrderByTriggeredAtDesc(Long userId, AlertStatus status);
+
     boolean existsByUserIdAndInstrumentCodeIgnoreCaseAndConditionTypeAndTargetPriceAndStatus(
             Long userId,
             String instrumentCode,

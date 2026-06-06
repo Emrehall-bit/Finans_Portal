@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.alert.service;
 import com.emrehalli.financeportal.admin.notification.service.NotificationService;
 import com.emrehalli.financeportal.alert.dto.AlertResponseDto;
 import com.emrehalli.financeportal.alert.dto.CreateAlertRequest;
+import com.emrehalli.financeportal.alert.dto.UpdateAlertRequest;
 import com.emrehalli.financeportal.alert.entity.Alert;
 import com.emrehalli.financeportal.alert.enums.AlertStatus;
 import com.emrehalli.financeportal.alert.enums.ConditionType;
@@ -96,7 +97,7 @@ public class AlertService {
 
     @CacheEvict(cacheNames = "user_alerts", key = "#userId")
     @Transactional
-    public void cancelAlert(Long userId, Long alertId) {
+    public AlertResponseDto updateAlert(Long userId, Long alertId, UpdateAlertRequest request) {
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User not found with id: " + userId);
         }
@@ -104,12 +105,40 @@ public class AlertService {
         Alert alert = alertRepository.findByIdAndUserId(alertId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Alert not found with id: " + alertId));
 
-        if (alert.getStatus() == AlertStatus.CANCELLED) {
-            throw new BadRequestException("Alert is already cancelled");
+        if (alert.getStatus() != AlertStatus.ACTIVE) {
+            throw new BadRequestException("Only active alerts can be updated");
         }
 
-        alert.setStatus(AlertStatus.CANCELLED);
-        alertRepository.save(alert);
+        String normalizedCode = normalizeSymbol(request.getInstrumentCode());
+
+        boolean valuesChanged = !normalizedCode.equalsIgnoreCase(alert.getInstrumentCode())
+                || request.getConditionType() != alert.getConditionType()
+                || request.getTargetPrice().compareTo(alert.getTargetPrice()) != 0;
+
+        if (valuesChanged && alertRepository
+                .existsByUserIdAndInstrumentCodeIgnoreCaseAndConditionTypeAndTargetPriceAndStatus(
+                        userId, normalizedCode, request.getConditionType(), request.getTargetPrice(), AlertStatus.ACTIVE)) {
+            throw new DuplicateResourceException("An active alert already exists for this symbol and condition");
+        }
+
+        alert.setInstrumentCode(normalizedCode);
+        alert.setConditionType(request.getConditionType());
+        alert.setTargetPrice(request.getTargetPrice());
+        Alert saved = alertRepository.save(alert);
+        return toResponse(saved);
+    }
+
+    @CacheEvict(cacheNames = "user_alerts", key = "#userId")
+    @Transactional
+    public void deleteAlert(Long userId, Long alertId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found with id: " + userId);
+        }
+
+        Alert alert = alertRepository.findByIdAndUserId(alertId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Alert not found with id: " + alertId));
+
+        alertRepository.delete(alert);
     }
 
     @Transactional
@@ -152,15 +181,25 @@ public class AlertService {
         alertRepository.saveAll(triggered);
 
         var userAlertsCache = cacheManager.getCache("user_alerts");
+        triggered.stream()
+                .map(a -> a.getUser().getId())
+                .distinct()
+                .forEach(uid -> {
+                    List<Alert> history = alertRepository.findByUserIdAndStatusOrderByTriggeredAtDesc(uid, AlertStatus.TRIGGERED);
+                    if (history.size() > 10) {
+                        alertRepository.deleteAll(history.subList(10, history.size()));
+                    }
+                    if (userAlertsCache != null) {
+                        userAlertsCache.evict(uid);
+                    }
+                });
+
         for (Alert alert : triggered) {
             notificationService.createPriceAlertNotification(
                     alert.getUser(),
                     buildNotificationTitle(alert),
                     buildNotificationMessage(alert)
             );
-            if (userAlertsCache != null) {
-                userAlertsCache.evict(alert.getUser().getId());
-            }
         }
     }
 
