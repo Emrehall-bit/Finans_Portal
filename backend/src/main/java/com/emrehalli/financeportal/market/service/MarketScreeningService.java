@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.market.service;
 
 import com.emrehalli.financeportal.market.api.dto.MarketScreenItemResponse;
+import com.emrehalli.financeportal.market.provider.fund.dto.FundNavDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +30,7 @@ import java.util.Map;
 public class MarketScreeningService {
 
     private final EntityManager entityManager;
+    private final FundService fundService;
 
     public Page<MarketScreenItemResponse> screen(MarketScreenCriteria criteria) {
         int page = Math.max(criteria.getPage(), 0);
@@ -53,6 +57,40 @@ public class MarketScreeningService {
                     order by mph.price_timestamp desc, mph.id desc
                     limit 1
                 ) lh on true
+                left join lateral (
+                    select mph.close_price,
+                           mph.price_timestamp
+                    from market_price_history mph
+                    where mph.instrument_id = mi.id
+                      and mph.interval_type = 'ONE_DAY'
+                      and mph.source_name = lp.source_name
+                      and mph.close_price is not null
+                    order by mph.price_timestamp desc, mph.id desc
+                    limit 1
+                ) ch on true
+                left join lateral (
+                    select mph.close_price
+                    from market_price_history mph
+                    where mph.instrument_id = mi.id
+                      and mph.interval_type = 'ONE_DAY'
+                      and mph.source_name = lp.source_name
+                      and mph.close_price is not null
+                      and mph.price_timestamp < date_trunc('day', lp.price_timestamp)
+                    order by mph.price_timestamp desc, mph.id desc
+                    limit 1
+                ) pc on true
+                left join lateral (
+                    select mph.close_price
+                    from market_price_history mph
+                    where mph.instrument_id = mi.id
+                      and mph.interval_type = 'ONE_DAY'
+                      and mph.source_name = lp.source_name
+                      and mph.close_price is not null
+                      and ch.price_timestamp is not null
+                      and mph.price_timestamp < ch.price_timestamp
+                    order by mph.price_timestamp desc, mph.id desc
+                    limit 1
+                ) lpc on true
                 left join company_profiles cp
                     on mi.instrument_type = 'STOCK'
                    and upper(cp.ticker_code) = upper(mi.instrument_code)
@@ -86,7 +124,7 @@ public class MarketScreeningService {
                        coalesce(lp.source_name::text, mi.source_name::text) as source,
                        lh.volume as volume,
                        lp.price_value as last_price,
-                       lp.change_rate as change_percent,
+                       %s as change_percent,
                        cp.sector as sector,
                        cp.market as market,
                        lr.market_cap as market_cap,
@@ -102,7 +140,7 @@ public class MarketScreeningService {
                        lp.price_timestamp as data_timestamp,
                        mi.bist_tier as bist_tier,
                        mi.stock_sector as stock_sector
-                """;
+                """.formatted(changePercentExpression());
 
         String orderBy = resolveOrderBy(criteria, advancedFiltersUsed);
 
@@ -116,6 +154,7 @@ public class MarketScreeningService {
         List<MarketScreenItemResponse> content = rows.stream()
                 .map(this::mapRow)
                 .toList();
+        content = enrichFundRows(content, criteria);
 
         Query countQuery = entityManager.createNativeQuery("select count(*) " + from);
         params.forEach(countQuery::setParameter);
@@ -152,11 +191,11 @@ public class MarketScreeningService {
             params.put("maxPrice", criteria.getMaxPrice());
         }
         if (criteria.getMinChangePercent() != null) {
-            sql.append(" and lp.change_rate >= :minChangePercent");
+            sql.append(" and ").append(changePercentExpression()).append(" >= :minChangePercent");
             params.put("minChangePercent", criteria.getMinChangePercent());
         }
         if (criteria.getMaxChangePercent() != null) {
-            sql.append(" and lp.change_rate <= :maxChangePercent");
+            sql.append(" and ").append(changePercentExpression()).append(" <= :maxChangePercent");
             params.put("maxChangePercent", criteria.getMaxChangePercent());
         }
 
@@ -258,9 +297,9 @@ public class MarketScreeningService {
             case "price" -> " order by lp.price_value desc nulls last, mi.instrument_code asc";
             case "price_asc" -> " order by lp.price_value asc nulls last, mi.instrument_code asc";
             case "price_desc" -> " order by lp.price_value desc nulls last, mi.instrument_code asc";
-            case "changepercent", "change" -> " order by lp.change_rate desc nulls last, mi.instrument_code asc";
-            case "change_asc" -> " order by lp.change_rate asc nulls last, mi.instrument_code asc";
-            case "change_desc" -> " order by lp.change_rate desc nulls last, mi.instrument_code asc";
+            case "changepercent", "change" -> " order by " + changePercentExpression() + " desc nulls last, mi.instrument_code asc";
+            case "change_asc" -> " order by " + changePercentExpression() + " asc nulls last, mi.instrument_code asc";
+            case "change_desc" -> " order by " + changePercentExpression() + " desc nulls last, mi.instrument_code asc";
             case "pe_ratio", "peratio", "pe" -> positivePeOrderBy(true);
             case "pe_asc" -> positivePeOrderBy(true);
             case "pe_desc" -> positivePeOrderBy(false);
@@ -308,6 +347,27 @@ public class MarketScreeningService {
         };
     }
 
+    private String changePercentExpression() {
+        return """
+                coalesce(
+                    case
+                        when ch.close_price is not null
+                             and ch.price_timestamp is not null
+                             and ch.price_timestamp < date_trunc('day', lp.price_timestamp)
+                             and lp.price_value = ch.close_price
+                             and lpc.close_price is not null
+                             and lpc.close_price <> 0
+                        then round(((ch.close_price - lpc.close_price) / abs(lpc.close_price)) * 100, 4)
+                        when pc.close_price is not null
+                             and pc.close_price <> 0
+                        then round(((lp.price_value - pc.close_price) / abs(pc.close_price)) * 100, 4)
+                        else null
+                    end,
+                    lp.change_rate
+                )
+                """;
+    }
+
     private String positivePeOrderBy(boolean ascending) {
         String direction = ascending ? "asc" : "desc";
         return " order by"
@@ -318,10 +378,13 @@ public class MarketScreeningService {
     }
 
     private MarketScreenItemResponse mapRow(Object[] row) {
+        String type = asString(row[2]);
         return MarketScreenItemResponse.builder()
                 .symbol(asString(row[0]))
                 .name(asString(row[1]))
-                .type(asString(row[2]))
+                .type(type)
+                .displayUnit(resolveDisplayUnit(type))
+                .currency(resolveDisplayCurrency(type))
                 .source(asString(row[3]))
                 .volume(asBigDecimal(row[4]))
                 .lastPrice(asBigDecimal(row[5]))
@@ -341,7 +404,85 @@ public class MarketScreeningService {
                 .dataTimestamp(asLocalDateTime(row[19]))
                 .bistTier(asString(row[20]))
                 .stockSector(asString(row[21]))
+                .fundType(decodeFundType(asString(row[1])))
                 .build();
+    }
+
+    private String resolveDisplayUnit(String type) {
+        return "INDEX".equalsIgnoreCase(type) ? "POINT" : "CURRENCY";
+    }
+
+    private String resolveDisplayCurrency(String type) {
+        return "INDEX".equalsIgnoreCase(type) ? null : "TRY";
+    }
+
+    private List<MarketScreenItemResponse> enrichFundRows(List<MarketScreenItemResponse> rows, MarketScreenCriteria criteria) {
+        if (rows == null || rows.isEmpty()) {
+            return rows;
+        }
+
+        boolean fundScreen = "FUND".equalsIgnoreCase(criteria.getType());
+        boolean hasFundRows = fundScreen || rows.stream().anyMatch(row -> "FUND".equalsIgnoreCase(row.getType()));
+        if (!hasFundRows) {
+            return rows;
+        }
+
+        Map<String, FundNavDto> fundsByCode = fundService.getAll().stream()
+                .filter(fund -> hasText(fund.getFundCode()))
+                .collect(Collectors.toMap(
+                        fund -> fund.getFundCode().trim().toUpperCase(Locale.ROOT),
+                        Function.identity(),
+                        (left, right) -> left
+                ));
+
+        return rows.stream()
+                .map(row -> enrichFundRow(row, fundsByCode))
+                .toList();
+    }
+
+    private MarketScreenItemResponse enrichFundRow(MarketScreenItemResponse row, Map<String, FundNavDto> fundsByCode) {
+        if (row == null || !"FUND".equalsIgnoreCase(row.getType())) {
+            return row;
+        }
+
+        FundNavDto fund = fundsByCode.get(String.valueOf(row.getSymbol()).trim().toUpperCase(Locale.ROOT));
+        if (fund == null) {
+            return row;
+        }
+
+        String fundType = firstNonBlank(fund.getFonTurAciklama(), fund.getFundType(), row.getFundType());
+        return row.toBuilder()
+                .name(firstNonBlank(fund.getFundName(), row.getName()))
+                .fundType(fundType)
+                .riskDegeri(fund.getRiskDegeri())
+                .getiri1a(fund.getGetiri1a())
+                .getiri3a(fund.getGetiri3a())
+                .getiri6a(fund.getGetiri6a())
+                .getiriYb(fund.getGetiriYb())
+                .getiri1y(fund.getGetiri1y())
+                .getiri3y(fund.getGetiri3y())
+                .getiri5y(fund.getGetiri5y())
+                .build();
+    }
+
+    private String decodeFundType(String instrumentName) {
+        if (!hasText(instrumentName) || !instrumentName.contains("||TYPE||")) {
+            return null;
+        }
+        String[] parts = instrumentName.split("\\Q||TYPE||\\E", 2);
+        return parts.length == 2 && hasText(parts[1]) ? parts[1].trim() : null;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (hasText(value)) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private String asString(Object value) {
@@ -391,4 +532,3 @@ public class MarketScreeningService {
         return value != null && !value.isBlank();
     }
 }
-

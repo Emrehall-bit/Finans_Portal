@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -93,10 +94,12 @@ public class FundService {
                     .map(MarketPriceHistory::getClosePrice)
                     .orElse(null);
             fund.setPreviousNavValue(previousNavValue);
+            BigDecimal changeRate = calculateChangeRate(fund.getNavValue(), previousNavValue);
 
             marketPriceRepository.save(MarketPrice.builder()
                     .instrument(instrument)
                     .priceValue(fund.getNavValue())
+                    .changeRate(changeRate)
                     .priceTimestamp(priceTimestamp)
                     .sourceName(SourceName.TEFAS)
                     .build());
@@ -359,6 +362,16 @@ public class FundService {
         target.setFonTurAciklama(isBlank(source.getFonTurAciklama()) ? source.getFundType() : source.getFonTurAciklama());
     }
 
+    private BigDecimal calculateChangeRate(BigDecimal currentNavValue, BigDecimal previousNavValue) {
+        if (currentNavValue == null || previousNavValue == null || previousNavValue.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+        return currentNavValue
+                .subtract(previousNavValue)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(previousNavValue, 4, RoundingMode.HALF_UP);
+    }
+
     private String resolveFundTypeForFilter(FundNavDto fund) {
         if (fund == null) {
             return "";
@@ -435,7 +448,6 @@ public class FundService {
     private record FundMetadata(String fundName, String fundType) {
     }
 }
-
 
 
 

@@ -51,6 +51,7 @@ public class StockService {
     private final EntityManager entityManager;
     private final MarketProperties props;
     private final BistSymbolRegistry bistSymbolRegistry;
+    private final MarketDailyChangeService dailyChangeService;
 
     @Transactional
     public void saveAll(List<StockPriceDto> quotes) {
@@ -83,15 +84,22 @@ public class StockService {
                             .stockSector(StockSector.OTHER)
                             .build()));
 
+            java.math.BigDecimal changeRate = dailyChangeService.calculate(
+                    instrument,
+                    quote.price(),
+                    timestamp,
+                    sourceName
+            );
+
             marketPriceRepository.save(MarketPrice.builder()
                     .instrument(instrument)
                     .priceValue(quote.price())
-                    .changeRate(quote.changePercent())
+                    .changeRate(changeRate != null ? changeRate : quote.changePercent())
                     .priceTimestamp(timestamp)
                     .sourceName(sourceName)
                     .build());
 
-            putCacheSilently(buildCacheKey(symbol), toDto(instrument, quote.price(), timestamp, quote));
+            putCacheSilently(buildCacheKey(symbol), toDto(instrument, quote.price(), timestamp, quote, changeRate));
         }
     }
 
@@ -207,10 +215,6 @@ public class StockService {
     @Transactional(readOnly = true)
     public StockPriceDto getBySymbol(String symbol) {
         String normalizedSymbol = normalizeSymbol(symbol);
-        StockPriceDto cached = getCachedStock(normalizedSymbol);
-        if (cached != null) {
-            return cached;
-        }
 
         try {
             MarketInstrument instrument = marketInstrumentRepository
@@ -273,7 +277,7 @@ public class StockService {
                 instrument.getInstrumentCode(),
                 bistSymbolRegistry.toYahooSymbol(instrument.getInstrumentCode()),
                 latestPrice.getPriceValue(),
-                latestPrice.getChangeRate(),
+                resolveChangeRate(instrument, latestPrice),
                 null,
                 null,
                 null,
@@ -291,12 +295,23 @@ public class StockService {
                                 java.math.BigDecimal currentPrice,
                                 LocalDateTime dataTimestamp,
                                 StockPriceDto cachedSource) {
+        return toDto(instrument, currentPrice, dataTimestamp, cachedSource, null);
+    }
+
+    private StockPriceDto toDto(MarketInstrument instrument,
+                                java.math.BigDecimal currentPrice,
+                                LocalDateTime dataTimestamp,
+                                StockPriceDto cachedSource,
+                                java.math.BigDecimal resolvedChangeRate) {
         String symbol = instrument.getInstrumentCode();
+        java.math.BigDecimal changeRate = resolvedChangeRate != null
+                ? resolvedChangeRate
+                : resolveChangeRate(instrument, currentPrice, dataTimestamp, cachedSource);
         return new StockPriceDto(
                 symbol,
                 bistSymbolRegistry.toYahooSymbol(symbol),
                 currentPrice,
-                cachedSource != null ? cachedSource.changePercent() : null,
+                changeRate,
                 cachedSource != null ? cachedSource.previousClose() : null,
                 cachedSource != null ? cachedSource.dayHigh() : null,
                 cachedSource != null ? cachedSource.dayLow() : null,
@@ -310,6 +325,43 @@ public class StockService {
         );
     }
 
+    private java.math.BigDecimal resolveChangeRate(MarketInstrument instrument, MarketPrice latestPrice) {
+        if (latestPrice == null) {
+            return null;
+        }
+        java.math.BigDecimal calculated = dailyChangeService.calculate(
+                instrument,
+                latestPrice.getPriceValue(),
+                latestPrice.getPriceTimestamp(),
+                latestPrice.getSourceName()
+        );
+        return calculated != null ? calculated : latestPrice.getChangeRate();
+    }
+
+    private java.math.BigDecimal resolveChangeRate(
+            MarketInstrument instrument,
+            java.math.BigDecimal currentPrice,
+            LocalDateTime dataTimestamp,
+            StockPriceDto cachedSource
+    ) {
+        SourceName sourceName = SourceName.YAHOO_FINANCE;
+        if (cachedSource != null && cachedSource.sourceName() != null) {
+            try {
+                sourceName = SourceName.valueOf(cachedSource.sourceName());
+            } catch (IllegalArgumentException ignored) {
+                sourceName = SourceName.YAHOO_FINANCE;
+            }
+        }
+
+        java.math.BigDecimal calculated = dailyChangeService.calculate(
+                instrument,
+                currentPrice,
+                dataTimestamp,
+                sourceName
+        );
+        return calculated != null ? calculated : cachedSource != null ? cachedSource.changePercent() : null;
+    }
+
     private StockHistoryDto toHistoryDto(MarketPriceHistory history) {
         return new StockHistoryDto(
                 history.getPriceTimestamp(),
@@ -319,15 +371,6 @@ public class StockService {
                 history.getClosePrice(),
                 history.getVolume()
         );
-    }
-
-    private StockPriceDto getCachedStock(String symbol) {
-        try {
-            return cacheService.get(buildCacheKey(symbol), StockPriceDto.class).orElse(null);
-        } catch (Exception exception) {
-            log.warn("Failed to read stock cache for symbol={}", symbol, exception);
-        }
-        return null;
     }
 
     private void putCacheSilently(String key, Object value) {
@@ -353,7 +396,3 @@ public class StockService {
         return value == null || value.isBlank();
     }
 }
-
-
-
-

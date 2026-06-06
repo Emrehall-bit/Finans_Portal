@@ -13,6 +13,9 @@ public interface MacroObservationRepository extends JpaRepository<MacroObservati
     List<MacroObservation> findByIndicatorCodeAndValueTypeOrderByObservationDateAsc(
             String code, MacroValueType valueType);
 
+    List<MacroObservation> findByIndicatorCodeAndValueTypeAndObservationDateBetweenOrderByObservationDateAsc(
+            String code, MacroValueType valueType, LocalDate from, LocalDate to);
+
     boolean existsByIndicatorAndObservationDateAndValueType(
             MacroIndicator indicator, LocalDate observationDate, MacroValueType valueType);
 }

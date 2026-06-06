@@ -5,12 +5,9 @@ import com.emrehalli.financeportal.market.api.dto.FxRateResponse;
 import com.emrehalli.financeportal.market.cache.CacheService;
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.domain.entity.MarketPrice;
-import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
-import com.emrehalli.financeportal.market.domain.enums.IntervalType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
-import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
 import com.emrehalli.financeportal.market.persistence.MarketPriceRepository;
 import com.emrehalli.financeportal.market.provider.fx.dto.FxRateDto;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,9 +42,9 @@ public class FxService {
 
     private final MarketInstrumentRepository marketInstrumentRepository;
     private final MarketPriceRepository marketPriceRepository;
-    private final MarketPriceHistoryRepository marketPriceHistoryRepository;
     private final CacheService cacheService;
     private final MarketProperties props;
+    private final MarketDailyChangeService dailyChangeService;
 
     @Transactional
     public void saveAll(List<FxRateDto> rates) {
@@ -176,7 +169,7 @@ public class FxService {
         }
 
         MarketInstrument instrument = findOrCreateInstrument(sourceName, currencyCode, priceType);
-        BigDecimal changeRate = calculatePersistedChangeRate(instrument, priceValue);
+        BigDecimal changeRate = calculatePersistedChangeRate(instrument, priceValue, timestamp, sourceName);
         log.debug("[FxService] savePrice changeRate={}, instrument={}",
                 changeRate, instrument.getInstrumentCode());
         MarketPrice marketPrice = MarketPrice.builder()
@@ -239,12 +232,6 @@ public class FxService {
             String[] parts = pairKey.split(":");
             SourceName sourceName = SourceName.valueOf(parts[0]);
             String currencyCode = parts[1];
-
-            FxRateResponse cached = getCachedRate(sourceName, currencyCode);
-            if (cached != null) {
-                responses.add(cached);
-                continue;
-            }
 
             FxRateResponse dbValue = buildFromDatabase(instruments, sourceName, currencyCode);
             if (dbValue != null) {
@@ -312,30 +299,12 @@ public class FxService {
             return null;
         }
 
-        Instant todayStart = LocalDate.now(ZoneOffset.UTC)
-                .atStartOfDay()
-                .toInstant(ZoneOffset.UTC);
-
-        Optional<MarketPriceHistory> previousClose = marketPriceHistoryRepository
-                .findTopByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampLessThanOrderByPriceTimestampDesc(
-                        sellInstrument,
-                        IntervalType.ONE_DAY,
-                        sourceName,
-                        todayStart
-                );
-
-        BigDecimal previousClosePrice = previousClose
-                .map(MarketPriceHistory::getClosePrice)
-                .orElse(null);
-
-        if (previousClosePrice == null || previousClosePrice.compareTo(BigDecimal.ZERO) == 0) {
-            return null;
-        }
-
-        return currentSellPrice.getPriceValue()
-                .subtract(previousClosePrice)
-                .divide(previousClosePrice, 8, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100));
+        return dailyChangeService.calculate(
+                sellInstrument,
+                currentSellPrice.getPriceValue(),
+                currentSellPrice.getPriceTimestamp(),
+                sourceName
+        );
     }
 
     private BigDecimal resolveLast(Map<FxPriceType, MarketPrice> latestPrices) {
@@ -418,43 +387,18 @@ public class FxService {
                 .orElse(null);
     }
 
-    private BigDecimal calculatePersistedChangeRate(MarketInstrument instrument, BigDecimal currentPrice) {
-        if (instrument == null || currentPrice == null) {
+    private BigDecimal calculatePersistedChangeRate(
+            MarketInstrument instrument,
+            BigDecimal currentPrice,
+            LocalDateTime timestamp,
+            SourceName sourceName
+    ) {
+        if (instrument == null || currentPrice == null || timestamp == null) {
             log.debug("[FxService] calculatePersistedChangeRate: instrument veya currentPrice null, atlaniyor.");
             return null;
         }
 
-        Instant todayStart = LocalDate.now(ZoneOffset.UTC)
-                .atStartOfDay()
-                .toInstant(ZoneOffset.UTC);
-
-        log.debug("[FxService] changeRate hesaplaniyor. instrument={}, todayStart={}, currentPrice={}",
-                instrument.getInstrumentCode(), todayStart, currentPrice);
-
-        Optional<MarketPriceHistory> prevClose = marketPriceHistoryRepository
-                .findTopByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampLessThanOrderByPriceTimestampDesc(
-                        instrument,
-                        IntervalType.ONE_DAY,
-                        SourceName.TCMB,
-                        todayStart
-                );
-
-        log.debug("[FxService] prevClose bulundu mu: {}", prevClose.isPresent());
-        if (prevClose.isPresent()) {
-            log.debug("[FxService] prevClose.closePrice={}, priceTimestamp={}",
-                    prevClose.get().getClosePrice(),
-                    prevClose.get().getPriceTimestamp());
-        }
-
-        return prevClose.map(prev -> {
-            if (prev.getClosePrice() == null || prev.getClosePrice().compareTo(BigDecimal.ZERO) == 0) {
-                return null;
-            }
-            return currentPrice
-                    .subtract(prev.getClosePrice())
-                    .divide(prev.getClosePrice(), 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100));
-        }).orElse(null);
+        return dailyChangeService.calculate(instrument, currentPrice, timestamp, sourceName);
     }
 
     private void putCacheSilently(String key, Object response) {

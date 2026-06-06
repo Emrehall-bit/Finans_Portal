@@ -26,7 +26,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Service for COMMODITY instrument persistence and retrieval.
@@ -50,6 +49,7 @@ public class CommodityService {
     private final CacheService cacheService;
     private final MarketProperties props;
     private final CommoditySymbolRegistry symbolRegistry;
+    private final MarketDailyChangeService dailyChangeService;
 
     // â”€â”€ Result record returned by calculateAndSaveDerivedCommodities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -235,10 +235,6 @@ public class CommodityService {
     @Transactional(readOnly = true)
     public MarketQuoteResponse getBySymbol(String symbol) {
         String code = symbol.toUpperCase(Locale.ROOT);
-        Optional<MarketQuoteResponse> cached = cacheService.get(buildCacheKey(code), MarketQuoteResponse.class);
-        if (cached.isPresent()) {
-            return cached.get();
-        }
 
         MarketInstrument instrument = instrumentRepository
                 .findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(code, InstrumentType.COMMODITY)
@@ -265,12 +261,7 @@ public class CommodityService {
                         .sourceName(SourceName.CALCULATED)
                         .build()));
 
-        BigDecimal changeRate = priceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument)
-                .map(MarketPrice::getPriceValue)
-                .filter(prev -> prev.signum() > 0)
-                .map(prev -> price.subtract(prev).divide(prev, 6, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100)).setScale(4, RoundingMode.HALF_UP))
-                .orElse(null);
+        BigDecimal changeRate = dailyChangeService.calculate(instrument, price, timestamp, SourceName.CALCULATED);
 
         priceRepository.save(MarketPrice.builder()
                 .instrument(instrument)
@@ -302,16 +293,18 @@ public class CommodityService {
                         .sourceName(sourceName)
                         .build()));
 
+        BigDecimal calculatedChangeRate = dailyChangeService.calculate(instrument, price, timestamp, sourceName);
+
         priceRepository.save(MarketPrice.builder()
                 .instrument(instrument)
                 .priceValue(price)
-                .changeRate(changeRate)
+                .changeRate(calculatedChangeRate != null ? calculatedChangeRate : changeRate)
                 .priceTimestamp(timestamp)
                 .sourceName(sourceName)
                 .build());
 
         log.info("Commodity price saved: code={} price={} source={}", code, price, sourceName);
-        putCacheSilently(buildCacheKey(code), toResponse(instrument, price, changeRate, timestamp));
+        putCacheSilently(buildCacheKey(code), toResponse(instrument, price, calculatedChangeRate != null ? calculatedChangeRate : changeRate, timestamp));
     }
 
     /**
@@ -398,7 +391,13 @@ public class CommodityService {
         if (latest == null) {
             return null;
         }
-        return toResponse(instrument, latest.getPriceValue(), latest.getChangeRate(), latest.getPriceTimestamp());
+        BigDecimal calculated = dailyChangeService.calculate(
+                instrument,
+                latest.getPriceValue(),
+                latest.getPriceTimestamp(),
+                latest.getSourceName()
+        );
+        return toResponse(instrument, latest.getPriceValue(), calculated != null ? calculated : latest.getChangeRate(), latest.getPriceTimestamp());
     }
 
     private MarketQuoteResponse toResponse(MarketInstrument instrument, BigDecimal price,
@@ -410,7 +409,9 @@ public class CommodityService {
                 changeRate,
                 instrument.getSourceName().name(),
                 updatedAt,
-                InstrumentType.COMMODITY.name()
+                InstrumentType.COMMODITY.name(),
+                "CURRENCY",
+                "TRY"
         );
     }
 
@@ -430,7 +431,4 @@ public class CommodityService {
         return value == null || value.isBlank();
     }
 }
-
-
-
 

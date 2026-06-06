@@ -6,7 +6,9 @@ import com.emrehalli.financeportal.config.security.CurrentUserResolver;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.technicalanalysis.dto.IndicatorConfigDtos.Request;
 import com.emrehalli.financeportal.technicalanalysis.dto.IndicatorConfigDtos.Response;
+import com.emrehalli.financeportal.technicalanalysis.service.BenchmarkComparisonService;
 import com.emrehalli.financeportal.technicalanalysis.service.IndicatorConfigService;
+import com.emrehalli.financeportal.technicalanalysis.dto.BenchmarkResponse;
 import com.emrehalli.financeportal.technicalanalysis.dto.ComparisonResponse;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalCandleDto;
 import com.emrehalli.financeportal.technicalanalysis.dto.TechnicalAnalysisResponse;
@@ -49,17 +51,20 @@ public class TechnicalAnalysisController {
     private final TechnicalAnalysisMapper technicalAnalysisMapper;
     private final IndicatorConfigService indicatorConfigService;
     private final CurrentUserResolver currentUserResolver;
+    private final BenchmarkComparisonService benchmarkComparisonService;
 
     public TechnicalAnalysisController(TechnicalAnalysisService technicalAnalysisService,
                                        TechnicalCandleService technicalCandleService,
                                        TechnicalAnalysisMapper technicalAnalysisMapper,
                                        IndicatorConfigService indicatorConfigService,
-                                       CurrentUserResolver currentUserResolver) {
+                                       CurrentUserResolver currentUserResolver,
+                                       BenchmarkComparisonService benchmarkComparisonService) {
         this.technicalAnalysisService = technicalAnalysisService;
         this.technicalCandleService = technicalCandleService;
         this.technicalAnalysisMapper = technicalAnalysisMapper;
         this.indicatorConfigService = indicatorConfigService;
         this.currentUserResolver = currentUserResolver;
+        this.benchmarkComparisonService = benchmarkComparisonService;
     }
 
     @GetMapping("/{symbol}")
@@ -76,6 +81,17 @@ public class TechnicalAnalysisController {
         return technicalAnalysisMapper.toResponse(
                 technicalAnalysisService.analyze(symbol, from, to, indicators, instrumentType)
         );
+    }
+
+    @GetMapping("/benchmark")
+    public BenchmarkResponse benchmark(
+            @RequestParam String baseCode,
+            @RequestParam String benchmarkCode,
+            @RequestParam String benchmarkType,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return benchmarkComparisonService.compare(baseCode, benchmarkCode, benchmarkType, from, to);
     }
 
     @GetMapping("/compare")

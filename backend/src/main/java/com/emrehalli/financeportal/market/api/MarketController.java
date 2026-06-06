@@ -2,10 +2,13 @@ package com.emrehalli.financeportal.market.api;
 
 import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.common.exception.BadRequestException;
+import com.emrehalli.financeportal.config.MarketProperties;
 import com.emrehalli.financeportal.market.api.dto.FxRateResponse;
 import com.emrehalli.financeportal.market.api.dto.MarketAggregateResponse;
+import com.emrehalli.financeportal.market.api.dto.MarketScreenItemResponse;
 import com.emrehalli.financeportal.market.api.dto.MarketScreenResponse;
 import com.emrehalli.financeportal.market.api.dto.PriceHistoryDto;
+import com.emrehalli.financeportal.market.cache.CacheService;
 import com.emrehalli.financeportal.market.domain.entity.MarketInstrument;
 import com.emrehalli.financeportal.market.domain.entity.MarketPriceHistory;
 import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
@@ -66,23 +69,29 @@ public class MarketController {
     private final MarketScreeningService marketScreeningService;
     private final MarketInstrumentRepository instrumentRepository;
     private final MarketPriceHistoryRepository historyRepository;
+    private final CacheService cacheService;
+    private final MarketProperties marketProperties;
 
     @GetMapping
     public ApiResponse<MarketAggregateResponse> getAllMarkets(@RequestParam(name = "type", required = false) String type) {
         boolean macroIndicatorRequest = isMacroIndicatorRequest(type);
+        String cacheKey = "markets:aggregate:" + (macroIndicatorRequest ? "macro" : "default");
+        MarketAggregateResponse cached = getCachedAggregate(cacheKey);
+        if (cached != null) {
+            return ApiResponse.<MarketAggregateResponse>builder()
+                    .success(true)
+                    .message("OK")
+                    .data(cached)
+                    .build();
+        }
+
         List<FxRateResponse> fx = macroIndicatorRequest ? List.of() : fxService.getAll();
-        List<MarketQueryService.MarketSnapshot> cryptoSnapshots = macroIndicatorRequest ? List.of() : cryptoService.getAll();
-        List<StockPriceDto> stockQuotes = macroIndicatorRequest
-                ? List.of()
-                : stockService.getAll(PageRequest.of(0, 500), null).getContent();
-        List<FundNavDto> fundQuotes = macroIndicatorRequest ? List.of() : fundService.getAll();
-        List<Object> crypto = new ArrayList<>(cryptoSnapshots);
-        List<Object> stocks = new ArrayList<>(stockQuotes.stream()
-                .map(this::toMarketSnapshot)
-                .toList());
-        List<Object> funds = new ArrayList<>(fundQuotes.stream()
-                .map(fund -> toMarketSnapshot(fund, SourceName.TEFAS.name()))
-                .toList());
+        List<MarketScreenItemResponse> cryptoRows = macroIndicatorRequest ? List.of() : screenCategory("CRYPTO", 100);
+        List<MarketScreenItemResponse> stockRows = macroIndicatorRequest ? List.of() : screenCategory("STOCK", 500);
+        List<MarketScreenItemResponse> fundRows = macroIndicatorRequest ? List.of() : screenCategory("FUND", 500);
+        List<Object> crypto = new ArrayList<>(cryptoRows.stream().map(this::toMarketSnapshot).toList());
+        List<Object> stocks = new ArrayList<>(stockRows.stream().map(this::toMarketSnapshot).toList());
+        List<Object> funds = new ArrayList<>(fundRows.stream().map(this::toMarketSnapshot).toList());
         MarketAggregateResponse data = MarketAggregateResponse.builder()
                 .fx(fx)
                 .crypto(crypto)
@@ -92,12 +101,40 @@ public class MarketController {
                 .bonds(List.of())
                 .build();
 
+        putCachedAggregate(cacheKey, data);
+
         return ApiResponse.<MarketAggregateResponse>builder()
                 .success(true)
                 .message("OK")
                 .data(data)
-                .dataDate(resolveDataDate(fx, cryptoSnapshots))
+                .dataDate(resolveDataDate(fx, cryptoRows))
                 .build();
+    }
+
+    private MarketAggregateResponse getCachedAggregate(String cacheKey) {
+        try {
+            return cacheService.get(cacheKey, MarketAggregateResponse.class).orElse(null);
+        } catch (Exception exception) {
+            log.warn("Failed to read market aggregate cache key={}", cacheKey, exception);
+            return null;
+        }
+    }
+
+    private void putCachedAggregate(String cacheKey, MarketAggregateResponse data) {
+        try {
+            cacheService.put(cacheKey, data, Math.max(1, Math.min(2, marketProperties.getCache().getTtlMinutes().getStock())));
+        } catch (Exception exception) {
+            log.warn("Failed to write market aggregate cache key={}", cacheKey, exception);
+        }
+    }
+
+    private List<MarketScreenItemResponse> screenCategory(String type, int size) {
+        return marketScreeningService.screen(MarketScreenCriteria.builder()
+                .type(type)
+                .page(0)
+                .size(size)
+                .sort("symbol")
+                .build()).getContent();
     }
 
     @GetMapping("/screen")
@@ -588,6 +625,20 @@ public class MarketController {
         );
     }
 
+    private MarketQueryService.MarketSnapshot toMarketSnapshot(MarketScreenItemResponse item) {
+        return new MarketQueryService.MarketSnapshot(
+                item.getSymbol(),
+                item.getName(),
+                item.getLastPrice(),
+                item.getChangePercent(),
+                item.getSource(),
+                item.getType(),
+                item.getCurrency(),
+                item.getDataTimestamp(),
+                null
+        );
+    }
+
     private MarketQueryService.MarketSnapshot toMarketSnapshot(StockPriceDto stock) {
         return new MarketQueryService.MarketSnapshot(
                 stock.symbol(),
@@ -621,26 +672,26 @@ public class MarketController {
     }
 
     private LocalDateTime resolveDataDate(List<FxRateResponse> responses,
-                                          List<MarketQueryService.MarketSnapshot> cryptoSnapshots) {
+                                          List<MarketScreenItemResponse> marketRows) {
         LocalDateTime fxLatest = responses.stream()
                 .map(FxRateResponse::getPriceTimestamp)
                 .filter(java.util.Objects::nonNull)
                 .max(LocalDateTime::compareTo)
                 .orElse(null);
 
-        LocalDateTime cryptoLatest = cryptoSnapshots.stream()
-                .map(MarketQueryService.MarketSnapshot::fetchedAt)
+        LocalDateTime marketLatest = marketRows.stream()
+                .map(MarketScreenItemResponse::getDataTimestamp)
                 .filter(java.util.Objects::nonNull)
                 .max(LocalDateTime::compareTo)
                 .orElse(null);
 
         if (fxLatest == null) {
-            return cryptoLatest;
+            return marketLatest;
         }
-        if (cryptoLatest == null) {
+        if (marketLatest == null) {
             return fxLatest;
         }
-        return fxLatest.isAfter(cryptoLatest) ? fxLatest : cryptoLatest;
+        return fxLatest.isAfter(marketLatest) ? fxLatest : marketLatest;
     }
 
     private boolean isFxScreenRequest(String type) {
@@ -742,6 +793,8 @@ public class MarketController {
                 .symbol(code)
                 .name(displayName)
                 .type(InstrumentType.FX.name())
+                .displayUnit("CURRENCY")
+                .currency("TRY")
                 .source(rate.getSource())
                 .buyPrice(rate.getBuyRate())
                 .sellPrice(rate.getSellRate())

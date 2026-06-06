@@ -31,6 +31,7 @@ public class JpaMarketQueryService implements MarketQueryService {
     private final MarketInstrumentRepository marketInstrumentRepository;
     private final MarketPriceRepository marketPriceRepository;
     private final MarketPriceHistoryRepository marketPriceHistoryRepository;
+    private final MarketDailyChangeService dailyChangeService;
 
     @Override
     public Optional<MarketSnapshot> findBySymbol(String symbol) {
@@ -96,17 +97,25 @@ public class JpaMarketQueryService implements MarketQueryService {
 
     private Optional<MarketSnapshot> mapLatestSnapshot(MarketInstrument instrument) {
         return marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument)
-                .map(price -> new MarketSnapshot(
-                        instrument.getInstrumentCode(),
-                        instrument.getInstrumentName(),
-                        price.getPriceValue(),
-                        price.getChangeRate(),
-                        price.getSourceName().name(),
-                        instrument.getInstrumentType().name(),
-                        null,
-                        price.getPriceTimestamp(),
-                        null
-                ));
+                .map(price -> {
+                    var calculatedChangeRate = dailyChangeService.calculate(
+                            instrument,
+                            price.getPriceValue(),
+                            price.getPriceTimestamp(),
+                            price.getSourceName()
+                    );
+                    return new MarketSnapshot(
+                            instrument.getInstrumentCode(),
+                            instrument.getInstrumentName(),
+                            price.getPriceValue(),
+                            calculatedChangeRate != null ? calculatedChangeRate : price.getChangeRate(),
+                            price.getSourceName().name(),
+                            instrument.getInstrumentType().name(),
+                            null,
+                            price.getPriceTimestamp(),
+                            null
+                    );
+                });
     }
 }
 

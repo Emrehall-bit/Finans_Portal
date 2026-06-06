@@ -13,7 +13,9 @@ public record MarketQuoteResponse(
         BigDecimal changeRate,
         String source,
         LocalDateTime updatedAt,
-        String instrumentType
+        String instrumentType,
+        String displayUnit,
+        String currency
 ) {
 }
 

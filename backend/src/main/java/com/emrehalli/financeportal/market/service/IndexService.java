@@ -22,7 +22,6 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Service for INDEX instrument persistence and retrieval.
@@ -37,6 +36,7 @@ public class IndexService {
     private final CacheService cacheService;
     private final MarketProperties props;
     private final IndexSymbolRegistry symbolRegistry;
+    private final MarketDailyChangeService dailyChangeService;
 
     @Transactional
     public void saveAll(List<StockPriceDto> quotes) {
@@ -64,15 +64,22 @@ public class IndexService {
                             .sourceName(sourceName)
                             .build()));
 
+            java.math.BigDecimal changeRate = dailyChangeService.calculate(
+                    instrument,
+                    quote.price(),
+                    timestamp,
+                    sourceName
+            );
+
             priceRepository.save(MarketPrice.builder()
                     .instrument(instrument)
                     .priceValue(quote.price())
-                    .changeRate(quote.changePercent())
+                    .changeRate(changeRate != null ? changeRate : quote.changePercent())
                     .priceTimestamp(timestamp)
                     .sourceName(sourceName)
                     .build());
 
-            putCacheSilently(buildCacheKey(code), toResponse(instrument, quote.price(), quote.changePercent(), timestamp));
+            putCacheSilently(buildCacheKey(code), toResponse(instrument, quote.price(), changeRate != null ? changeRate : quote.changePercent(), timestamp));
         }
     }
 
@@ -89,10 +96,6 @@ public class IndexService {
     @Transactional(readOnly = true)
     public MarketQuoteResponse getBySymbol(String symbol) {
         String code = symbol.toUpperCase(Locale.ROOT);
-        Optional<MarketQuoteResponse> cached = cacheService.get(buildCacheKey(code), MarketQuoteResponse.class);
-        if (cached.isPresent()) {
-            return cached.get();
-        }
 
         MarketInstrument instrument = instrumentRepository
                 .findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(code, InstrumentType.INDEX)
@@ -106,7 +109,13 @@ public class IndexService {
         if (latest == null) {
             return null;
         }
-        return toResponse(instrument, latest.getPriceValue(), latest.getChangeRate(), latest.getPriceTimestamp());
+        java.math.BigDecimal calculated = dailyChangeService.calculate(
+                instrument,
+                latest.getPriceValue(),
+                latest.getPriceTimestamp(),
+                latest.getSourceName()
+        );
+        return toResponse(instrument, latest.getPriceValue(), calculated != null ? calculated : latest.getChangeRate(), latest.getPriceTimestamp());
     }
 
     private MarketQuoteResponse toResponse(MarketInstrument instrument, java.math.BigDecimal price,
@@ -118,7 +127,9 @@ public class IndexService {
                 changeRate,
                 SourceName.YAHOO_FINANCE.name(),
                 updatedAt,
-                InstrumentType.INDEX.name()
+                InstrumentType.INDEX.name(),
+                "POINT",
+                null
         );
     }
 

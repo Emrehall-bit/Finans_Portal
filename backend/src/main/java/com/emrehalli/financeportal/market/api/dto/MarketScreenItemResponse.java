@@ -8,11 +8,13 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class MarketScreenItemResponse {
     private String symbol;
     private String name;
     private String type;
+    private String displayUnit;
+    private String currency;
     private String source;
     private BigDecimal buyPrice;
     private BigDecimal sellPrice;
@@ -36,5 +38,13 @@ public class MarketScreenItemResponse {
     private LocalDateTime dataTimestamp;
     private String bistTier;
     private String stockSector;
+    private String fundType;
+    private String riskDegeri;
+    private BigDecimal getiri1a;
+    private BigDecimal getiri3a;
+    private BigDecimal getiri6a;
+    private BigDecimal getiriYb;
+    private BigDecimal getiri1y;
+    private BigDecimal getiri3y;
+    private BigDecimal getiri5y;
 }
-
