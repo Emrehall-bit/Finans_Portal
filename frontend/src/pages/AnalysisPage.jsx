@@ -5,7 +5,10 @@ import { Check, ChevronDown, X } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { extractErrorMessage } from "../api/responseUtils";
-import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../api/watchlistApi";
+import { useQueryClient } from "@tanstack/react-query";
+import { addWatchlistItem, removeWatchlistItem } from "../api/watchlistApi";
+import { watchlistKeys } from "../api/queryKeys";
+import { useUserWatchlist } from "../hooks/useWatchlistQueries";
 import { useComparisonAnalysis, useMarketHistory, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
 import useToast from "../hooks/useToast";
 import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPanel";
@@ -27,6 +30,7 @@ export default function AnalysisPage() {
   const { convertAmount, currency } = useCurrency();
   const { userId, user, updateUserProfile } = useAuth();
   const { toast, showToast } = useToast();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const routeInstrumentType = String(searchParams.get("type") || "").trim().toUpperCase();
   const [primarySymbol, setPrimarySymbol] = useState(() => searchParams.get("symbol") || "");
@@ -42,7 +46,7 @@ export default function AnalysisPage() {
   const [noteAdding, setNoteAdding] = useState(false);
   const [notePreviewOpen, setNotePreviewOpen] = useState(false);
   const [notePreviewContent, setNotePreviewContent] = useState("");
-  const [watchlistItems, setWatchlistItems] = useState([]);
+  const { data: watchlistItems = [] } = useUserWatchlist(userId);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const initialHighlightTool = searchParams.get("tool") || null;
   const presetPrice = searchParams.get("preset") ? Number(searchParams.get("preset")) : null;
@@ -79,17 +83,6 @@ export default function AnalysisPage() {
   const isFavorite = !!favoriteItem;
   const favoriteItemId = favoriteItem?.id;
 
-  useEffect(() => {
-    if (!userId) {
-      setWatchlistItems([]);
-      return undefined;
-    }
-    let active = true;
-    getUserWatchlist(userId)
-      .then((rows) => { if (active) setWatchlistItems(rows); })
-      .catch(() => { if (active) setWatchlistItems([]); });
-    return () => { active = false; };
-  }, [userId]);
 
   useEffect(() => {
     if (quotes.length > 0 && !primarySymbol) {
@@ -233,7 +226,7 @@ export default function AnalysisPage() {
         await addWatchlistItem(userId, { instrumentCode: primaryApiSymbol });
         showToast("success", t("instrumentDetail.favoriteAdded"));
       }
-      setWatchlistItems(await getUserWatchlist(userId));
+      queryClient.invalidateQueries({ queryKey: watchlistKeys.byUser(userId) });
     } catch (err) {
       showToast("error", extractErrorMessage(err, t("instrumentDetail.favoriteError")));
     } finally {

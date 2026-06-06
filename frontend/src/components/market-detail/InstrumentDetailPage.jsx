@@ -5,7 +5,10 @@ import { getMarketHistory, getMarketBySymbol, getTechnicalAnalysis } from "../..
 import { getNews } from "../../api/newsApi";
 import { getCompanyFundamentals, getCompanyFinancials } from "../../api/companyApi";
 import { extractErrorMessage } from "../../api/responseUtils";
-import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../../api/watchlistApi";
+import { useQueryClient } from "@tanstack/react-query";
+import { addWatchlistItem, removeWatchlistItem } from "../../api/watchlistApi";
+import { watchlistKeys } from "../../api/queryKeys";
+import { useUserWatchlist } from "../../hooks/useWatchlistQueries";
 import { useAuth } from "../../auth/AuthContext";
 import { useCurrency } from "../../currency/CurrencyContext";
 import AiCompanyComparisonCard from "../ai/AiCompanyComparisonCard";
@@ -48,12 +51,13 @@ export default function InstrumentDetailPage() {
   const { userId, login } = useAuth();
   const { convertAmount, currency } = useCurrency();
   const { toast, showToast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: watchlistItems = [] } = useUserWatchlist(userId);
 
   const [quote, setQuote] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [annualHistory, setAnnualHistory] = useState([]);
   const [yearStatsHistory, setYearStatsHistory] = useState([]);
-  const [watchlistItems, setWatchlistItems] = useState([]);
   const [quoteLoading, setQuoteLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(true);
   const [, setHistoryLoading] = useState(true);
@@ -62,7 +66,7 @@ export default function InstrumentDetailPage() {
   const [analysisError, setAnalysisError] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
   const [activeRange, setActiveRange] = useState("3M");
-  const [dateRange, setDateRange] = useState(() => buildPresetRange(90));
+  const [dateRange, setDateRange] = useState(() => buildPresetRange({ months: 3 }));
   const [selectedIndicators, setSelectedIndicators] = useState(() => new Set(DEFAULT_INDICATORS));
   const [isPortfolioModalOpen, setPortfolioModalOpen] = useState(false);
   const [isAlertModalOpen, setAlertModalOpen] = useState(false);
@@ -214,12 +218,12 @@ export default function InstrumentDetailPage() {
       try {
         setAnalysisLoading(true);
         setAnalysisError("");
-        const data = await getTechnicalAnalysis(
-          apiSymbol,
-          dateRange.from,
-          dateRange.to,
-          Array.from(selectedIndicators).join(","),
-        );
+        const data = await getTechnicalAnalysis(apiSymbol, {
+          from: dateRange.from,
+          to: dateRange.to,
+          indicators: Array.from(selectedIndicators).join(","),
+          instrumentType: resolvedInstrumentType,
+        });
         if (active) {
           setAnalysis(data ?? null);
         }
@@ -239,34 +243,8 @@ export default function InstrumentDetailPage() {
     return () => {
       active = false;
     };
-  }, [normalizedSymbol, dateRange, selectedIndicators, isDateRangeInvalid, apiSymbol, t]);
+  }, [normalizedSymbol, dateRange, selectedIndicators, isDateRangeInvalid, apiSymbol, resolvedInstrumentType, t]);
 
-  useEffect(() => {
-    if (!userId || !normalizedSymbol) {
-      setWatchlistItems([]);
-      return;
-    }
-
-    let active = true;
-
-    async function loadWatchlist() {
-      try {
-        const rows = await getUserWatchlist(userId);
-        if (active) {
-          setWatchlistItems(rows);
-        }
-      } catch {
-        if (active) {
-          setWatchlistItems([]);
-        }
-      }
-    }
-
-    loadWatchlist();
-    return () => {
-      active = false;
-    };
-  }, [userId, normalizedSymbol]);
 
   useEffect(() => {
     if (activeTab !== "fundamentals" || !normalizedSymbol) {
@@ -445,7 +423,7 @@ export default function InstrumentDetailPage() {
         showToast("success", t("instrumentDetail.favoriteAdded"));
       }
 
-      setWatchlistItems(await getUserWatchlist(userId));
+      queryClient.invalidateQueries({ queryKey: watchlistKeys.byUser(userId) });
     } catch (err) {
       setQuoteError(extractErrorMessage(err, t("instrumentDetail.favoriteError")));
     } finally {
@@ -482,7 +460,7 @@ export default function InstrumentDetailPage() {
 
   function handleRangeChange(preset) {
     setActiveRange(preset.key);
-    setDateRange(buildPresetRange(preset.days));
+    setDateRange(buildPresetRange(preset));
   }
 
   function handleDateRangeChange(field, value) {

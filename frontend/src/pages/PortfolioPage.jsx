@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowUpDown, ChartPie, Filter, GripVertical, LayoutGrid, RotateCcw, ShieldAlert, Sparkles, Star, X } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, ChartPie, Filter, GripVertical, LayoutGrid, RotateCcw, ShieldAlert, Sparkles, X } from "lucide-react";
 import { Area, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Responsive, WidthProvider } from "react-grid-layout/legacy";
 import {
@@ -17,14 +17,12 @@ import { portfolioKeys } from "../api/queryKeys";
 import { getPortfolioAiAnalysis } from "../api/aiApi";
 import { getPriceOnDate, searchInstruments } from "../api/marketApi";
 import { extractErrorMessage } from "../api/responseUtils";
-import { getUserWatchlist } from "../api/watchlistApi";
 import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import useToast from "../hooks/useToast";
 import { usePortfolioDetails, usePortfolioPerformance, usePortfolioRisk, useUserPortfolios } from "../hooks/usePortfolioQueries";
-import { useMarketQuotes } from "../hooks/useMarketQueries";
 import { useTheme } from "../theme/ThemeContext";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
@@ -43,14 +41,6 @@ const PERFORMANCE_RANGE_PRESETS = [
   { key: "5Y", label: "5 Yıl", months: 60 },
   { key: "MAX", label: "Tümü", months: null },
 ];
-const WATCHLIST_RAIL_FALLBACK = [
-  { symbol: "BTC", price: 3527000, changePercent: 2.1 },
-  { symbol: "EURTRY", price: 44.18, changePercent: 0.6 },
-  { symbol: "XAUUSD", price: 3824.5, changePercent: -0.4 },
-  { symbol: "NASDAQ", price: 18842, changePercent: 1.2 },
-  { symbol: "THYAO", price: 312.4, changePercent: -1.1 },
-  { symbol: "GARAN", price: 127.9, changePercent: 0.8 },
-];
 const ResponsiveGridLayout = WidthProvider(Responsive);
 const PORTFOLIO_WIDGET_LAYOUTS_STORAGE_KEY = "fp:portfolio:widget-layouts:v2";
 const PORTFOLIO_WIDGET_LAYOUTS_DEFAULT = {
@@ -59,20 +49,17 @@ const PORTFOLIO_WIDGET_LAYOUTS_DEFAULT = {
     { i: "allocation", x: 8, y: 0, w: 4, h: 4, minW: 4, minH: 3 },
     { i: "holdings", x: 0, y: 4, w: 8, h: 4, minW: 7, minH: 4 },
     { i: "ai", x: 8, y: 4, w: 4, h: 2, minW: 4, minH: 2 },
-    { i: "watchlist", x: 8, y: 6, w: 4, h: 3, minW: 4, minH: 3 },
   ],
   md: [
     { i: "performance", x: 0, y: 0, w: 6, h: 4, minW: 5, minH: 3 },
     { i: "allocation", x: 6, y: 0, w: 4, h: 4, minW: 4, minH: 3 },
     { i: "holdings", x: 0, y: 4, w: 6, h: 4, minW: 6, minH: 4 },
     { i: "ai", x: 6, y: 4, w: 4, h: 2, minW: 4, minH: 2 },
-    { i: "watchlist", x: 6, y: 6, w: 4, h: 3, minW: 4, minH: 3 },
   ],
   sm: [
     { i: "allocation", x: 0, y: 0, w: 1, h: 5, minH: 4 },
     { i: "performance", x: 0, y: 5, w: 1, h: 4, minH: 3 },
     { i: "ai", x: 0, y: 9, w: 1, h: 3, minH: 2 },
-    { i: "watchlist", x: 0, y: 12, w: 1, h: 4, minH: 3 },
     { i: "holdings", x: 0, y: 16, w: 1, h: 6, minH: 5 },
   ],
 };
@@ -141,7 +128,6 @@ export default function PortfolioPage() {
   const navPortfolioId = location.state?.portfolioId ?? null;
   const [selectedPortfolioId, setSelectedPortfolioId] = useState(null);
   const [error, setError] = useState("");
-  const [watchlist, setWatchlist] = useState([]);
   const [newPortfolio, setNewPortfolio] = useState({ portfolioName: "" });
   const [isCreatePortfolioModalOpen, setCreatePortfolioModalOpen] = useState(false);
   const [isHoldingModalOpen, setHoldingModalOpen] = useState(false);
@@ -168,8 +154,6 @@ export default function PortfolioPage() {
   const [holdingsSortKey, setHoldingsSortKey] = useState("WEIGHT");
   const [isAiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [isAiDrawerVisible, setAiDrawerVisible] = useState(false);
-  const [isWatchlistDrawerOpen, setWatchlistDrawerOpen] = useState(false);
-  const [isWatchlistDrawerVisible, setWatchlistDrawerVisible] = useState(false);
   const [aiAnalysisData, setAiAnalysisData] = useState(null);
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
   const [aiAnalysisError, setAiAnalysisError] = useState("");
@@ -179,7 +163,6 @@ export default function PortfolioPage() {
 
   // ── React Query data fetching ───────────────────────────────────────────────
   const { data: portfolios = [], isLoading: loadingList } = useUserPortfolios(userId);
-  const { data: marketQuotes = [] } = useMarketQuotes();
   const performanceParams = useMemo(() => buildPerformanceHistoryParams(performanceRangeKey), [performanceRangeKey]);
   const { data: selectedPortfolio = null, isLoading: loadingDetail } = usePortfolioDetails(selectedPortfolioId);
   const { data: performanceHistory = null, isLoading: loadingPerformanceHistory, error: performanceQueryError } = usePortfolioPerformance(selectedPortfolioId, performanceParams);
@@ -200,14 +183,6 @@ export default function PortfolioPage() {
     });
   }, [portfolios, navPortfolioId]);
 
-  // Load watchlist when user changes
-  useEffect(() => {
-    if (!userId) {
-      setWatchlist([]);
-      return;
-    }
-    loadWatchlist();
-  }, [userId]);
 
   const openAiDrawer = useCallback(() => {
     setAiDrawerVisible(true);
@@ -218,14 +193,6 @@ export default function PortfolioPage() {
     setAiDrawerOpen(false);
   }, []);
 
-  const openWatchlistDrawer = useCallback(() => {
-    setWatchlistDrawerVisible(true);
-    window.requestAnimationFrame(() => setWatchlistDrawerOpen(true));
-  }, []);
-
-  const closeWatchlistDrawer = useCallback(() => {
-    setWatchlistDrawerOpen(false);
-  }, []);
 
   useEffect(() => {
     if (!canEditWidgetLayout && isWidgetEditMode) {
@@ -234,7 +201,7 @@ export default function PortfolioPage() {
   }, [canEditWidgetLayout, isWidgetEditMode]);
 
   useEffect(() => {
-    if (!isAiDrawerVisible && !isWatchlistDrawerVisible) {
+    if (!isAiDrawerVisible) {
       return undefined;
     }
 
@@ -244,7 +211,6 @@ export default function PortfolioPage() {
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         closeAiDrawer();
-        closeWatchlistDrawer();
       }
     }
 
@@ -253,7 +219,7 @@ export default function PortfolioPage() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closeAiDrawer, closeWatchlistDrawer, isAiDrawerVisible, isWatchlistDrawerVisible]);
+  }, [closeAiDrawer, isAiDrawerVisible]);
 
   useEffect(() => {
     if (!isAiDrawerVisible || !selectedPortfolio?.portfolioId) {
@@ -304,30 +270,6 @@ export default function PortfolioPage() {
     return () => window.clearTimeout(timer);
   }, [isAiDrawerOpen, isAiDrawerVisible]);
 
-  useEffect(() => {
-    if (isWatchlistDrawerOpen) {
-      return undefined;
-    }
-
-    if (!isWatchlistDrawerVisible) {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => {
-      setWatchlistDrawerVisible(false);
-    }, 220);
-
-    return () => window.clearTimeout(timer);
-  }, [isWatchlistDrawerOpen, isWatchlistDrawerVisible]);
-
-  async function loadWatchlist() {
-    try {
-      const rows = await getUserWatchlist(userId);
-      setWatchlist(Array.isArray(rows) ? rows : []);
-    } catch {
-      setWatchlist([]);
-    }
-  }
 
   async function handleCreatePortfolio(event) {
     event.preventDefault();
@@ -737,41 +679,6 @@ export default function PortfolioPage() {
     return rows;
   }, [holdings, selectedPortfolio, totalCost, totalValue, formatAmount]);
 
-  const watchlistItems = useMemo(() => {
-    if (Array.isArray(watchlist) && watchlist.length > 0) {
-      const norm = (s) => (s ?? "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-      const quoteMap = new Map();
-      for (const q of marketQuotes) {
-        quoteMap.set(norm(q.symbol), q);
-        if (q.code) quoteMap.set(norm(q.code), q);
-      }
-      return watchlist.map((item, index) => {
-        const liveQuote = quoteMap.get(norm(item.instrumentCode));
-        const fallbackQuote = resolveWatchlistRailQuote(item.instrumentCode);
-        const price = liveQuote != null
-          ? (liveQuote.sellRate ?? liveQuote.price ?? null)
-          : fallbackQuote.price;
-        const changePercent = liveQuote != null
-          ? toMaybeNumber(liveQuote.changeRate)
-          : resolveWatchlistChangePercent(item, fallbackQuote);
-        return {
-          key: item.id || `${item.instrumentCode}-${index}`,
-          symbol: formatInstrumentLabel(item.instrumentCode),
-          price,
-          changePercent,
-          dotColor: CHART_COLORS[index % CHART_COLORS.length],
-        };
-      });
-    }
-
-    return WATCHLIST_RAIL_FALLBACK.map((item, index) => ({
-      key: `fallback-${item.symbol}-${index}`,
-      symbol: item.symbol,
-      price: item.price,
-      changePercent: item.changePercent,
-      dotColor: CHART_COLORS[index % CHART_COLORS.length],
-    }));
-  }, [watchlist, marketQuotes]);
 
   const widgetTitles = useMemo(
     () => ({
@@ -781,7 +688,6 @@ export default function PortfolioPage() {
       holdings: t("portfolio.holdingsTitle"),
       allocation: t("portfolio.allocationTitle"),
       ai: "AI Portföy Yorumu",
-      watchlist: "Takip listesi",
     }),
     [t],
   );
@@ -854,10 +760,6 @@ export default function PortfolioPage() {
             </div>
             <div className="actions-row portfolio-top-actions">
               <CurrencyToggle className="analysis-currency-toggle" />
-              <button type="button" className="secondary-button portfolio-watchlist-trigger" onClick={openWatchlistDrawer}>
-                <Star size={15} />
-                Watchlist
-              </button>
               <button type="button" className="secondary-button" onClick={openCreatePortfolioModal}>
                 + Yeni Portföy Oluştur
               </button>
@@ -1374,47 +1276,6 @@ export default function PortfolioPage() {
         </div>
       ) : null}
 
-      {isWatchlistDrawerVisible
-        ? createPortal(
-            <div className={`portfolio-watchlist-drawer ${isWatchlistDrawerOpen ? "is-open" : ""}`} role="presentation">
-              <div className="portfolio-watchlist-drawer-backdrop" aria-hidden="true" onClick={closeWatchlistDrawer} />
-              <aside className="portfolio-watchlist-drawer-sheet" role="dialog" aria-modal="true" aria-label="Watchlist paneli">
-                <div className="portfolio-watchlist-drawer-head">
-                  <div className="portfolio-watchlist-drawer-head-copy">
-                    <p className="eyebrow">Watchlist</p>
-                    <h3>İzleme listesi</h3>
-                    <p>Portföyden bağımsız takip edilen semboller</p>
-                  </div>
-                  <button type="button" className="portfolio-watchlist-drawer-close" aria-label="Watchlist panelini kapat" onClick={closeWatchlistDrawer}>
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="portfolio-watchlist-drawer-body">
-                  <div className="portfolio-watchlist-drawer-list" role="list" aria-label="Watchlist listesi">
-                    {watchlistItems.map((item) => {
-                      const toneClass = item.changePercent == null ? "is-neutral" : item.changePercent > 0 ? "is-positive" : item.changePercent < 0 ? "is-negative" : "is-neutral";
-                      return (
-                        <button key={item.key} type="button" className={`portfolio-watchlist-drawer-item ${toneClass}`} role="listitem">
-                          <div className="portfolio-watchlist-drawer-item-head">
-                            <span className="portfolio-watchlist-drawer-symbol-wrap">
-                              <span className="portfolio-watchlist-pill-dot" style={{ backgroundColor: item.dotColor }} />
-                              <strong>{item.symbol}</strong>
-                            </span>
-                            <span className={`portfolio-watchlist-drawer-change ${toneClass}`}>
-                              {item.changePercent == null ? "Nötr" : formatSignedPercent(item.changePercent)}
-                            </span>
-                          </div>
-                          <div className="portfolio-watchlist-drawer-price">{item.price == null ? "-" : formatAmount(item.price)}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </aside>
-            </div>,
-            document.body,
-          )
-        : null}
 
       {isAiDrawerVisible
         ? createPortal(
@@ -1924,85 +1785,6 @@ function toMaybeNumber(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-function resolveWatchlistRailQuote(instrumentCode) {
-  const normalized = normalizeCode(instrumentCode);
-  const seededPrice = buildSeededWatchlistPrice(normalized);
-  const seededChangePercent = buildSeededWatchlistChangePercent(normalized);
-  const fallback = WATCHLIST_RAIL_FALLBACK.find((item) => normalizeCode(item.symbol) === normalized);
-
-  return {
-    price: fallback?.price ?? seededPrice,
-    changePercent: fallback?.changePercent ?? seededChangePercent,
-  };
-}
-
-function resolveWatchlistChangePercent(item, fallbackQuote) {
-  return (
-    toMaybeNumber(item?.changePercent) ??
-    toMaybeNumber(item?.changeRate) ??
-    toMaybeNumber(item?.dailyChangePercent) ??
-    toMaybeNumber(item?.priceChangePercent) ??
-    fallbackQuote.changePercent
-  );
-}
-
-function buildSeededWatchlistPrice(symbol) {
-  if (!symbol) {
-    return null;
-  }
-
-  const hash = hashString(symbol);
-  if (symbol.startsWith("TCMB:")) {
-    return Number((((hash % 4000) + 3400) / 100).toFixed(2));
-  }
-  if (symbol.includes("XAU")) {
-    return Number((((hash % 180000) + 320000) / 100).toFixed(2));
-  }
-  if (symbol.includes("BTC") || symbol.includes("ETH") || symbol.includes("USDT")) {
-    return Number((((hash % 3200000) + 680000) / 1).toFixed(0));
-  }
-  if (/^[A-Z]{5}$/.test(symbol)) {
-    return Number((((hash % 35000) + 7000) / 100).toFixed(2));
-  }
-  if (/^[A-Z]{3,6}$/.test(symbol)) {
-    return Number((((hash % 1600000) + 90000) / 100).toFixed(2));
-  }
-  return Number((((hash % 120000) + 12000) / 100).toFixed(2));
-}
-
-function buildSeededWatchlistChangePercent(symbol) {
-  if (!symbol) {
-    return 0;
-  }
-
-  const hash = hashString(symbol);
-  const seeded = ((hash % 101) - 50) / 10;
-  return Math.abs(seeded) < 0.2 ? 0 : Number(seeded.toFixed(1));
-}
-
-function hashString(value) {
-  let hash = 0;
-  for (const char of value) {
-    hash = (hash * 31 + char.charCodeAt(0)) % 2147483647;
-  }
-  return hash;
-}
-
-function formatSignedPercent(value) {
-  if (value == null || !Number.isFinite(Number(value))) {
-    return "-";
-  }
-
-  const numeric = Number(value);
-  const formatted = formatPercent(Math.abs(numeric));
-  if (numeric > 0) {
-    return `+${formatted}`;
-  }
-  if (numeric < 0) {
-    return `-${formatted}`;
-  }
-  return formatted;
-}
 
 function getSummaryPnLWrapClass(value) {
   const numeric = Number(value);

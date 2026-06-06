@@ -2,12 +2,11 @@ import { formatDateTime, formatNumber } from "../../utils/formatters";
 import i18n from "../../i18n";
 
 export const RANGE_PRESETS = [
-  { key: "1D", days: 1 },
-  { key: "1W", days: 7 },
-  { key: "1M", days: 30 },
-  { key: "3M", days: 90 },
-  { key: "1Y", days: 365 },
-  { key: "MAX", days: 3650 },
+  { key: "1M", months: 1 },
+  { key: "3M", months: 3 },
+  { key: "6M", months: 6 },
+  { key: "1Y", years: 1 },
+  { key: "MAX", years: 10 },
 ];
 
 export const DEFAULT_INDICATORS = ["SMA7", "SMA20", "SMA50", "RSI14"];
@@ -46,10 +45,21 @@ export function resolveInstrumentSymbols(symbol, instrumentType) {
   };
 }
 
-export function buildPresetRange(days) {
+export function buildPresetRange(preset) {
   const to = new Date();
   const from = new Date(to);
-  from.setDate(from.getDate() - days);
+
+  if (typeof preset === "number") {
+    from.setDate(from.getDate() - preset);
+  } else if (preset?.months) {
+    from.setMonth(from.getMonth() - preset.months);
+  } else if (preset?.years) {
+    from.setFullYear(from.getFullYear() - preset.years);
+  } else if (preset?.days) {
+    from.setDate(from.getDate() - preset.days);
+  } else {
+    from.setMonth(from.getMonth() - 3);
+  }
 
   return {
     from: toIsoDate(from),
@@ -121,6 +131,19 @@ export function formatFullChartDate(value) {
   });
 }
 
+function toChartDateKey(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return toIsoDate(date);
+}
+
 export function formatTrendLabel(value) {
   if (!value) {
     return "-";
@@ -173,17 +196,18 @@ export function buildChartData(points = [], history = []) {
   const analysisPoints = Array.isArray(points) ? points : [];
   const historyPoints = Array.isArray(history) ? history : [];
   const historyByDate = new Map(historyPoints.map((point) => [
-    formatChartDate(point?.priceTimestamp ? String(point.priceTimestamp) : null),
+    toChartDateKey(point?.priceTimestamp ? String(point.priceTimestamp) : null),
     point,
   ]));
 
   if (analysisPoints.length > 0) {
     return analysisPoints
       .map((point) => {
-        const date = formatChartDate(point?.date);
-        const historyPoint = historyByDate.get(date);
+        const dateKey = toChartDateKey(point?.date);
+        const historyPoint = historyByDate.get(dateKey);
         return {
-          date,
+          date: formatChartDate(point?.date),
+          dateKey,
           fullDate: formatFullChartDate(point?.date),
           open: toNumeric(historyPoint?.openPrice),
           high: toNumeric(historyPoint?.highPrice),
@@ -204,6 +228,7 @@ export function buildChartData(points = [], history = []) {
         const rawDate = point?.priceTimestamp ? String(point.priceTimestamp) : null;
         return {
           date: formatChartDate(rawDate),
+          dateKey: toChartDateKey(rawDate),
           fullDate: formatFullChartDate(rawDate),
           open: toNumeric(point?.openPrice),
           high: toNumeric(point?.highPrice),

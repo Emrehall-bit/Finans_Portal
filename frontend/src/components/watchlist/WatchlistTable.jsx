@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { formatDateTime, formatNumber } from "../../utils/formatters";
+import { formatInstrumentCode } from "../../utils/instrumentUtils";
 
 export default function WatchlistTable({ rows, onRemove }) {
   const { t } = useTranslation();
@@ -19,7 +20,7 @@ export default function WatchlistTable({ rows, onRemove }) {
         <tbody>
           {rows.map((item) => (
             <tr key={item.id}>
-              <td>{item.instrumentCode}</td>
+              <td>{formatInstrumentCode(item.instrumentCode)}</td>
               <td>{formatNumber(item.currentPrice)}</td>
               <td>{item.source || "-"}</td>
               <td>{formatDateTime(item.createdAt)}</td>

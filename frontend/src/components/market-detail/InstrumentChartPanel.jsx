@@ -15,7 +15,7 @@ import EmptyState from "../common/EmptyState";
 import ErrorMessage from "../common/ErrorMessage";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { useTheme } from "../../theme/ThemeContext";
-import { DEFAULT_INDICATORS, RANGE_PRESETS } from "./marketDetailUtils";
+import { DEFAULT_INDICATORS, formatChartDate, RANGE_PRESETS } from "./marketDetailUtils";
 
 export default function InstrumentChartPanel({
   activeRange,
@@ -112,7 +112,14 @@ export default function InstrumentChartPanel({
             <ResponsiveContainer width="100%" height={520}>
               <LineChart data={chartData} margin={{ top: 20, right: 20, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="4 4" stroke={chartTheme.grid} strokeOpacity={0.55} />
-                <XAxis dataKey="date" stroke={chartTheme.axis} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                <XAxis
+                  dataKey="dateKey"
+                  stroke={chartTheme.axis}
+                  tickFormatter={formatChartDate}
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 11 }}
+                />
                 <YAxis
                   stroke={chartTheme.axis}
                   tickLine={false}
@@ -139,7 +146,14 @@ export default function InstrumentChartPanel({
               <ResponsiveContainer width="100%" height={210}>
                 <LineChart data={chartData} margin={{ top: 12, right: 20, left: 8, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="4 4" stroke={chartTheme.grid} strokeOpacity={0.55} />
-                  <XAxis dataKey="date" stroke={chartTheme.axis} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                  <XAxis
+                    dataKey="dateKey"
+                    stroke={chartTheme.axis}
+                    tickFormatter={formatChartDate}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11 }}
+                  />
                   <YAxis domain={[0, 100]} stroke={chartTheme.axis} tickLine={false} axisLine={false} width={44} tick={{ fontSize: 11 }} />
                   <Tooltip content={<ChartTooltip chartTheme={chartTheme} />} />
                   <ReferenceLine y={70} stroke={chartTheme.rsiUpperLine} strokeDasharray="6 6" />
@@ -159,10 +173,11 @@ function ChartTooltip({ active, payload, label, chartTheme, formatValue }) {
   if (!active || !payload?.length) return null;
 
   const fmt = formatValue ?? ((v) => v?.toLocaleString(undefined, { maximumFractionDigits: 2 }) ?? "-");
+  const dateLabel = payload[0]?.payload?.fullDate || formatChartDate(label);
 
   return (
     <div className="chart-tooltip terminal-tooltip" style={{ backgroundColor: chartTheme.tooltipBg, borderColor: chartTheme.tooltipBorder, color: chartTheme.tooltipText }}>
-      <strong>{label}</strong>
+      <strong>{dateLabel}</strong>
       {payload.map((item) => (
         <div key={item.dataKey} className="chart-tooltip-row">
           <span>{item.name}</span>

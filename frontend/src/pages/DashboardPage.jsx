@@ -142,13 +142,20 @@ export default function DashboardPage() {
     for (const q of marketQuotes) {
       quoteMap.set(norm(q.symbol), q);
       if (q.code) quoteMap.set(norm(q.code), q);
+      const qCode = norm(q.code || q.symbol || "");
+      const qType = String(q.instrumentType || "").toUpperCase();
+      if (qCode.length <= 4 && (qType === "FX" || qType === "FOREX" || qType === "CURRENCY")) {
+        const packedKey = `TCMB${qCode}SELL`;
+        if (!quoteMap.has(packedKey)) quoteMap.set(packedKey, q);
+      }
     }
 
     let nearest = null;
     let bestGap = Infinity;
 
     for (const alert of activeAlerts) {
-      const quote = quoteMap.get(norm(alert.instrumentCode));
+      const quote = quoteMap.get(norm(alert.instrumentCode))
+        ?? quoteMap.get(norm(formatInstrumentCode(alert.instrumentCode)));
       const cur = toNumber(quote?.sellRate ?? quote?.price ?? alert.currentPrice ?? 0);
       const target = toNumber(alert.targetPrice);
 
@@ -243,11 +250,20 @@ export default function DashboardPage() {
     for (const q of marketQuotes) {
       quoteMap.set(norm(q.symbol), q);
       if (q.code) quoteMap.set(norm(q.code), q);
+      // Legacy packed FX key (e.g. "TCMBAUDSELL") for old DB entries
+      const qCode = norm(q.code || q.symbol || "");
+      const qType = String(q.instrumentType || "").toUpperCase();
+      if (qCode.length <= 4 && (qType === "FX" || qType === "FOREX" || qType === "CURRENCY")) {
+        const packedKey = `TCMB${qCode}SELL`;
+        if (!quoteMap.has(packedKey)) quoteMap.set(packedKey, q);
+      }
     }
 
     return watchlistItems.slice(0, 8).map((item) => {
-      const quote = quoteMap.get(item.instrumentCode);
-      const shortCode = quote?.code ?? item.instrumentCode;
+      const displayCode = formatInstrumentCode(item.instrumentCode);
+      const quote = quoteMap.get(norm(item.instrumentCode))
+        ?? quoteMap.get(norm(displayCode));
+      const shortCode = quote?.code ?? displayCode;
       const rawName = quote?.displayName ?? "";
       const isDuplicateName = !rawName || rawName === shortCode || rawName === item.instrumentCode;
       const typeLabel = INSTRUMENT_TYPE_LABELS[quote?.instrumentType] ?? null;

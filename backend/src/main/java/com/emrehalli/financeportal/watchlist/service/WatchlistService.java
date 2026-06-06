@@ -30,8 +30,13 @@ public class WatchlistService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         String normalizedCode = normalizeSymbol(instrumentCode);
+        String strippedCode = normalizedCode.replaceAll("[^A-Z0-9]", "");
 
-        if (watchlistRepository.existsByUserIdAndInstrumentCodeIgnoreCase(userId, normalizedCode)) {
+        boolean existsExact = watchlistRepository.existsByUserIdAndInstrumentCodeIgnoreCase(userId, normalizedCode);
+        boolean existsPacked = !strippedCode.equals(normalizedCode)
+                && watchlistRepository.existsByUserIdAndInstrumentCodeIgnoreCase(userId, strippedCode);
+
+        if (existsExact || existsPacked) {
             throw new DuplicateResourceException("Instrument already exists in watchlist: " + normalizedCode);
         }
 
@@ -78,7 +83,12 @@ public class WatchlistService {
         if (symbol == null || symbol.isBlank()) {
             throw new BadRequestException("instrumentCode cannot be blank");
         }
-        return symbol.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+        String trimmed = symbol.trim().toUpperCase();
+        // Preserve FX provider symbols (e.g. "TCMB:AUD:SELL") — stripping colons corrupts the format
+        if (trimmed.matches("^[A-Z_]+:[A-Z]{2,4}:(BUY|SELL)$")) {
+            return trimmed;
+        }
+        return trimmed.replaceAll("[^A-Z0-9]", "");
     }
 }
 

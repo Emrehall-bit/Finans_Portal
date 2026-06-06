@@ -113,13 +113,19 @@ export async function screenMarkets(params = {}) {
 }
 
 export async function getMarketQuotes() {
-  const [aggregateQuotes, indexQuotes, commodityQuotes] = await Promise.all([
+  const [aggregateResult, fxResult, indexResult, commodityResult] = await Promise.allSettled([
     getMarkets(),
+    getMarketsByType("FX"),
     getMarketsByType("INDEX"),
     getMarketsByType("COMMODITY"),
   ]);
 
-  return mergeUniqueMarketQuotes(aggregateQuotes, indexQuotes, commodityQuotes);
+  const aggregateQuotes = aggregateResult.status === "fulfilled" ? aggregateResult.value : [];
+  const fxQuotes = fxResult.status === "fulfilled" ? fxResult.value : [];
+  const indexQuotes = indexResult.status === "fulfilled" ? indexResult.value : [];
+  const commodityQuotes = commodityResult.status === "fulfilled" ? commodityResult.value : [];
+
+  return mergeUniqueMarketQuotes(aggregateQuotes, fxQuotes, indexQuotes, commodityQuotes);
 }
 
 export async function getMarketTapeQuotes() {

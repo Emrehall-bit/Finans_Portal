@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
-import { Star } from "lucide-react";
+import { Check, Star, X } from "lucide-react";
 import { buildMarketDetailPath } from "../api/marketApi";
-import { addWatchlistItem, getUserWatchlist, removeWatchlistItem } from "../api/watchlistApi";
+import { addWatchlistItem, removeWatchlistItem } from "../api/watchlistApi";
+import { watchlistKeys } from "../api/queryKeys";
 import { extractErrorMessage } from "../api/responseUtils";
 import { useAuth } from "../auth/AuthContext";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import useToast from "../hooks/useToast";
 import { useMarketQuotes, useMarketScreen } from "../hooks/useMarketQueries";
+import { useUserWatchlist } from "../hooks/useWatchlistQueries";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatNumber } from "../utils/formatters";
 import { formatInstrumentCode } from "../utils/instrumentUtils";
@@ -86,6 +89,7 @@ export default function MarketsPage() {
   const { userId, login } = useAuth();
   const { toast, showToast } = useToast();
   const { formatAmount } = useCurrency();
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState(() => location.state?.category ?? "FX");
@@ -110,7 +114,7 @@ export default function MarketsPage() {
   const [onlyWithFundamentals, setOnlyWithFundamentals] = useState(false);
   const [bistTierFilter, setBistTierFilter] = useState("");
   const [stockSectorFilter, setStockSectorFilter] = useState("");
-  const [watchlistItems, setWatchlistItems] = useState([]);
+  const { data: watchlistItems = [], isLoading: watchlistLoading } = useUserWatchlist(userId);
   const [favoriteBusyKey, setFavoriteBusyKey] = useState("");
   const [filterMode, setFilterMode] = useState("basic");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
@@ -191,36 +195,10 @@ export default function MarketsPage() {
     [screenResponse],
   );
 
-  const loading = isFavoritesTab ? loadingAll : loadingScreen;
+  const loading = isFavoritesTab ? (loadingAll || watchlistLoading) : loadingScreen;
   const error = isFavoritesTab
     ? ""
     : (screenError ? extractErrorMessage(screenError, t("markets.loadError")) : "");
-
-  useEffect(() => {
-    if (!userId) {
-      setWatchlistItems([]);
-      return;
-    }
-
-    let active = true;
-    async function loadWatchlist() {
-      try {
-        const rows = await getUserWatchlist(userId);
-        if (active) {
-          setWatchlistItems(Array.isArray(rows) ? rows : []);
-        }
-      } catch {
-        if (active) {
-          setWatchlistItems([]);
-        }
-      }
-    }
-
-    loadWatchlist();
-    return () => {
-      active = false;
-    };
-  }, [userId]);
 
   const formatRateConverted = useCallback((value) => {
     if (value === null || value === undefined || value === "") {
@@ -236,17 +214,47 @@ export default function MarketsPage() {
     const query = debouncedSearch.trim().toLowerCase();
 
     if (isFavoritesTab) {
-      const codes = new Set(watchlistItems.map((row) => normalizeCode(row.instrumentCode)));
-      return [...allQuotes]
-        .filter((item) => item && typeof item === "object")
-        .map((item) => ({ ...item, marketCategory: classifyCategory(item, item.instrumentType || "OTHER") }))
+      const quoteMap = new Map();
+      for (const q of [...allQuotes, ...screenedQuotes]) {
+        if (!q || typeof q !== "object") continue;
+        const sym = normalizeCode(q.symbol);
+        const cod = normalizeCode(q.code);
+        if (sym) quoteMap.set(sym, q);
+        if (cod && !quoteMap.has(cod)) quoteMap.set(cod, q);
+        // Legacy packed key (e.g. "TCMBAUDSELL") for old DB entries stored before colon format was used
+        if (cod && cod.length <= 4 && classifyCategory(q, q.marketCategory || "") === "FX") {
+          const packedKey = `TCMB${cod}SELL`;
+          if (!quoteMap.has(packedKey)) quoteMap.set(packedKey, q);
+        }
+      }
+
+      return watchlistItems
+        .map((row) => {
+          const code = normalizeCode(row.instrumentCode);
+          const quote = quoteMap.get(code);
+          if (quote) {
+            return { ...quote, marketCategory: classifyCategory(quote, quote.instrumentType || "OTHER") };
+          }
+          const displayCode = formatInstrumentCode(row.instrumentCode);
+          const isFxInstrument = displayCode !== row.instrumentCode;
+          return {
+            symbol: row.instrumentCode,
+            code: displayCode,
+            displayName: displayCode,
+            price: null,
+            changeRate: null,
+            instrumentType: isFxInstrument ? "FX" : "OTHER",
+            marketCategory: isFxInstrument ? "FX" : "OTHER",
+            source: null,
+          };
+        })
         .filter((item) => {
-          const onWatchlist = codes.has(normalizeCode(item.symbol)) || codes.has(normalizeCode(item.code));
-          const matchesQuery = query.length === 0
-            || item.symbol?.toLowerCase().includes(query)
-            || item.code?.toLowerCase().includes(query)
-            || item.displayName?.toLowerCase().includes(query);
-          return onWatchlist && matchesQuery;
+          if (query.length === 0) return true;
+          return (
+            item.symbol?.toLowerCase().includes(query) ||
+            item.code?.toLowerCase().includes(query) ||
+            item.displayName?.toLowerCase().includes(query)
+          );
         })
         .sort((left, right) => sortQuotes(left, right, sortBy));
     }
@@ -408,7 +416,7 @@ export default function MarketsPage() {
         await addWatchlistItem(userId, { instrumentCode: symbolKey });
         showToast("success", t("instrumentDetail.favoriteAdded"));
       }
-      setWatchlistItems(await getUserWatchlist(userId));
+      queryClient.invalidateQueries({ queryKey: watchlistKeys.byUser(userId) });
     } catch (err) {
       showToast("error", extractErrorMessage(err, t("instrumentDetail.favoriteError")));
     } finally {
@@ -418,7 +426,12 @@ export default function MarketsPage() {
 
   return (
     <div className="dashboard-stack market-terminal-page market-dashboard-page market-dashboard-page-v2">
-      {toast ? <div className={"status-box " + toast.type}>{toast.message}</div> : null}
+      {toast ? (
+        <div key={toast.id} className={`toast-notify ${toast.type}`}>
+          {toast.type === "success" ? <Check size={15} strokeWidth={2.5} className="toast-notify-icon" /> : <X size={15} strokeWidth={2.5} className="toast-notify-icon" />}
+          <span>{toast.message}</span>
+        </div>
+      ) : null}
 
       <div className="market-dashboard-layout">
         <section className="market-main-panel panel-surface">
@@ -443,7 +456,7 @@ export default function MarketsPage() {
                   const isActive = categoryFilter === category;
                   return (
                     <button key={category} type="button" role="tab" aria-selected={isActive} className={"market-tab " + (isActive ? "active" : "")} onClick={() => setCategoryFilter(category)}>
-                      {category === "FAVORITES" ? "Favoriler" : formatCategoryLabel(category, t)}
+                      {formatCategoryLabel(category, t)}
                     </button>
                   );
                 })}
@@ -525,7 +538,7 @@ export default function MarketsPage() {
           <div className="market-table-region">
             {loading ? (viewMode === "cards" ? <MarketCardSkeleton /> : <MarketTableSkeleton />) : null}
             {error ? <ErrorMessage message={error} /> : null}
-            {!loading && !error && displayedCount === 0 ? <div className="market-contained-empty"><EmptyState title={isFavoritesTab && userId ? t("markets.favoritesEmptyTitle") : t("markets.emptyTitle")} description={isFavoritesTab && userId ? t("markets.favoritesEmptyDescription") : t("markets.emptyDescription")} /></div> : null}
+            {!loading && !error && displayedCount === 0 ? <div className="market-contained-empty"><EmptyState title={isFavoritesTab ? (userId ? t("markets.favoritesEmptyTitle") : t("markets.favoritesLoginHint")) : t("markets.emptyTitle")} description={isFavoritesTab && userId ? t("markets.favoritesEmptyDescription") : t("markets.emptyDescription")} /></div> : null}
             {!loading && !error && isFxTab && fxSourceMode === "COMPARE" && fxComparisonRows.length > 0 ? <MarketFxComparisonTable rows={fxComparisonRows} navigate={navigate} formatRateConverted={formatRateConverted} /> : null}
             {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteTable quotes={visibleQuotes} isFxTab={isFxTab} isFavoritesTab={isFavoritesTab} isStockTab={isStockTab} sortBy={sortBy} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
             {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteCards quotes={visibleQuotes} isFxTab={isFxTab} isStockTab={isStockTab} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
@@ -622,7 +635,7 @@ function MarketQuoteTable({ quotes, isFxTab, isFavoritesTab, isStockTab, sortBy,
                 {isFavoritesTab ? (
                   <td><span className="market-type-badge">{formatInstrumentTypeLabel(item.marketCategory || item.instrumentType)}</span></td>
                 ) : null}
-                <td className="market-number-cell">{formatRateConverted(resolveLastPrice(item))}</td>
+                <td className="market-number-cell">{formatRateConverted(item.sellRate ?? resolveLastPrice(item))}</td>
                 <td className={"market-change-cell " + getChangeToneClass(item.changeRate)}>{formatMarketChange(item.changeRate)}</td>
                 {metricCol ? <td className="market-number-cell">{metricCol.getValue(item)}</td> : null}
                 {isFxTab ? <td className="market-number-cell">{formatRateConverted(item.buyRate)}</td> : null}
@@ -927,12 +940,17 @@ function normalizeCode(value) {
   return rawValue.replace(/[^A-Z0-9]/g, "");
 }
 
+function codesMatch(a, b) {
+  const strip = (s) => String(s ?? "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+  return normalizeCode(a) === normalizeCode(b) || strip(a) === strip(b);
+}
+
 function isOnWatchlist(rows, symbol) {
-  return rows.some((row) => normalizeCode(row.instrumentCode) === normalizeCode(symbol));
+  return rows.some((row) => codesMatch(row.instrumentCode, symbol));
 }
 
 function resolveWatchlistId(rows, symbol) {
-  return rows.find((row) => normalizeCode(row.instrumentCode) === normalizeCode(symbol))?.id;
+  return rows.find((row) => codesMatch(row.instrumentCode, symbol))?.id;
 }
 
 function toFilterNumber(value) {
