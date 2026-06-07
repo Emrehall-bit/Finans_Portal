@@ -8,7 +8,8 @@ public record PortfolioPerformancePointDto(
         BigDecimal totalValue,
         BigDecimal totalCost,
         BigDecimal profitLoss,
-        BigDecimal profitLossPercent
+        BigDecimal profitLossPercent,
+        BigDecimal twrNormalized
 ) {
 }
 

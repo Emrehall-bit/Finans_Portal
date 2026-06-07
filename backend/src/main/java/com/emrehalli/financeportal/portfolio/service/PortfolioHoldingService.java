@@ -71,6 +71,9 @@ public class PortfolioHoldingService {
         PortfolioHolding holding = getHoldingEntity(portfolioId, holdingId);
         holding.setQuantity(request.getQuantity());
         holding.setBuyPrice(request.getBuyPrice());
+        if (request.getPurchaseDate() != null) {
+            holding.setPurchaseDate(request.getPurchaseDate());
+        }
         holding.setUpdatedAt(LocalDateTime.now());
         return toDto(portfolioHoldingRepository.save(holding));
     }

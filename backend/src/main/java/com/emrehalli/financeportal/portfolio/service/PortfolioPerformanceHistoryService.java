@@ -12,7 +12,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
@@ -59,30 +61,68 @@ public class PortfolioPerformanceHistoryService {
                 .map(holding -> buildContext(holding, resolvedFrom, resolvedTo))
                 .toList();
 
+        // TWR state: compound factor starts at 1.0; updated each trading day.
+        BigDecimal compoundFactor = BigDecimal.ONE;
+        LocalDate prevDataPointDate = null;
+        Map<String, BigDecimal> prevPrices = new HashMap<>();
+
         List<PortfolioPerformancePointDto> points = new ArrayList<>();
         for (LocalDate date = resolvedFrom; !date.isAfter(resolvedTo); date = date.plusDays(1)) {
             BigDecimal totalValue = BigDecimal.ZERO;
             BigDecimal totalCost = BigDecimal.ZERO;
             int activeHoldingCount = 0;
+            Map<String, BigDecimal> todayPrices = new HashMap<>();
 
             for (HoldingHistoryContext context : contexts) {
                 if (date.isBefore(context.startDate())) {
                     continue;
                 }
 
-                activeHoldingCount++;
-                BigDecimal positionCost = context.buyPrice().multiply(context.quantity());
-                totalCost = totalCost.add(positionCost);
-
                 BigDecimal historicalPrice = resolvePriceAt(context, date);
-                if (historicalPrice != null) {
-                    totalValue = totalValue.add(historicalPrice.multiply(context.quantity()));
+                if (historicalPrice == null) {
+                    // No verified market price — exclude from both value and cost.
+                    continue;
                 }
+
+                activeHoldingCount++;
+                totalCost = totalCost.add(context.buyPrice().multiply(context.quantity()));
+                totalValue = totalValue.add(historicalPrice.multiply(context.quantity()));
+                todayPrices.put(context.instrumentCode(), historicalPrice);
             }
 
             if (activeHoldingCount == 0) {
                 continue;
             }
+
+            // TWR: use only holdings active on BOTH the previous data point AND today.
+            // New holdings entering today are cash inflows — excluded from the return step.
+            if (prevDataPointDate != null) {
+                BigDecimal prevTotalSameSet = BigDecimal.ZERO;
+                BigDecimal currTotalSameSet = BigDecimal.ZERO;
+                for (HoldingHistoryContext context : contexts) {
+                    if (context.startDate().isAfter(prevDataPointDate)) {
+                        continue; // entered after previous data point — not part of same set
+                    }
+                    BigDecimal prevPrice = prevPrices.get(context.instrumentCode());
+                    BigDecimal currPrice = todayPrices.get(context.instrumentCode());
+                    if (prevPrice == null || currPrice == null) {
+                        continue;
+                    }
+                    prevTotalSameSet = prevTotalSameSet.add(prevPrice.multiply(context.quantity()));
+                    currTotalSameSet = currTotalSameSet.add(currPrice.multiply(context.quantity()));
+                }
+                if (prevTotalSameSet.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal dailyReturn = currTotalSameSet
+                            .divide(prevTotalSameSet, 8, RoundingMode.HALF_UP)
+                            .subtract(BigDecimal.ONE);
+                    compoundFactor = compoundFactor
+                            .multiply(BigDecimal.ONE.add(dailyReturn))
+                            .setScale(8, RoundingMode.HALF_UP);
+                }
+            }
+            BigDecimal twrNormalized = compoundFactor
+                    .multiply(BigDecimal.valueOf(100))
+                    .setScale(4, RoundingMode.HALF_UP);
 
             BigDecimal profitLoss = totalValue.subtract(totalCost);
             BigDecimal profitLossPercent = null;
@@ -97,8 +137,12 @@ public class PortfolioPerformanceHistoryService {
                     totalValue,
                     totalCost,
                     profitLoss,
-                    profitLossPercent
+                    profitLossPercent,
+                    twrNormalized
             ));
+
+            prevDataPointDate = date;
+            prevPrices = todayPrices;
         }
 
         return new PortfolioPerformanceResponse(points, resolvedFrom, resolvedTo, true);
@@ -136,7 +180,7 @@ public class PortfolioPerformanceHistoryService {
             return exactOrPreviousPrice.getValue();
         }
 
-        return context.buyPrice().compareTo(BigDecimal.ZERO) > 0 ? context.buyPrice() : null;
+        return null;
     }
 
     private LocalDate resolveHoldingStartDate(PortfolioHolding holding) {

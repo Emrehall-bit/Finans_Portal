@@ -38,11 +38,13 @@ public class BenchmarkComparisonService {
                 baseCode, benchmarkCode, benchmarkType, from, to);
 
         ComparisonResponse.Series baseSeries = buildInstrumentSeries(baseCode, from, to);
+        LocalDate effectiveStart = firstPointDate(baseSeries);
+        LocalDate effectiveEnd = lastPointDate(baseSeries);
 
         ComparisonResponse.Series benchmarkSeries;
         boolean isMacro = "MACRO".equalsIgnoreCase(benchmarkType);
         if (isMacro) {
-            benchmarkSeries = buildMacroSeries(benchmarkCode, from, to);
+            benchmarkSeries = buildMacroSeries(benchmarkCode, from, earlierDate(to, effectiveEnd));
         } else {
             benchmarkSeries = buildInstrumentSeries(benchmarkCode, from, to);
         }
@@ -63,7 +65,10 @@ public class BenchmarkComparisonService {
                     ? "ABOVE_BENCHMARK" : "BELOW_BENCHMARK";
         }
 
+        LocalDate benchmarkEffectiveEnd = lastPointDate(benchmarkSeries);
+
         return new BenchmarkResponse(from, to, baseCode, benchmarkCode, benchmarkType,
+                effectiveStart, effectiveEnd, benchmarkEffectiveEnd,
                 baseReturn, benchmarkReturn, relativeReturn, realReturn, status,
                 List.of(baseSeries, benchmarkSeries));
     }
@@ -126,5 +131,21 @@ public class BenchmarkComparisonService {
         return BigDecimal.ONE.add(nominalReturn)
                 .divide(denominator, 6, RoundingMode.HALF_UP)
                 .subtract(BigDecimal.ONE);
+    }
+
+    private LocalDate firstPointDate(ComparisonResponse.Series series) {
+        if (series == null || series.points() == null || series.points().isEmpty()) return null;
+        return series.points().getFirst().date();
+    }
+
+    private LocalDate lastPointDate(ComparisonResponse.Series series) {
+        if (series == null || series.points() == null || series.points().isEmpty()) return null;
+        return series.points().getLast().date();
+    }
+
+    private LocalDate earlierDate(LocalDate first, LocalDate second) {
+        if (first == null) return second;
+        if (second == null) return first;
+        return first.isBefore(second) ? first : second;
     }
 }
