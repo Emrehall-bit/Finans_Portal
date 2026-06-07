@@ -21,11 +21,15 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class MacroDataSyncService {
+
+    private static final DateTimeFormatter EVDS_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     private final TcmbMacroProvider tcmbMacroProvider;
     private final MacroIndicatorRepository indicatorRepository;
@@ -62,14 +66,22 @@ public class MacroDataSyncService {
     }
 
     @Transactional
-    public Map<String, MacroSyncResult> syncAllFromTcmb() {
+    public Map<String, MacroSyncResult> syncRecentFromTcmb(int lookbackDays) {
+        int safeLookbackDays = Math.max(40, lookbackDays);
+        LocalDate today = LocalDate.now();
+        String startDate = today.minusDays(safeLookbackDays).format(EVDS_DATE_FORMATTER);
+        String endDate = today.format(EVDS_DATE_FORMATTER);
+        return syncAllFromTcmb(startDate, startDate, endDate);
+    }
+
+    private Map<String, MacroSyncResult> syncAllFromTcmb(String inflationStartDate, String generalStartDate, String endDate) {
         Map<String, MacroSyncResult> results = new LinkedHashMap<>();
-        results.put("CPI", syncCpiFromTcmb("01-10-2013", "01-04-2026"));
-        results.put("PPI", syncPpiFromTcmb("01-10-2013", "01-04-2026"));
-        results.put("POLICY_RATE", syncPolicyRateFromTcmb("01-09-2013", "01-03-2026"));
-        results.put("LABOR_MARKET", syncLaborMarketFromTcmb("01-09-2013", "01-03-2026"));
-        results.put("CONSUMER_CONFIDENCE", syncConsumerConfidenceFromTcmb("01-09-2013", "01-03-2026"));
-        results.put("CURRENT_ACCOUNT", syncCurrentAccountFromTcmb("01-09-2013", "01-03-2026"));
+        results.put("CPI", syncCpiFromTcmb(inflationStartDate, endDate));
+        results.put("PPI", syncPpiFromTcmb(inflationStartDate, endDate));
+        results.put("POLICY_RATE", syncPolicyRateFromTcmb(generalStartDate, endDate));
+        results.put("LABOR_MARKET", syncLaborMarketFromTcmb(generalStartDate, endDate));
+        results.put("CONSUMER_CONFIDENCE", syncConsumerConfidenceFromTcmb(generalStartDate, endDate));
+        results.put("CURRENT_ACCOUNT", syncCurrentAccountFromTcmb(generalStartDate, endDate));
         return results;
     }
 

@@ -151,6 +151,10 @@ market:
   scheduler:
     futures-cron: "0 0 19 * * MON-FRI"
     bond-cron: "0 0 19 * * MON-FRI"
+    macro-enabled: true
+    macro-cron: "0 20 3 6,15 * *"
+    macro-zone: "Europe/Istanbul"
+    macro-lookback-days: 120
   cache:
     ttl-minutes:
       futures: 1500
