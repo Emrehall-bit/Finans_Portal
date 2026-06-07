@@ -156,11 +156,6 @@ public class FundService {
     @Transactional(readOnly = true)
     public FundNavDto getByCode(String code) {
         String normalizedCode = normalizeCode(code);
-        FundNavDto cached = getCachedFund(normalizedCode);
-        if (cached != null) {
-            return cached;
-        }
-
         try {
             FundNavDto fund = marketInstrumentRepository.findByInstrumentCodeAndSourceName(normalizedCode, SourceName.TEFAS)
                     .filter(instrument -> instrument.getInstrumentType() == InstrumentType.FUND)
@@ -448,6 +443,5 @@ public class FundService {
     private record FundMetadata(String fundName, String fundType) {
     }
 }
-
 
 

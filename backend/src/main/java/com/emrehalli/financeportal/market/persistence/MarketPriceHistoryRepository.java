@@ -85,6 +85,12 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
             Instant priceTimestamp
     );
 
+    Optional<MarketPriceHistory> findTopByInstrumentAndIntervalTypeAndPriceTimestampLessThanOrderByPriceTimestampDesc(
+            MarketInstrument instrument,
+            IntervalType intervalType,
+            Instant priceTimestamp
+    );
+
     List<MarketPriceHistory> findByInstrumentAndIntervalTypeAndPriceTimestampBetweenOrderByPriceTimestampAsc(
             MarketInstrument instrument,
             IntervalType intervalType,
@@ -152,5 +158,4 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
             @Param("intervalType")   IntervalType intervalType
     );
 }
-
 

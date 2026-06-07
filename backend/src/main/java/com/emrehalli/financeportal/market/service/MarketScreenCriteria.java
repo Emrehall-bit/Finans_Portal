@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Builder
@@ -11,6 +12,7 @@ public class MarketScreenCriteria {
     private String type;
     private String source;
     private String q;
+    private List<String> symbols;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
     private BigDecimal minChangePercent;
@@ -33,4 +35,3 @@ public class MarketScreenCriteria {
     private int size;
     private String sort;
 }
-

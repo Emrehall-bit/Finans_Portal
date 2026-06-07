@@ -32,7 +32,11 @@ public interface MarketQueryService {
             String instrumentType,
             String currency,
             LocalDateTime fetchedAt,
-            BigDecimal openPrice
+            BigDecimal openPrice,
+            Long volume,
+            BigDecimal previousClose,
+            BigDecimal dayHigh,
+            BigDecimal dayLow
     ) {
     }
 

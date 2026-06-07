@@ -43,7 +43,11 @@ public class MarketDailyChangeService {
                         instrument,
                         IntervalType.ONE_DAY,
                         resolvedSource
-                );
+                )
+                .or(() -> historyRepository.findTopByInstrumentAndIntervalTypeOrderByPriceTimestampDesc(
+                        instrument,
+                        IntervalType.ONE_DAY
+                ));
 
         if (latestDailyClose.isPresent()) {
             MarketPriceHistory latestHistory = latestDailyClose.get();
@@ -61,14 +65,20 @@ public class MarketDailyChangeService {
         }
 
         final BigDecimal priceForChange = effectivePrice;
+        final Instant cutoffForChange = previousCloseCutoff;
 
         return historyRepository
                 .findTopByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampLessThanOrderByPriceTimestampDesc(
                         instrument,
                         IntervalType.ONE_DAY,
                         resolvedSource,
-                        previousCloseCutoff
+                        cutoffForChange
                 )
+                .or(() -> historyRepository.findTopByInstrumentAndIntervalTypeAndPriceTimestampLessThanOrderByPriceTimestampDesc(
+                        instrument,
+                        IntervalType.ONE_DAY,
+                        cutoffForChange
+                ))
                 .map(MarketPriceHistory::getClosePrice)
                 .filter(previousClose -> previousClose.compareTo(BigDecimal.ZERO) != 0)
                 .map(previousClose -> priceForChange
