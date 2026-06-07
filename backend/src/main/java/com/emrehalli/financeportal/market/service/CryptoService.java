@@ -13,6 +13,7 @@ import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryReposito
 import com.emrehalli.financeportal.market.persistence.MarketPriceRepository;
 import com.emrehalli.financeportal.market.provider.crypto.dto.CryptoTickerDto;
 import com.emrehalli.financeportal.market.support.BinancePairMapper;
+import io.micrometer.observation.annotation.Observed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,15 +25,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Service for crypto persistence and retrieval.
@@ -110,6 +107,7 @@ public class CryptoService {
         evictCacheSilently(CACHE_KEY_ALL);
     }
 
+    @Observed(name = "market.crypto.load.all", contextualName = "MarketService.loadCryptoMarkets")
     @Transactional(readOnly = true)
     public List<MarketQueryService.MarketSnapshot> getAll() {
         List<MarketQueryService.MarketSnapshot> cached = cacheService.getList(CACHE_KEY_ALL, MarketQueryService.MarketSnapshot.class);
@@ -118,16 +116,9 @@ public class CryptoService {
         }
 
         try {
-            List<MarketQueryService.MarketSnapshot> snapshots = marketPriceRepository.findAll().stream()
-                    .filter(price -> price.getSourceName() == SourceName.BINANCE)
-                    .filter(price -> price.getInstrument() != null)
-                    .filter(price -> price.getInstrument().getInstrumentType() == InstrumentType.CRYPTO)
-                    .collect(Collectors.toMap(
-                            price -> price.getInstrument().getId(),
-                            Function.identity(),
-                            (left, right) -> right.getPriceTimestamp().isAfter(left.getPriceTimestamp()) ? right : left
-                    ))
-                    .values().stream()
+            List<MarketQueryService.MarketSnapshot> snapshots = marketPriceRepository
+                    .findLatestBySourceNameAndInstrumentType(SourceName.BINANCE.name(), InstrumentType.CRYPTO.name())
+                    .stream()
                     .map(this::toDto)
                     .filter(Objects::nonNull)
                     .filter(this::hasNonBlankSymbol)
@@ -141,6 +132,7 @@ public class CryptoService {
         }
     }
 
+    @Observed(name = "market.crypto.find-by-symbol", contextualName = "MarketService.loadCryptoBySymbol")
     @Transactional(readOnly = true)
     public MarketQueryService.MarketSnapshot getBySymbol(String symbol) {
         String normalizedSymbol = normalizeCode(symbol);
@@ -191,6 +183,10 @@ public class CryptoService {
                 price.getInstrument().getInstrumentType().name(),
                 "TRY",
                 price.getPriceTimestamp(),
+                null,
+                null,
+                null,
+                null,
                 null
         );
     }

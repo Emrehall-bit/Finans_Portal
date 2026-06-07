@@ -30,6 +30,19 @@ public interface MarketPriceRepository extends JpaRepository<MarketPrice, Long> 
             order by mp.instrument_id, mp.price_timestamp desc, mp.id desc
             """, nativeQuery = true)
     List<MarketPrice> findLatestPricesForInstruments(@Param("instrumentIds") List<Long> instrumentIds);
+
+    @Query(value = """
+            select distinct on (mp.instrument_id) mp.*
+            from market_prices mp
+            join market_instruments mi on mi.id = mp.instrument_id
+            where mp.source_name = :sourceName
+              and mi.instrument_type = :instrumentType
+            order by mp.instrument_id, mp.price_timestamp desc, mp.id desc
+            """, nativeQuery = true)
+    List<MarketPrice> findLatestBySourceNameAndInstrumentType(
+            @Param("sourceName") String sourceName,
+            @Param("instrumentType") String instrumentType
+    );
 }
 
 

@@ -2,6 +2,7 @@ package com.emrehalli.financeportal.market.service;
 
 import com.emrehalli.financeportal.market.api.dto.MarketScreenItemResponse;
 import com.emrehalli.financeportal.market.provider.fund.dto.FundNavDto;
+import io.micrometer.observation.annotation.Observed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class MarketScreeningService {
     private final EntityManager entityManager;
     private final FundService fundService;
 
+    @Observed(name = "market.screen", contextualName = "MarketService.screenMarkets")
     public Page<MarketScreenItemResponse> screen(MarketScreenCriteria criteria) {
         int page = Math.max(criteria.getPage(), 0);
         int size = Math.min(Math.max(criteria.getSize(), 1), 500);
@@ -63,9 +65,10 @@ public class MarketScreeningService {
                     from market_price_history mph
                     where mph.instrument_id = mi.id
                       and mph.interval_type = 'ONE_DAY'
-                      and mph.source_name = lp.source_name
                       and mph.close_price is not null
-                    order by mph.price_timestamp desc, mph.id desc
+                    order by case when mph.source_name = lp.source_name then 0 else 1 end,
+                             mph.price_timestamp desc,
+                             mph.id desc
                     limit 1
                 ) ch on true
                 left join lateral (
@@ -73,10 +76,11 @@ public class MarketScreeningService {
                     from market_price_history mph
                     where mph.instrument_id = mi.id
                       and mph.interval_type = 'ONE_DAY'
-                      and mph.source_name = lp.source_name
                       and mph.close_price is not null
                       and mph.price_timestamp < date_trunc('day', lp.price_timestamp)
-                    order by mph.price_timestamp desc, mph.id desc
+                    order by case when mph.source_name = lp.source_name then 0 else 1 end,
+                             mph.price_timestamp desc,
+                             mph.id desc
                     limit 1
                 ) pc on true
                 left join lateral (
@@ -84,11 +88,12 @@ public class MarketScreeningService {
                     from market_price_history mph
                     where mph.instrument_id = mi.id
                       and mph.interval_type = 'ONE_DAY'
-                      and mph.source_name = lp.source_name
                       and mph.close_price is not null
                       and ch.price_timestamp is not null
                       and mph.price_timestamp < ch.price_timestamp
-                    order by mph.price_timestamp desc, mph.id desc
+                    order by case when mph.source_name = lp.source_name then 0 else 1 end,
+                             mph.price_timestamp desc,
+                             mph.id desc
                     limit 1
                 ) lpc on true
                 left join company_profiles cp
@@ -180,6 +185,14 @@ public class MarketScreeningService {
         if (hasText(criteria.getQ())) {
             sql.append(" and (upper(mi.instrument_code) like :q or upper(mi.instrument_name) like :q)");
             params.put("q", "%" + criteria.getQ().trim().toUpperCase(Locale.ROOT) + "%");
+        }
+
+        if (criteria.getSymbols() != null && !criteria.getSymbols().isEmpty()) {
+            sql.append(" and upper(mi.instrument_code) in (:symbols)");
+            params.put("symbols", criteria.getSymbols().stream()
+                    .filter(this::hasText)
+                    .map(item -> item.trim().toUpperCase(Locale.ROOT))
+                    .toList());
         }
 
         if (criteria.getMinPrice() != null) {
@@ -354,7 +367,7 @@ public class MarketScreeningService {
                         when ch.close_price is not null
                              and ch.price_timestamp is not null
                              and ch.price_timestamp < date_trunc('day', lp.price_timestamp)
-                             and lp.price_value = ch.close_price
+                             and round(lp.price_value, 4) = round(ch.close_price, 4)
                              and lpc.close_price is not null
                              and lpc.close_price <> 0
                         then round(((ch.close_price - lpc.close_price) / abs(lpc.close_price)) * 100, 4)

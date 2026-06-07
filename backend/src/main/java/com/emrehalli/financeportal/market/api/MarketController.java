@@ -37,6 +37,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.micrometer.context.ContextSnapshot;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -44,10 +46,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 /**
  * REST controller for aggregate market data.
@@ -85,10 +91,35 @@ public class MarketController {
                     .build();
         }
 
-        List<FxRateResponse> fx = macroIndicatorRequest ? List.of() : fxService.getAll();
-        List<MarketScreenItemResponse> cryptoRows = macroIndicatorRequest ? List.of() : screenCategory("CRYPTO", 100);
-        List<MarketScreenItemResponse> stockRows = macroIndicatorRequest ? List.of() : screenCategory("STOCK", 500);
-        List<MarketScreenItemResponse> fundRows = macroIndicatorRequest ? List.of() : screenCategory("FUND", 500);
+        List<FxRateResponse> fx;
+        List<MarketScreenItemResponse> cryptoRows;
+        List<MarketScreenItemResponse> stockRows;
+        List<MarketScreenItemResponse> fundRows;
+
+        if (macroIndicatorRequest) {
+            fx = List.of();
+            cryptoRows = List.of();
+            stockRows = List.of();
+            fundRows = List.of();
+        } else {
+            ContextSnapshot contextSnapshot = ContextSnapshot.captureAll();
+            try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                var fxFuture = CompletableFuture.supplyAsync(withContext(contextSnapshot, fxService::getAll), executor)
+                        .exceptionally(ex -> { log.warn("FX load failed on aggregate", ex); return List.of(); });
+                var cryptoFuture = CompletableFuture.supplyAsync(withContext(contextSnapshot, () -> screenCategory("CRYPTO", 100)), executor)
+                        .exceptionally(ex -> { log.warn("Crypto screen failed on aggregate", ex); return List.of(); });
+                var stockFuture = CompletableFuture.supplyAsync(withContext(contextSnapshot, () -> screenCategory("STOCK", 500)), executor)
+                        .exceptionally(ex -> { log.warn("Stock screen failed on aggregate", ex); return List.of(); });
+                var fundFuture = CompletableFuture.supplyAsync(withContext(contextSnapshot, () -> screenCategory("FUND", 500)), executor)
+                        .exceptionally(ex -> { log.warn("Fund screen failed on aggregate", ex); return List.of(); });
+
+                CompletableFuture.allOf(fxFuture, cryptoFuture, stockFuture, fundFuture).join();
+                fx = fxFuture.join();
+                cryptoRows = cryptoFuture.join();
+                stockRows = stockFuture.join();
+                fundRows = fundFuture.join();
+            }
+        }
         List<Object> crypto = new ArrayList<>(cryptoRows.stream().map(this::toMarketSnapshot).toList());
         List<Object> stocks = new ArrayList<>(stockRows.stream().map(this::toMarketSnapshot).toList());
         List<Object> funds = new ArrayList<>(fundRows.stream().map(this::toMarketSnapshot).toList());
@@ -142,6 +173,7 @@ public class MarketController {
             @RequestParam(name = "type", required = false) String type,
             @RequestParam(name = "source", required = false) String source,
             @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "symbols", required = false) List<String> symbols,
             @RequestParam(name = "minPrice", required = false) BigDecimal minPrice,
             @RequestParam(name = "maxPrice", required = false) BigDecimal maxPrice,
             @RequestParam(name = "minChangePercent", required = false) BigDecimal minChangePercent,
@@ -183,6 +215,7 @@ public class MarketController {
                         .type(type)
                         .source(source)
                         .q(q)
+                        .symbols(normalizeSymbolFilter(symbols))
                         .minPrice(minPrice)
                         .maxPrice(maxPrice)
                         .minChangePercent(minChangePercent)
@@ -383,16 +416,6 @@ public class MarketController {
                                 .toList();
                     }
 
-                    if (instrument.getInstrumentType() == InstrumentType.STOCK) {
-                        return stockService.getHistory(
-                                        symbol.toUpperCase(),
-                                        resolvedFrom.atZone(java.time.ZoneOffset.UTC).toLocalDate(),
-                                        resolvedTo.atZone(java.time.ZoneOffset.UTC).toLocalDate()
-                                ).stream()
-                                .map(this::toDto)
-                                .toList();
-                    }
-
                     return getStoredHistory(instrument, sourceName, resolvedFrom, resolvedTo).stream()
                             .map(this::toDto)
                             .toList();
@@ -462,7 +485,7 @@ public class MarketController {
         return switch (type) {
             case FUND -> SourceName.TEFAS;
             case CRYPTO -> SourceName.BINANCE;
-            case STOCK -> SourceName.BIST;
+            case STOCK -> SourceName.YAHOO_FINANCE;
             case FX -> parseSourceFromSymbol(symbol);
             case INDEX -> SourceName.YAHOO_FINANCE;
             case COMMODITY -> null; // mixed sources (YAHOO_FINANCE for BRENT, CALCULATED for gold/silver)
@@ -599,6 +622,10 @@ public class MarketController {
                 rate.getType(),
                 "TRY",
                 rate.getPriceTimestamp(),
+                null,
+                null,
+                null,
+                null,
                 null
         );
     }
@@ -609,6 +636,7 @@ public class MarketController {
                 && fund.getPreviousNavValue().compareTo(BigDecimal.ZERO) != 0) {
             changeRate = fund.getNavValue()
                     .subtract(fund.getPreviousNavValue())
+                    .multiply(BigDecimal.valueOf(100))
                     .divide(fund.getPreviousNavValue(), 4, RoundingMode.HALF_UP);
         }
 
@@ -621,6 +649,10 @@ public class MarketController {
                 InstrumentType.FUND.name(),
                 "TRY",
                 LocalDateTime.now(),
+                null,
+                null,
+                fund.getPreviousNavValue(),
+                null,
                 null
         );
     }
@@ -635,6 +667,10 @@ public class MarketController {
                 item.getType(),
                 item.getCurrency(),
                 item.getDataTimestamp(),
+                null,
+                item.getVolume() != null ? item.getVolume().longValue() : null,
+                null,
+                null,
                 null
         );
     }
@@ -651,7 +687,11 @@ public class MarketController {
                 stock.dataTimestamp() != null
                         ? LocalDateTime.ofInstant(stock.dataTimestamp(), java.time.ZoneOffset.UTC)
                         : null,
-                stock.openPrice()
+                stock.openPrice(),
+                stock.volume(),
+                stock.previousClose(),
+                stock.dayHigh(),
+                stock.dayLow()
         );
     }
 
@@ -770,6 +810,21 @@ public class MarketController {
         String safeLeft = left != null ? left : "";
         String safeRight = right != null ? right : "";
         return safeLeft.compareToIgnoreCase(safeRight);
+    }
+
+    private List<String> normalizeSymbolFilter(List<String> symbols) {
+        if (symbols == null || symbols.isEmpty()) {
+            return List.of();
+        }
+
+        return symbols.stream()
+                .filter(item -> item != null && !item.isBlank())
+                .flatMap(item -> Arrays.stream(item.split(",")))
+                .map(item -> item.trim().toUpperCase(Locale.ROOT))
+                .filter(item -> !item.isBlank())
+                .distinct()
+                .limit(100)
+                .toList();
     }
 
     @SafeVarargs
@@ -923,6 +978,14 @@ public class MarketController {
             Map.entry("KWD", "Dinar"),
             Map.entry("KRW", "Won")
     );
+
+    private <T> Supplier<T> withContext(ContextSnapshot snapshot, Supplier<T> supplier) {
+        return () -> {
+            try (ContextSnapshot.Scope ignored = snapshot.setThreadLocals()) {
+                return supplier.get();
+            }
+        };
+    }
 
     private record FxSearchLabel(String source, String currencyCode, String currencyName) {
     }

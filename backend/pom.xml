@@ -215,6 +215,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- JDBC/DataSource sorgu span'ları — Micrometer Observation üzerinden Tempo'ya yazar -->
+        <dependency>
+            <groupId>net.ttddyy.observation</groupId>
+            <artifactId>datasource-micrometer-spring-boot</artifactId>
+            <version>1.0.5</version>
+        </dependency>
+
         <!-- Log4j2 Kafka Appender için Kafka producer istemcisi -->
         <dependency>
             <groupId>org.apache.kafka</groupId>

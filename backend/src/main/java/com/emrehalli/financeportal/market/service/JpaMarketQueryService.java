@@ -7,6 +7,7 @@ import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
 import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
 import com.emrehalli.financeportal.market.persistence.MarketPriceRepository;
+import io.micrometer.observation.annotation.Observed;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ public class JpaMarketQueryService implements MarketQueryService {
     private final MarketDailyChangeService dailyChangeService;
 
     @Override
+    @Observed(name = "market.query.find-by-symbol", contextualName = "MarketRepository.findLatestPrices")
     public Optional<MarketSnapshot> findBySymbol(String symbol) {
         return findBySymbol(symbol, null);
     }
@@ -113,6 +115,10 @@ public class JpaMarketQueryService implements MarketQueryService {
                             instrument.getInstrumentType().name(),
                             null,
                             price.getPriceTimestamp(),
+                            null,
+                            null,
+                            null,
+                            null,
                             null
                     );
                 });
