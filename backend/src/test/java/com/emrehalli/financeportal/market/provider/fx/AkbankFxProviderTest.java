@@ -1,6 +1,7 @@
 package com.emrehalli.financeportal.market.provider.fx;
 
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
+import com.emrehalli.financeportal.market.exception.DataProviderException;
 import com.emrehalli.financeportal.market.provider.fx.dto.FxRateDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -73,15 +75,13 @@ class AkbankFxProviderTest {
     }
 
     @Test
-    void fetchReturnsEmptyListWhenProviderFails() {
+    void fetchThrowsDataProviderExceptionWhenProviderFails() {
         when(restTemplate.postForEntity(
                 eq("https://www.akbank.com/_layouts/15/Akbank/CalcTools/Ajax.aspx/GetDovizKurlari"),
                 any(HttpEntity.class),
                 eq(String.class)
         )).thenThrow(new HttpServerErrorException(HttpStatus.BAD_GATEWAY));
 
-        List<FxRateDto> rates = provider.fetch();
-
-        assertThat(rates).isEmpty();
+        assertThatThrownBy(provider::fetch).isInstanceOf(DataProviderException.class);
     }
 }

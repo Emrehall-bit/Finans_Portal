@@ -47,7 +47,7 @@ class NewsPresentationMapperTest {
                 .externalId("AA-1")
                 .title("TCMB karari")
                 .summary(("## Baslik\n\n" + "Detay ".repeat(120)).trim())
-                .source("Anadolu Ajansi")
+                .source("Anadolu Ajansı")
                 .provider("AA_RSS")
                 .language("tr")
                 .regionScope("TR")
@@ -61,7 +61,7 @@ class NewsPresentationMapperTest {
 
         assertThat(dto.getQualityStatus()).isEqualTo("FULL_CONTENT");
         assertThat(dto.getContentPreview()).doesNotContain("##");
-        assertThat(dto.getSourceName()).isEqualTo("Anadolu Ajansi");
+        assertThat(dto.getSourceName()).isEqualTo("Anadolu Ajansı");
     }
 
     @Test
@@ -87,7 +87,4 @@ class NewsPresentationMapperTest {
         assertThat(dto.getSourceUrl()).isEqualTo(news.getUrl());
     }
 }
-
-
-
 

@@ -96,7 +96,7 @@ class CompanyRatioServiceTest {
         assertThat(result.isCalculated()).isTrue();
         assertThat(result.getPeRatio()).isEqualByComparingTo("-200.000000");
         assertThat(result.getPeStatus()).isEqualTo("NEGATIVE_EARNINGS");
-        assertThat(result.getPeMissingReason()).isEqualTo("negative earnings");
+        assertThat(result.getPeMissingReason()).isNull();
         assertThat(result.getNetMargin()).isNotNull().isNegative();
     }
 
@@ -334,7 +334,7 @@ class CompanyRatioServiceTest {
         when(marketQueryService.findBySymbol("TEST")).thenReturn(Optional.of(
                 new MarketQueryService.MarketSnapshot(
                         "TEST", "Test A.Å.", new BigDecimal(price),
-                        BigDecimal.ZERO, "BIST", "STOCK", "TRY", LocalDateTime.now(), null)));
+                        BigDecimal.ZERO, "BIST", "STOCK", "TRY", LocalDateTime.now(), null, null, null, null, null)));
     }
 
     private void stubValues(List<CompanyFinancialValue> vals) {
@@ -348,7 +348,4 @@ class CompanyRatioServiceTest {
                 .build();
     }
 }
-
-
-
 

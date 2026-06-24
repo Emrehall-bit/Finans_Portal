@@ -28,6 +28,7 @@ class JpaMarketQueryServiceTest {
     private MarketInstrumentRepository marketInstrumentRepository;
     private MarketPriceRepository marketPriceRepository;
     private MarketPriceHistoryRepository marketPriceHistoryRepository;
+    private MarketDailyChangeService dailyChangeService;
     private JpaMarketQueryService service;
 
     @BeforeEach
@@ -35,10 +36,12 @@ class JpaMarketQueryServiceTest {
         marketInstrumentRepository = mock(MarketInstrumentRepository.class);
         marketPriceRepository = mock(MarketPriceRepository.class);
         marketPriceHistoryRepository = mock(MarketPriceHistoryRepository.class);
+        dailyChangeService = mock(MarketDailyChangeService.class);
         service = new JpaMarketQueryService(
                 marketInstrumentRepository,
                 marketPriceRepository,
-                marketPriceHistoryRepository
+                marketPriceHistoryRepository,
+                dailyChangeService
         );
     }
 
@@ -106,6 +109,17 @@ class JpaMarketQueryServiceTest {
                 );
     }
 
+    @Test
+    void getHistoryReturnsEmptyWhenSymbolNotFound() {
+        when(marketInstrumentRepository.findFirstByInstrumentCodeIgnoreCaseOrderByCreatedAtAsc("UNKNOWN"))
+                .thenReturn(Optional.empty());
+
+        List<MarketQueryService.HistoricalPrice> result = service.getHistory(
+                "UNKNOWN", null, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 10));
+
+        assertThat(result).isEmpty();
+    }
+
     private MarketInstrument instrument(String code) {
         return MarketInstrument.builder()
                 .instrumentCode(code)
@@ -115,7 +129,3 @@ class JpaMarketQueryServiceTest {
                 .build();
     }
 }
-
-
-
-
