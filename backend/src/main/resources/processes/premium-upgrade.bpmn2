@@ -5,43 +5,42 @@
              xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
              xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
              xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns:tns="http://www.jboss.org/drools"
              targetNamespace="http://www.jboss.org/drools">
 
-    <!--
-        Signal IDs == signal names: signalRef values in catch events are unchanged,
-        so jBPM runtime behaviour is preserved exactly.
-    -->
-    <signal id="premium-payment-outcome"       name="premium-payment-outcome"/>
-    <signal id="premium-cancel-requested"      name="premium-cancel-requested"/>
+    <signal id="premium-payment-outcome"        name="premium-payment-outcome"/>
+    <signal id="premium-cancel-requested"       name="premium-cancel-requested"/>
     <signal id="premium-active-cancel-requested" name="premium-active-cancel-requested"/>
 
     <process id="premium-upgrade-process" name="Premium Upgrade Process" isExecutable="true">
-        <property id="subscriptionId"  name="subscriptionId"  itemSubjectRef="xsd:long"/>
+        <property id="subscriptionId" name="subscriptionId" itemSubjectRef="xsd:long"/>
         <property id="paymentSuccess"  name="paymentSuccess"  itemSubjectRef="xsd:boolean"/>
 
         <startEvent id="StartEvent_1" name="Start"/>
 
         <!-- ── Upgrade path ── -->
 
-        <scriptTask id="Task_Requested" name="PREMIUM_REQUESTED" scriptFormat="http://www.java.com/java">
-            <documentation>
-                Premium talebi oluşturuldu.
-                PremiumSubscriptionService.markPremiumRequested() tetiklenir ve
-                DB'de abonelik PREMIUM_REQUESTED statüsüne geçer.
-            </documentation>
-            <script><![CDATA[]]></script>
-        </scriptTask>
+        <task id="Task_Requested" name="PremiumRequested" tns:taskName="PremiumRequested">
+            <ioSpecification>
+                <dataInput id="Task_Requested_sid_in" name="subscriptionId"/>
+                <inputSet><dataInputRefs>Task_Requested_sid_in</dataInputRefs></inputSet>
+            </ioSpecification>
+            <dataInputAssociation>
+                <sourceRef>subscriptionId</sourceRef>
+                <targetRef>Task_Requested_sid_in</targetRef>
+            </dataInputAssociation>
+        </task>
 
-        <scriptTask id="Task_PaymentPending" name="PAYMENT_PENDING" scriptFormat="http://www.java.com/java">
-            <documentation>
-                Ödeme veya admin onayı bekleniyor.
-                PremiumSubscriptionService.markPaymentPending() tetiklenir ve
-                DB'de abonelik PAYMENT_PENDING statüsüne geçer.
-                Bu noktada süreç, ödeme sonucu (premium-payment-outcome) veya
-                iptal sinyali (premium-cancel-requested) beklemeye alınır.
-            </documentation>
-            <script><![CDATA[]]></script>
-        </scriptTask>
+        <task id="Task_PaymentPending" name="PaymentPending" tns:taskName="PaymentPending">
+            <ioSpecification>
+                <dataInput id="Task_PaymentPending_sid_in" name="subscriptionId"/>
+                <inputSet><dataInputRefs>Task_PaymentPending_sid_in</dataInputRefs></inputSet>
+            </ioSpecification>
+            <dataInputAssociation>
+                <sourceRef>subscriptionId</sourceRef>
+                <targetRef>Task_PaymentPending_sid_in</targetRef>
+            </dataInputAssociation>
+        </task>
 
         <eventBasedGateway id="Gateway_Wait" name="Wait Payment Or Cancel" gatewayDirection="Diverging"/>
 
@@ -49,31 +48,29 @@
             <signalEventDefinition signalRef="premium-payment-outcome"/>
         </intermediateCatchEvent>
 
-        <!--
-            paymentSuccess değişkeni bu sinyal öncesinde
-            PremiumUpgradeWorkflowService.signalPaymentOutcome() içinde set edilir.
-            approve → true, reject → false.
-        -->
         <exclusiveGateway id="Gateway_Result" name="Payment Success?" gatewayDirection="Diverging" default="Flow_Fail"/>
 
-        <scriptTask id="Task_Active" name="ACTIVE" scriptFormat="http://www.java.com/java">
-            <documentation>
-                Ödeme veya admin onayı başarılı.
-                PremiumSubscriptionService.activatePremium() tetiklenir:
-                DB'de ACTIVE statüsüne geçer ve kullanıcıya USER_PREMIUM rolü atanır.
-                Süreç ardından aktif abonelik iptali bekleme state'ine geçer.
-            </documentation>
-            <script><![CDATA[]]></script>
-        </scriptTask>
+        <task id="Task_Active" name="ActivatePremium" tns:taskName="ActivatePremium">
+            <ioSpecification>
+                <dataInput id="Task_Active_sid_in" name="subscriptionId"/>
+                <inputSet><dataInputRefs>Task_Active_sid_in</dataInputRefs></inputSet>
+            </ioSpecification>
+            <dataInputAssociation>
+                <sourceRef>subscriptionId</sourceRef>
+                <targetRef>Task_Active_sid_in</targetRef>
+            </dataInputAssociation>
+        </task>
 
-        <scriptTask id="Task_Failed" name="PAYMENT_FAILED" scriptFormat="http://www.java.com/java">
-            <documentation>
-                Ödeme veya admin onayı başarısız.
-                PremiumSubscriptionService.markPaymentFailed() tetiklenir ve
-                DB'de abonelik PAYMENT_FAILED statüsüne geçer.
-            </documentation>
-            <script><![CDATA[]]></script>
-        </scriptTask>
+        <task id="Task_Failed" name="PaymentFailed" tns:taskName="PaymentFailed">
+            <ioSpecification>
+                <dataInput id="Task_Failed_sid_in" name="subscriptionId"/>
+                <inputSet><dataInputRefs>Task_Failed_sid_in</dataInputRefs></inputSet>
+            </ioSpecification>
+            <dataInputAssociation>
+                <sourceRef>subscriptionId</sourceRef>
+                <targetRef>Task_Failed_sid_in</targetRef>
+            </dataInputAssociation>
+        </task>
 
         <!-- ── Pre-activation cancel path ── -->
 
@@ -81,14 +78,16 @@
             <signalEventDefinition signalRef="premium-cancel-requested"/>
         </intermediateCatchEvent>
 
-        <scriptTask id="Task_Cancelled" name="CANCELLED" scriptFormat="http://www.java.com/java">
-            <documentation>
-                Kullanıcı aktivasyon öncesinde talebi iptal etti.
-                PremiumSubscriptionService.cancelUpgradeInternal() tetiklenir ve
-                DB'de abonelik CANCELLED statüsüne geçer.
-            </documentation>
-            <script><![CDATA[]]></script>
-        </scriptTask>
+        <task id="Task_Cancelled" name="CancelUpgrade" tns:taskName="CancelUpgrade">
+            <ioSpecification>
+                <dataInput id="Task_Cancelled_sid_in" name="subscriptionId"/>
+                <inputSet><dataInputRefs>Task_Cancelled_sid_in</dataInputRefs></inputSet>
+            </ioSpecification>
+            <dataInputAssociation>
+                <sourceRef>subscriptionId</sourceRef>
+                <targetRef>Task_Cancelled_sid_in</targetRef>
+            </dataInputAssociation>
+        </task>
 
         <!-- ── Active subscription cancellation path ── -->
 
@@ -96,23 +95,27 @@
             <signalEventDefinition signalRef="premium-active-cancel-requested"/>
         </intermediateCatchEvent>
 
-        <scriptTask id="Task_CancellationRequested" name="CANCELLATION_REQUESTED" scriptFormat="http://www.java.com/java">
-            <documentation>
-                Aktif premium kullanıcı iptali başlattı.
-                PremiumSubscriptionService.markCancellationRequested() tetiklenir ve
-                DB'de abonelik CANCELLATION_REQUESTED statüsüne geçer.
-            </documentation>
-            <script><![CDATA[]]></script>
-        </scriptTask>
+        <task id="Task_CancellationRequested" name="CancellationRequested" tns:taskName="CancellationRequested">
+            <ioSpecification>
+                <dataInput id="Task_CancellationRequested_sid_in" name="subscriptionId"/>
+                <inputSet><dataInputRefs>Task_CancellationRequested_sid_in</dataInputRefs></inputSet>
+            </ioSpecification>
+            <dataInputAssociation>
+                <sourceRef>subscriptionId</sourceRef>
+                <targetRef>Task_CancellationRequested_sid_in</targetRef>
+            </dataInputAssociation>
+        </task>
 
-        <scriptTask id="Task_CancelledFromActive" name="CANCELLED_FROM_ACTIVE" scriptFormat="http://www.java.com/java">
-            <documentation>
-                Aktif abonelik iptali tamamlandı.
-                PremiumSubscriptionService.cancelActivePremiumInternal() tetiklenir:
-                DB'de CANCELLED statüsüne geçer ve kullanıcı USER rolüne geri döner.
-            </documentation>
-            <script><![CDATA[]]></script>
-        </scriptTask>
+        <task id="Task_CancelledFromActive" name="CancelActivePremium" tns:taskName="CancelActivePremium">
+            <ioSpecification>
+                <dataInput id="Task_CancelledFromActive_sid_in" name="subscriptionId"/>
+                <inputSet><dataInputRefs>Task_CancelledFromActive_sid_in</dataInputRefs></inputSet>
+            </ioSpecification>
+            <dataInputAssociation>
+                <sourceRef>subscriptionId</sourceRef>
+                <targetRef>Task_CancelledFromActive_sid_in</targetRef>
+            </dataInputAssociation>
+        </task>
 
         <!-- ── End events ── -->
 
@@ -122,229 +125,121 @@
 
         <!-- ── Sequence flows ── -->
 
-        <sequenceFlow id="Flow_1"    sourceRef="StartEvent_1"           targetRef="Task_Requested"/>
-        <sequenceFlow id="Flow_2"    sourceRef="Task_Requested"         targetRef="Task_PaymentPending"/>
-        <sequenceFlow id="Flow_3"    sourceRef="Task_PaymentPending"    targetRef="Gateway_Wait"/>
-        <sequenceFlow id="Flow_4"    sourceRef="Gateway_Wait"           targetRef="Catch_PaymentOutcome"/>
-        <sequenceFlow id="Flow_5"    sourceRef="Gateway_Wait"           targetRef="Catch_Cancel"/>
-        <sequenceFlow id="Flow_6"    sourceRef="Catch_PaymentOutcome"   targetRef="Gateway_Result"/>
-        <sequenceFlow id="Flow_7"    sourceRef="Gateway_Result"         targetRef="Task_Active">
+        <sequenceFlow id="Flow_1"    sourceRef="StartEvent_1"               targetRef="Task_Requested"/>
+        <sequenceFlow id="Flow_2"    sourceRef="Task_Requested"             targetRef="Task_PaymentPending"/>
+        <sequenceFlow id="Flow_3"    sourceRef="Task_PaymentPending"        targetRef="Gateway_Wait"/>
+        <sequenceFlow id="Flow_4"    sourceRef="Gateway_Wait"               targetRef="Catch_PaymentOutcome"/>
+        <sequenceFlow id="Flow_5"    sourceRef="Gateway_Wait"               targetRef="Catch_Cancel"/>
+        <sequenceFlow id="Flow_6"    sourceRef="Catch_PaymentOutcome"       targetRef="Gateway_Result"/>
+        <sequenceFlow id="Flow_7"    sourceRef="Gateway_Result"             targetRef="Task_Active">
             <conditionExpression><![CDATA[return paymentSuccess == true;]]></conditionExpression>
         </sequenceFlow>
-        <sequenceFlow id="Flow_Fail" sourceRef="Gateway_Result"         targetRef="Task_Failed"/>
-        <sequenceFlow id="Flow_10"   sourceRef="Task_Failed"            targetRef="End_Failed"/>
-        <sequenceFlow id="Flow_11"   sourceRef="Catch_Cancel"           targetRef="Task_Cancelled"/>
-        <sequenceFlow id="Flow_12"   sourceRef="Task_Cancelled"         targetRef="End_Cancelled"/>
-
-        <!-- Active → wait for cancellation signal -->
-        <sequenceFlow id="Flow_9"    sourceRef="Task_Active"            targetRef="Catch_ActiveCancel"/>
-        <sequenceFlow id="Flow_13"   sourceRef="Catch_ActiveCancel"     targetRef="Task_CancellationRequested"/>
+        <sequenceFlow id="Flow_Fail" sourceRef="Gateway_Result"             targetRef="Task_Failed"/>
+        <sequenceFlow id="Flow_10"   sourceRef="Task_Failed"                targetRef="End_Failed"/>
+        <sequenceFlow id="Flow_11"   sourceRef="Catch_Cancel"               targetRef="Task_Cancelled"/>
+        <sequenceFlow id="Flow_12"   sourceRef="Task_Cancelled"             targetRef="End_Cancelled"/>
+        <sequenceFlow id="Flow_9"    sourceRef="Task_Active"                targetRef="Catch_ActiveCancel"/>
+        <sequenceFlow id="Flow_13"   sourceRef="Catch_ActiveCancel"         targetRef="Task_CancellationRequested"/>
         <sequenceFlow id="Flow_14"   sourceRef="Task_CancellationRequested" targetRef="Task_CancelledFromActive"/>
         <sequenceFlow id="Flow_15"   sourceRef="Task_CancelledFromActive"   targetRef="End_CancelledActive"/>
     </process>
 
     <bpmndi:BPMNDiagram id="BPMNDiagram_1">
         <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="premium-upgrade-process">
-
-            <!-- ── Start ── -->
             <bpmndi:BPMNShape id="Shape_StartEvent_1" bpmnElement="StartEvent_1">
                 <dc:Bounds x="50" y="182" width="36" height="36"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="53" y="225" width="30" height="14"/>
-                </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
-
-            <!-- ── Main path (Y centre = 200) ── -->
             <bpmndi:BPMNShape id="Shape_Task_Requested" bpmnElement="Task_Requested">
                 <dc:Bounds x="130" y="170" width="130" height="60"/>
             </bpmndi:BPMNShape>
-
             <bpmndi:BPMNShape id="Shape_Task_PaymentPending" bpmnElement="Task_PaymentPending">
                 <dc:Bounds x="310" y="170" width="150" height="60"/>
             </bpmndi:BPMNShape>
-
             <bpmndi:BPMNShape id="Shape_Gateway_Wait" bpmnElement="Gateway_Wait" isMarkerVisible="true">
                 <dc:Bounds x="510" y="175" width="50" height="50"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="492" y="232" width="86" height="27"/>
-                </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
-
-            <!-- ── Upper path: payment outcome (Y centre = 100) ── -->
             <bpmndi:BPMNShape id="Shape_Catch_PaymentOutcome" bpmnElement="Catch_PaymentOutcome">
                 <dc:Bounds x="612" y="82" width="36" height="36"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="595" y="125" width="70" height="27"/>
-                </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
-
             <bpmndi:BPMNShape id="Shape_Gateway_Result" bpmnElement="Gateway_Result" isMarkerVisible="true">
                 <dc:Bounds x="695" y="75" width="50" height="50"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="677" y="132" width="86" height="14"/>
-                </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
-
-            <!-- ACTIVE task — process stays open, waits for cancellation -->
             <bpmndi:BPMNShape id="Shape_Task_Active" bpmnElement="Task_Active">
                 <dc:Bounds x="800" y="70" width="120" height="60"/>
             </bpmndi:BPMNShape>
-
-            <!-- ── Payment-fail branch (Y centre = 190) ── -->
             <bpmndi:BPMNShape id="Shape_Task_Failed" bpmnElement="Task_Failed">
                 <dc:Bounds x="800" y="160" width="140" height="60"/>
             </bpmndi:BPMNShape>
-
             <bpmndi:BPMNShape id="Shape_End_Failed" bpmnElement="End_Failed">
                 <dc:Bounds x="992" y="172" width="36" height="36"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="980" y="215" width="60" height="14"/>
-                </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
-
-            <!-- ── Active cancellation path (continues right from Task_Active, Y centre = 100) ── -->
             <bpmndi:BPMNShape id="Shape_Catch_ActiveCancel" bpmnElement="Catch_ActiveCancel">
                 <dc:Bounds x="972" y="82" width="36" height="36"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="951" y="125" width="78" height="27"/>
-                </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
-
             <bpmndi:BPMNShape id="Shape_Task_CancellationRequested" bpmnElement="Task_CancellationRequested">
                 <dc:Bounds x="1058" y="70" width="160" height="60"/>
             </bpmndi:BPMNShape>
-
             <bpmndi:BPMNShape id="Shape_Task_CancelledFromActive" bpmnElement="Task_CancelledFromActive">
                 <dc:Bounds x="1270" y="70" width="150" height="60"/>
             </bpmndi:BPMNShape>
-
             <bpmndi:BPMNShape id="Shape_End_CancelledActive" bpmnElement="End_CancelledActive">
                 <dc:Bounds x="1472" y="82" width="36" height="36"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="1445" y="125" width="90" height="27"/>
-                </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
-
-            <!-- ── Pre-activation cancel path (Y centre = 300) ── -->
             <bpmndi:BPMNShape id="Shape_Catch_Cancel" bpmnElement="Catch_Cancel">
                 <dc:Bounds x="612" y="282" width="36" height="36"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="591" y="325" width="78" height="27"/>
-                </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
-
             <bpmndi:BPMNShape id="Shape_Task_Cancelled" bpmnElement="Task_Cancelled">
                 <dc:Bounds x="700" y="270" width="120" height="60"/>
             </bpmndi:BPMNShape>
-
             <bpmndi:BPMNShape id="Shape_End_Cancelled" bpmnElement="End_Cancelled">
                 <dc:Bounds x="872" y="282" width="36" height="36"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="851" y="325" width="79" height="27"/>
-                </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
 
-            <!-- ── Edges ── -->
-
-            <!-- Flow_1: Start → Task_Requested -->
-            <bpmndi:BPMNEdge id="Edge_Flow_1" bpmnElement="Flow_1">
-                <di:waypoint x="86"  y="200"/>
-                <di:waypoint x="130" y="200"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_1"    bpmnElement="Flow_1">
+                <di:waypoint x="86"  y="200"/><di:waypoint x="130" y="200"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_2: Task_Requested → Task_PaymentPending -->
-            <bpmndi:BPMNEdge id="Edge_Flow_2" bpmnElement="Flow_2">
-                <di:waypoint x="260" y="200"/>
-                <di:waypoint x="310" y="200"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_2"    bpmnElement="Flow_2">
+                <di:waypoint x="260" y="200"/><di:waypoint x="310" y="200"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_3: Task_PaymentPending → Gateway_Wait -->
-            <bpmndi:BPMNEdge id="Edge_Flow_3" bpmnElement="Flow_3">
-                <di:waypoint x="460" y="200"/>
-                <di:waypoint x="510" y="200"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_3"    bpmnElement="Flow_3">
+                <di:waypoint x="460" y="200"/><di:waypoint x="510" y="200"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_4: Gateway_Wait → Catch_PaymentOutcome (upward) -->
-            <bpmndi:BPMNEdge id="Edge_Flow_4" bpmnElement="Flow_4">
-                <di:waypoint x="535" y="175"/>
-                <di:waypoint x="535" y="100"/>
-                <di:waypoint x="612" y="100"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_4"    bpmnElement="Flow_4">
+                <di:waypoint x="535" y="175"/><di:waypoint x="535" y="100"/><di:waypoint x="612" y="100"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_5: Gateway_Wait → Catch_Cancel (downward) -->
-            <bpmndi:BPMNEdge id="Edge_Flow_5" bpmnElement="Flow_5">
-                <di:waypoint x="535" y="225"/>
-                <di:waypoint x="535" y="300"/>
-                <di:waypoint x="612" y="300"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_5"    bpmnElement="Flow_5">
+                <di:waypoint x="535" y="225"/><di:waypoint x="535" y="300"/><di:waypoint x="612" y="300"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_6: Catch_PaymentOutcome → Gateway_Result -->
-            <bpmndi:BPMNEdge id="Edge_Flow_6" bpmnElement="Flow_6">
-                <di:waypoint x="648" y="100"/>
-                <di:waypoint x="695" y="100"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_6"    bpmnElement="Flow_6">
+                <di:waypoint x="648" y="100"/><di:waypoint x="695" y="100"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_7: Gateway_Result → Task_Active (paymentSuccess == true) -->
-            <bpmndi:BPMNEdge id="Edge_Flow_7" bpmnElement="Flow_7">
-                <di:waypoint x="745" y="100"/>
-                <di:waypoint x="800" y="100"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="754" y="82" width="34" height="14"/>
-                </bpmndi:BPMNLabel>
+            <bpmndi:BPMNEdge id="Edge_Flow_7"    bpmnElement="Flow_7">
+                <di:waypoint x="745" y="100"/><di:waypoint x="800" y="100"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_Fail: Gateway_Result → Task_Failed (default) -->
             <bpmndi:BPMNEdge id="Edge_Flow_Fail" bpmnElement="Flow_Fail">
-                <di:waypoint x="720" y="125"/>
-                <di:waypoint x="720" y="190"/>
-                <di:waypoint x="800" y="190"/>
-                <bpmndi:BPMNLabel>
-                    <dc:Bounds x="727" y="150" width="27" height="14"/>
-                </bpmndi:BPMNLabel>
+                <di:waypoint x="720" y="125"/><di:waypoint x="720" y="190"/><di:waypoint x="800" y="190"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_10: Task_Failed → End_Failed -->
-            <bpmndi:BPMNEdge id="Edge_Flow_10" bpmnElement="Flow_10">
-                <di:waypoint x="940" y="190"/>
-                <di:waypoint x="992" y="190"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_10"   bpmnElement="Flow_10">
+                <di:waypoint x="940" y="190"/><di:waypoint x="992" y="190"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_11: Catch_Cancel → Task_Cancelled -->
-            <bpmndi:BPMNEdge id="Edge_Flow_11" bpmnElement="Flow_11">
-                <di:waypoint x="648" y="300"/>
-                <di:waypoint x="700" y="300"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_11"   bpmnElement="Flow_11">
+                <di:waypoint x="648" y="300"/><di:waypoint x="700" y="300"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_12: Task_Cancelled → End_Cancelled -->
-            <bpmndi:BPMNEdge id="Edge_Flow_12" bpmnElement="Flow_12">
-                <di:waypoint x="820" y="300"/>
-                <di:waypoint x="872" y="300"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_12"   bpmnElement="Flow_12">
+                <di:waypoint x="820" y="300"/><di:waypoint x="872" y="300"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_9: Task_Active → Catch_ActiveCancel (wait for cancellation) -->
-            <bpmndi:BPMNEdge id="Edge_Flow_9" bpmnElement="Flow_9">
-                <di:waypoint x="920" y="100"/>
-                <di:waypoint x="972" y="100"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_9"    bpmnElement="Flow_9">
+                <di:waypoint x="920" y="100"/><di:waypoint x="972" y="100"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_13: Catch_ActiveCancel → Task_CancellationRequested -->
-            <bpmndi:BPMNEdge id="Edge_Flow_13" bpmnElement="Flow_13">
-                <di:waypoint x="1008" y="100"/>
-                <di:waypoint x="1058" y="100"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_13"   bpmnElement="Flow_13">
+                <di:waypoint x="1008" y="100"/><di:waypoint x="1058" y="100"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_14: Task_CancellationRequested → Task_CancelledFromActive -->
-            <bpmndi:BPMNEdge id="Edge_Flow_14" bpmnElement="Flow_14">
-                <di:waypoint x="1218" y="100"/>
-                <di:waypoint x="1270" y="100"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_14"   bpmnElement="Flow_14">
+                <di:waypoint x="1218" y="100"/><di:waypoint x="1270" y="100"/>
             </bpmndi:BPMNEdge>
-
-            <!-- Flow_15: Task_CancelledFromActive → End_CancelledActive -->
-            <bpmndi:BPMNEdge id="Edge_Flow_15" bpmnElement="Flow_15">
-                <di:waypoint x="1420" y="100"/>
-                <di:waypoint x="1472" y="100"/>
+            <bpmndi:BPMNEdge id="Edge_Flow_15"   bpmnElement="Flow_15">
+                <di:waypoint x="1420" y="100"/><di:waypoint x="1472" y="100"/>
             </bpmndi:BPMNEdge>
-
         </bpmndi:BPMNPlane>
     </bpmndi:BPMNDiagram>
 </definitions>
