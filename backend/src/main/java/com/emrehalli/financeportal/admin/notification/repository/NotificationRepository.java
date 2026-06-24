@@ -41,6 +41,3 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Optional<Notification> findVisibleNotificationById(@Param("notificationId") Long notificationId, @Param("userId") Long userId);
 }
 
-
-
-

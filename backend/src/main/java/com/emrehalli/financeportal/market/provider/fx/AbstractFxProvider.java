@@ -23,9 +23,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Shared FX provider support.
- */
 @Slf4j
 public abstract class AbstractFxProvider {
 
@@ -202,7 +199,4 @@ public abstract class AbstractFxProvider {
         return null;
     }
 }
-
-
-
 

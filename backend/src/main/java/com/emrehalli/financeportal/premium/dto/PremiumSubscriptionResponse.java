@@ -3,25 +3,28 @@ package com.emrehalli.financeportal.premium.dto;
 import com.emrehalli.financeportal.premium.entity.PremiumSubscription;
 import com.emrehalli.financeportal.premium.entity.PremiumSubscriptionStatus;
 import com.emrehalli.financeportal.user.entity.UserRole;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
+@Schema(description = "Premium abonelik durumu yanıt modeli")
 public record PremiumSubscriptionResponse(
-        Long subscriptionId,
-        Long userId,
-        String userFullName,
-        String planType,
-        PremiumSubscriptionStatus status,
-        Long processInstanceId,
-        UserRole effectiveRole,
-        boolean premiumActive,
-        LocalDateTime startedAt,
-        LocalDateTime requestedAt,
-        LocalDateTime activatedAt,
-        LocalDateTime expiresAt,
-        LocalDateTime cancelledAt,
-        LocalDateTime updatedAt
+        @Schema(description = "Abonelik ID", example = "1") Long subscriptionId,
+        @Schema(description = "Kullanıcı ID", example = "1") Long userId,
+        @Schema(description = "Kullanıcı adı", example = "Emre Halli") String userFullName,
+        @Schema(description = "Plan tipi", example = "PREMIUM") String planType,
+        @Schema(description = "Abonelik durumu", example = "ACTIVE") PremiumSubscriptionStatus status,
+        @Schema(description = "jBPM süreç kimliği") Long processInstanceId,
+        @Schema(description = "Etkin kullanıcı rolü", example = "USER_PREMIUM") UserRole effectiveRole,
+        @Schema(description = "Premium aktif mi", example = "true") boolean premiumActive,
+        @Schema(description = "Başlangıç tarihi") LocalDateTime startedAt,
+        @Schema(description = "Talep tarihi") LocalDateTime requestedAt,
+        @Schema(description = "Aktivasyon tarihi") LocalDateTime activatedAt,
+        @Schema(description = "Son kullanma tarihi") LocalDateTime expiresAt,
+        @Schema(description = "İptal tarihi") LocalDateTime cancelledAt,
+        @Schema(description = "Güncelleme tarihi") LocalDateTime updatedAt
 ) {
+
     public static PremiumSubscriptionResponse from(PremiumSubscription subscription, UserRole effectiveRole) {
         LocalDateTime activatedAt = subscription.getActivatedAt();
         return new PremiumSubscriptionResponse(
@@ -63,7 +66,4 @@ public record PremiumSubscriptionResponse(
         );
     }
 }
-
-
-
 

@@ -11,13 +11,6 @@ import java.util.Locale;
 @Component
 public class FundamentalInsightGenerator {
 
-    /**
-     * Generates pre-interpreted financial insights so the LLM synthesizes rather than
-     * re-derives meaning from raw numbers.
-     *
-     * @param revenue   latest period revenue (may be null)
-     * @param netProfit latest period net profit (may be null)
-     */
     public List<FinancialInsight> generate(CompanyFundamentalsResponse f,
                                            BigDecimal revenue,
                                            BigDecimal netProfit) {
@@ -216,7 +209,4 @@ public class FundamentalInsightGenerator {
         return s.endsWith(".0") ? s.substring(0, s.length() - 2) : s;
     }
 }
-
-
-
 

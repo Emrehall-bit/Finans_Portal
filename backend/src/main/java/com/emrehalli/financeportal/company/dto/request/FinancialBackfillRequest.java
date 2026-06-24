@@ -6,10 +6,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class FinancialBackfillRequest {
+
     private Integer startYear;
+
     private Integer endYear;
 }
-
-
-
 

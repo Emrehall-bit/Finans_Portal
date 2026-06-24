@@ -31,6 +31,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class IndexService {
 
+    private static final String CACHE_KEY_ALL = "index:all";
+
     private final MarketInstrumentRepository instrumentRepository;
     private final MarketPriceRepository priceRepository;
     private final CacheService cacheService;
@@ -81,27 +83,43 @@ public class IndexService {
 
             putCacheSilently(buildCacheKey(code), toResponse(instrument, quote.price(), changeRate != null ? changeRate : quote.changePercent(), timestamp));
         }
+        evictCacheSilently(CACHE_KEY_ALL);
     }
 
     @Transactional(readOnly = true)
     public List<MarketQuoteResponse> getAll() {
-        return instrumentRepository
+        List<MarketQuoteResponse> cached = cacheService.getList(CACHE_KEY_ALL, MarketQuoteResponse.class);
+        if (!cached.isEmpty()) {
+            return cached;
+        }
+
+        List<MarketQuoteResponse> responses = instrumentRepository
                 .findAllByInstrumentTypeAndSourceName(InstrumentType.INDEX, SourceName.YAHOO_FINANCE)
                 .stream()
                 .map(this::toResponseFromInstrument)
                 .filter(Objects::nonNull)
                 .toList();
+        putCacheSilently(CACHE_KEY_ALL, responses);
+        return responses;
     }
 
     @Transactional(readOnly = true)
     public MarketQuoteResponse getBySymbol(String symbol) {
         String code = symbol.toUpperCase(Locale.ROOT);
+        MarketQuoteResponse cached = getCachedQuote(code);
+        if (cached != null) {
+            return cached;
+        }
 
         MarketInstrument instrument = instrumentRepository
                 .findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(code, InstrumentType.INDEX)
                 .orElseThrow(() -> new InstrumentNotFoundException("Index not found: " + code));
 
-        return toResponseFromInstrument(instrument);
+        MarketQuoteResponse response = toResponseFromInstrument(instrument);
+        if (response != null) {
+            putCacheSilently(buildCacheKey(code), response);
+        }
+        return response;
     }
 
     private MarketQuoteResponse toResponseFromInstrument(MarketInstrument instrument) {
@@ -141,6 +159,23 @@ public class IndexService {
         }
     }
 
+    private MarketQuoteResponse getCachedQuote(String code) {
+        try {
+            return cacheService.get(buildCacheKey(code), MarketQuoteResponse.class).orElse(null);
+        } catch (Exception e) {
+            log.warn("Failed to read index cache for key={}", buildCacheKey(code), e);
+            return null;
+        }
+    }
+
+    private void evictCacheSilently(String key) {
+        try {
+            cacheService.evict(key);
+        } catch (Exception e) {
+            log.warn("Failed to evict index cache for key={}", key, e);
+        }
+    }
+
     private String buildCacheKey(String code) {
         return "index:" + code;
     }
@@ -149,7 +184,4 @@ public class IndexService {
         return value == null || value.isBlank();
     }
 }
-
-
-
 

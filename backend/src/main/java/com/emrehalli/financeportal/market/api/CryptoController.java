@@ -5,6 +5,9 @@ import com.emrehalli.financeportal.market.service.CryptoService;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,11 +24,14 @@ import java.util.Objects;
 @RestController
 @RequestMapping({"/api/v1/markets/crypto", "/api/v1/markets/type/CRYPTO"})
 @AllArgsConstructor
+@Tag(name = "Kripto Para", description = "Kripto para piyasa verileri")
 public class CryptoController {
 
     private final CryptoService cryptoService;
     private final ObservationRegistry observationRegistry;
 
+    @Operation(summary = "Tüm kripto paraları listele")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Kripto paralar başarıyla listelendi"))
     @GetMapping
     public ApiResponse<List<MarketQueryService.MarketSnapshot>> getAll() {
         Observation obs = Observation.createNotStarted("CryptoController.getCryptoMarkets", observationRegistry)
@@ -49,6 +55,8 @@ public class CryptoController {
         }
     }
 
+    @Operation(summary = "Kripto para detayını getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Kripto para detayı başarıyla döndürüldü"))
     @GetMapping("/{symbol}")
     public ApiResponse<MarketQueryService.MarketSnapshot> getBySymbol(@PathVariable String symbol) {
         Observation obs = Observation.createNotStarted("CryptoController.getCryptoBySymbol", observationRegistry)
@@ -81,7 +89,4 @@ public class CryptoController {
                 .orElse(null);
     }
 }
-
-
-
 

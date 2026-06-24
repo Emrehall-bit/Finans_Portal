@@ -18,6 +18,3 @@ public class NewsSyncProviderResultDto {
     private String errorMessage;
 }
 
-
-
-

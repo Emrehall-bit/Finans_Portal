@@ -2,6 +2,9 @@ package com.emrehalli.financeportal.admin.controller;
 
 import com.emrehalli.financeportal.market.service.InternalCommodityHistoryService;
 import com.emrehalli.financeportal.market.service.InternalCommodityHistoryService.FetchResult;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,16 +32,13 @@ import java.util.Map;
 @RequestMapping("/api/v1/admin/markets/internal-commodities")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Admin - Dahili Emtia Yonetimi", description = "Dahili emtia (GOLD_USD, SILVER_USD) gecmis veri yonetimi")
 public class InternalCommodityAdminController {
 
     private final InternalCommodityHistoryService internalCommodityHistoryService;
 
-    /**
-     * Step 1 of history backfill: fetch GC=F (GOLD_USD) and SI=F (SILVER_USD) daily history
-     * from Yahoo Finance and persist as INTERNAL source in market_price_history.
-     *
-     * <p>Example: POST /api/v1/admin/markets/internal-commodities/history/backfill?days=365</p>
-     */
+    @Operation(summary = "Dahili emtia gecmisi doldur", description = "GOLD_USD ve SILVER_USD icin Yahoo Finance uzerinden gunluk gecmis verisi ceker ve kaydeder")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Gecmis veri doldurma islemi tamamlandi"))
     @PostMapping("/history/backfill")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> backfillHistory(@RequestParam(defaultValue = "365") int days) {
@@ -70,7 +70,4 @@ public class InternalCommodityAdminController {
         return response;
     }
 }
-
-
-
 

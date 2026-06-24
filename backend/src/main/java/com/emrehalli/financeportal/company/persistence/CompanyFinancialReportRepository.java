@@ -42,6 +42,3 @@ public interface CompanyFinancialReportRepository extends JpaRepository<CompanyF
                                                      @Param("statuses") Collection<ParseStatus> statuses);
 }
 
-
-
-

@@ -18,6 +18,3 @@ public enum NewsCategory {
     GENERAL
 }
 
-
-
-

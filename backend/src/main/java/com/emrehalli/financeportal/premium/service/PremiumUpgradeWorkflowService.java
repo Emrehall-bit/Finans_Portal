@@ -4,15 +4,20 @@ import com.emrehalli.financeportal.premium.entity.PremiumSubscription;
 import jakarta.annotation.PreDestroy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.kie.api.event.process.DefaultProcessEventListener;
-import org.kie.api.event.process.ProcessNodeTriggeredEvent;
-import org.kie.api.KieBase;
+import org.jbpm.runtime.manager.impl.DefaultRegisterableItemsFactory;
 import org.kie.api.io.ResourceType;
+import org.kie.api.runtime.process.WorkItemHandler;
 import org.kie.api.runtime.KieSession;
+import org.kie.api.runtime.manager.RuntimeEngine;
+import org.kie.api.runtime.manager.RuntimeEnvironment;
+import org.kie.api.runtime.manager.RuntimeEnvironmentBuilder;
+import org.kie.api.runtime.manager.RuntimeManager;
+import org.kie.api.runtime.manager.RuntimeManagerFactory;
 import org.kie.api.runtime.process.ProcessInstance;
 import org.kie.api.runtime.process.WorkflowProcessInstance;
 import org.kie.internal.io.ResourceFactory;
-import org.kie.internal.utils.KieHelper;
+import org.kie.internal.runtime.manager.context.EmptyContext;
+import org.kie.internal.runtime.manager.context.ProcessInstanceIdContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -22,118 +27,122 @@ import java.util.Map;
 public class PremiumUpgradeWorkflowService {
 
     private static final Logger logger = LogManager.getLogger(PremiumUpgradeWorkflowService.class);
-    private static final String PROCESS_ID = "premium-upgrade-process";
-    private static final String PAYMENT_SIGNAL = "premium-payment-outcome";
-    private static final String CANCEL_SIGNAL = "premium-cancel-requested";
+
+    private static final String PROCESS_ID          = "premium-upgrade-process";
+    private static final String PAYMENT_SIGNAL      = "premium-payment-outcome";
+    private static final String CANCEL_SIGNAL       = "premium-cancel-requested";
     private static final String ACTIVE_CANCEL_SIGNAL = "premium-active-cancel-requested";
 
-    private final PremiumSubscriptionService premiumSubscriptionService;
-    private final KieSession kieSession;
+    private final RuntimeManager runtimeManager;
 
     public PremiumUpgradeWorkflowService(@Lazy PremiumSubscriptionService premiumSubscriptionService) {
-        this.premiumSubscriptionService = premiumSubscriptionService;
-        this.kieSession = buildSession();
-        registerProcessListener();
+        this.runtimeManager = buildRuntimeManager(premiumSubscriptionService);
     }
 
     public Long startUpgradeProcess(Long subscriptionId) {
-        synchronized (kieSession) {
-            ProcessInstance instance = kieSession.startProcess(PROCESS_ID, Map.of(
+        RuntimeEngine engine = runtimeManager.getRuntimeEngine(EmptyContext.get());
+        try {
+            KieSession session = engine.getKieSession();
+            ProcessInstance instance = session.startProcess(PROCESS_ID, Map.of(
                     "subscriptionId", subscriptionId,
                     "paymentSuccess", Boolean.FALSE
             ));
-            logger.info("Premium workflow started. subscriptionId={}, processInstanceId={}", subscriptionId, instance.getId());
+            logger.info("Premium workflow started. subscriptionId={}, processInstanceId={}",
+                    subscriptionId, instance.getId());
             return instance.getId();
+        } finally {
+            runtimeManager.disposeRuntimeEngine(engine);
         }
     }
 
     public void signalPaymentOutcome(PremiumSubscription subscription, boolean paymentSuccess) {
-        synchronized (kieSession) {
-            WorkflowProcessInstance instance = getActiveInstance(subscription);
-            instance.setVariable("paymentSuccess", paymentSuccess);
-            kieSession.signalEvent(PAYMENT_SIGNAL, subscription.getId(), subscription.getProcessInstanceId());
+        long pid = subscription.getProcessInstanceId();
+        RuntimeEngine engine = runtimeManager.getRuntimeEngine(ProcessInstanceIdContext.get(pid));
+        try {
+            KieSession session = engine.getKieSession();
+            WorkflowProcessInstance wpi = (WorkflowProcessInstance) session.getProcessInstance(pid);
+            wpi.setVariable("paymentSuccess", paymentSuccess);
+            session.signalEvent(PAYMENT_SIGNAL, subscription.getId(), pid);
             logger.info("Premium workflow payment outcome signalled. subscriptionId={}, processInstanceId={}, paymentSuccess={}",
-                    subscription.getId(), subscription.getProcessInstanceId(), paymentSuccess);
+                    subscription.getId(), pid, paymentSuccess);
+        } finally {
+            runtimeManager.disposeRuntimeEngine(engine);
         }
     }
 
     public void signalCancel(PremiumSubscription subscription) {
-        synchronized (kieSession) {
-            getActiveInstance(subscription);
-            kieSession.signalEvent(CANCEL_SIGNAL, subscription.getId(), subscription.getProcessInstanceId());
+        long pid = subscription.getProcessInstanceId();
+        RuntimeEngine engine = runtimeManager.getRuntimeEngine(ProcessInstanceIdContext.get(pid));
+        try {
+            engine.getKieSession().signalEvent(CANCEL_SIGNAL, subscription.getId(), pid);
             logger.info("Premium workflow cancel signalled. subscriptionId={}, processInstanceId={}",
-                    subscription.getId(), subscription.getProcessInstanceId());
+                    subscription.getId(), pid);
+        } finally {
+            runtimeManager.disposeRuntimeEngine(engine);
+        }
+    }
+
+    public void signalActiveCancellation(PremiumSubscription subscription) {
+        long pid = subscription.getProcessInstanceId();
+        RuntimeEngine engine = runtimeManager.getRuntimeEngine(ProcessInstanceIdContext.get(pid));
+        try {
+            engine.getKieSession().signalEvent(ACTIVE_CANCEL_SIGNAL, subscription.getId(), pid);
+            logger.info("Premium workflow active cancellation signalled. subscriptionId={}, processInstanceId={}",
+                    subscription.getId(), pid);
+        } finally {
+            runtimeManager.disposeRuntimeEngine(engine);
+        }
+    }
+
+    public boolean hasActiveInstance(Long processInstanceId) {
+        if (processInstanceId == null) {
+            return false;
+        }
+        try {
+            RuntimeEngine engine = runtimeManager.getRuntimeEngine(
+                    ProcessInstanceIdContext.get(processInstanceId));
+            try {
+                ProcessInstance pi = engine.getKieSession().getProcessInstance(processInstanceId);
+                return pi != null && pi.getState() == ProcessInstance.STATE_ACTIVE;
+            } finally {
+                runtimeManager.disposeRuntimeEngine(engine);
+            }
+        } catch (Exception ex) {
+            logger.warn("Could not retrieve jBPM process instance. processInstanceId={}", processInstanceId, ex);
+            return false;
         }
     }
 
     @PreDestroy
     public void close() {
-        kieSession.dispose();
+        runtimeManager.close();
     }
 
-    public void signalActiveCancellation(PremiumSubscription subscription) {
-        synchronized (kieSession) {
-            getActiveInstance(subscription);
-            kieSession.signalEvent(ACTIVE_CANCEL_SIGNAL, subscription.getId(), subscription.getProcessInstanceId());
-            logger.info("Premium workflow active cancellation signalled. subscriptionId={}, processInstanceId={}",
-                    subscription.getId(), subscription.getProcessInstanceId());
-        }
-    }
-
-    public boolean hasActiveInstance(Long processInstanceId) {
-        if (processInstanceId == null) return false;
-        synchronized (kieSession) {
-            return kieSession.getProcessInstance(processInstanceId) instanceof WorkflowProcessInstance;
-        }
-    }
-
-    private WorkflowProcessInstance getActiveInstance(PremiumSubscription subscription) {
-        if (subscription.getProcessInstanceId() == null) {
-            throw new IllegalStateException("Premium workflow instance id is missing");
-        }
-        ProcessInstance processInstance = kieSession.getProcessInstance(subscription.getProcessInstanceId());
-        if (!(processInstance instanceof WorkflowProcessInstance workflowProcessInstance)) {
-            throw new IllegalStateException("Premium workflow instance is not active for subscription " + subscription.getId());
-        }
-        return workflowProcessInstance;
-    }
-
-    private KieSession buildSession() {
-        KieHelper helper = new KieHelper();
-        helper.addResource(ResourceFactory.newClassPathResource("processes/premium-upgrade.bpmn2"), ResourceType.BPMN2);
-        KieBase kieBase = helper.build();
-        return kieBase.newKieSession();
-    }
-
-    private void registerProcessListener() {
-        kieSession.addEventListener(new DefaultProcessEventListener() {
+    private RuntimeManager buildRuntimeManager(PremiumSubscriptionService subscriptionService) {
+        DefaultRegisterableItemsFactory itemsFactory = new DefaultRegisterableItemsFactory() {
             @Override
-            public void afterNodeTriggered(ProcessNodeTriggeredEvent event) {
-                if (!(event.getProcessInstance() instanceof WorkflowProcessInstance workflowProcessInstance)) {
-                    return;
-                }
-                Object variable = workflowProcessInstance.getVariable("subscriptionId");
-                if (!(variable instanceof Number number)) {
-                    return;
-                }
-                Long subscriptionId = number.longValue();
-                String nodeName = event.getNodeInstance().getNodeName();
-                switch (nodeName) {
-                    case "PREMIUM_REQUESTED"      -> premiumSubscriptionService.markPremiumRequested(subscriptionId);
-                    case "PAYMENT_PENDING"        -> premiumSubscriptionService.markPaymentPending(subscriptionId);
-                    case "ACTIVE"                 -> premiumSubscriptionService.activatePremium(subscriptionId);
-                    case "PAYMENT_FAILED"         -> premiumSubscriptionService.markPaymentFailed(subscriptionId);
-                    case "CANCELLED"              -> premiumSubscriptionService.cancelUpgradeInternal(subscriptionId);
-                    case "CANCELLATION_REQUESTED" -> premiumSubscriptionService.markCancellationRequested(subscriptionId);
-                    case "CANCELLED_FROM_ACTIVE"  -> premiumSubscriptionService.cancelActivePremiumInternal(subscriptionId);
-                    default -> {
-                    }
-                }
+            public Map<String, WorkItemHandler> getWorkItemHandlers(RuntimeEngine runtime) {
+                Map<String, WorkItemHandler> handlers = super.getWorkItemHandlers(runtime);
+                handlers.put("PremiumRequested",     new PremiumServiceTaskHandler(subscriptionService::markPremiumRequested));
+                handlers.put("PaymentPending",        new PremiumServiceTaskHandler(subscriptionService::markPaymentPending));
+                handlers.put("ActivatePremium",       new PremiumServiceTaskHandler(subscriptionService::activatePremium));
+                handlers.put("PaymentFailed",         new PremiumServiceTaskHandler(subscriptionService::markPaymentFailed));
+                handlers.put("CancelUpgrade",         new PremiumServiceTaskHandler(subscriptionService::cancelUpgradeInternal));
+                handlers.put("CancellationRequested", new PremiumServiceTaskHandler(subscriptionService::markCancellationRequested));
+                handlers.put("CancelActivePremium",   new PremiumServiceTaskHandler(subscriptionService::cancelActivePremiumInternal));
+                return handlers;
             }
-        });
+        };
+
+        RuntimeEnvironment env = RuntimeEnvironmentBuilder.Factory.get()
+                .newEmptyBuilder()
+                .addAsset(
+                        ResourceFactory.newClassPathResource("processes/premium-upgrade.bpmn2"),
+                        ResourceType.BPMN2)
+                .registerableItemsFactory(itemsFactory)
+                .get();
+
+        return RuntimeManagerFactory.Factory.get()
+                .newPerProcessInstanceRuntimeManager(env, "premium-upgrade");
     }
 }
-
-
-
-

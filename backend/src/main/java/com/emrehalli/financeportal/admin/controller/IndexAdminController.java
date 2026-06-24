@@ -5,6 +5,9 @@ import com.emrehalli.financeportal.market.provider.stock.dto.StockPriceDto;
 import com.emrehalli.financeportal.market.service.IndexHistoryService;
 import com.emrehalli.financeportal.market.service.IndexHistoryService.FetchResult;
 import com.emrehalli.financeportal.market.service.IndexService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,15 +28,15 @@ import java.util.Map;
 @RequestMapping("/api/v1/admin/markets/indexes")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Admin - Endeks Yonetimi", description = "Endeks veri cekme ve gecmis doldurma islemleri")
 public class IndexAdminController {
 
     private final YahooIndexProvider indexProvider;
     private final IndexService indexService;
     private final IndexHistoryService indexHistoryService;
 
-    /**
-     * Fetches and persists all index quotes immediately without waiting for the scheduler.
-     */
+    @Operation(summary = "Endeks verilerini simdi cek", description = "Zamanlayici beklemeden tum endeks kotasyonlarini aninda ceker ve kaydeder")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Endeks verileri basariyla cekildi"))
     @PostMapping("/fetch-now")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> fetchNow() {
@@ -59,13 +62,8 @@ public class IndexAdminController {
         return response;
     }
 
-    /**
-     * Backfills historical ONE_DAY price records for all BIST index instruments.
-     * Fetches from Yahoo Finance (.IS symbols) and saves with source_name=YAHOO_FINANCE.
-     * Skips rows that already exist.
-     *
-     * <p>Example: POST /api/v1/admin/markets/indexes/history/backfill?days=3650</p>
-     */
+    @Operation(summary = "Endeks gecmis verisi doldur", description = "BIST endeks enstrumanlari icin tarihsel fiyat kayitlarini geriye donuk doldurur")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Gecmis veri doldurma islemi tamamlandi"))
     @PostMapping("/history/backfill")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> backfillHistory(@RequestParam(defaultValue = "365") int days) {
@@ -94,7 +92,4 @@ public class IndexAdminController {
         return response;
     }
 }
-
-
-
 

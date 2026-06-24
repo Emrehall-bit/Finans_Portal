@@ -9,6 +9,3 @@ public record AiChatResponse(
         AiResponseMetadata metadata
 ) {}
 
-
-
-

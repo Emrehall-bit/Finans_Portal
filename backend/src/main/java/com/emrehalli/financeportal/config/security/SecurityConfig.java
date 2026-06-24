@@ -41,31 +41,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // Admin endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/users").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/news/admin/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/news/sync").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-
-                        // Public endpoints
-                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/actuator/health/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/actuator/info").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/actuator/metrics").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/actuator/metrics/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/binance/history/fetch/status").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/binance/tcmb/sync/status").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/markets/fx/tcmb/history/backfill/status").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/stocks/fetch/status").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/stocks/history/backfill/status").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/news/favorites").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/news/favorites/user/{userId}").access(resourceAccessManager::canAccessUserId)
-                        .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
-                        .requestMatchers("/api/v1/technical-analysis/*/indicators").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
+                        .requestMatchers(HttpMethod.OPTIONS, "indicators").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/technical-analysis/*/indicators").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/technical-analysis/indicators/**").hasAnyRole("USER", "USER_PREMIUM", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/technical-analysis/**").permitAll()

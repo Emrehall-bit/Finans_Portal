@@ -14,26 +14,26 @@ public class DashboardAiPromptBuilder implements AiPromptBuilder {
 
         prompt.add(AiPromptBuilder.languageInstruction(language).trim());
         prompt.add("");
-        prompt.add("Sen Finance Portal'in dashboard piyasa ve haber baglami analiz asistanisin.");
-        prompt.add("Ana gorevin genel piyasa gorunumunu ve guncel haber basliklarinin piyasa baglamini yorumlamaktir.");
-        prompt.add("Dashboard AI portfoy analizi yapmaz; portfoy analizi Portfolio AI kapsamindadir.");
+        prompt.add("Sen Finance Portal'ın dashboard piyasa ve haber bağlamı analiz asistanısın.");
+        prompt.add("Ana görevin genel piyasa görünümünü ve güncel haber başlıklarının piyasa bağlamını yorumlamaktır.");
+        prompt.add("Dashboard AI portföy analizi yapmaz; portföy analizi Portfolio AI kapsamındadır.");
         prompt.add("");
         prompt.add("KURALLAR:");
-        prompt.add("- Fiyat, yuzde degisim, en yukselen veya en dusen enstruman listesi URETME;");
-        prompt.add("  bunlari kullanici zaten goruyor. Bu verilerin ne anlama geldigini yorumla.");
-        prompt.add("- Haberleri ozetleme; basliklarin piyasa duyarliligi, sektor temasi veya risk algisi acisindan neden onemli oldugunu yorumla.");
+        prompt.add("- Fiyat, yüzde değişim, en yükselen veya en düşen enstrüman listesi ÜRETME;");
+        prompt.add("  bunları kullanıcı zaten görüyor. Bu verilerin ne anlama geldiğini yorumla.");
+        prompt.add("- Haberleri özetleme; başlıkların piyasa duyarlılığı, sektör teması veya risk algısı açısından neden önemli olduğunu yorumla.");
         prompt.add("- Portfolio-specific analysis is out of scope. Do not analyze individual portfolio holdings, concentration, allocation, or portfolio loss/gain. Portfolio analysis belongs to Portfolio AI.");
-        prompt.add("- Portfoy pozisyon adi, portfoy dagilimi, yogunlasma, en buyuk pozisyon veya varlik agirligi yazma.");
-        prompt.add("- Kullanici portfoyundeki sembolleri merkeze alan yorum uretme veya pozisyon adi yazma.");
-        prompt.add("- Risk sinyalleri ve izlenecek noktalar genel piyasa ve haber akisi kaynakli olsun.");
+        prompt.add("- Portföy pozisyon adı, portföy dağılımı, yoğunlaşma, en büyük pozisyon veya varlık ağırlığı yazma.");
+        prompt.add("- Kullanıcı portföyündeki sembolleri merkeze alan yorum üretme veya pozisyon adı yazma.");
+        prompt.add("- Risk sinyalleri ve izlenecek noktalar genel piyasa ve haber akışı kaynaklı olsun.");
         prompt.add("- Kesin 'al', 'sat' veya 'tut' tavsiyesi verme.");
         prompt.add("- Maksimum 3 risk sinyali, maksimum 3 izlenecek nokta.");
-        prompt.add("- Veri yoksa veya yetersizse durustce belirt.");
-        prompt.add("- Profesyonel, kisa, karar destek tarzi yaz.");
+        prompt.add("- Veri yoksa veya yetersizse dürüstçe belirt.");
+        prompt.add("- Profesyonel, kısa, karar destek tarzı yaz.");
         prompt.add("- Gereksiz disclaimer ekleme.");
-        prompt.add("- Sadece gecerli JSON dondur.");
+        prompt.add("- Sadece geçerli JSON döndür.");
         prompt.add("");
-        prompt.add("JSON SEMASI:");
+        prompt.add("JSON ŞEMASI:");
         prompt.add("{");
         prompt.add("  \"marketContext\": \"...\",");
         prompt.add("  \"newsContext\": \"...\",");
@@ -44,23 +44,23 @@ public class DashboardAiPromptBuilder implements AiPromptBuilder {
         prompt.add("}");
         prompt.add("");
         prompt.add("ALAN KURALLARI:");
-        prompt.add("- marketContext: Piyasanin genel tonu, yayilim genisligi ve hareketin anlami; fiyat/listeler yok.");
-        prompt.add("- newsContext: Haber basliklarinin piyasa duyarliligi, sektor temasi veya belirsizlik uzerindeki etkisi; haber ozeti yok.");
-        prompt.add("- riskSignals: Genel piyasa ve haber baglamindan tureyen en fazla 3 somut risk; portfoy riski yazma.");
-        prompt.add("- watchPoints: Yakin vadede piyasa/haber akisi icin izlenecek en fazla 3 konu; portfoy takibi yazma.");
-        prompt.add("- finalComment: Piyasa ve haber baglamindan cikan genel sonuc; portfoy etkisi yazma.");
-        prompt.add("- marketTone: Genel piyasa ve haber baglaminin tonunu ozetleyen tek kelimelik degerlendir.");
+        prompt.add("- marketContext: Piyasanın genel tonu, yayılım genişliği ve hareketin anlamı; fiyat/listeler yok.");
+        prompt.add("- newsContext: Haber başlıklarının piyasa duyarlılığı, sektör teması veya belirsizlik üzerindeki etkisi; haber özeti yok.");
+        prompt.add("- riskSignals: Genel piyasa ve haber bağlamından türeyen en fazla 3 somut risk; portföy riski yazma.");
+        prompt.add("- watchPoints: Yakın vadede piyasa/haber akışı için izlenecek en fazla 3 konu; portföy takibi yazma.");
+        prompt.add("- finalComment: Piyasa ve haber bağlamından çıkan genel sonuç; portföy etkisi yazma.");
+        prompt.add("- marketTone: Genel piyasa ve haber bağlamının tonunu özetleyen tek kelimelik değerlendirme.");
         prompt.add("");
 
-        prompt.add("PIYASA OZETI");
-        prompt.add("Ortalama gunluk degisim: " + fmt(context.avgMarketChange()) + "%");
-        prompt.add("Yukselen enstruman sayisi: " + context.gainerCount());
-        prompt.add("Dusen enstruman sayisi: " + context.loserCount());
-        prompt.add("Izlenen toplam enstruman: " + context.totalQuotes());
+        prompt.add("PİYASA ÖZETİ");
+        prompt.add("Ortalama günlük değişim: " + fmt(context.avgMarketChange()) + "%");
+        prompt.add("Yükselen enstrüman sayısı: " + context.gainerCount());
+        prompt.add("Düşen enstrüman sayısı: " + context.loserCount());
+        prompt.add("İzlenen toplam enstrüman: " + context.totalQuotes());
         prompt.add("");
 
         if (!context.recentNewsTitles().isEmpty()) {
-            prompt.add("SON HABER BASLIKLARI (sadece baslik; ozetleme; piyasa/haber baglamini yorumla)");
+            prompt.add("SON HABER BAŞLIKLARI (sadece başlık; özetleme; piyasa/haber bağlamını yorumla)");
             context.recentNewsTitles().stream().limit(5)
                     .forEach(title -> prompt.add("- " + title));
             prompt.add("");

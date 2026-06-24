@@ -7,6 +7,9 @@ import com.emrehalli.financeportal.market.service.FundFetchAsyncService;
 import com.emrehalli.financeportal.market.service.FundFetchStatus;
 import com.emrehalli.financeportal.market.service.TefasFundBackfillAsyncService;
 import com.emrehalli.financeportal.market.service.TefasFundBackfillStatus;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,6 +30,7 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/v1/admin/funds")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Admin - Fon Yonetimi", description = "TEFAS fon veri senkronizasyon yonetimi")
 public class TefasFundAdminController {
 
     private final TefasFundBackfillAsyncService tefasFundBackfillAsyncService;
@@ -35,6 +39,8 @@ public class TefasFundAdminController {
     private final FundFetchAsyncService fundFetchAsyncService;
     private final FundFetchStatus fundFetchStatus;
 
+    @Operation(summary = "Fon gecmis verisi doldur", description = "TEFAS fon verilerinin asenkron tarihsel backfill islemini baslatir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "Backfill islemi kabul edildi"))
     @PostMapping("/backfill")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> backfill(@RequestBody(required = false) TefasFundBackfillRequest request) {
@@ -59,6 +65,8 @@ public class TefasFundAdminController {
                         .build());
     }
 
+    @Operation(summary = "Fon backfill durumunu sorgula", description = "TEFAS fon backfill isleminin detayli ilerleme durumunu raporlar")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Durum bilgisi basariyla getirildi"))
     @GetMapping("/backfill/status")
     @PreAuthorize("hasRole('ADMIN')")
     public TefasFundBackfillStatusResponse backfillStatus() {
@@ -73,6 +81,8 @@ public class TefasFundAdminController {
         );
     }
 
+    @Operation(summary = "TEFAS baglanti testi", description = "TEFAS saglayicisina canli baglanti kontrolu yapar")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Baglanti testi sonucu donduruldu"))
     @GetMapping("/test-connection")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> testConnection() {
@@ -99,6 +109,8 @@ public class TefasFundAdminController {
         }
     }
 
+    @Operation(summary = "Guncel fon verilerini cek", description = "TEFAS fon anlık goruntusunun asenkron cekilmesini baslatir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "Fon cekme islemi kabul edildi"))
     @PostMapping("/fetch")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> fetchFunds() {
@@ -123,6 +135,8 @@ public class TefasFundAdminController {
         );
     }
 
+    @Operation(summary = "Fon cekme durumunu sorgula", description = "TEFAS fon cekme isleminin detayli ilerleme durumunu raporlar")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Durum bilgisi basariyla getirildi"))
     @GetMapping("/fetch/status")
     @PreAuthorize("hasRole('ADMIN')")
     public FundFetchStatusResponse fetchStatus() {
@@ -179,7 +193,4 @@ public class TefasFundAdminController {
     ) {
     }
 }
-
-
-
 

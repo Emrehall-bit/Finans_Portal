@@ -6,6 +6,7 @@ import com.emrehalli.financeportal.market.exception.DataProviderException;
 import com.emrehalli.financeportal.market.provider.stock.dto.StockHistoryDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -39,18 +40,14 @@ public class YahooHistoricalClient {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    /**
-     * @param yahooSymbol Yahoo Finance ticker, e.g. "GC=F", "SI=F"
-     * @param days        look-back window in calendar days
-     * @return list of daily bars, earliest first; empty on no data
-     * @throws DataProviderException on HTTP or parse failure
-     */
+    @CircuitBreaker(name = "yahooFinance", fallbackMethod = "fetchDailyHistoryFallback")
     public List<StockHistoryDto> fetchDailyHistory(String yahooSymbol, int days) {
         long period2 = Instant.now().getEpochSecond();
         long period1 = period2 - ((long) days * 86400);
         return fetchDailyHistory(yahooSymbol, period1, period2);
     }
 
+    @CircuitBreaker(name = "yahooFinance", fallbackMethod = "fetchDailyHistoryRangeFallback")
     public List<StockHistoryDto> fetchDailyHistory(String yahooSymbol, LocalDate startDate, LocalDate endDate) {
         if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
             throw new DataProviderException("Invalid Yahoo historical date range. symbol=" + yahooSymbol);
@@ -103,6 +100,18 @@ public class YahooHistoricalClient {
         } catch (Exception e) {
             throw new DataProviderException("Failed to parse Yahoo historical payload. symbol=" + yahooSymbol, e);
         }
+    }
+
+    private List<StockHistoryDto> fetchDailyHistoryFallback(String yahooSymbol, int days, Throwable throwable) {
+        log.warn("Yahoo Finance circuit breaker fallback triggered, returning empty history. symbol={}, reason={}",
+                yahooSymbol, throwable.toString());
+        return List.of();
+    }
+
+    private List<StockHistoryDto> fetchDailyHistoryRangeFallback(String yahooSymbol, LocalDate startDate, LocalDate endDate, Throwable throwable) {
+        log.warn("Yahoo Finance circuit breaker fallback triggered, returning empty history. symbol={}, reason={}",
+                yahooSymbol, throwable.toString());
+        return List.of();
     }
 
     // â”€â”€ Parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -173,7 +182,4 @@ public class YahooHistoricalClient {
         return value != null && !value.isBlank();
     }
 }
-
-
-
 

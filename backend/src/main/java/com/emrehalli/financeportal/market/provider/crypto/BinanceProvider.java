@@ -8,6 +8,7 @@ import com.emrehalli.financeportal.market.provider.crypto.dto.CryptoTickerDto;
 import com.emrehalli.financeportal.market.support.BinancePairMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -40,6 +41,7 @@ public class BinanceProvider implements MarketDataProvider {
         return SourceName.BINANCE.name();
     }
 
+    @CircuitBreaker(name = "binance", fallbackMethod = "fetchFallback")
     @Override
     public List<CryptoTickerDto> fetch() {
         List<CryptoTickerDto> tickers = fetchFromApi();
@@ -47,6 +49,11 @@ public class BinanceProvider implements MarketDataProvider {
             log.warn("Binance crypto provider returned no ticker data for configured pairs {}", binancePairMapper.getAllSymbols());
         }
         return tickers;
+    }
+
+    private List<CryptoTickerDto> fetchFallback(Throwable throwable) {
+        log.warn("Binance circuit breaker fallback triggered, returning empty ticker list. reason={}", throwable.toString());
+        return Collections.emptyList();
     }
 
     private List<CryptoTickerDto> fetchFromApi() {
@@ -131,7 +138,4 @@ public class BinanceProvider implements MarketDataProvider {
         }
     }
 }
-
-
-
 

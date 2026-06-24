@@ -80,6 +80,3 @@ public class YahooIndexProvider implements MarketDataProvider {
     }
 }
 
-
-
-

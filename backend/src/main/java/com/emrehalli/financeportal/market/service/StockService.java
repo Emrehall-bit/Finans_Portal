@@ -27,22 +27,25 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-/**
- * Service for stock persistence and retrieval.
- */
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class StockService {
+
+    private static final String CACHE_KEY_ALL_PREFIX = "stock:all";
 
     private final MarketInstrumentRepository marketInstrumentRepository;
     private final MarketPriceRepository marketPriceRepository;
@@ -52,6 +55,10 @@ public class StockService {
     private final MarketProperties props;
     private final BistSymbolRegistry bistSymbolRegistry;
     private final MarketDailyChangeService dailyChangeService;
+
+    // -------------------------------------------------------------------------
+    // Write path
+    // -------------------------------------------------------------------------
 
     @Transactional
     public void saveAll(List<StockPriceDto> quotes) {
@@ -67,7 +74,7 @@ public class StockService {
                 continue;
             }
 
-            String symbol = normalizeSymbol(quote.symbol());
+            String symbol = quote.symbol();
             SourceName sourceName = SourceName.valueOf(quote.sourceName());
             LocalDateTime timestamp = quote.dataTimestamp() != null
                     ? LocalDateTime.ofInstant(quote.dataTimestamp(), ZoneOffset.UTC)
@@ -84,26 +91,28 @@ public class StockService {
                             .stockSector(StockSector.OTHER)
                             .build()));
 
-            java.math.BigDecimal changeRate = calculateChangeFromPreviousClose(quote.price(), quote.previousClose());
+            BigDecimal changeRate = calculateChangeFromPreviousClose(quote.price(), quote.previousClose());
             if (changeRate == null) {
-                changeRate = dailyChangeService.calculate(
-                        instrument,
-                        quote.price(),
-                        timestamp,
-                        sourceName
-                );
+                changeRate = dailyChangeService.calculate(instrument, quote.price(), timestamp, sourceName);
+            }
+            if (changeRate == null) {
+                changeRate = quote.changePercent();
             }
 
             marketPriceRepository.save(MarketPrice.builder()
                     .instrument(instrument)
                     .priceValue(quote.price())
-                    .changeRate(changeRate != null ? changeRate : quote.changePercent())
+                    .changeRate(changeRate)
                     .priceTimestamp(timestamp)
                     .sourceName(sourceName)
                     .build());
 
-            putCacheSilently(buildCacheKey(symbol), toDto(instrument, quote.price(), timestamp, quote, changeRate));
+            putCacheSilently(buildSingleCacheKey(symbol),
+                    toDto(instrument, quote.price(), timestamp, quote, changeRate));
         }
+
+        // Invalidate the list cache so the next getAll() rebuilds with fresh data.
+        evictListCache();
     }
 
     @Transactional
@@ -140,8 +149,7 @@ public class StockService {
                             instrument,
                             IntervalType.ONE_DAY,
                             SourceName.YAHOO_FINANCE,
-                            normalizedTimestamp
-                    )
+                            normalizedTimestamp)
                     .orElseGet(() -> MarketPriceHistory.builder()
                             .instrument(instrument)
                             .intervalType(IntervalType.ONE_DAY)
@@ -159,8 +167,27 @@ public class StockService {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Read path — list
+    // -------------------------------------------------------------------------
+
     @Transactional(readOnly = true)
     public Page<StockPriceDto> getAll(Pageable pageable, BistTier bistTier) {
+        boolean isFirstPage = pageable.getOffset() == 0;
+        String listCacheKey = buildListCacheKey(bistTier);
+
+        if (isFirstPage) {
+            List<StockPriceDto> cached = cacheService.getList(listCacheKey, StockPriceDto.class);
+            if (!cached.isEmpty()) {
+                long total = cached.size();
+                List<StockPriceDto> page = cached.stream()
+                        .skip(pageable.getOffset())
+                        .limit(pageable.getPageSize())
+                        .toList();
+                return new PageImpl<>(page, pageable, total);
+            }
+        }
+
         try {
             List<BistTier> tiers = resolveFilterTiers(bistTier);
             String tierClause = tiers != null ? "and mi.bistTier in :tiers " : "";
@@ -170,74 +197,91 @@ public class StockService {
                             "where mi.instrumentType = :instrumentType " +
                             tierClause +
                             "order by mi.instrumentCode asc",
-                    MarketInstrument.class
-            );
+                    MarketInstrument.class);
             dataQuery.setParameter("instrumentType", InstrumentType.STOCK);
             if (tiers != null) {
                 dataQuery.setParameter("tiers", tiers);
             }
-            dataQuery.setFirstResult((int) pageable.getOffset());
-            dataQuery.setMaxResults(pageable.getPageSize());
 
-            List<StockPriceDto> content = dataQuery.getResultList().stream()
-                    .map(this::toDto)
-                    .filter(Objects::nonNull)
-                    .toList();
+            // For the first-page cache path we fetch ALL matching instruments so we can
+            // cache the complete list. For subsequent pages we apply the pageable directly.
+            if (!isFirstPage) {
+                dataQuery.setFirstResult((int) pageable.getOffset());
+                dataQuery.setMaxResults(pageable.getPageSize());
+            }
+
+            List<MarketInstrument> instruments = dataQuery.getResultList();
+
+            List<StockPriceDto> allContent = buildDtoListBatch(instruments);
 
             TypedQuery<Long> countQuery = entityManager.createQuery(
                     "select count(mi) from MarketInstrument mi " +
                             "where mi.instrumentType = :instrumentType " +
                             tierClause,
-                    Long.class
-            );
+                    Long.class);
             countQuery.setParameter("instrumentType", InstrumentType.STOCK);
             if (tiers != null) {
                 countQuery.setParameter("tiers", tiers);
             }
-            Long total = countQuery.getSingleResult();
+            long total = countQuery.getSingleResult();
 
-            return new PageImpl<>(content, pageable, total);
+            if (isFirstPage && !allContent.isEmpty()) {
+                putCacheSilently(listCacheKey, allContent);
+                List<StockPriceDto> page = allContent.stream()
+                        .limit(pageable.getPageSize())
+                        .toList();
+                return new PageImpl<>(page, pageable, total);
+            }
+
+            return new PageImpl<>(allContent, pageable, total);
+
         } catch (Exception exception) {
             log.error("Failed to load paged stock data from database.", exception);
             return Page.empty(pageable);
         }
     }
 
-    private List<BistTier> resolveFilterTiers(BistTier bistTier) {
-        if (bistTier == null) {
-            return null;
-        }
-        return switch (bistTier) {
-            case BIST30  -> List.of(BistTier.BIST30);
-            case BIST50  -> List.of(BistTier.BIST30, BistTier.BIST50);
-            case BIST100 -> List.of(BistTier.BIST30, BistTier.BIST50, BistTier.BIST100);
-            case OTHER   -> List.of(BistTier.OTHER);
-        };
-    }
+    // -------------------------------------------------------------------------
+    // Read path — single
+    // -------------------------------------------------------------------------
 
     @Transactional(readOnly = true)
     public StockPriceDto getBySymbol(String symbol) {
         String normalizedSymbol = normalizeSymbol(symbol);
+        StockPriceDto cached = getCachedQuote(normalizedSymbol);
+        if (cached != null) {
+            return cached;
+        }
 
         try {
             MarketInstrument instrument = marketInstrumentRepository
                     .findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(normalizedSymbol, InstrumentType.STOCK)
-                    .orElseThrow(() -> new InstrumentNotFoundException("Stock instrument not found: " + normalizedSymbol));
+                    .orElseThrow(() -> new InstrumentNotFoundException(
+                            "Stock instrument not found: " + normalizedSymbol));
 
-            MarketPrice latestPrice = marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument)
-                    .orElseThrow(() -> new InstrumentNotFoundException("Stock price not found: " + normalizedSymbol));
+            MarketPrice latestPrice = marketPriceRepository
+                    .findTopByInstrumentOrderByPriceTimestampDesc(instrument)
+                    .orElseThrow(() -> new InstrumentNotFoundException(
+                            "Stock price not found: " + normalizedSymbol));
 
             StockPriceDto metadata = resolveQuoteMetadata(instrument, latestPrice);
-            StockPriceDto dto = toDto(instrument, latestPrice.getPriceValue(), latestPrice.getPriceTimestamp(), metadata);
-            putCacheSilently(buildCacheKey(normalizedSymbol), dto);
+            StockPriceDto dto = toDto(instrument, latestPrice.getPriceValue(),
+                    latestPrice.getPriceTimestamp(), metadata);
+            putCacheSilently(buildSingleCacheKey(normalizedSymbol), dto);
             return dto;
+
         } catch (InstrumentNotFoundException exception) {
             throw exception;
         } catch (Exception exception) {
             log.error("Failed to load stock data for symbol {}.", normalizedSymbol, exception);
-            throw new InstrumentNotFoundException("Stock instrument not found: " + normalizedSymbol, exception);
+            throw new InstrumentNotFoundException(
+                    "Stock instrument not found: " + normalizedSymbol, exception);
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Read path — history
+    // -------------------------------------------------------------------------
 
     @Transactional(readOnly = true)
     public List<StockHistoryDto> getHistory(String symbol, LocalDate startDate, LocalDate endDate) {
@@ -245,34 +289,26 @@ public class StockService {
         MarketInstrument instrument = marketInstrumentRepository
                 .findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(normalizedSymbol, InstrumentType.STOCK)
                 .filter(item -> item.getInstrumentType() == InstrumentType.STOCK)
-                .orElseThrow(() -> new InstrumentNotFoundException("Stock instrument not found: " + normalizedSymbol));
+                .orElseThrow(() -> new InstrumentNotFoundException(
+                        "Stock instrument not found: " + normalizedSymbol));
 
         Instant from = (startDate != null ? startDate : LocalDate.of(1970, 1, 1))
-                .atStartOfDay()
-                .toInstant(ZoneOffset.UTC);
+                .atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant to = (endDate != null ? endDate : LocalDate.now(ZoneOffset.UTC))
-                .atStartOfDay()
-                .toInstant(ZoneOffset.UTC);
+                .atStartOfDay().toInstant(ZoneOffset.UTC);
 
         List<StockHistoryDto> history = marketPriceHistoryRepository
                 .findByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampBetweenOrderByPriceTimestampAsc(
-                        instrument,
-                        IntervalType.ONE_DAY,
-                        SourceName.YAHOO_FINANCE,
-                        from,
-                        to
-                ).stream()
+                        instrument, IntervalType.ONE_DAY, SourceName.YAHOO_FINANCE, from, to)
+                .stream()
                 .map(this::toHistoryDto)
                 .toList();
 
         if (history.isEmpty()) {
             history = marketPriceHistoryRepository
                     .findByInstrumentAndIntervalTypeAndPriceTimestampBetweenOrderByPriceTimestampAsc(
-                            instrument,
-                            IntervalType.ONE_DAY,
-                            from,
-                            to
-                    ).stream()
+                            instrument, IntervalType.ONE_DAY, from, to)
+                    .stream()
                     .map(this::toHistoryDto)
                     .toList();
         }
@@ -284,28 +320,108 @@ public class StockService {
         return history;
     }
 
-    private StockPriceDto toDto(MarketInstrument instrument) {
-        MarketPrice latestPrice = marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument).orElse(null);
+    // -------------------------------------------------------------------------
+    // Batch DTO assembly (list path — no per-instrument DB or Redis calls)
+    // -------------------------------------------------------------------------
+
+    private List<StockPriceDto> buildDtoListBatch(List<MarketInstrument> instruments) {
+        if (instruments.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> ids = instruments.stream()
+                .map(MarketInstrument::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        Map<Long, MarketPrice> priceById = marketPriceRepository
+                .findLatestPricesForInstruments(ids)
+                .stream()
+                .filter(p -> p.getInstrument() != null && p.getInstrument().getId() != null)
+                .collect(Collectors.toMap(
+                        p -> p.getInstrument().getId(),
+                        Function.identity(),
+                        (a, b) -> a));
+
+        Map<Long, MarketPriceHistory> latestHistoryById = marketPriceHistoryRepository
+                .findLatestDailyHistoriesForInstruments(ids, SourceName.YAHOO_FINANCE.name())
+                .stream()
+                .filter(h -> h.getInstrument() != null && h.getInstrument().getId() != null)
+                .collect(Collectors.toMap(
+                        h -> h.getInstrument().getId(),
+                        Function.identity(),
+                        (a, b) -> a));
+
+        Map<Long, MarketPriceHistory> previousCloseById = marketPriceHistoryRepository
+                .findPreviousClosesForStockInstruments(ids, SourceName.YAHOO_FINANCE.name())
+                .stream()
+                .filter(h -> h.getInstrument() != null && h.getInstrument().getId() != null)
+                .collect(Collectors.toMap(
+                        h -> h.getInstrument().getId(),
+                        Function.identity(),
+                        (a, b) -> a));
+
+        return instruments.stream()
+                .map(instrument -> toDtoBatch(
+                        instrument,
+                        priceById.get(instrument.getId()),
+                        latestHistoryById.get(instrument.getId()),
+                        previousCloseById.get(instrument.getId())))
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private StockPriceDto toDtoBatch(MarketInstrument instrument,
+                                     MarketPrice latestPrice,
+                                     MarketPriceHistory latestHistory,
+                                     MarketPriceHistory previousHistory) {
         if (latestPrice == null) {
             return null;
         }
-        return toDto(instrument, latestPrice.getPriceValue(), latestPrice.getPriceTimestamp(), resolveQuoteMetadata(instrument, latestPrice));
+
+        String symbol = instrument.getInstrumentCode();
+        BigDecimal previousClose = previousHistory != null ? previousHistory.getClosePrice() : null;
+        BigDecimal changeRate = firstDecimal(
+                calculateChangeFromPreviousClose(latestPrice.getPriceValue(), previousClose),
+                latestPrice.getChangeRate());
+
+        return new StockPriceDto(
+                symbol,
+                bistSymbolRegistry.toYahooSymbol(symbol),
+                latestPrice.getPriceValue(),
+                changeRate,
+                previousClose,
+                latestHistory != null ? latestHistory.getHighPrice() : null,
+                latestHistory != null ? latestHistory.getLowPrice() : null,
+                latestHistory != null && latestHistory.getVolume() != null
+                        ? latestHistory.getVolume().longValue() : null,
+                latestPrice.getSourceName().name(),
+                latestPrice.getPriceTimestamp().toInstant(ZoneOffset.UTC),
+                latestHistory != null ? latestHistory.getOpenPrice() : null,
+                instrument.getBistTier() != null ? instrument.getBistTier().name() : null,
+                instrument.getStockSector() != null ? instrument.getStockSector().name() : null,
+                null
+        );
     }
 
+    // -------------------------------------------------------------------------
+    // Single-instrument DTO assembly (detail path — uses Redis for enrichment)
+    // -------------------------------------------------------------------------
+
     private StockPriceDto toDto(MarketInstrument instrument,
-                                java.math.BigDecimal currentPrice,
+                                BigDecimal currentPrice,
                                 LocalDateTime dataTimestamp,
                                 StockPriceDto cachedSource) {
         return toDto(instrument, currentPrice, dataTimestamp, cachedSource, null);
     }
 
     private StockPriceDto toDto(MarketInstrument instrument,
-                                java.math.BigDecimal currentPrice,
+                                BigDecimal currentPrice,
                                 LocalDateTime dataTimestamp,
                                 StockPriceDto cachedSource,
-                                java.math.BigDecimal resolvedChangeRate) {
+                                BigDecimal resolvedChangeRate) {
         String symbol = instrument.getInstrumentCode();
-        java.math.BigDecimal changeRate = resolvedChangeRate != null
+        BigDecimal changeRate = resolvedChangeRate != null
                 ? resolvedChangeRate
                 : resolveChangeRate(instrument, currentPrice, dataTimestamp, cachedSource);
         return new StockPriceDto(
@@ -322,27 +438,20 @@ public class StockService {
                 cachedSource != null ? cachedSource.openPrice() : null,
                 instrument.getBistTier() != null ? instrument.getBistTier().name() : null,
                 instrument.getStockSector() != null ? instrument.getStockSector().name() : null,
-                null
-        );
+                null);
     }
 
     private StockPriceDto resolveQuoteMetadata(MarketInstrument instrument, MarketPrice latestPrice) {
         StockPriceDto cachedSource = getCachedQuote(instrument.getInstrumentCode());
         MarketPriceHistory latestHistory = marketPriceHistoryRepository
                 .findTopByInstrumentAndIntervalTypeAndSourceNameOrderByPriceTimestampDesc(
-                        instrument,
-                        IntervalType.ONE_DAY,
-                        SourceName.YAHOO_FINANCE
-                )
+                        instrument, IntervalType.ONE_DAY, SourceName.YAHOO_FINANCE)
                 .orElse(null);
         MarketPriceHistory previousHistory = latestHistory != null
                 ? marketPriceHistoryRepository
                         .findTopByInstrumentAndIntervalTypeAndSourceNameAndPriceTimestampLessThanOrderByPriceTimestampDesc(
-                                instrument,
-                                IntervalType.ONE_DAY,
-                                SourceName.YAHOO_FINANCE,
-                                latestHistory.getPriceTimestamp()
-                        )
+                                instrument, IntervalType.ONE_DAY, SourceName.YAHOO_FINANCE,
+                                latestHistory.getPriceTimestamp())
                         .orElse(null)
                 : null;
 
@@ -353,62 +462,39 @@ public class StockService {
                 firstDecimal(
                         calculateChangeFromPreviousClose(
                                 latestPrice.getPriceValue(),
-                                cachedSource != null ? cachedSource.previousClose() : null
-                        ),
-                        cachedSource != null ? cachedSource.changePercent() : latestPrice.getChangeRate()
-                ),
-                firstDecimal(cachedSource != null ? cachedSource.previousClose() : null, previousHistory != null ? previousHistory.getClosePrice() : null),
-                firstDecimal(cachedSource != null ? cachedSource.dayHigh() : null, latestHistory != null ? latestHistory.getHighPrice() : null),
-                firstDecimal(cachedSource != null ? cachedSource.dayLow() : null, latestHistory != null ? latestHistory.getLowPrice() : null),
-                firstLong(cachedSource != null ? cachedSource.volume() : null, latestHistory != null ? latestHistory.getVolume() : null),
-                cachedSource != null && cachedSource.sourceName() != null ? cachedSource.sourceName() : latestPrice.getSourceName().name(),
+                                cachedSource != null ? cachedSource.previousClose() : null),
+                        cachedSource != null ? cachedSource.changePercent() : latestPrice.getChangeRate()),
+                firstDecimal(
+                        cachedSource != null ? cachedSource.previousClose() : null,
+                        previousHistory != null ? previousHistory.getClosePrice() : null),
+                firstDecimal(
+                        cachedSource != null ? cachedSource.dayHigh() : null,
+                        latestHistory != null ? latestHistory.getHighPrice() : null),
+                firstDecimal(
+                        cachedSource != null ? cachedSource.dayLow() : null,
+                        latestHistory != null ? latestHistory.getLowPrice() : null),
+                firstLong(
+                        cachedSource != null ? cachedSource.volume() : null,
+                        latestHistory != null ? latestHistory.getVolume() : null),
+                cachedSource != null && cachedSource.sourceName() != null
+                        ? cachedSource.sourceName() : latestPrice.getSourceName().name(),
                 latestPrice.getPriceTimestamp().toInstant(ZoneOffset.UTC),
-                firstDecimal(cachedSource != null ? cachedSource.openPrice() : null, latestHistory != null ? latestHistory.getOpenPrice() : null),
+                firstDecimal(
+                        cachedSource != null ? cachedSource.openPrice() : null,
+                        latestHistory != null ? latestHistory.getOpenPrice() : null),
                 instrument.getBistTier() != null ? instrument.getBistTier().name() : null,
                 instrument.getStockSector() != null ? instrument.getStockSector().name() : null,
-                cachedSource != null ? cachedSource.sharesOutstanding() : null
-        );
+                cachedSource != null ? cachedSource.sharesOutstanding() : null);
     }
 
-    private StockPriceDto getCachedQuote(String symbol) {
-        try {
-            return cacheService.get(buildCacheKey(symbol), StockPriceDto.class).orElse(null);
-        } catch (Exception exception) {
-            log.warn("Failed to read stock cache for symbol={}", symbol, exception);
-            return null;
-        }
-    }
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
 
-    private java.math.BigDecimal firstDecimal(java.math.BigDecimal primary, java.math.BigDecimal fallback) {
-        return primary != null ? primary : fallback;
-    }
-
-    private Long firstLong(Long primary, java.math.BigDecimal fallback) {
-        if (primary != null) {
-            return primary;
-        }
-        return fallback != null ? fallback.longValue() : null;
-    }
-
-    private java.math.BigDecimal resolveChangeRate(MarketInstrument instrument, MarketPrice latestPrice) {
-        if (latestPrice == null) {
-            return null;
-        }
-        java.math.BigDecimal calculated = dailyChangeService.calculate(
-                instrument,
-                latestPrice.getPriceValue(),
-                latestPrice.getPriceTimestamp(),
-                latestPrice.getSourceName()
-        );
-        return calculated != null ? calculated : latestPrice.getChangeRate();
-    }
-
-    private java.math.BigDecimal resolveChangeRate(
-            MarketInstrument instrument,
-            java.math.BigDecimal currentPrice,
-            LocalDateTime dataTimestamp,
-            StockPriceDto cachedSource
-    ) {
+    private BigDecimal resolveChangeRate(MarketInstrument instrument,
+                                         BigDecimal currentPrice,
+                                         LocalDateTime dataTimestamp,
+                                         StockPriceDto cachedSource) {
         SourceName sourceName = SourceName.YAHOO_FINANCE;
         if (cachedSource != null && cachedSource.sourceName() != null) {
             try {
@@ -418,33 +504,42 @@ public class StockService {
             }
         }
 
-        java.math.BigDecimal calculated = dailyChangeService.calculate(
-                instrument,
+        BigDecimal previousCloseChange = calculateChangeFromPreviousClose(
                 currentPrice,
-                dataTimestamp,
-                sourceName
-        );
-        java.math.BigDecimal previousCloseChange = calculateChangeFromPreviousClose(
-                currentPrice,
-                cachedSource != null ? cachedSource.previousClose() : null
-        );
-        return previousCloseChange != null
-                ? previousCloseChange
-                : calculated != null ? calculated : cachedSource != null ? cachedSource.changePercent() : null;
-    }
-
-    private java.math.BigDecimal calculateChangeFromPreviousClose(
-            java.math.BigDecimal currentPrice,
-            java.math.BigDecimal previousClose
-    ) {
-        if (currentPrice == null || previousClose == null || previousClose.compareTo(java.math.BigDecimal.ZERO) == 0) {
-            return null;
+                cachedSource != null ? cachedSource.previousClose() : null);
+        if (previousCloseChange != null) {
+            return previousCloseChange;
         }
 
+        BigDecimal calculated = dailyChangeService.calculate(instrument, currentPrice, dataTimestamp, sourceName);
+        if (calculated != null) {
+            return calculated;
+        }
+
+        return cachedSource != null ? cachedSource.changePercent() : null;
+    }
+
+    private BigDecimal calculateChangeFromPreviousClose(BigDecimal currentPrice, BigDecimal previousClose) {
+        if (currentPrice == null || previousClose == null
+                || previousClose.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
         return currentPrice
                 .subtract(previousClose)
-                .multiply(java.math.BigDecimal.valueOf(100))
+                .multiply(BigDecimal.valueOf(100))
                 .divide(previousClose, 4, java.math.RoundingMode.HALF_UP);
+    }
+
+    private List<BistTier> resolveFilterTiers(BistTier bistTier) {
+        if (bistTier == null) {
+            return null;
+        }
+        return switch (bistTier) {
+            case BIST30  -> List.of(BistTier.BIST30);
+            case BIST50  -> List.of(BistTier.BIST30, BistTier.BIST50);
+            case BIST100 -> List.of(BistTier.BIST30, BistTier.BIST50, BistTier.BIST100);
+            case OTHER   -> List.of(BistTier.OTHER);
+        };
     }
 
     private StockHistoryDto toHistoryDto(MarketPriceHistory history) {
@@ -454,8 +549,27 @@ public class StockService {
                 history.getHighPrice(),
                 history.getLowPrice(),
                 history.getClosePrice(),
-                history.getVolume()
-        );
+                history.getVolume());
+    }
+
+    private BigDecimal firstDecimal(BigDecimal primary, BigDecimal fallback) {
+        return primary != null ? primary : fallback;
+    }
+
+    private Long firstLong(Long primary, BigDecimal fallback) {
+        if (primary != null) {
+            return primary;
+        }
+        return fallback != null ? fallback.longValue() : null;
+    }
+
+    private StockPriceDto getCachedQuote(String symbol) {
+        try {
+            return cacheService.get(buildSingleCacheKey(symbol), StockPriceDto.class).orElse(null);
+        } catch (Exception exception) {
+            log.warn("Failed to read stock cache for symbol={}", symbol, exception);
+            return null;
+        }
     }
 
     private void putCacheSilently(String key, Object value) {
@@ -466,8 +580,22 @@ public class StockService {
         }
     }
 
-    private String buildCacheKey(String symbol) {
+    private void evictListCache() {
+        try {
+            cacheService.evictByPattern(CACHE_KEY_ALL_PREFIX + "*");
+        } catch (Exception exception) {
+            log.warn("Failed to evict stock list cache", exception);
+        }
+    }
+
+    private String buildSingleCacheKey(String symbol) {
         return "stock:" + symbol;
+    }
+
+    private String buildListCacheKey(BistTier bistTier) {
+        return bistTier == null
+                ? CACHE_KEY_ALL_PREFIX
+                : CACHE_KEY_ALL_PREFIX + ":" + bistTier.name();
     }
 
     private String normalizeSymbol(String symbol) {

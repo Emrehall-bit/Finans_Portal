@@ -157,5 +157,40 @@ public interface MarketPriceHistoryRepository extends JpaRepository<MarketPriceH
             @Param("sourceName")     SourceName sourceName,
             @Param("intervalType")   IntervalType intervalType
     );
+
+    @Query(value = """
+            SELECT DISTINCT ON (mph.instrument_id) mph.*
+            FROM market_price_history mph
+            WHERE mph.instrument_id IN (:instrumentIds)
+              AND mph.interval_type  = 'ONE_DAY'
+              AND mph.source_name    = :sourceName
+            ORDER BY mph.instrument_id, mph.price_timestamp DESC, mph.id DESC
+            """, nativeQuery = true)
+    List<MarketPriceHistory> findLatestDailyHistoriesForInstruments(
+            @Param("instrumentIds") List<Long> instrumentIds,
+            @Param("sourceName") String sourceName);
+
+    @Query(value = """
+            SELECT DISTINCT ON (mph.instrument_id) mph.*
+            FROM market_price_history mph
+            JOIN (
+                SELECT DISTINCT ON (mph2.instrument_id)
+                       mph2.instrument_id,
+                       mph2.price_timestamp
+                FROM market_price_history mph2
+                WHERE mph2.instrument_id IN (:instrumentIds)
+                  AND mph2.interval_type  = 'ONE_DAY'
+                  AND mph2.source_name    = :sourceName
+                ORDER BY mph2.instrument_id, mph2.price_timestamp DESC
+            ) latest ON latest.instrument_id = mph.instrument_id
+            WHERE mph.instrument_id IN (:instrumentIds)
+              AND mph.interval_type  = 'ONE_DAY'
+              AND mph.source_name    = :sourceName
+              AND mph.price_timestamp < latest.price_timestamp
+            ORDER BY mph.instrument_id, mph.price_timestamp DESC, mph.id DESC
+            """, nativeQuery = true)
+    List<MarketPriceHistory> findPreviousClosesForStockInstruments(
+            @Param("instrumentIds") List<Long> instrumentIds,
+            @Param("sourceName") String sourceName);
 }
 

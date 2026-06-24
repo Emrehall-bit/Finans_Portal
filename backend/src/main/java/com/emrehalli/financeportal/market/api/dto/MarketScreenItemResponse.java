@@ -1,5 +1,6 @@
 package com.emrehalli.financeportal.market.api.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -9,6 +10,7 @@ import java.time.OffsetDateTime;
 
 @Getter
 @Builder(toBuilder = true)
+@Schema(description = "Piyasa tarama sonuç satırı")
 public class MarketScreenItemResponse {
     private String symbol;
     private String name;

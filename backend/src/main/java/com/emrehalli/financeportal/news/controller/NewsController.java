@@ -11,6 +11,9 @@ import com.emrehalli.financeportal.news.dto.response.NewsRelatedResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsResponseDto;
 import com.emrehalli.financeportal.news.dto.response.NewsSyncResponseDto;
 import com.emrehalli.financeportal.news.service.NewsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.List;
 
+@Tag(name = "Haberler", description = "Finans haberleri, KAP bildirimleri ve favoriler")
 @RestController
 @RequestMapping("/api/v1/news")
 public class NewsController {
@@ -36,6 +40,8 @@ public class NewsController {
         this.appMessageSource = appMessageSource;
     }
 
+    @Operation(summary = "Haberleri listele", description = "Anahtar kelime, sembol, kategori ve tarih aralığına göre filtrelenmiş haber akışı")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Haberler başarıyla listelendi"))
     @GetMapping
     public ApiResponse<Page<NewsResponseDto>> getNews(
             @RequestParam(required = false) String keyword,
@@ -77,6 +83,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Haber detayını getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Haber detayı başarıyla getirildi"))
     @GetMapping("/{id}")
     public ApiResponse<NewsResponseDto> getNewsDetail(@PathVariable Long id) {
         NewsResponseDto response = newsService.getNewsById(id);
@@ -88,6 +96,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "İlişkili haberleri getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "İlişkili haberler başarıyla getirildi"))
     @GetMapping("/{id}/related")
     public ApiResponse<NewsRelatedResponseDto> getRelatedNewsData(@PathVariable Long id) {
         NewsRelatedResponseDto response = newsService.getRelatedData(id);
@@ -99,6 +109,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Haberi favorilere ekle")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Haber favorilere eklendi"))
     @PostMapping("/favorites/{newsId}")
     public ApiResponse<NewsFavoriteResponseDto> addCurrentUserFavorite(@PathVariable Long newsId) {
         NewsFavoriteResponseDto response = newsService.addFavoriteForCurrentUser(newsId);
@@ -110,6 +122,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Haberi favorilerden çıkar")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Haber favorilerden çıkarıldı"))
     @DeleteMapping("/favorites/{newsId}")
     public ApiResponse<Void> removeCurrentUserFavorite(@PathVariable Long newsId) {
         newsService.removeFavoriteForCurrentUser(newsId);
@@ -121,6 +135,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Favori haberlerimi getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Favori haberler başarıyla getirildi"))
     @GetMapping("/favorites")
     public ApiResponse<List<NewsFavoriteResponseDto>> getCurrentUserFavorites() {
         List<NewsFavoriteResponseDto> response = newsService.getCurrentUserFavorites();
@@ -132,6 +148,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Kullanıcı için favori ekle")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Favori başarıyla eklendi"))
     @PostMapping("/favorites/{userId}/{newsId}")
     public ApiResponse<NewsFavoriteResponseDto> addFavorite(
             @PathVariable Long userId,
@@ -145,6 +163,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Kullanıcı favorisini çıkar")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Favori başarıyla çıkarıldı"))
     @DeleteMapping("/favorites/{userId}/{newsId}")
     public ApiResponse<Void> removeFavorite(
             @PathVariable Long userId,
@@ -158,6 +178,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Kullanıcının favori haberlerini getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Kullanıcı favorileri başarıyla getirildi"))
     @GetMapping("/favorites/user/{userId}")
     public ApiResponse<List<NewsFavoriteResponseDto>> getUserFavorites(@PathVariable Long userId) {
         List<NewsFavoriteResponseDto> response = newsService.getUserFavorites(userId);
@@ -169,6 +191,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Öne çıkan haberleri getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Öne çıkan haberler başarıyla getirildi"))
     @GetMapping("/top")
     public ApiResponse<List<NewsResponseDto>> getTopNews(@RequestParam(defaultValue = "5") int size) {
         List<NewsResponseDto> response = newsService.getTopNews(size);
@@ -180,6 +204,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Önem puanlarını yeniden hesapla")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Önem puanları yeniden hesaplandı"))
     @PostMapping("/admin/recalculate-importance")
     public ApiResponse<NewsImportanceRecalculationResponseDto> recalculateImportanceScores() {
         NewsImportanceRecalculationResponseDto response = newsService.recalculateImportanceScores();
@@ -191,6 +217,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Sağlayıcıya göre haberleri temizle")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Haberler başarıyla temizlendi"))
     @PostMapping("/admin/purge")
     public ApiResponse<NewsPurgeResponseDto> purgeNewsByProvider(@RequestParam String provider) {
         NewsPurgeResponseDto response = newsService.purgeByProvider(provider);
@@ -202,6 +230,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Haber kategorilerini onar")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Haber kategorileri onarıldı"))
     @PostMapping("/admin/repair-categories")
     public ApiResponse<NewsCategoryRepairResponseDto> repairCategories(
             @RequestParam(defaultValue = "500") int limit,
@@ -215,6 +245,8 @@ public class NewsController {
                 .build();
     }
 
+    @Operation(summary = "Haberleri senkronize et")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Haberler başarıyla senkronize edildi"))
     @PostMapping("/sync")
     public ApiResponse<NewsSyncResponseDto> syncNews(
             @RequestParam(required = false) String scope,
@@ -237,6 +269,4 @@ public class NewsController {
                 .build();
     }
 }
-
-
 

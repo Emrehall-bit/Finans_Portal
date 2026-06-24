@@ -11,6 +11,3 @@ public class NewsPurgeResponseDto {
     private final long deletedCount;
 }
 
-
-
-

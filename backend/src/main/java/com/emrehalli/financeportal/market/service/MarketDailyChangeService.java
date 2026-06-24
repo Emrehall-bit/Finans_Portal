@@ -18,6 +18,8 @@ import java.time.ZoneOffset;
 @RequiredArgsConstructor
 public class MarketDailyChangeService {
 
+    private static final BigDecimal STALE_PRICE_TOLERANCE = new BigDecimal("0.05");
+
     private final MarketPriceHistoryRepository historyRepository;
 
     public BigDecimal calculate(
@@ -56,7 +58,7 @@ public class MarketDailyChangeService {
             boolean priceLooksStale = latestClose != null
                     && latestHistoryTimestamp != null
                     && latestHistoryTimestamp.isBefore(currentDayStart)
-                    && currentPrice.compareTo(latestClose) == 0;
+                    && isSamePrice(currentPrice, latestClose);
 
             if (priceLooksStale) {
                 effectivePrice = latestClose;
@@ -86,5 +88,9 @@ public class MarketDailyChangeService {
                         .multiply(BigDecimal.valueOf(100))
                         .divide(previousClose, 4, RoundingMode.HALF_UP))
                 .orElse(null);
+    }
+
+    private boolean isSamePrice(BigDecimal left, BigDecimal right) {
+        return left.subtract(right).abs().compareTo(STALE_PRICE_TOLERANCE) <= 0;
     }
 }

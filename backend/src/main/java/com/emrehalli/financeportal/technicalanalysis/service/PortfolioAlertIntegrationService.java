@@ -23,10 +23,6 @@ public class PortfolioAlertIntegrationService {
         this.alertRepository = alertRepository;
     }
 
-    /**
-     * Çizimin ilk noktasındaki fiyatı, bağlı alert'in target_price değerine yazar.
-     * Çizim sürüklenince alert seviyesi de güncellenir.
-     */
     @Transactional
     public void syncDrawingWithAlert(ChartDrawing drawing) {
         if (!drawing.isAlertLinked() || drawing.getLinkedAlertId() == null) {

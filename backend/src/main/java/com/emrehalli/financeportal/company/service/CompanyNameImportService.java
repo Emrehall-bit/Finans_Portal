@@ -287,16 +287,6 @@ public class CompanyNameImportService {
         return -1;
     }
 
-    /**
-     * Başlık karşılaştırması için normalize:
-     * Türkçe özel karakterler → Latin, küçük harf, harf/rakam dışı sil.
-     *
-     * Örnekler:
-     *   "Şirket"       → "sirket"
-     *   "Hisse Kodu"   → "hissekodu"
-     *   "ticker_code"  → "tickercode"
-     *   "COMPANY_NAME" → "companyname"
-     */
     private String normHeaderTr(String raw) {
         if (raw == null) return "";
         return raw.trim()

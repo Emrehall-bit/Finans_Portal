@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.config.MarketProperties;
 import com.emrehalli.financeportal.market.exception.DataProviderException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -37,11 +38,7 @@ public class YahooFinanceQuoteClient {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    /**
-     * Fetches raw quote items from Yahoo Finance for the given Yahoo symbols.
-     * Returns an empty list if cookie/crumb is not configured.
-     * Throws {@link DataProviderException} on HTTP or parse errors.
-     */
+    @CircuitBreaker(name = "yahooFinance", fallbackMethod = "fetchQuotesFallback")
     public List<YahooQuoteItem> fetchQuotes(List<String> yahooSymbols) {
         if (yahooSymbols == null || yahooSymbols.isEmpty()) {
             return List.of();
@@ -116,6 +113,12 @@ public class YahooFinanceQuoteClient {
         }
     }
 
+    private List<YahooQuoteItem> fetchQuotesFallback(List<String> yahooSymbols, Throwable throwable) {
+        log.warn("Yahoo Finance circuit breaker fallback triggered, returning empty quote list. symbols={}, reason={}",
+                yahooSymbols, throwable.toString());
+        return List.of();
+    }
+
     private BigDecimal decimal(JsonNode node, String field) {
         JsonNode n = node.path(field);
         if (n.isMissingNode() || n.isNull()) return null;
@@ -135,9 +138,6 @@ public class YahooFinanceQuoteClient {
         return value != null && !value.isBlank();
     }
 
-    /**
-     * Raw quote item returned by Yahoo Finance API.
-     */
     public record YahooQuoteItem(
             String yahooSymbol,
             BigDecimal price,
@@ -148,7 +148,4 @@ public class YahooFinanceQuoteClient {
             Long volume
     ) {}
 }
-
-
-
 

@@ -87,17 +87,14 @@ public interface NewsRepository extends JpaRepository<News, Long>, JpaSpecificat
             select n
             from News n
             where coalesce(n.isKapDisclosure, false) = false
+              and n.provider <> 'SYSTEM_GENERATED'
             order by n.publishedAt desc, n.createdAt desc
             """)
     List<News> findRecentNormalNews(Pageable pageable);
 
+    Optional<News> findTopByProviderAndRelatedSymbolOrderByPublishedAtDesc(String provider, String relatedSymbol);
+
     @Modifying
     long deleteByProvider(String provider);
 }
-
-
-
-
-
-
 

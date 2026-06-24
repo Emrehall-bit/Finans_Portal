@@ -57,8 +57,8 @@ public class RedisCacheService implements CacheService {
             }
             return Optional.of(value);
         } catch (Exception exception) {
-            log.error("Failed to get market cache entry for key={}", key, exception);
-            throw new CacheUnavailableException("Failed to get cache entry for key: " + key, exception);
+            log.warn("Market cache read failed for key={}. Falling back to data store.", key, exception);
+            return Optional.empty();
         }
     }
 
@@ -100,8 +100,7 @@ public class RedisCacheService implements CacheService {
         try {
             redisTemplate.delete(key);
         } catch (Exception exception) {
-            log.error("Failed to evict market cache entry for key={}", key, exception);
-            throw new CacheUnavailableException("Failed to evict cache entry for key: " + key, exception);
+            log.warn("Failed to evict market cache entry for key={}. Continuing without cache eviction.", key, exception);
         }
     }
 
@@ -116,8 +115,7 @@ public class RedisCacheService implements CacheService {
             redisTemplate.delete(keys);
             log.info("Market cache pattern evict pattern={} deleted={}", pattern, keys.size());
         } catch (Exception exception) {
-            log.error("Failed to evict market cache entries for pattern={}", pattern, exception);
-            throw new CacheUnavailableException("Failed to evict cache entries for pattern: " + pattern, exception);
+            log.warn("Failed to evict market cache entries for pattern={}. Continuing without cache eviction.", pattern, exception);
         }
     }
 
@@ -141,7 +139,4 @@ public class RedisCacheService implements CacheService {
         return 1;
     }
 }
-
-
-
 

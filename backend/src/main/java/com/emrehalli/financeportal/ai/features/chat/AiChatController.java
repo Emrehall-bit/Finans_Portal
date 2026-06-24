@@ -12,6 +12,9 @@ import com.emrehalli.financeportal.ai.core.gateway.AiGatewayService;
 import com.emrehalli.financeportal.ai.core.gateway.AiResponseLogHelper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Locale;
 import java.util.Optional;
 
+@Tag(name = "AI - Sohbet", description = "AI destekli finansal sohbet")
 @RestController
 @RequestMapping("/api/v1/ai")
 public class AiChatController {
@@ -52,6 +56,8 @@ public class AiChatController {
         this.responseLogHelper = responseLogHelper;
     }
 
+    @Operation(summary = "AI sohbet")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "AI sohbet yanıtı başarıyla döndürüldü"))
     @PostMapping("/chat")
     public ResponseEntity<AiChatResponse> chat(@RequestBody AiChatRequest request) {
         String lang = request.language() != null && request.language().trim().toLowerCase().startsWith("en") ? "en" : "tr";
@@ -128,7 +134,4 @@ public class AiChatController {
         return content.trim();
     }
 }
-
-
-
 

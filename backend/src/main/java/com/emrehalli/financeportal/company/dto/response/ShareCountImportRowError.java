@@ -8,7 +8,9 @@ import lombok.Getter;
 public class ShareCountImportRowError {
 
     private Integer rowNumber;
+
     private String ticker;
+
     private String message;
 }
 

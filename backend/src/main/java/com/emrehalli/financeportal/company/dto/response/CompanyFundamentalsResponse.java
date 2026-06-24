@@ -16,38 +16,57 @@ import java.time.OffsetDateTime;
 public class CompanyFundamentalsResponse {
 
     private String tickerCode;
+
     private String companyName;
+
     private String sector;
+
     private String market;
 
     private String latestReportPeriod;
+
     private ReportType latestReportType;
+
     private LocalDate latestReportPublishedAt;
+
     private ParseStatus parseStatus;
 
     private BigDecimal priceAtCalc;
+
     private OffsetDateTime calculatedAt;
 
     private BigDecimal marketCap;
+
     private BigDecimal peRatio;
+
     private String peStatus;
+
     private BigDecimal pbRatio;
+
     private BigDecimal debtToEquity;
+
     private BigDecimal grossMargin;
+
     private BigDecimal netMargin;
+
     private BigDecimal roe;
+
     private BigDecimal roa;
+
     private BigDecimal revenueGrowth;
+
     private String revenueGrowthLabel;
+
     private BigDecimal netProfitGrowth;
+
     private String netProfitGrowthLabel;
+
     private BigDecimal assetGrowth;
+
     private String assetGrowthLabel;
+
     private String healthLabel;
 
     private String message;
 }
-
-
-
 

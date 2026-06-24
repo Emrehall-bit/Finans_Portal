@@ -57,6 +57,3 @@ public class CompanyProfile {
     private OffsetDateTime updatedAt;
 }
 
-
-
-

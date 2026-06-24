@@ -34,8 +34,3 @@ public class Portfolio {
     private User user;
 }
 
-
-
-
-
-

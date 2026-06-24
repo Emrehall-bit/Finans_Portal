@@ -8,9 +8,6 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * Provider-level fund NAV data transfer object.
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -33,7 +30,4 @@ public class FundNavDto {
     private LocalDate navDate;
     private String fundType;
 }
-
-
-
 

@@ -14,15 +14,17 @@ import com.emrehalli.financeportal.market.provider.macro.tcmb.dto.MacroObservati
 import com.emrehalli.financeportal.market.provider.macro.tcmb.dto.MacroSeriesRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -35,63 +37,91 @@ public class MacroDataSyncService {
     private final MacroIndicatorRepository indicatorRepository;
     private final MacroObservationRepository observationRepository;
 
-    @Transactional
+    // Self-reference so that persistSeries() calls go through the Spring proxy
+    // and the @Transactional annotation takes effect. Without this, same-class
+    // calls would bypass the proxy and open no transaction.
+    @Autowired @Lazy
+    private MacroDataSyncService self;
+
+    // -------------------------------------------------------------------------
+    // Public sync methods — NO @Transactional here because HTTP calls happen
+    // inside fetchSeries(). Holding a DB connection open during network I/O
+    // would block the HikariCP pool unnecessarily.
+    // -------------------------------------------------------------------------
+
     public MacroSyncResult syncCpiFromTcmb(String startDate, String endDate) {
-        return syncSeries(TcmbMacroSeries.cpi(startDate, endDate));
+        MacroSeriesRequest req = TcmbMacroSeries.cpi(startDate, endDate);
+        return self.persistSeries(req, tcmbMacroProvider.fetchSeries(req));
     }
 
-    @Transactional
     public MacroSyncResult syncPpiFromTcmb(String startDate, String endDate) {
-        return syncSeries(TcmbMacroSeries.ppi(startDate, endDate));
+        MacroSeriesRequest req = TcmbMacroSeries.ppi(startDate, endDate);
+        return self.persistSeries(req, tcmbMacroProvider.fetchSeries(req));
     }
 
-    @Transactional
     public MacroSyncResult syncPolicyRateFromTcmb(String startDate, String endDate) {
-        return syncSeries(TcmbMacroSeries.policyRate(startDate, endDate));
+        MacroSeriesRequest req = TcmbMacroSeries.policyRate(startDate, endDate);
+        return self.persistSeries(req, tcmbMacroProvider.fetchSeries(req));
     }
 
-    @Transactional
     public MacroSyncResult syncLaborMarketFromTcmb(String startDate, String endDate) {
-        return syncSeries(TcmbMacroSeries.laborMarket(startDate, endDate));
+        MacroSeriesRequest req = TcmbMacroSeries.laborMarket(startDate, endDate);
+        return self.persistSeries(req, tcmbMacroProvider.fetchSeries(req));
     }
 
-    @Transactional
     public MacroSyncResult syncConsumerConfidenceFromTcmb(String startDate, String endDate) {
-        return syncSeries(TcmbMacroSeries.consumerConfidence(startDate, endDate));
+        MacroSeriesRequest req = TcmbMacroSeries.consumerConfidence(startDate, endDate);
+        return self.persistSeries(req, tcmbMacroProvider.fetchSeries(req));
     }
 
-    @Transactional
     public MacroSyncResult syncCurrentAccountFromTcmb(String startDate, String endDate) {
-        return syncSeries(TcmbMacroSeries.currentAccount(startDate, endDate));
+        MacroSeriesRequest req = TcmbMacroSeries.currentAccount(startDate, endDate);
+        return self.persistSeries(req, tcmbMacroProvider.fetchSeries(req));
     }
 
-    @Transactional
     public Map<String, MacroSyncResult> syncRecentFromTcmb(int lookbackDays) {
         int safeLookbackDays = Math.max(40, lookbackDays);
         LocalDate today = LocalDate.now();
         String startDate = today.minusDays(safeLookbackDays).format(EVDS_DATE_FORMATTER);
         String endDate = today.format(EVDS_DATE_FORMATTER);
-        return syncAllFromTcmb(startDate, startDate, endDate);
-    }
 
-    private Map<String, MacroSyncResult> syncAllFromTcmb(String inflationStartDate, String generalStartDate, String endDate) {
+        // Fetch ALL series first (all HTTP calls complete before any transaction opens).
+        Map<String, MacroSeriesRequest> requests = Map.of(
+                "CPI",                TcmbMacroSeries.cpi(startDate, endDate),
+                "PPI",                TcmbMacroSeries.ppi(startDate, endDate),
+                "POLICY_RATE",        TcmbMacroSeries.policyRate(startDate, endDate),
+                "LABOR_MARKET",       TcmbMacroSeries.laborMarket(startDate, endDate),
+                "CONSUMER_CONFIDENCE",TcmbMacroSeries.consumerConfidence(startDate, endDate),
+                "CURRENT_ACCOUNT",    TcmbMacroSeries.currentAccount(startDate, endDate)
+        );
+
+        Map<String, List<MacroObservationParseResult>> fetched = new LinkedHashMap<>();
+        for (Map.Entry<String, MacroSeriesRequest> entry : requests.entrySet()) {
+            fetched.put(entry.getKey(), tcmbMacroProvider.fetchSeries(entry.getValue()));
+        }
+
+        // Persist each series in its own short transaction (via proxy).
         Map<String, MacroSyncResult> results = new LinkedHashMap<>();
-        results.put("CPI", syncCpiFromTcmb(inflationStartDate, endDate));
-        results.put("PPI", syncPpiFromTcmb(inflationStartDate, endDate));
-        results.put("POLICY_RATE", syncPolicyRateFromTcmb(generalStartDate, endDate));
-        results.put("LABOR_MARKET", syncLaborMarketFromTcmb(generalStartDate, endDate));
-        results.put("CONSUMER_CONFIDENCE", syncConsumerConfidenceFromTcmb(generalStartDate, endDate));
-        results.put("CURRENT_ACCOUNT", syncCurrentAccountFromTcmb(generalStartDate, endDate));
+        for (Map.Entry<String, List<MacroObservationParseResult>> entry : fetched.entrySet()) {
+            MacroSeriesRequest req = requests.get(entry.getKey());
+            results.put(entry.getKey(), self.persistSeries(req, entry.getValue()));
+        }
         return results;
     }
 
-    private MacroSyncResult syncSeries(MacroSeriesRequest request) {
+    // -------------------------------------------------------------------------
+    // Persistence — @Transactional here is correct: only DB operations, no HTTP.
+    // Called via self reference so the proxy intercepts and opens a transaction.
+    // -------------------------------------------------------------------------
+
+    @Transactional
+    public MacroSyncResult persistSeries(MacroSeriesRequest request,
+                                          List<MacroObservationParseResult> parsed) {
         Map<String, MacroIndicator> indicatorByCode = new HashMap<>();
         for (MacroIndicatorDef def : request.indicators()) {
-            indicatorByCode.put(def.code(), ensureIndicator(def.code(), def.name(), def.frequency(), def.unit()));
+            indicatorByCode.put(def.code(),
+                    ensureIndicator(def.code(), def.name(), def.frequency(), def.unit()));
         }
-
-        List<MacroObservationParseResult> parsed = tcmbMacroProvider.fetchSeries(request);
 
         int fetched = parsed.size();
         int saved = 0;
@@ -135,7 +165,8 @@ public class MacroDataSyncService {
         return new MacroSyncResult(codes, fetched, saved, duplicates, skipped);
     }
 
-    private MacroIndicator ensureIndicator(String code, String name, MacroFrequency frequency, MacroUnit unit) {
+    private MacroIndicator ensureIndicator(String code, String name,
+                                            MacroFrequency frequency, MacroUnit unit) {
         return indicatorRepository.findByCode(code).orElseGet(() ->
                 indicatorRepository.save(MacroIndicator.builder()
                         .code(code)
@@ -148,7 +179,3 @@ public class MacroDataSyncService {
         );
     }
 }
-
-
-
-

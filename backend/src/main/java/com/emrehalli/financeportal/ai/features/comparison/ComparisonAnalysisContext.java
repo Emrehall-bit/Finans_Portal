@@ -13,6 +13,7 @@ public record ComparisonAnalysisContext(
         InstrumentSnapshot right,
         DataQuality dataQuality
 ) {
+
     public record InstrumentSnapshot(
             String symbol,
             String displayName,
@@ -32,7 +33,4 @@ public record ComparisonAnalysisContext(
             int overallRiskScore
     ) {}
 }
-
-
-
 

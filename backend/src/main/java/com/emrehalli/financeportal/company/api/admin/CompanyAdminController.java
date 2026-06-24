@@ -8,12 +8,16 @@ import com.emrehalli.financeportal.company.dto.response.ShareCountImportResponse
 import com.emrehalli.financeportal.company.service.CompanyMockRatioSeedService;
 import com.emrehalli.financeportal.company.service.CompanyProfileAdminService;
 import com.emrehalli.financeportal.company.service.CompanyShareCountImportService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Admin - Şirket Yönetimi", description = "Şirket veri yönetimi")
 @RestController
 @RequestMapping("/api/v1/admin/companies")
 public class CompanyAdminController {
@@ -33,6 +37,8 @@ public class CompanyAdminController {
         this.companyMockRatioSeedService = companyMockRatioSeedService;
     }
 
+    @Operation(summary = "Temel şirket profillerini oluştur")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Şirket profilleri başarıyla oluşturuldu"))
     @PostMapping("/seed-basic-profiles")
     public ApiResponse<BasicProfileSeedResponse> seedBasicProfiles() {
         BasicProfileSeedResponse result = companyProfileAdminService.seedBasicProfiles();
@@ -44,6 +50,8 @@ public class CompanyAdminController {
                 .build();
     }
 
+    @Operation(summary = "Test amaçlı sahte oran verisi oluştur")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Sahte oran verileri başarıyla oluşturuldu"))
     @PostMapping("/seed-mock-ratios")
     public ApiResponse<MockRatioSeedResponse> seedMockRatios() {
         if (!mockRatioSeedEnabled) {
@@ -59,6 +67,8 @@ public class CompanyAdminController {
                 .build();
     }
 
+    @Operation(summary = "CSV'den hisse adedi içe aktar")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Hisse adetleri başarıyla içe aktarıldı"))
     @PostMapping("/import-share-counts")
     public ApiResponse<ShareCountImportResponse> importShareCounts(@RequestParam("file") org.springframework.web.multipart.MultipartFile file,
                                                                    @RequestParam(defaultValue = "false") boolean overwrite) {

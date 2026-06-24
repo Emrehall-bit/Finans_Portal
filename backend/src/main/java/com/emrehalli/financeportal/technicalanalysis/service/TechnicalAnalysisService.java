@@ -26,12 +26,6 @@ public class TechnicalAnalysisService {
 
     private static final Logger logger = LogManager.getLogger(TechnicalAnalysisService.class);
 
-    /**
-     * RSI14 için Wilder ısınması ve SMA50 için geçmiş bağlamı sağlamak amacıyla
-     * istenen from tarihinden önce okunacak ekstra gün sayısı.
-     * RSI stabilizasyonu için ~3× period (42 gün) yeterli; SMA50 için 50 gün gerekli.
-     * 90 gün her iki gereksinimi de karşılar ve gereksiz veri çekmez.
-     */
     static final int INDICATOR_WARMUP_DAYS = 90;
 
     private final HistoricalPriceReader historicalPriceReader;
@@ -52,7 +46,6 @@ public class TechnicalAnalysisService {
         this.appMessageSource = appMessageSource;
     }
 
-    /** Backward-compatible overload; uses DEFAULT profile (null instrumentType). */
     public TechnicalAnalysisResult analyze(String symbol, LocalDate from, LocalDate to, String indicators) {
         return analyze(symbol, from, to, indicators, null);
     }

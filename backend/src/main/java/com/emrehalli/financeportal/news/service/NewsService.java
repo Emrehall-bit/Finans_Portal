@@ -40,6 +40,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -107,6 +108,9 @@ public class NewsService {
     private final NewsPresentationMapper newsPresentationMapper;
     private final NewsCategoryClassifier newsCategoryClassifier;
     private final FinancialImpactClassifier financialImpactClassifier;
+
+    @Autowired @Lazy
+    private NewsService self;
 
     @Autowired
     public NewsService(
@@ -318,7 +322,6 @@ public class NewsService {
         return response;
     }
 
-    @Transactional
     public NewsSyncResponseDto syncLatestNews(String scope, String provider, Integer limit) {
         if (hasText(provider)) {
             NewsProviderType providerType = NewsProviderType.from(provider);
@@ -329,7 +332,6 @@ public class NewsService {
         return syncByScope(newsScope, null);
     }
 
-    @Transactional
     public NewsSyncResponseDto syncCompanyNews(String symbol, String provider, Integer limit) {
         if (!hasText(provider)) {
             throw new BadRequestException("provider is required for symbol based sync");
@@ -424,17 +426,14 @@ public class NewsService {
                 .build();
     }
 
-    @Transactional
     public NewsSyncResponseDto syncProvider(NewsProviderType providerType) {
         return syncSingleProvider(providerType, null, false, true, null);
     }
 
-    @Transactional
     public NewsSyncResponseDto syncProviderOnStartup(NewsProviderType providerType) {
         return syncSingleProvider(providerType, null, true, false, null);
     }
 
-    @Transactional
     public NewsSyncResponseDto syncByScope(NewsScope scope, String symbol) {
         Set<NewsProviderType> providers = scope.providers();
         int fetched = 0;
@@ -1286,7 +1285,6 @@ public class NewsService {
         return !newsCategoryClassifier.isPrimaryCategory(existingNews.getCategory());
     }
 
-
     private String normalizeNullable(String value) {
         return hasText(value) ? value.trim() : null;
     }
@@ -1774,6 +1772,7 @@ public class NewsService {
     ) {
         return Specification.allOf(
                 byProvider(context),
+                byExcludeSystemGenerated(context),
                 byScope(context),
                 byCategory(request),
                 byLanguage(request),
@@ -1794,6 +1793,14 @@ public class NewsService {
                 .map(NewsProviderType::name)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         return (root, query, cb) -> root.get("provider").in(providers);
+    }
+
+    // Excludes SYSTEM_GENERATED from results unless the caller explicitly requested it.
+    private Specification<News> byExcludeSystemGenerated(QueryContext context) {
+        if (context.providers.contains(NewsProviderType.SYSTEM_GENERATED)) {
+            return null;
+        }
+        return (root, query, cb) -> cb.notEqual(root.get("provider"), NewsProviderType.SYSTEM_GENERATED.name());
     }
 
     private Specification<News> byScope(QueryContext context) {
@@ -2160,10 +2167,4 @@ public class NewsService {
         }
     }
 }
-
-
-
-
-
-
 

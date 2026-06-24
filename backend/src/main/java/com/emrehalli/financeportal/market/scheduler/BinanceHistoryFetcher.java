@@ -280,7 +280,3 @@ public class BinanceHistoryFetcher {
     }
 }
 
-
-
-
-

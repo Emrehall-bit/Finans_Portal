@@ -13,6 +13,3 @@ public interface CompanyProfileRepository extends JpaRepository<CompanyProfile, 
     List<CompanyProfile> findByActiveTrue();
 }
 
-
-
-

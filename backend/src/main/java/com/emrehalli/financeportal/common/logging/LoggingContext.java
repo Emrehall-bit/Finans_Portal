@@ -39,6 +39,3 @@ public final class LoggingContext {
     }
 }
 
-
-
-

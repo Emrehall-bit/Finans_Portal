@@ -5,6 +5,9 @@ import com.emrehalli.financeportal.market.api.dto.MarketQuoteResponse;
 import com.emrehalli.financeportal.market.service.CommodityService;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,11 +23,14 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/v1/markets/commodities")
 @RequiredArgsConstructor
+@Tag(name = "Emtialar", description = "Emtia piyasa verileri (altın, gümüş, petrol, doğalgaz)")
 public class CommodityController {
 
     private final CommodityService commodityService;
     private final ObservationRegistry observationRegistry;
 
+    @Operation(summary = "Emtia fiyatlarını listele")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Emtia fiyatları başarıyla listelendi"))
     @GetMapping
     public ApiResponse<List<MarketQuoteResponse>> getAll() {
         Observation obs = Observation.createNotStarted("CommodityController.getCommodityMarkets", observationRegistry)
@@ -56,7 +62,4 @@ public class CommodityController {
                 .orElse(null);
     }
 }
-
-
-
 

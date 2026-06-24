@@ -10,9 +10,13 @@ import java.util.List;
 public class ShareCountImportResponse {
 
     private List<String> updatedShareCounts;
+
     private List<String> skippedExisting;
+
     private List<String> notFoundTickers;
+
     private List<ShareCountImportRowError> invalidRows;
+
     private List<String> recalculatedTickers;
 }
 

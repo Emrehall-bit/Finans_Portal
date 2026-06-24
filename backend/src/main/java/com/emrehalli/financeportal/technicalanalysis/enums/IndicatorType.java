@@ -39,6 +39,3 @@ public enum IndicatorType {
     }
 }
 
-
-
-

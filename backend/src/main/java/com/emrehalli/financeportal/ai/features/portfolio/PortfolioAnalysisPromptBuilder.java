@@ -16,17 +16,17 @@ public class PortfolioAnalysisPromptBuilder implements AiPromptBuilder {
         // ── Rol ve kural bloğu ──────────────────────────────────────────────
         prompt.add(AiPromptBuilder.languageInstruction(language).trim());
         prompt.add("");
-        prompt.add("Sen premium portfoy analiz asistanisin.");
-        prompt.add("Sadece verilen portfoy verisini yorumla.");
-        prompt.add("Yatirim tavsiyesi verme; al/sat/tut/kesin yukselis/kesin dusis ifadesi kullanma.");
-        prompt.add("Portfoyu kisisel veri gibi ele al; baska kullanici verisi varsayma.");
-        prompt.add("Kisa, sade ve profesyonel bir analiz uret.");
+        prompt.add("Sen premium portföy analiz asistanısın.");
+        prompt.add("Sadece verilen portföy verisini yorumla.");
+        prompt.add("Yatırım tavsiyesi verme; al/sat/tut/kesin yükseliş/kesin düşüş ifadesi kullanma.");
+        prompt.add("Portföyü kişisel veri gibi ele al; başka kullanıcı verisi varsayma.");
+        prompt.add("Kısa, sade ve profesyonel bir analiz üret.");
         prompt.add("Gereksiz disclaimer ekleme.");
-        prompt.add("Sadece gecerli JSON dondur.");
+        prompt.add("Sadece geçerli JSON döndür.");
         prompt.add("");
 
         // ── Çıktı şeması ────────────────────────────────────────────────────
-        prompt.add("JSON SEMASI:");
+        prompt.add("JSON ŞEMASI:");
         prompt.add("{");
         prompt.add("  \"summary\": \"...\",");
         prompt.add("  \"allocationComment\": \"...\",");
@@ -42,57 +42,57 @@ public class PortfolioAnalysisPromptBuilder implements AiPromptBuilder {
 
         // ── Alan kuralları ───────────────────────────────────────────────────
         prompt.add("ALAN KURALLARI:");
-        prompt.add("- suggestions: Al/sat yonlendirmesi degil; yalnizca risk azaltma, cesitlendirme,");
-        prompt.add("  yogunlasma veya vade dengesi perspektifinden yorum yap.");
-        prompt.add("  Deterministik notlardaki tespitleri birebir tekrar etme; daha derin yorum uret.");
-        prompt.add("- strongestPositions: Sadece kar/zarar orani degil;");
-        prompt.add("  bu pozisyonun portfoy geneline katkisini ve neden one ciktigini 1 cumleyle acikla.");
-        prompt.add("- weakestPositions: Sadece zarar eden pozisyon degil;");
-        prompt.add("  portfoy riski acisindan neden dikkat gerektirdigini acikla.");
-        prompt.add("- finalComment: Portfoyun tamami icin su an en kritik TEK konuyu soyle;");
-        prompt.add("  diger alanlari tekrar etme.");
+        prompt.add("- suggestions: Al/sat yönlendirmesi değil; yalnızca risk azaltma, çeşitlendirme,");
+        prompt.add("  yoğunlaşma veya vade dengesi perspektifinden yorum yap.");
+        prompt.add("  Deterministik notlardaki tespitleri birebir tekrar etme; daha derin yorum üret.");
+        prompt.add("- strongestPositions: Sadece kâr/zarar oranı değil;");
+        prompt.add("  bu pozisyonun portföy geneline katkısını ve neden öne çıktığını 1 cümleyle açıkla.");
+        prompt.add("- weakestPositions: Sadece zarar eden pozisyon değil;");
+        prompt.add("  portföy riski açısından neden dikkat gerektirdiğini açıkla.");
+        prompt.add("- finalComment: Portföyün tamamı için şu an en kritik TEK konuyu söyle;");
+        prompt.add("  diğer alanları tekrar etme.");
         prompt.add("");
 
         // ── Portföy verisi ───────────────────────────────────────────────────
-        prompt.add("PORTFOY");
+        prompt.add("PORTFÖY");
         prompt.add("Id: " + context.portfolioId());
         prompt.add("Ad: " + context.portfolioName());
-        prompt.add("Toplam deger: " + value(context.totalValue()));
-        prompt.add("Toplam kar/zarar: " + value(context.totalProfitLoss()));
-        prompt.add("Toplam kar/zarar %: " + value(context.totalProfitLossPercent()));
-        prompt.add("Pozisyon sayisi: " + context.holdingCount());
-        prompt.add("Fiyatlanabilen pozisyon sayisi: " + context.valuedHoldingCount());
+        prompt.add("Toplam değer: " + value(context.totalValue()));
+        prompt.add("Toplam kâr/zarar: " + value(context.totalProfitLoss()));
+        prompt.add("Toplam kâr/zarar %: " + value(context.totalProfitLossPercent()));
+        prompt.add("Pozisyon sayısı: " + context.holdingCount());
+        prompt.add("Fiyatlanabilen pozisyon sayısı: " + context.valuedHoldingCount());
         prompt.add("Veri kalitesi: " + context.dataQuality().name());
         prompt.add("");
 
-        prompt.add("TUR BAZLI AGIRLIKLAR");
+        prompt.add("TÜR BAZLI AĞIRLIKLAR");
         prompt.add(mapLines(context.typeWeights()));
         prompt.add("");
 
-        prompt.add("ENSTRUMAN BAZLI AGIRLIKLAR");
+        prompt.add("ENSTRÜMAN BAZLI AĞIRLIKLAR");
         prompt.add(mapLines(context.instrumentWeights()));
         prompt.add("");
 
-        prompt.add("RISK SINYALLERI");
+        prompt.add("RİSK SİNYALLERİ");
         prompt.add(listLines(context.riskSignals()));
         prompt.add("");
 
-        prompt.add("DETERMINISTIK NOTLAR (tespit edilmis sorunlar - bunlari daha derin yorumla)");
+        prompt.add("DETERMİNİSTİK NOTLAR (tespit edilmiş sorunlar - bunları daha derin yorumla)");
         prompt.add(listLines(context.suggestions()));
         prompt.add("");
 
-        prompt.add("POZISYONLAR");
+        prompt.add("POZİSYONLAR");
         for (PortfolioAnalysisContext.PositionSnapshot position : context.positions()) {
             prompt.add("- " + position.symbol()
                     + " | tip=" + position.instrumentType()
                     + " | adet=" + value(position.quantity())
-                    + " | alim=" + value(position.averageBuyPrice())
-                    + " | guncel=" + value(position.currentPrice())
-                    + " | deger=" + value(position.currentValue())
-                    + " | karzarar=" + value(position.profitLoss())
-                    + " | karzarar%=" + value(position.profitLossPercent())
-                    + " | agirlik%=" + value(position.weightPercent())
-                    + " | fiyatlandi=" + (position.valuationAvailable() ? "EVET" : "HAYIR"));
+                    + " | alım=" + value(position.averageBuyPrice())
+                    + " | güncel=" + value(position.currentPrice())
+                    + " | değer=" + value(position.currentValue())
+                    + " | kâr/zarar=" + value(position.profitLoss())
+                    + " | kâr/zarar%=" + value(position.profitLossPercent())
+                    + " | ağırlık%=" + value(position.weightPercent())
+                    + " | fiyatlandı=" + (position.valuationAvailable() ? "EVET" : "HAYIR"));
         }
         return prompt.toString();
     }

@@ -6,6 +6,9 @@ import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
 import com.emrehalli.financeportal.market.persistence.MarketPriceRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,11 +32,14 @@ import java.util.Map;
 @RequestMapping("/api/v1/admin/debug/commodities")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Admin - Emtia Diagnostik", description = "Emtia veri tanilama islemleri")
 public class CommodityDiagnosticController {
 
     private final MarketInstrumentRepository instrumentRepository;
     private final MarketPriceRepository priceRepository;
 
+    @Operation(summary = "Emtia diagnostik raporu", description = "Emtia fiyatlandirma boru hattinin saglik durumunu analiz eder")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Diagnostik raporu basariyla olusturuldu"))
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> diagnose() {
@@ -133,7 +139,4 @@ public class CommodityDiagnosticController {
         rows.add(row);
     }
 }
-
-
-
 

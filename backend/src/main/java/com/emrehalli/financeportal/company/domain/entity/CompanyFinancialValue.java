@@ -50,6 +50,3 @@ public class CompanyFinancialValue {
     private OffsetDateTime createdAt;
 }
 
-
-
-

@@ -28,31 +28,31 @@ public class TechnicalAnalysisPromptBuilder implements AiPromptBuilder {
         BigDecimal price = analysis.latestPrice();
 
         return AiPromptBuilder.languageInstruction(language) + """
-                Sen Finance Portal'in uzman teknik analiz asistanisin. %s hissesi icin asagidaki \
-                onceden yorumlanmis sinyalleri bir araya getirerek kisa ve profesyonel bir analiz yaz.
-                Sinyalleri birebir tekrar etme; sentezle ve birbirine bagla.
-                Finansal analist dili kullan. "Bakilabilir", "incelenebilir" gibi mugak ifade kullanma.
-                Hareketli ortalama degerlerini zaten yorumladik; sadece anlamini pekistir.
+                Sen Finance Portal'ın uzman teknik analiz asistanısın. %s hissesi için aşağıdaki \
+                önceden yorumlanmış sinyalleri bir araya getirerek kısa ve profesyonel bir analiz yaz.
+                Sinyalleri birebir tekrar etme; sentezle ve birbirine bağla.
+                Finansal analist dili kullan. "Bakılabilir", "incelenebilir" gibi muğlak ifade kullanma.
+                Hareketli ortalama değerlerini zaten yorumladık; sadece anlamını pekiştir.
 
-                ONCEDEN YORUMLANMIS SINYALLER:
+                ÖNCEDEN YORUMLANMIŞ SİNYALLER:
                 %s
 
-                TREND OZETI: %s
-                MOMENTUM OZETI: %s
+                TREND ÖZETİ: %s
+                MOMENTUM ÖZETİ: %s
 
-                BAGLAN (capraz dogrulama icin - sinyal metinlerini tekrar etme):
+                BAĞLAM (çapraz doğrulama için - sinyal metinlerini tekrar etme):
                 Fiyat: %s TL | RSI(14): %s
 
-                ANTI-HALUSINASYON:
-                - Yalnizca yukardaki verileri kullan; sirketin haberlerini veya bilinmeyen bilgilerini ekleme.
+                ANTİ-HALÜSİNASYON:
+                - Yalnızca yukarıdaki verileri kullan; şirketin haberlerini veya bilinmeyen bilgilerini ekleme.
                 - Spesifik fiyat hedefi verme.
                 - Veri yoksa ("-") o konuya girme.
 
-                YANIT FORMATI - sadece bu JSON, baska hicbir sey:
-                {"summary":"2-3 cumle: fiyat-trend durumu + one cikan sinyal + kisa vadeli risk veya firsat",\
-                "trendComment":"1-2 cumle: hareketli ortalamalarla iliskinin ne anlama geldigi (gerekirse bir sayi)",\
-                "momentumComment":"1-2 cumle: RSI yorumu ve trend ile tutarliligi",\
-                "keyObservation":"Bu enstruman icin su an en kritik teknik gozlem nedir? Tek, net cumle.",\
+                YANIT FORMATI - sadece bu JSON, başka hiçbir şey:
+                {"summary":"2-3 cümle: fiyat-trend durumu + öne çıkan sinyal + kısa vadeli risk veya fırsat",\
+                "trendComment":"1-2 cümle: hareketli ortalamalarla ilişkinin ne anlama geldiği (gerekirse bir sayı)",\
+                "momentumComment":"1-2 cümle: RSI yorumu ve trend ile tutarlılığı",\
+                "keyObservation":"Bu enstrüman için şu an en kritik teknik gözlem nedir? Tek, net cümle.",\
                 "riskLevel":"LOW veya MEDIUM veya HIGH","signal":"POSITIVE veya NEUTRAL veya NEGATIVE veya RISKY"}
                 """.formatted(
                 symbol,
@@ -65,7 +65,7 @@ public class TechnicalAnalysisPromptBuilder implements AiPromptBuilder {
     }
 
     private String formatSignals(TechnicalInsight insight) {
-        if (insight.signals().isEmpty()) return "Yeterli sinyal uretilemedi.";
+        if (insight.signals().isEmpty()) return "Yeterli sinyal üretilemedi.";
         StringBuilder sb = new StringBuilder();
         for (FinancialInsight fi : insight.signals()) {
             String tag = switch (fi.category()) {

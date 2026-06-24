@@ -6,6 +6,7 @@ import com.emrehalli.financeportal.market.provider.macro.tcmb.dto.MacroSeriesFie
 import com.emrehalli.financeportal.market.provider.macro.tcmb.dto.MacroSeriesRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -40,6 +41,7 @@ public class TcmbMacroProvider {
         this.evdsPostUrl = evdsPostUrl;
     }
 
+    @CircuitBreaker(name = "tcmbEvds", fallbackMethod = "fetchSeriesFallback")
     public List<MacroObservationParseResult> fetchSeries(MacroSeriesRequest request) {
         Map<String, Object> requestBody = buildRequest(request);
         try {
@@ -60,6 +62,12 @@ public class TcmbMacroProvider {
             log.warn("TCMB EVDS POST request failed for series={}: {}", request.evdsSeries(), ex.getMessage());
             throw new DataProviderException("TCMB EVDS fetch failed for series=" + request.evdsSeries(), ex);
         }
+    }
+
+    private List<MacroObservationParseResult> fetchSeriesFallback(MacroSeriesRequest request, Throwable throwable) {
+        log.warn("TCMB EVDS circuit breaker fallback triggered for macro series, returning empty list. series={}, reason={}",
+                request.evdsSeries(), throwable.toString());
+        return List.of();
     }
 
     private Map<String, Object> buildRequest(MacroSeriesRequest request) {
@@ -151,7 +159,4 @@ public class TcmbMacroProvider {
         }
     }
 }
-
-
-
 

@@ -156,6 +156,10 @@ public class FundService {
     @Transactional(readOnly = true)
     public FundNavDto getByCode(String code) {
         String normalizedCode = normalizeCode(code);
+        FundNavDto cached = getCachedFund(normalizedCode);
+        if (cached != null) {
+            return cached;
+        }
         try {
             FundNavDto fund = marketInstrumentRepository.findByInstrumentCodeAndSourceName(normalizedCode, SourceName.TEFAS)
                     .filter(instrument -> instrument.getInstrumentType() == InstrumentType.FUND)
@@ -200,13 +204,6 @@ public class FundService {
             log.error("Failed to load funds for type {} from database.", normalizedType, exception);
             return List.of();
         }
-    }
-
-    private List<MarketInstrument> getFundInstruments() {
-        return marketInstrumentRepository.findAll().stream()
-                .filter(instrument -> instrument.getInstrumentType() == InstrumentType.FUND)
-                .filter(instrument -> instrument.getSourceName() == SourceName.TEFAS)
-                .toList();
     }
 
     private List<FundNavDto> buildFundDtos(List<MarketInstrument> instruments) {
@@ -443,5 +440,4 @@ public class FundService {
     private record FundMetadata(String fundName, String fundType) {
     }
 }
-
 

@@ -1,11 +1,19 @@
 package com.emrehalli.financeportal.market.service;
 
+import com.emrehalli.financeportal.config.MarketProperties;
+import com.emrehalli.financeportal.market.api.dto.FxRateResponse;
 import com.emrehalli.financeportal.market.api.dto.MarketScreenItemResponse;
+import com.emrehalli.financeportal.market.api.dto.MarketQuoteResponse;
+import com.emrehalli.financeportal.market.cache.CacheService;
+import com.emrehalli.financeportal.market.provider.bond.dto.BondRateDto;
 import com.emrehalli.financeportal.market.provider.fund.dto.FundNavDto;
+import com.emrehalli.financeportal.market.provider.futures.dto.FuturesContractDto;
+import com.emrehalli.financeportal.market.provider.stock.dto.StockPriceDto;
 import io.micrometer.observation.annotation.Observed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -13,11 +21,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -28,15 +38,36 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class MarketScreeningService {
 
     private final EntityManager entityManager;
     private final FundService fundService;
+    private final FxService fxService;
+    private final CryptoService cryptoService;
+    private final StockService stockService;
+    private final IndexService indexService;
+    private final CommodityService commodityService;
+    private final FuturesService futuresService;
+    private final BondService bondService;
+    private final CacheService cacheService;
+    private final MarketProperties marketProperties;
 
     @Observed(name = "market.screen", contextualName = "MarketService.screenMarkets")
     public Page<MarketScreenItemResponse> screen(MarketScreenCriteria criteria) {
         int page = Math.max(criteria.getPage(), 0);
         int size = Math.min(Math.max(criteria.getSize(), 1), 500);
+
+        // Current-price lookups should use Redis-backed typed services first.
+        // DB screening remains for complex filters/search/fundamental sorting.
+        boolean cacheBackedQuery = isCacheBackedCurrentPriceQuery(criteria);
+        if (cacheBackedQuery) {
+            List<MarketScreenItemResponse> currentRows = screenCurrentPricesFast(criteria);
+            if (currentRows != null) {
+                return slicePage(currentRows, page, size);
+            }
+        }
+
         boolean advancedFiltersUsed = hasAdvancedFilters(criteria);
 
         StringBuilder from = new StringBuilder("""
@@ -149,6 +180,27 @@ public class MarketScreeningService {
 
         String orderBy = resolveOrderBy(criteria, advancedFiltersUsed);
 
+        if (cacheBackedQuery && hasText(criteria.getType())) {
+            // Fetch the full result set without pagination, then cache it.
+            Query allQuery = entityManager.createNativeQuery(select + from + orderBy);
+            params.forEach(allQuery::setParameter);
+
+            @SuppressWarnings("unchecked")
+            List<Object[]> allRows = allQuery.getResultList();
+            List<MarketScreenItemResponse> allContent = new ArrayList<>(allRows.stream()
+                    .map(this::mapRow)
+                    .toList());
+            allContent = enrichFundRows(allContent, criteria);
+
+            writeCacheSilently(buildScreenCacheKey(criteria), allContent, resolveTtlMinutes(criteria.getType()));
+
+            List<MarketScreenItemResponse> slice = allContent.stream()
+                    .skip((long) page * size)
+                    .limit(size)
+                    .toList();
+            return new PageImpl<>(slice, PageRequest.of(page, size), allContent.size());
+        }
+
         Query dataQuery = entityManager.createNativeQuery(select + from + orderBy);
         params.forEach(dataQuery::setParameter);
         dataQuery.setFirstResult(page * size);
@@ -156,9 +208,9 @@ public class MarketScreeningService {
 
         @SuppressWarnings("unchecked")
         List<Object[]> rows = dataQuery.getResultList();
-        List<MarketScreenItemResponse> content = rows.stream()
+        List<MarketScreenItemResponse> content = new ArrayList<>(rows.stream()
                 .map(this::mapRow)
-                .toList();
+                .toList());
         content = enrichFundRows(content, criteria);
 
         Query countQuery = entityManager.createNativeQuery("select count(*) " + from);
@@ -283,6 +335,245 @@ public class MarketScreeningService {
                 params.put("stockSector", sector);
             }
         }
+    }
+
+    private List<MarketScreenItemResponse> screenCurrentPricesFast(MarketScreenCriteria criteria) {
+        List<MarketScreenItemResponse> rows = loadCurrentRows(criteria.getType());
+        if (rows == null) {
+            return null;
+        }
+
+        List<String> symbols = normalizedSymbols(criteria);
+        if (!symbols.isEmpty()) {
+            rows = rows.stream()
+                    .filter(row -> matchesAnySymbol(row, symbols))
+                    .toList();
+        }
+
+        return rows.stream()
+                .sorted(resolveCurrentPriceComparator(criteria.getSort()))
+                .toList();
+    }
+
+    private List<MarketScreenItemResponse> loadCurrentRows(String type) {
+        if (!hasText(type)) {
+            List<MarketScreenItemResponse> rows = new ArrayList<>();
+            rows.addAll(loadCurrentRows("FX"));
+            rows.addAll(loadCurrentRows("INDEX"));
+            rows.addAll(loadCurrentRows("COMMODITY"));
+            rows.addAll(loadCurrentRows("CRYPTO"));
+            rows.addAll(loadCurrentRows("STOCK"));
+            rows.addAll(loadCurrentRows("FUND"));
+            rows.addAll(loadCurrentRows("FUTURES"));
+            rows.addAll(loadCurrentRows("BOND"));
+            return rows;
+        }
+
+        return switch (type.trim().toUpperCase(Locale.ROOT)) {
+            case "FX" -> fxService.getAll().stream()
+                    .map(this::mapFx)
+                    .toList();
+            case "CRYPTO" -> cryptoService.getAll().stream()
+                    .map(this::mapCrypto)
+                    .toList();
+            case "STOCK" -> stockService.getAll(PageRequest.of(0, 5000), null).getContent().stream()
+                    .map(this::mapStock)
+                    .toList();
+            case "FUND" -> fundService.getAll().stream()
+                    .filter(fund -> hasText(fund.getFundCode()))
+                    .map(this::mapFund)
+                    .toList();
+            case "INDEX" -> indexService.getAll().stream()
+                    .map(this::mapQuote)
+                    .toList();
+            case "COMMODITY" -> commodityService.getAll().stream()
+                    .map(this::mapQuote)
+                    .toList();
+            case "FUTURES" -> futuresService.getAll(PageRequest.of(0, 5000)).getContent().stream()
+                    .map(this::mapFutures)
+                    .toList();
+            case "BOND" -> bondService.getAll(PageRequest.of(0, 5000)).getContent().stream()
+                    .map(this::mapBond)
+                    .toList();
+            default -> null;
+        };
+    }
+
+    private Page<MarketScreenItemResponse> slicePage(List<MarketScreenItemResponse> rows, int page, int size) {
+        List<MarketScreenItemResponse> safeRows = rows != null ? rows : List.of();
+        List<MarketScreenItemResponse> slice = safeRows.stream()
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
+        return new PageImpl<>(slice, PageRequest.of(page, size), safeRows.size());
+    }
+
+    private MarketScreenItemResponse mapFund(FundNavDto fund) {
+        BigDecimal changeRate = calculateChangeRate(fund.getNavValue(), fund.getPreviousNavValue());
+        return MarketScreenItemResponse.builder()
+                .symbol(fund.getFundCode())
+                .name(fund.getFundName())
+                .type("FUND")
+                .displayUnit("CURRENCY")
+                .currency("TRY")
+                .source("TEFAS")
+                .lastPrice(fund.getNavValue())
+                .changePercent(changeRate)
+                .dataTimestamp(fund.getNavDate() != null ? fund.getNavDate().atStartOfDay() : null)
+                .fundType(firstNonBlank(fund.getFonTurAciklama(), fund.getFundType()))
+                .riskDegeri(fund.getRiskDegeri())
+                .getiri1a(fund.getGetiri1a())
+                .getiri3a(fund.getGetiri3a())
+                .getiri6a(fund.getGetiri6a())
+                .getiriYb(fund.getGetiriYb())
+                .getiri1y(fund.getGetiri1y())
+                .getiri3y(fund.getGetiri3y())
+                .getiri5y(fund.getGetiri5y())
+                .build();
+    }
+
+    private MarketScreenItemResponse mapFx(FxRateResponse rate) {
+        return MarketScreenItemResponse.builder()
+                .symbol(rate.getCode())
+                .name(rate.getName())
+                .type("FX")
+                .displayUnit("CURRENCY")
+                .currency("TRY")
+                .source(rate.getSource())
+                .buyPrice(rate.getBuyRate())
+                .sellPrice(rate.getSellRate())
+                .lastPrice(firstNonNull(rate.getLast(), rate.getSellRate(), rate.getBuyRate()))
+                .changePercent(rate.getChangePercent())
+                .dataTimestamp(rate.getPriceTimestamp())
+                .build();
+    }
+
+    private MarketScreenItemResponse mapCrypto(MarketQueryService.MarketSnapshot snapshot) {
+        return MarketScreenItemResponse.builder()
+                .symbol(snapshot.symbol())
+                .name(snapshot.displayName())
+                .type("CRYPTO")
+                .displayUnit("CURRENCY")
+                .currency(firstNonBlank(snapshot.currency(), "TRY"))
+                .source(snapshot.source())
+                .lastPrice(snapshot.price())
+                .changePercent(snapshot.changeRate())
+                .dataTimestamp(snapshot.fetchedAt())
+                .build();
+    }
+
+    private MarketScreenItemResponse mapStock(StockPriceDto stock) {
+        return MarketScreenItemResponse.builder()
+                .symbol(stock.symbol())
+                .name(stock.symbol())
+                .type("STOCK")
+                .displayUnit("CURRENCY")
+                .currency("TRY")
+                .source(stock.sourceName())
+                .volume(stock.volume() != null ? BigDecimal.valueOf(stock.volume()) : null)
+                .lastPrice(stock.price())
+                .changePercent(stock.changePercent())
+                .dataTimestamp(stock.dataTimestamp() != null
+                        ? LocalDateTime.ofInstant(stock.dataTimestamp(), ZoneOffset.UTC)
+                        : null)
+                .bistTier(stock.bistTier())
+                .stockSector(stock.stockSector())
+                .build();
+    }
+
+    private MarketScreenItemResponse mapQuote(MarketQuoteResponse quote) {
+        return MarketScreenItemResponse.builder()
+                .symbol(quote.symbol())
+                .name(quote.name())
+                .type(quote.instrumentType())
+                .displayUnit(quote.displayUnit())
+                .currency(quote.currency())
+                .source(quote.source())
+                .lastPrice(quote.price())
+                .changePercent(quote.changeRate())
+                .dataTimestamp(quote.updatedAt())
+                .build();
+    }
+
+    private MarketScreenItemResponse mapFutures(FuturesContractDto contract) {
+        return MarketScreenItemResponse.builder()
+                .symbol(contract.getContractCode())
+                .name(contract.getContractName())
+                .type("FUTURES")
+                .displayUnit("CURRENCY")
+                .currency("TRY")
+                .source("BIST")
+                .lastPrice(contract.getLastPrice())
+                .changePercent(contract.getDailyChangePercent())
+                .dataTimestamp(contract.getDataTimestamp())
+                .build();
+    }
+
+    private MarketScreenItemResponse mapBond(BondRateDto bond) {
+        return MarketScreenItemResponse.builder()
+                .symbol(bond.getBondCode())
+                .name(bond.getBondName())
+                .type("BOND")
+                .displayUnit("RATE")
+                .source("TCMB")
+                .lastPrice(bond.getInterestRate())
+                .changePercent(bond.getChangeRate())
+                .dataTimestamp(bond.getDataTimestamp())
+                .build();
+    }
+
+    @SafeVarargs
+    private final <T> T firstNonNull(T... values) {
+        if (values == null) {
+            return null;
+        }
+        for (T value : values) {
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private Comparator<MarketScreenItemResponse> resolveCurrentPriceComparator(String sort) {
+        String normalized = hasText(sort) ? sort.trim().toLowerCase(Locale.ROOT) : "";
+        Comparator<MarketScreenItemResponse> symbolComparator = Comparator.comparing(
+                row -> safeUpper(row.getSymbol()));
+        return switch (normalized) {
+            case "name" -> Comparator.comparing((MarketScreenItemResponse row) -> safeUpper(row.getName()))
+                    .thenComparing(symbolComparator);
+            case "price", "price_desc" -> Comparator.comparing(
+                            MarketScreenItemResponse::getLastPrice,
+                            Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(symbolComparator);
+            case "price_asc" -> Comparator.comparing(
+                            MarketScreenItemResponse::getLastPrice,
+                            Comparator.nullsLast(Comparator.naturalOrder()))
+                    .thenComparing(symbolComparator);
+            case "changepercent", "change", "change_desc" -> Comparator.comparing(
+                            MarketScreenItemResponse::getChangePercent,
+                            Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(symbolComparator);
+            case "change_asc" -> Comparator.comparing(
+                            MarketScreenItemResponse::getChangePercent,
+                            Comparator.nullsLast(Comparator.naturalOrder()))
+                    .thenComparing(symbolComparator);
+            default -> symbolComparator;
+        };
+    }
+
+    private String safeUpper(String value) {
+        return value != null ? value.toUpperCase(Locale.ROOT) : "";
+    }
+
+    private BigDecimal calculateChangeRate(BigDecimal currentValue, BigDecimal previousValue) {
+        if (currentValue == null || previousValue == null || previousValue.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+        return currentValue
+                .subtract(previousValue)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(previousValue, 4, RoundingMode.HALF_UP);
     }
 
     private boolean hasAdvancedFilters(MarketScreenCriteria criteria) {
@@ -543,5 +834,141 @@ public class MarketScreeningService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private boolean isCacheBackedCurrentPriceQuery(MarketScreenCriteria criteria) {
+        boolean hasTypeOrSymbols = hasText(criteria.getType())
+                || (criteria.getSymbols() != null && !criteria.getSymbols().isEmpty());
+
+        return hasTypeOrSymbols
+                && !hasText(criteria.getSource())
+                && !hasText(criteria.getQ())
+                && !hasText(criteria.getSector())
+                && !hasText(criteria.getMarket())
+                && !hasText(criteria.getBistTier())
+                && !hasText(criteria.getStockSector())
+                && criteria.getMinPrice() == null
+                && criteria.getMaxPrice() == null
+                && criteria.getMinChangePercent() == null
+                && criteria.getMaxChangePercent() == null
+                && !Boolean.TRUE.equals(criteria.getOnlyWithFundamentals())
+                && criteria.getMinPe() == null
+                && criteria.getMaxPe() == null
+                && criteria.getMinPb() == null
+                && criteria.getMaxPb() == null
+                && criteria.getMinRoe() == null
+                && criteria.getMinRoa() == null
+                && criteria.getMaxDebtToEquity() == null
+                && criteria.getMinRevenueGrowth() == null
+                && criteria.getMinNetProfitGrowth() == null;
+    }
+
+    private List<String> normalizedSymbols(MarketScreenCriteria criteria) {
+        if (criteria.getSymbols() == null || criteria.getSymbols().isEmpty()) {
+            return List.of();
+        }
+
+        return criteria.getSymbols().stream()
+                .map(this::normalizeSymbol)
+                .filter(this::hasText)
+                .distinct()
+                .toList();
+    }
+
+    private String normalizeSymbol(String symbol) {
+        return symbol != null ? symbol.trim().toUpperCase(Locale.ROOT) : "";
+    }
+
+    private boolean matchesAnySymbol(MarketScreenItemResponse row, List<String> symbols) {
+        String rowSymbol = normalizeSymbol(row.getSymbol());
+        String rowSource = normalizeSymbol(row.getSource());
+
+        for (String symbol : symbols) {
+            FxSymbolParts fxSymbol = parseFxSymbol(symbol);
+            if (fxSymbol != null) {
+                if ("FX".equalsIgnoreCase(row.getType())
+                        && rowSymbol.equals(fxSymbol.currencyCode())
+                        && rowSource.equals(fxSymbol.source())) {
+                    return true;
+                }
+                continue;
+            }
+
+            if (rowSymbol.equals(symbol)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private FxSymbolParts parseFxSymbol(String symbol) {
+        String normalized = normalizeSymbol(symbol);
+        String[] parts = normalized.split(":");
+        if (parts.length == 3 && hasText(parts[0]) && hasText(parts[1]) && hasText(parts[2])) {
+            return new FxSymbolParts(parts[0], parts[1], parts[2]);
+        }
+        return null;
+    }
+
+    private record FxSymbolParts(String source, String currencyCode, String side) {}
+
+    // Sort is intentionally included in the cache key so that the aggregate endpoint
+    // (which requests sort=symbol) and unsorted user screens get separate cache entries.
+    private String buildScreenCacheKey(String type) {
+        return "screen:type:" + type.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String buildScreenCacheKey(String type, String sort) {
+        String normalizedSort = hasText(sort) ? sort.trim().toLowerCase(Locale.ROOT) : "default";
+        return "screen:type:" + type.trim().toUpperCase(Locale.ROOT) + ":sort:" + normalizedSort;
+    }
+
+    private String buildScreenCacheKey(MarketScreenCriteria criteria) {
+        String type = hasText(criteria.getType())
+                ? criteria.getType().trim().toUpperCase(Locale.ROOT)
+                : "ALL";
+        String normalizedSort = hasText(criteria.getSort())
+                ? criteria.getSort().trim().toLowerCase(Locale.ROOT)
+                : "default";
+        String symbols = normalizedSymbols(criteria).isEmpty()
+                ? "all"
+                : String.join(",", normalizedSymbols(criteria));
+        return "screen:current:type:" + type + ":symbols:" + symbols + ":sort:" + normalizedSort;
+    }
+
+    private long resolveTtlMinutes(String type) {
+        if (type == null) {
+            return marketProperties.getCache().getTtlMinutes().getStock();
+        }
+        return switch (type.trim().toUpperCase(Locale.ROOT)) {
+            case "CRYPTO"    -> marketProperties.getCache().getTtlMinutes().getCrypto();
+            case "FUND"      -> marketProperties.getCache().getTtlMinutes().getFund();
+            case "FX"        -> marketProperties.getCache().getTtlMinutes().getFx();
+            case "INDEX"     -> marketProperties.getCache().getTtlMinutes().getIndex();
+            case "COMMODITY" -> marketProperties.getCache().getTtlMinutes().getCommodity();
+            case "FUTURES"   -> marketProperties.getCache().getTtlMinutes().getFutures();
+            case "BOND"      -> marketProperties.getCache().getTtlMinutes().getBond();
+            default          -> marketProperties.getCache().getTtlMinutes().getStock();
+        };
+    }
+
+    private List<MarketScreenItemResponse> readCacheSilently(String cacheKey) {
+        try {
+            List<MarketScreenItemResponse> items = cacheService.getList(cacheKey, MarketScreenItemResponse.class);
+            // getList() returns empty list on cache miss — treat as miss so we rebuild from DB.
+            return items.isEmpty() ? null : items;
+        } catch (Exception exception) {
+            log.warn("Failed to read screen cache for key={}", cacheKey, exception);
+            return null;
+        }
+    }
+
+    private void writeCacheSilently(String cacheKey, List<MarketScreenItemResponse> content, long ttlMinutes) {
+        try {
+            cacheService.put(cacheKey, content, ttlMinutes);
+        } catch (Exception exception) {
+            log.warn("Failed to write screen cache for key={}", cacheKey, exception);
+        }
     }
 }

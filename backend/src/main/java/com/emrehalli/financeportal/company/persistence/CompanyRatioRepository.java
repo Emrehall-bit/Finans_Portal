@@ -19,6 +19,3 @@ public interface CompanyRatioRepository extends JpaRepository<CompanyRatio, Long
     List<Long> findDistinctCompanyIds();
 }
 
-
-
-

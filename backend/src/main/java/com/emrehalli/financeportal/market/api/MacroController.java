@@ -6,6 +6,9 @@ import com.emrehalli.financeportal.market.domain.enums.MacroUnit;
 import com.emrehalli.financeportal.market.domain.enums.MacroValueType;
 import com.emrehalli.financeportal.market.persistence.MacroIndicatorRepository;
 import com.emrehalli.financeportal.market.persistence.MacroObservationRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,11 +23,14 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/v1/markets/macro")
 @RequiredArgsConstructor
+@Tag(name = "Makroekonomik Veriler", description = "Makroekonomik göstergeler ve gözlem serileri (enflasyon, politika faizi vb.)")
 public class MacroController {
 
     private final MacroIndicatorRepository indicatorRepository;
     private final MacroObservationRepository observationRepository;
 
+    @Operation(summary = "Makroekonomik göstergeleri listele")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Makroekonomik göstergeler başarıyla listelendi"))
     @GetMapping("/indicators")
     public List<MacroIndicatorResponse> listIndicators() {
         return indicatorRepository.findAll().stream()
@@ -34,6 +40,8 @@ public class MacroController {
                 .toList();
     }
 
+    @Operation(summary = "Gösterge gözlem serisi")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Gözlem serisi başarıyla döndürüldü"))
     @GetMapping("/indicators/{code}/observations")
     public List<MacroObservationResponse> getObservations(
             @PathVariable String code,
@@ -66,7 +74,4 @@ public class MacroController {
     ) {
     }
 }
-
-
-
 

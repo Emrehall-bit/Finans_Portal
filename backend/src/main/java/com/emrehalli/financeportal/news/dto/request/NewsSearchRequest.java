@@ -22,9 +22,3 @@ public class NewsSearchRequest {
     private LocalDate toDate;
 }
 
-
-
-
-
-
-

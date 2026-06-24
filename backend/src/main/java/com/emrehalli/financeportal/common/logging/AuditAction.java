@@ -14,6 +14,3 @@ public enum AuditAction {
     CRITICAL_ENDPOINT_ACCESS
 }
 
-
-
-

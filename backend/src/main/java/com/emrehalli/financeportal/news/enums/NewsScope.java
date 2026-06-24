@@ -5,9 +5,9 @@ import com.emrehalli.financeportal.common.exception.BadRequestException;
 import java.util.Set;
 
 public enum NewsScope {
-    LOCAL(Set.of(NewsProviderType.AA_RSS, NewsProviderType.KAP)),
-    GLOBAL(Set.of(NewsProviderType.CNBC_RSS, NewsProviderType.GUARDIAN)),
-    ALL(Set.of(NewsProviderType.CNBC_RSS, NewsProviderType.GUARDIAN, NewsProviderType.AA_RSS, NewsProviderType.KAP));
+    LOCAL(Set.of(NewsProviderType.AA_RSS, NewsProviderType.KAP, NewsProviderType.SYSTEM_GENERATED)),
+    GLOBAL(Set.of(NewsProviderType.CNBC_RSS, NewsProviderType.GUARDIAN, NewsProviderType.SYSTEM_GENERATED)),
+    ALL(Set.of(NewsProviderType.CNBC_RSS, NewsProviderType.GUARDIAN, NewsProviderType.AA_RSS, NewsProviderType.KAP, NewsProviderType.SYSTEM_GENERATED));
 
     private final Set<NewsProviderType> providers;
 
@@ -31,10 +31,4 @@ public enum NewsScope {
         }
     }
 }
-
-
-
-
-
-
 

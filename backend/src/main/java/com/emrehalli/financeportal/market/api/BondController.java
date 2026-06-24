@@ -15,20 +15,24 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * REST controller for bond market data.
- */
 @RestController
 @RequestMapping("/api/v1/bonds")
 @AllArgsConstructor
+@Tag(name = "Tahviller", description = "Tahvil faiz oranı verileri")
 public class BondController {
 
     private final BondService bondService;
 
+    @Operation(summary = "Tahvil faiz oranlarını listele")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Tahvil faiz oranları başarıyla listelendi"))
     @GetMapping
     public ApiResponse<BondPageResponse> getAll(@RequestParam(defaultValue = "0") int page,
                                                 @RequestParam(defaultValue = "20") int size) {
@@ -48,6 +52,8 @@ public class BondController {
                 .build();
     }
 
+    @Operation(summary = "Tahvil detayını getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Tahvil detayı başarıyla döndürüldü"))
     @GetMapping("/{code}")
     public ApiResponse<BondRateDto> getByCode(@PathVariable String code) {
         BondRateDto data = bondService.getByCode(code);
@@ -67,9 +73,6 @@ public class BondController {
                 .orElse(null);
     }
 
-    /**
-     * Bond page response payload.
-     */
     @Data
     @Builder
     @NoArgsConstructor
@@ -81,7 +84,4 @@ public class BondController {
         private int size;
     }
 }
-
-
-
 

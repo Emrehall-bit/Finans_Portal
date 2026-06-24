@@ -33,6 +33,8 @@ public interface MarketInstrumentRepository extends JpaRepository<MarketInstrume
 
     List<MarketInstrument> findAllByInstrumentType(InstrumentType instrumentType);
 
+    List<MarketInstrument> findAllByInstrumentTypeAndSourceNameNot(InstrumentType instrumentType, SourceName sourceName);
+
     Optional<MarketInstrument> findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(String code, InstrumentType type);
 
     boolean existsByInstrumentCodeIgnoreCase(String instrumentCode);
@@ -51,7 +53,4 @@ public interface MarketInstrumentRepository extends JpaRepository<MarketInstrume
     List<MarketInstrument> findByInstrumentCodeContainingIgnoreCaseOrInstrumentNameContainingIgnoreCase(
             String code, String name, org.springframework.data.domain.Pageable pageable);
 }
-
-
-
 

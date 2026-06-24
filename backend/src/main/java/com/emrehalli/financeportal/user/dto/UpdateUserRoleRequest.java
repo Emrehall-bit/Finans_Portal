@@ -17,6 +17,3 @@ public class UpdateUserRoleRequest {
     private UserRole role;
 }
 
-
-
-

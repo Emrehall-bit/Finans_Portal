@@ -42,6 +42,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class CommodityService {
 
+    private static final String CACHE_KEY_ALL = "commodity:all";
     private static final BigDecimal TROY_OZ_TO_GRAM = new BigDecimal("31.1035");
 
     private final MarketInstrumentRepository instrumentRepository;
@@ -63,13 +64,6 @@ public class CommodityService {
 
     // â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    /**
-     * Persists Yahoo-fetched commodity quotes.
-     * BRENT â†’ YAHOO_FINANCE (public).
-     * GOLD_USD / SILVER_USD â†’ INTERNAL (hidden; persisted for use by calculateAndSaveDerivedCommodities).
-     *
-     * @return goldUsdOz and silverUsdOz extracted from the batch (may be null if not in batch).
-     */
     @Transactional
     public BigDecimal[] saveAll(List<StockPriceDto> quotes) {
         BigDecimal goldUsdOz = null;
@@ -112,13 +106,6 @@ public class CommodityService {
         return new BigDecimal[]{goldUsdOz, silverUsdOz};
     }
 
-    /**
-     * Calculates Turkish gold/silver derived commodities from explicit inputs.
-     * If goldUsdOz or silverUsdOz is null, falls back to the last DB-persisted INTERNAL price.
-     * USDTRY is always resolved from FX instruments in DB.
-     *
-     * @return DerivedCommodityResult with inputs, saved count and saved symbols.
-     */
     @Transactional
     public DerivedCommodityResult calculateAndSaveDerivedCommodities(
             BigDecimal goldUsdOz, BigDecimal silverUsdOz) {
@@ -186,10 +173,6 @@ public class CommodityService {
         return new DerivedCommodityResult(goldUsdOz, silverUsdOz, usdTry, savedSymbols.size(), savedSymbols);
     }
 
-    /**
-     * Reads the latest DB-persisted INTERNAL price for a commodity code.
-     * Called by admin endpoint and as fallback when Yahoo batch is incomplete.
-     */
     @Transactional(readOnly = true)
     public BigDecimal resolveInputFromDb(String code) {
         return instrumentRepository
@@ -199,12 +182,13 @@ public class CommodityService {
                 .orElse(null);
     }
 
-    /**
-     * Returns all public commodities: YAHOO_FINANCE (BRENT) + CALCULATED (Turkish gold/silver).
-     * INTERNAL instruments (GOLD_USD, SILVER_USD raw inputs) are excluded.
-     */
     @Transactional(readOnly = true)
     public List<MarketQuoteResponse> getAll() {
+        List<MarketQuoteResponse> cached = cacheService.getList(CACHE_KEY_ALL, MarketQuoteResponse.class);
+        if (!cached.isEmpty()) {
+            return cached;
+        }
+
         List<MarketInstrument> instruments = new ArrayList<>();
         List<MarketInstrument> yahooInstruments = instrumentRepository.findAllByInstrumentTypeAndSourceName(
                 InstrumentType.COMMODITY, SourceName.YAHOO_FINANCE);
@@ -229,23 +213,31 @@ public class CommodityService {
                 .toList();
 
         log.info("CommodityService.getAll: returning {} items with prices", responses.size());
+        putCacheSilently(CACHE_KEY_ALL, responses);
         return responses;
     }
 
     @Transactional(readOnly = true)
     public MarketQuoteResponse getBySymbol(String symbol) {
         String code = symbol.toUpperCase(Locale.ROOT);
+        MarketQuoteResponse cached = getCachedQuote(code);
+        if (cached != null) {
+            return cached;
+        }
 
         MarketInstrument instrument = instrumentRepository
                 .findFirstByInstrumentCodeAndInstrumentTypeOrderByCreatedAtAsc(code, InstrumentType.COMMODITY)
                 .orElseThrow(() -> new InstrumentNotFoundException("Commodity not found: " + code));
 
-        return toResponseFromInstrument(instrument);
+        MarketQuoteResponse response = toResponseFromInstrument(instrument);
+        if (response != null) {
+            putCacheSilently(buildCacheKey(code), response);
+        }
+        return response;
     }
 
     // â”€â”€ Private helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    /** Saves a single CALCULATED commodity price and logs it with instrumentId. */
     private void saveCalculated(String code, BigDecimal price, LocalDateTime timestamp, List<String> savedSymbols) {
         if (price == null || price.signum() <= 0) {
             log.warn("Skipping calculated price save, invalid price. code={}, price={}", code, price);
@@ -273,10 +265,10 @@ public class CommodityService {
 
         log.info("Calculated commodity saved: code={} price={} changeRate={} instrumentId={}", code, price, changeRate, instrument.getId());
         putCacheSilently(buildCacheKey(code), toResponse(instrument, price, changeRate, timestamp));
+        evictCacheSilently(CACHE_KEY_ALL);
         savedSymbols.add(code);
     }
 
-    /** Saves any commodity price (YAHOO_FINANCE or INTERNAL). */
     private void persistPrice(String code, SourceName sourceName, BigDecimal price,
                               BigDecimal changeRate, LocalDateTime timestamp) {
         if (price == null || price.signum() <= 0) {
@@ -305,16 +297,9 @@ public class CommodityService {
 
         log.info("Commodity price saved: code={} price={} source={}", code, price, sourceName);
         putCacheSilently(buildCacheKey(code), toResponse(instrument, price, calculatedChangeRate != null ? calculatedChangeRate : changeRate, timestamp));
+        evictCacheSilently(CACHE_KEY_ALL);
     }
 
-    /**
-     * Resolves the most recent USD/TRY sell price from FX instruments.
-     *
-     * <p>Supported code formats: TCMB:USD:SELL, TCMB:USDTRY:SELL, AKBANK:USD:SELL,
-     * ZIRAAT:USD:SELL, etc. Any FX instrument whose code contains both "USD" and "SELL"
-     * (case-insensitive) and does not contain a conflicting major currency (EUR, GBP â€¦)
-     * qualifies. TCMB-sourced candidates are preferred; ties broken by latest price timestamp.
-     */
     public BigDecimal resolveUsdTry() {
         try {
             // Fetch all FX instruments whose code contains "USD"
@@ -423,6 +408,23 @@ public class CommodityService {
         }
     }
 
+    private MarketQuoteResponse getCachedQuote(String code) {
+        try {
+            return cacheService.get(buildCacheKey(code), MarketQuoteResponse.class).orElse(null);
+        } catch (Exception e) {
+            log.warn("Cache read failed for key={}", buildCacheKey(code), e);
+            return null;
+        }
+    }
+
+    private void evictCacheSilently(String key) {
+        try {
+            cacheService.evict(key);
+        } catch (Exception e) {
+            log.warn("Cache evict failed for key={}", key, e);
+        }
+    }
+
     private String buildCacheKey(String code) {
         return "commodity:" + code;
     }
@@ -431,4 +433,3 @@ public class CommodityService {
         return value == null || value.isBlank();
     }
 }
-

@@ -12,16 +12,21 @@ import java.math.BigDecimal;
 public class FinancialValueItemResponse {
 
     private String itemKey;
+
     private String rawLabel;
+
     private BigDecimal value;
+
     private String currency;
+
     private Integer unitMultiplier;
+
     private boolean currentPeriod;
+
     private boolean comparisonAvailable;
+
     private String comparisonPeriod;
+
     private BigDecimal changePercent;
 }
-
-
-
 

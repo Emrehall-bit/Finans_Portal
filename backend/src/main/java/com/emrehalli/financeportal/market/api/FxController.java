@@ -6,6 +6,9 @@ import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.service.FxService;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,11 +25,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/markets/fx")
 @AllArgsConstructor
+@Tag(name = "Döviz Kurları", description = "Döviz kuru piyasa verileri")
 public class FxController {
 
     private final FxService fxService;
     private final ObservationRegistry observationRegistry;
 
+    @Operation(summary = "Döviz kurlarını listele")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Döviz kurları başarıyla listelendi"))
     @GetMapping
     public ApiResponse<List<FxRateResponse>> getAll(@RequestParam(required = false) SourceName source) {
         Observation obs = Observation.createNotStarted("FxController.getFxMarkets", observationRegistry)
@@ -53,6 +59,8 @@ public class FxController {
         }
     }
 
+    @Operation(summary = "Döviz kuru detayını getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Döviz kuru detayı başarıyla döndürüldü"))
     @GetMapping("/{code}")
     public ApiResponse<List<FxRateResponse>> getByCode(@PathVariable String code) {
         Observation obs = Observation.createNotStarted("FxController.getFxByCode", observationRegistry)
@@ -85,7 +93,4 @@ public class FxController {
                 .orElse(null);
     }
 }
-
-
-
 

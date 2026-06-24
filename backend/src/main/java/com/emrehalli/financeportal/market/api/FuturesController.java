@@ -15,6 +15,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -25,10 +29,13 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/v1/futures")
 @AllArgsConstructor
+@Tag(name = "Vadeli İşlemler", description = "Vadeli işlem (futures) piyasa verileri")
 public class FuturesController {
 
     private final FuturesService futuresService;
 
+    @Operation(summary = "Vadeli işlem kontratlarını listele")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Vadeli işlem kontratları başarıyla listelendi"))
     @GetMapping
     public ApiResponse<FuturesPageResponse> getAll(@RequestParam(defaultValue = "0") int page,
                                                    @RequestParam(defaultValue = "20") int size) {
@@ -48,6 +55,8 @@ public class FuturesController {
                 .build();
     }
 
+    @Operation(summary = "Kontrat detayını getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Kontrat detayı başarıyla döndürüldü"))
     @GetMapping("/{contract}")
     public ApiResponse<FuturesContractDto> getByContract(@PathVariable String contract) {
         FuturesContractDto data = futuresService.getByContract(contract);
@@ -67,9 +76,6 @@ public class FuturesController {
                 .orElse(null);
     }
 
-    /**
-     * Futures page response payload.
-     */
     @Data
     @Builder
     @NoArgsConstructor
@@ -81,7 +87,4 @@ public class FuturesController {
         private int size;
     }
 }
-
-
-
 

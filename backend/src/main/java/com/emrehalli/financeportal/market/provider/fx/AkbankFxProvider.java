@@ -1,10 +1,12 @@
 package com.emrehalli.financeportal.market.provider.fx;
 
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
+import com.emrehalli.financeportal.market.exception.DataProviderException;
 import com.emrehalli.financeportal.market.provider.MarketDataProvider;
 import com.emrehalli.financeportal.market.provider.fx.dto.FxRateDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -47,6 +49,7 @@ public class AkbankFxProvider extends AbstractFxProvider implements MarketDataPr
         return SourceName.AKBANK.name();
     }
 
+    @CircuitBreaker(name = "akbankFx", fallbackMethod = "fetchFallback")
     @Override
     public List<FxRateDto> fetch() {
         try {
@@ -76,12 +79,17 @@ public class AkbankFxProvider extends AbstractFxProvider implements MarketDataPr
                     exception.getStatusCode().value(),
                     "HTTP " + exception.getStatusCode().value() + " " + exception.getStatusText());
             log.debug("AKBANK FX provider request failed with stacktrace.", exception);
-            return List.of();
+            throw new DataProviderException("AKBANK FX provider request failed", exception);
         } catch (Exception exception) {
             log.warn("AKBANK FX provider request failed. errorMessage={}", exception.getMessage());
             log.debug("AKBANK FX provider request failed with stacktrace.", exception);
-            return List.of();
+            throw new DataProviderException("AKBANK FX provider request failed", exception);
         }
+    }
+
+    private List<FxRateDto> fetchFallback(Throwable throwable) {
+        log.warn("Akbank FX circuit breaker fallback triggered, returning empty rate list. reason={}", throwable.toString());
+        return List.of();
     }
 
     private List<FxRateDto> mapRates(JsonNode root) {

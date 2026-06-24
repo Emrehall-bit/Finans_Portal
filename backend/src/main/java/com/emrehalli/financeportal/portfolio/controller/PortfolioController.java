@@ -15,6 +15,9 @@ import com.emrehalli.financeportal.portfolio.service.PortfolioPerformanceHistory
 import com.emrehalli.financeportal.portfolio.service.PortfolioRiskAnalysisService;
 import com.emrehalli.financeportal.portfolio.service.PortfolioService;
 import com.emrehalli.financeportal.portfolio.service.PortfolioValuationResult;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +27,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/portfolios")
+@Tag(name = "Portföy", description = "Yatırım portföyü CRUD ve analiz işlemleri")
 public class PortfolioController {
 
     private final PortfolioService portfolioService;
@@ -44,6 +48,12 @@ public class PortfolioController {
         this.appMessageSource = appMessageSource;
     }
 
+    @Operation(summary = "Yeni portföy oluştur", description = "Belirtilen kullanıcı için yeni bir yatırım portföyü oluşturur")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Portföy başarıyla oluşturuldu"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Geçersiz istek verisi"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Kullanıcı bulunamadı")
+    })
     @PostMapping("/{userId}")
     public ApiResponse<PortfolioResponseDto> createPortfolio(@PathVariable Long userId,
                                                              @Valid @RequestBody CreatePortfolioRequest request) {
@@ -57,6 +67,11 @@ public class PortfolioController {
                 .build();
     }
 
+    @Operation(summary = "Kullanıcının portföylerini listele", description = "Belirtilen kullanıcıya ait tüm portföyleri listeler")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Portföy listesi başarıyla getirildi"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Kullanıcı bulunamadı")
+    })
     @GetMapping("/user/{userId}")
     public ApiResponse<List<PortfolioResponseDto>> getUserPortfolios(@PathVariable Long userId) {
         List<PortfolioResponseDto> portfolios = portfolioService.getPortfoliosByUserId(userId);
@@ -68,6 +83,12 @@ public class PortfolioController {
                 .build();
     }
 
+    @Operation(summary = "Portföy bilgilerini güncelle", description = "Mevcut bir portföyün bilgilerini günceller")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Portföy başarıyla güncellendi"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Geçersiz istek verisi"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Portföy bulunamadı")
+    })
     @PutMapping("/{portfolioId}")
     public ApiResponse<PortfolioResponseDto> updatePortfolio(@PathVariable Long portfolioId,
                                                              @Valid @RequestBody UpdatePortfolioRequest request) {
@@ -79,6 +100,11 @@ public class PortfolioController {
                 .build();
     }
 
+    @Operation(summary = "Portföyü sil", description = "Belirtilen portföyü kalıcı olarak siler")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Portföy başarıyla silindi"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Portföy bulunamadı")
+    })
     @DeleteMapping("/{portfolioId}")
     public ApiResponse<Void> deletePortfolio(@PathVariable Long portfolioId) {
         portfolioService.deletePortfolio(portfolioId);
@@ -89,6 +115,11 @@ public class PortfolioController {
                 .build();
     }
 
+    @Operation(summary = "Portföy detayını getir", description = "Kimlik numarasına göre tek bir portföyün temel bilgilerini getirir")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Portföy başarıyla getirildi"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Portföy bulunamadı")
+    })
     @GetMapping("/{portfolioId}")
     public ApiResponse<PortfolioResponseDto> getPortfolioById(@PathVariable Long portfolioId) {
         Portfolio portfolio = portfolioService.getPortfolioEntityById(portfolioId);
@@ -105,6 +136,11 @@ public class PortfolioController {
                 .build();
     }
 
+    @Operation(summary = "Portföy finansal özetini getir", description = "Toplam maliyet, güncel değer, günlük ve kümülatif kar/zarar gibi özet göstergeleri döner")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Portföy özeti başarıyla getirildi"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Portföy bulunamadı")
+    })
     @GetMapping("/{portfolioId}/summary")
     public ApiResponse<PortfolioSummaryResponse> getPortfolioSummary(@PathVariable Long portfolioId) {
         PortfolioSummaryResponse summary = portfolioHoldingService.getPortfolioSummary(portfolioId);
@@ -116,6 +152,11 @@ public class PortfolioController {
                 .build();
     }
 
+    @Operation(summary = "Portföy detaylı görünümünü getir", description = "Temel bilgiler, finansal özet ve tüm varlıkların listesini tek bir yanıt içerisinde döner")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Portföy detayları başarıyla getirildi"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Portföy bulunamadı")
+    })
     @GetMapping("/{portfolioId}/details")
     public ApiResponse<PortfolioDetailResponse> getPortfolioDetails(@PathVariable Long portfolioId) {
         Portfolio portfolio = portfolioService.getPortfolioEntityById(portfolioId);
@@ -136,6 +177,11 @@ public class PortfolioController {
                 .build();
     }
 
+    @Operation(summary = "Portföy performans geçmişini getir", description = "Belirli bir tarih aralığındaki performans zaman serisi verilerini döner")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Performans geçmişi başarıyla getirildi"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Portföy bulunamadı")
+    })
     @GetMapping("/{portfolioId}/performance-history")
     public ApiResponse<PortfolioPerformanceResponse> getPortfolioPerformanceHistory(
             @PathVariable Long portfolioId,
@@ -149,6 +195,11 @@ public class PortfolioController {
                 .build();
     }
 
+    @Operation(summary = "Portföy risk analizini getir", description = "Çeşitlendirme, volatilite ve likidite metriklerini içeren risk özetini döner")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Risk analizi başarıyla getirildi"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Portföy bulunamadı")
+    })
     @GetMapping("/{portfolioId}/risk-summary")
     public ApiResponse<PortfolioRiskSummaryResponse> getPortfolioRiskSummary(@PathVariable Long portfolioId) {
         PortfolioRiskSummaryResponse data = portfolioRiskAnalysisService.getRiskSummary(portfolioId);
@@ -159,10 +210,4 @@ public class PortfolioController {
                 .build();
     }
 }
-
-
-
-
-
-
 

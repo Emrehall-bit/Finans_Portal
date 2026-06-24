@@ -14,6 +14,7 @@ public record AiResponseMetadata(
         LocalDateTime generatedAt,
         String dataQuality
 ) {
+
     public static AiResponseMetadata fromAiResponse(AiResponse response, String dataQuality) {
         return new AiResponseMetadata(
                 response.provider().name(),
@@ -66,7 +67,4 @@ public record AiResponseMetadata(
         );
     }
 }
-
-
-
 

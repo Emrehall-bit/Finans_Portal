@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.provider.MarketDataProvider;
 import com.emrehalli.financeportal.market.provider.fx.dto.FxRateDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -32,6 +33,7 @@ public class ZiraatFxProvider extends AbstractFxProvider implements MarketDataPr
         return SourceName.ZIRAAT.name();
     }
 
+    @CircuitBreaker(name = "ziraatFx", fallbackMethod = "fetchFallback")
     @Override
     public List<FxRateDto> fetch() {
         return fetchRates(
@@ -41,8 +43,10 @@ public class ZiraatFxProvider extends AbstractFxProvider implements MarketDataPr
                 SourceName.ZIRAAT
         );
     }
+
+    private List<FxRateDto> fetchFallback(Throwable throwable) {
+        log.warn("Ziraat FX circuit breaker fallback triggered, returning empty rate list. reason={}", throwable.toString());
+        return List.of();
+    }
 }
-
-
-
 

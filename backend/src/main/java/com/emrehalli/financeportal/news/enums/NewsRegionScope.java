@@ -5,9 +5,3 @@ public enum NewsRegionScope {
     LOCAL
 }
 
-
-
-
-
-
-

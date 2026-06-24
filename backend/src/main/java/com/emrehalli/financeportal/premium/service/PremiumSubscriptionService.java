@@ -77,20 +77,9 @@ public class PremiumSubscriptionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Premium subscription not found"));
 
         if (subscription.getStatus().isPending()) {
-            if (workflowService.hasActiveInstance(subscription.getProcessInstanceId())) {
-                workflowService.signalCancel(subscription);
-            } else {
-                logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscription.getId());
-                cancelUpgradeInternal(subscription.getId());
-            }
+            workflowService.signalCancel(subscription);
         } else if (subscription.getStatus() == PremiumSubscriptionStatus.ACTIVE) {
-            if (workflowService.hasActiveInstance(subscription.getProcessInstanceId())) {
-                workflowService.signalActiveCancellation(subscription);
-            } else {
-                logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscription.getId());
-                markCancellationRequested(subscription.getId());
-                cancelActivePremiumInternal(subscription.getId());
-            }
+            workflowService.signalActiveCancellation(subscription);
         } else {
             throw new BadRequestException("Premium subscription cannot be cancelled in its current state: " + subscription.getStatus());
         }
@@ -107,12 +96,7 @@ public class PremiumSubscriptionService {
             throw new BadRequestException("Payment success can only be applied to pending subscriptions");
         }
 
-        if (workflowService.hasActiveInstance(subscription.getProcessInstanceId())) {
-            workflowService.signalPaymentOutcome(subscription, true);
-        } else {
-            logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscriptionId);
-            activatePremium(subscriptionId);
-        }
+        workflowService.signalPaymentOutcome(subscription, true);
 
         PremiumSubscription updated = getSubscriptionEntity(subscriptionId);
         return toResponse(updated);
@@ -125,12 +109,7 @@ public class PremiumSubscriptionService {
             throw new BadRequestException("Payment fail can only be applied to pending subscriptions");
         }
 
-        if (workflowService.hasActiveInstance(subscription.getProcessInstanceId())) {
-            workflowService.signalPaymentOutcome(subscription, false);
-        } else {
-            logger.warn("jBPM process instance not found after restart, applying subscription-state fallback. subscriptionId={}", subscriptionId);
-            markPaymentFailed(subscriptionId);
-        }
+        workflowService.signalPaymentOutcome(subscription, false);
 
         PremiumSubscription updated = getSubscriptionEntity(subscriptionId);
         return toResponse(updated);
@@ -218,7 +197,4 @@ public class PremiumSubscriptionService {
         return PremiumSubscriptionResponse.from(subscription, effectiveRole);
     }
 }
-
-
-
 

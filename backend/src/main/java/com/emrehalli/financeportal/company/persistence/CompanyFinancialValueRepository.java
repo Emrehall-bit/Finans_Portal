@@ -20,6 +20,3 @@ public interface CompanyFinancialValueRepository extends JpaRepository<CompanyFi
     Optional<CompanyFinancialValue> findByReportIdAndItemKey(Long reportId, String itemKey);
 }
 
-
-
-

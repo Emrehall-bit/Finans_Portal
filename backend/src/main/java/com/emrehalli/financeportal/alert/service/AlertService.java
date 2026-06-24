@@ -25,10 +25,31 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class AlertService {
+
+    private static final Pattern FX_PROVIDER_SYMBOL_PATTERN = Pattern.compile("^([A-Z_]+):([A-Z]{2,4}):(BUY|SELL)$");
+    private static final Pattern FX_COMPACT_SYMBOL_PATTERN = Pattern.compile("^(TCMB|AKBANK)([A-Z]{3})(BUY|SELL)$");
+    private static final Map<String, String> FX_LABELS_TR = Map.ofEntries(
+            Map.entry("USD", "Amerikan Dolar\u0131"),
+            Map.entry("EUR", "Euro"),
+            Map.entry("GBP", "\u0130ngiliz Sterlini"),
+            Map.entry("AUD", "Avustralya Dolar\u0131"),
+            Map.entry("CAD", "Kanada Dolar\u0131"),
+            Map.entry("CHF", "\u0130svi\u00e7re Frang\u0131"),
+            Map.entry("JPY", "Japon Yeni"),
+            Map.entry("SAR", "Suudi Riyali"),
+            Map.entry("RUB", "Rus Rublesi"),
+            Map.entry("AZN", "Azerbaycan Manat\u0131"),
+            Map.entry("CNY", "\u00c7in Yuan\u0131"),
+            Map.entry("QAR", "Katar Riyali"),
+            Map.entry("KWD", "Kuveyt Dinar\u0131"),
+            Map.entry("KRW", "G\u00fcney Kore Wonu")
+    );
 
     private final AlertRepository alertRepository;
     private final UserRepository userRepository;
@@ -197,8 +218,8 @@ public class AlertService {
         for (Alert alert : triggered) {
             notificationService.createPriceAlertNotification(
                     alert.getUser(),
-                    buildNotificationTitle(alert),
-                    buildNotificationMessage(alert)
+                    buildNotificationTitleDisplay(alert),
+                    buildNotificationMessageDisplay(alert)
             );
         }
     }
@@ -219,6 +240,40 @@ public class AlertService {
     private String buildNotificationMessage(Alert alert) {
         String direction = alert.getConditionType() == ConditionType.ABOVE ? "üzerine çıktı" : "altına düştü";
         return alert.getInstrumentCode() + " hedef fiyat " + alert.getTargetPrice() + " " + direction + ".";
+    }
+
+    private String buildNotificationTitleDisplay(Alert alert) {
+        return "Fiyat Alarm\u0131: " + formatInstrumentLabel(alert.getInstrumentCode());
+    }
+
+    private String buildNotificationMessageDisplay(Alert alert) {
+        String direction = alert.getConditionType() == ConditionType.ABOVE ? "\u00fczerine \u00e7\u0131kt\u0131" : "alt\u0131na d\u00fc\u015ft\u00fc";
+        return formatInstrumentLabel(alert.getInstrumentCode()) + " hedef fiyat " + alert.getTargetPrice() + " " + direction + ".";
+    }
+
+    private String formatInstrumentLabel(String instrumentCode) {
+        String normalized = instrumentCode != null ? instrumentCode.trim().toUpperCase() : "";
+        if (normalized.isBlank()) {
+            return "-";
+        }
+
+        Matcher providerMatch = FX_PROVIDER_SYMBOL_PATTERN.matcher(normalized);
+        if (providerMatch.matches()) {
+            return formatFxCurrency(providerMatch.group(2));
+        }
+
+        Matcher compactMatch = FX_COMPACT_SYMBOL_PATTERN.matcher(normalized);
+        if (compactMatch.matches()) {
+            return formatFxCurrency(compactMatch.group(2));
+        }
+
+        return normalized;
+    }
+
+    private String formatFxCurrency(String currencyCode) {
+        String code = currencyCode != null ? currencyCode.toUpperCase() : "";
+        String label = FX_LABELS_TR.get(code);
+        return label == null || label.isBlank() ? code : code + " (" + label + ")";
     }
 
     private AlertResponseDto toResponse(Alert alert) {

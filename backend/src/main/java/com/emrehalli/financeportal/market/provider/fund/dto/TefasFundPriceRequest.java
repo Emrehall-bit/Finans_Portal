@@ -16,6 +16,3 @@ public class TefasFundPriceRequest {
     private int periyod;
 }
 
-
-
-

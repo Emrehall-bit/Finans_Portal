@@ -14,6 +14,7 @@ public record DashboardAiResponse(
         boolean fallbackUsed,
         AiResponseMetadata metadata
 ) {
+
     public enum MarketTone {
         POSITIVE, NEUTRAL, CAUTIOUS, NEGATIVE
     }

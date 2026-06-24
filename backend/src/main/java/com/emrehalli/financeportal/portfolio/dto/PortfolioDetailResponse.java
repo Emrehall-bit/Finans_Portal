@@ -16,9 +16,3 @@ public class PortfolioDetailResponse {
     private List<PortfolioHoldingDto> holdings;
 }
 
-
-
-
-
-
-

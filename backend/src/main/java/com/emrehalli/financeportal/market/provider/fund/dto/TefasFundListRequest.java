@@ -32,6 +32,3 @@ public class TefasFundListRequest {
     private String getiriOrani = "1";
 }
 
-
-
-

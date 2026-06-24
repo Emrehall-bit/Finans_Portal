@@ -94,11 +94,6 @@ public class TurkishFinancialTextCleaner {
         return reducePatternInstances(text, MEVCUT_VERI_PATTERN, 2);
     }
 
-    /**
-     * Finds all occurrences of {@code phrase} (case-insensitive by lowering both strings)
-     * and replaces the 2nd and subsequent occurrences with rotating {@code alternatives}.
-     * The first occurrence is kept verbatim so its original casing is preserved.
-     */
     String reduceRepeated(String text, String phrase, String[] alternatives) {
         String lowerText = text.toLowerCase(Locale.ROOT);
         String lowerPhrase = phrase.toLowerCase(Locale.ROOT);
@@ -151,7 +146,4 @@ public class TurkishFinancialTextCleaner {
         return sb.toString();
     }
 }
-
-
-
 

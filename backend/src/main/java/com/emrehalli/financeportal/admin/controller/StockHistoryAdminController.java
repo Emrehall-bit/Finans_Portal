@@ -6,6 +6,9 @@ import com.emrehalli.financeportal.common.response.ApiResponse;
 import com.emrehalli.financeportal.market.service.BackfillStatus;
 import com.emrehalli.financeportal.market.service.StockHistoryBackfillAsyncService;
 import com.emrehalli.financeportal.market.support.BistSymbolRegistry;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,6 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/admin/stocks/history")
 @AllArgsConstructor
+@Tag(name = "Admin - Hisse Gecmisi", description = "Hisse senedi fiyat gecmisi yonetimi")
 public class StockHistoryAdminController {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
@@ -31,6 +35,8 @@ public class StockHistoryAdminController {
     private final BackfillStatus backfillStatus;
     private final BistSymbolRegistry bistSymbolRegistry;
 
+    @Operation(summary = "Hisse gecmis verisi doldur", description = "BIST hisse senetleri icin asenkron tarihsel fiyat backfill islemini baslatir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Backfill islemi baslatildi"))
     @PostMapping("/backfill")
     public ApiResponse<Void> backfill(@RequestBody(required = false) StockHistoryBackfillRequest request) {
         StockHistoryBackfillRequest effectiveRequest = request != null ? request : new StockHistoryBackfillRequest();
@@ -51,6 +57,8 @@ public class StockHistoryAdminController {
                 .build();
     }
 
+    @Operation(summary = "Backfill durumunu sorgula", description = "Hisse gecmis veri doldurma isleminin anlik ilerleme durumunu raporlar")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Durum bilgisi basariyla getirildi"))
     @GetMapping("/backfill/status")
     public AdminJobStatusResponse backfillStatus() {
         return new AdminJobStatusResponse(
@@ -84,7 +92,4 @@ public class StockHistoryAdminController {
     }
 
 }
-
-
-
 

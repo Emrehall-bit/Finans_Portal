@@ -4,11 +4,6 @@ import com.emrehalli.financeportal.market.domain.enums.InstrumentType;
 
 import java.math.BigDecimal;
 
-/**
- * Per-instrument-type interpretation thresholds used by TrendAnalysisService.
- * Calculation formulas (SMA, RSI) are unchanged; only the classification
- * boundaries differ between asset classes.
- */
 public record AnalysisProfile(
         BigDecimal shortTermMomentumThresholdPct,
         BigDecimal rangeTrendThresholdPct,
@@ -16,7 +11,6 @@ public record AnalysisProfile(
         BigDecimal rsiOversoldLevel
 ) {
 
-    /** Matches the original hardcoded constants in TrendAnalysisService. */
     public static final AnalysisProfile DEFAULT = new AnalysisProfile(
             BigDecimal.valueOf(0.10),
             BigDecimal.ONE,

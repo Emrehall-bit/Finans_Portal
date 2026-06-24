@@ -21,13 +21,11 @@ public record ComparisonAnalysisResponse(
         boolean fallbackUsed,
         AiResponseMetadata metadata
 ) {
+
     public enum DataQuality {
         COMPLETE,
         PARTIAL,
         LIMITED
     }
 }
-
-
-
 

@@ -49,6 +49,3 @@ public class NewsSyncResponseDto {
     private double parseSuccessRatio;
 }
 
-
-
-

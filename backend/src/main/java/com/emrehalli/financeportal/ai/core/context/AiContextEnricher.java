@@ -27,10 +27,6 @@ public class AiContextEnricher {
         this.contextBuilder = contextBuilder;
     }
 
-    /**
-     * Enriches a raw AiContext into a prompt-ready text block.
-     * Returns null if context is null, type is unknown, or enrichment yields no data.
-     */
     public String buildContextBlock(AiContext context) {
         if (context == null || context.type() == null) {
             return null;
@@ -83,7 +79,4 @@ public class AiContextEnricher {
         return Optional.of(new InstrumentContext(symbol, context.instrumentType(), technical, fundamental));
     }
 }
-
-
-
 

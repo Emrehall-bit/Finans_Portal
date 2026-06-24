@@ -9,9 +9,6 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Provider-level FX rate data transfer object.
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,7 +22,4 @@ public class FxRateDto {
     private BigDecimal referencePrice;
     private LocalDateTime dataTimestamp;
 }
-
-
-
 

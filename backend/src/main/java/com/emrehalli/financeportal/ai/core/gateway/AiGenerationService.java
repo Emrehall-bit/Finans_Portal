@@ -40,10 +40,6 @@ public class AiGenerationService {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * Wraps the enhanced DTO with source metadata so callers can determine the correct cache TTL.
-     * fromLlm=true means the LLM JSON was successfully parsed and used to populate the response.
-     */
     public record EnhancedResult<T>(T response, boolean fromLlm, AiResponseMetadata metadata) {}
 
     public EnhancedResult<AiTechnicalAnalysisResponse> enhanceTechnical(
@@ -187,7 +183,4 @@ public class AiGenerationService {
         return normalized.length() <= RESPONSE_PREVIEW_LIMIT ? normalized : normalized.substring(0, RESPONSE_PREVIEW_LIMIT);
     }
 }
-
-
-
 

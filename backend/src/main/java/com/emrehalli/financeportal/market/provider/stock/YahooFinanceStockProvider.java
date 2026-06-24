@@ -9,6 +9,7 @@ import com.emrehalli.financeportal.market.provider.stock.dto.StockPriceDto;
 import com.emrehalli.financeportal.market.support.BistSymbolRegistry;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -47,6 +48,7 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
         return SourceName.YAHOO_FINANCE.name();
     }
 
+    @CircuitBreaker(name = "yahooFinance", fallbackMethod = "fetchFallback")
     @Override
     public List<StockPriceDto> fetch() {
         log.debug("Yahoo Finance fetch called. cookieConfigured={}, crumbConfigured={}",
@@ -185,6 +187,11 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
         }
     }
 
+    private List<StockPriceDto> fetchFallback(Throwable throwable) {
+        log.warn("Yahoo Finance circuit breaker fallback triggered, returning empty stock list. reason={}", throwable.toString());
+        return List.of();
+    }
+
     private String normalizeBistSymbol(String yahooSymbol) {
         if (yahooSymbol == null || yahooSymbol.isBlank()) {
             return null;
@@ -218,7 +225,4 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
         return value != null && !value.isBlank();
     }
 }
-
-
-
 

@@ -3,6 +3,7 @@ package com.emrehalli.financeportal.market.provider.fx.tcmb.client;
 import com.emrehalli.financeportal.config.MarketProperties;
 import com.emrehalli.financeportal.market.exception.DataProviderException;
 import com.emrehalli.financeportal.market.provider.fx.tcmb.dto.TcmbEvdsResponse;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -26,10 +27,12 @@ public class TcmbEvdsClient {
     private final RestClient restClient;
     private final MarketProperties marketProperties;
 
+    @CircuitBreaker(name = "tcmbEvds", fallbackMethod = "fetchSingleFallback")
     public TcmbEvdsResponse fetch(String seriesCode, LocalDate startDate, LocalDate endDate) {
         return fetch(List.of(seriesCode), startDate, endDate);
     }
 
+    @CircuitBreaker(name = "tcmbEvds", fallbackMethod = "fetchMultiFallback")
     public TcmbEvdsResponse fetch(List<String> seriesCodes, LocalDate startDate, LocalDate endDate) {
         validateRequest(seriesCodes, startDate, endDate);
 
@@ -61,6 +64,21 @@ public class TcmbEvdsClient {
                     startDate, endDate, seriesCodes.size(), joinedSeriesCodes, exception);
             throw new DataProviderException("Failed to fetch TCMB EVDS data", exception);
         }
+    }
+
+    private TcmbEvdsResponse fetchSingleFallback(String seriesCode, LocalDate startDate, LocalDate endDate, Throwable throwable) {
+        return emptyResponse(throwable);
+    }
+
+    private TcmbEvdsResponse fetchMultiFallback(List<String> seriesCodes, LocalDate startDate, LocalDate endDate, Throwable throwable) {
+        return emptyResponse(throwable);
+    }
+
+    private TcmbEvdsResponse emptyResponse(Throwable throwable) {
+        log.warn("TCMB EVDS circuit breaker fallback triggered, returning empty response. reason={}", throwable.toString());
+        TcmbEvdsResponse response = new TcmbEvdsResponse();
+        response.setItems(List.of());
+        return response;
     }
 
     String buildUrl(String seriesCode, LocalDate startDate, LocalDate endDate) {
@@ -104,7 +122,4 @@ public class TcmbEvdsClient {
         }
     }
 }
-
-
-
 

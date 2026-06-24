@@ -17,6 +17,3 @@ public record RelatedNewsItemDto(
 ) {
 }
 
-
-
-

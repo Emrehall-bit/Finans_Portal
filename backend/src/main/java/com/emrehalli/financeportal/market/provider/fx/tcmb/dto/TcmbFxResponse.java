@@ -12,6 +12,3 @@ public class TcmbFxResponse {
     private List<Map<String, Object>> items = new ArrayList<>();
 }
 
-
-
-

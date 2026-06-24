@@ -16,6 +16,9 @@ import com.emrehalli.financeportal.technicalanalysis.exception.TechnicalAnalysis
 import com.emrehalli.financeportal.technicalanalysis.mapper.TechnicalAnalysisMapper;
 import com.emrehalli.financeportal.technicalanalysis.service.TechnicalCandleService;
 import com.emrehalli.financeportal.technicalanalysis.service.TechnicalAnalysisService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -38,6 +41,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 
+@Tag(name = "Teknik Analiz", description = "Teknik gösterge analizi, benchmark karşılaştırma ve candlestick verileri")
 @Validated
 @RestController
 @RequestMapping("/api/v1/technical-analysis")
@@ -67,6 +71,8 @@ public class TechnicalAnalysisController {
         this.benchmarkComparisonService = benchmarkComparisonService;
     }
 
+    @Operation(summary = "Teknik analiz çalıştır")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Teknik analiz başarıyla tamamlandı"))
     @GetMapping("/{symbol}")
     public TechnicalAnalysisResponse analyze(
             @PathVariable
@@ -83,6 +89,8 @@ public class TechnicalAnalysisController {
         );
     }
 
+    @Operation(summary = "Benchmark karşılaştırması")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Benchmark karşılaştırması başarıyla tamamlandı"))
     @GetMapping("/benchmark")
     public BenchmarkResponse benchmark(
             @RequestParam String baseCode,
@@ -94,6 +102,8 @@ public class TechnicalAnalysisController {
         return benchmarkComparisonService.compare(baseCode, benchmarkCode, benchmarkType, from, to);
     }
 
+    @Operation(summary = "Çoklu sembol karşılaştırması")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Sembol karşılaştırması başarıyla tamamlandı"))
     @GetMapping("/compare")
     public ComparisonResponse compare(
             @RequestParam String symbols,
@@ -103,6 +113,8 @@ public class TechnicalAnalysisController {
         return technicalAnalysisService.compare(symbols, from, to);
     }
 
+    @Operation(summary = "Candlestick verilerini getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Candlestick verileri başarıyla getirildi"))
     @GetMapping("/{symbol}/candles")
     public ResponseEntity<ApiResponse<List<TechnicalCandleDto>>> getCandles(@PathVariable
                                                                             @Size(max = 30, message = "symbol too long: maximum 30 characters allowed")
@@ -135,6 +147,8 @@ public class TechnicalAnalysisController {
                 .build());
     }
 
+    @Operation(summary = "Gösterge konfigürasyonlarını getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Gösterge konfigürasyonları başarıyla getirildi"))
     @GetMapping("/{instrumentCode}/indicators")
     public ApiResponse<List<Response>> getUserIndicators(@PathVariable String instrumentCode) {
         CurrentUser currentUser = currentUserResolver.resolve();
@@ -151,6 +165,8 @@ public class TechnicalAnalysisController {
                 .build();
     }
 
+    @Operation(summary = "Gösterge konfigürasyonu kaydet")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Gösterge konfigürasyonu başarıyla kaydedildi"))
     @PostMapping("/{instrumentCode}/indicators")
     public ApiResponse<Response> saveIndicatorConfig(@PathVariable String instrumentCode,
                                                      @Valid @RequestBody Request req) {
@@ -168,6 +184,8 @@ public class TechnicalAnalysisController {
                 .build();
     }
 
+    @Operation(summary = "Gösterge konfigürasyonunu sil")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Gösterge konfigürasyonu başarıyla silindi"))
     @DeleteMapping("/indicators/{id}")
     public ApiResponse<Void> deleteIndicatorConfig(@PathVariable Long id) {
         CurrentUser currentUser = currentUserResolver.resolve();
@@ -180,5 +198,4 @@ public class TechnicalAnalysisController {
                 .build();
     }
 }
-
 

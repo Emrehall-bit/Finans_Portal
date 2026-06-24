@@ -93,6 +93,3 @@ public final class TcmbFxSeriesDefinitions {
     }
 }
 
-
-
-

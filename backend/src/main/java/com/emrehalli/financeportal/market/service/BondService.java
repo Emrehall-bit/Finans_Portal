@@ -35,6 +35,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class BondService {
 
+    private static final String CACHE_KEY_ALL = "bond:all";
     private static final String META_DELIMITER = "||META||";
 
     private final MarketInstrumentRepository marketInstrumentRepository;
@@ -78,12 +79,18 @@ public class BondService {
                     .sourceName(SourceName.TCMB)
                     .build());
 
-            putCacheSilently(buildCacheKey(bondCode), toDto(instrument, rate.getInterestRate(), timestamp));
+            putCacheSilently(buildCacheKey(bondCode), toDto(instrument, rate.getInterestRate(), rate.getChangeRate(), timestamp));
         }
+        evictCacheSilently(CACHE_KEY_ALL);
     }
 
     @Transactional(readOnly = true)
     public Page<BondRateDto> getAll(Pageable pageable) {
+        List<BondRateDto> cached = cacheService.getList(CACHE_KEY_ALL, BondRateDto.class);
+        if (!cached.isEmpty()) {
+            return pageFromList(cached, pageable);
+        }
+
         try {
             TypedQuery<MarketInstrument> dataQuery = entityManager.createQuery(
                     "select mi from MarketInstrument mi " +
@@ -94,25 +101,14 @@ public class BondService {
             );
             dataQuery.setParameter("instrumentType", InstrumentType.BOND);
             dataQuery.setParameter("sourceName", SourceName.TCMB);
-            dataQuery.setFirstResult((int) pageable.getOffset());
-            dataQuery.setMaxResults(pageable.getPageSize());
 
             List<BondRateDto> content = dataQuery.getResultList().stream()
                     .map(this::toDto)
                     .filter(Objects::nonNull)
                     .toList();
 
-            Long total = entityManager.createQuery(
-                            "select count(mi) from MarketInstrument mi " +
-                                    "where mi.instrumentType = :instrumentType " +
-                                    "and mi.sourceName = :sourceName",
-                            Long.class
-                    )
-                    .setParameter("instrumentType", InstrumentType.BOND)
-                    .setParameter("sourceName", SourceName.TCMB)
-                    .getSingleResult();
-
-            return new PageImpl<>(content, pageable, total);
+            putCacheSilently(CACHE_KEY_ALL, content);
+            return pageFromList(content, pageable);
         } catch (Exception exception) {
             log.error("Failed to load paged bond data from database.", exception);
             return Page.empty(pageable);
@@ -148,15 +144,16 @@ public class BondService {
             return null;
         }
         MarketPrice price = latestPrice.get();
-        return toDto(instrument, price.getPriceValue(), price.getPriceTimestamp());
+        return toDto(instrument, price.getPriceValue(), price.getChangeRate(), price.getPriceTimestamp());
     }
 
-    private BondRateDto toDto(MarketInstrument instrument, BigDecimal interestRate, LocalDateTime dataTimestamp) {
+    private BondRateDto toDto(MarketInstrument instrument, BigDecimal interestRate, BigDecimal changeRate, LocalDateTime dataTimestamp) {
         BondMetadata metadata = decodeInstrumentName(instrument.getInstrumentName());
         return BondRateDto.builder()
                 .bondCode(instrument.getInstrumentCode())
                 .bondName(metadata.bondName())
                 .interestRate(interestRate)
+                .changeRate(changeRate)
                 .maturityDate(metadata.maturityDate())
                 .dataTimestamp(dataTimestamp)
                 .build();
@@ -177,6 +174,20 @@ public class BondService {
         } catch (Exception exception) {
             log.warn("Failed to write bond cache for key={}", key, exception);
         }
+    }
+
+    private void evictCacheSilently(String key) {
+        try {
+            cacheService.evict(key);
+        } catch (Exception exception) {
+            log.warn("Failed to evict bond cache for key={}", key, exception);
+        }
+    }
+
+    private Page<BondRateDto> pageFromList(List<BondRateDto> items, Pageable pageable) {
+        int fromIndex = (int) Math.min(pageable.getOffset(), items.size());
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), items.size());
+        return new PageImpl<>(items.subList(fromIndex, toIndex), pageable, items.size());
     }
 
     private String buildCacheKey(String bondCode) {
@@ -225,7 +236,4 @@ public class BondService {
     private record BondMetadata(String bondName, LocalDate maturityDate) {
     }
 }
-
-
-
 

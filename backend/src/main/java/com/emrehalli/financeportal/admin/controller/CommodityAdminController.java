@@ -4,6 +4,9 @@ import com.emrehalli.financeportal.market.service.CommodityHistoryDerivationServ
 import com.emrehalli.financeportal.market.service.CommodityHistoryDerivationService.DerivationResult;
 import com.emrehalli.financeportal.market.service.CommodityService;
 import com.emrehalli.financeportal.market.service.CommodityService.DerivedCommodityResult;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,18 +28,14 @@ import java.util.Map;
 @RequestMapping("/api/v1/admin/markets/commodities")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Admin - Emtia Yonetimi", description = "Emtia veri turetme ve gecmis doldurma islemleri")
 public class CommodityAdminController {
 
     private final CommodityService commodityService;
     private final CommodityHistoryDerivationService historyDerivationService;
 
-    /**
-     * Manually triggers derived commodity calculation without waiting for the scheduler.
-     * Reads GOLD_USD and SILVER_USD from DB (persisted as INTERNAL by previous Yahoo fetches),
-     * resolves USDTRY from FX instruments, and saves all 6 calculated commodity prices.
-     *
-     * <p>Response includes inputs used, saved count and saved symbols for diagnostics.</p>
-     */
+    @Operation(summary = "Turetilmis emtia hesapla", description = "Zamanlayici beklemeden turetilmis emtia fiyat hesaplamasini manuel tetikler")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Turetme islemi basariyla tamamlandi"))
     @PostMapping("/derive-now")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> deriveNow() {
@@ -68,10 +67,8 @@ public class CommodityAdminController {
         return response;
     }
 
-    /**
-     * Diagnostic endpoint â€” shows all COMMODITY instruments and their latest prices.
-     * GET /api/v1/admin/debug/commodities is the fuller version; this is a quick status check.
-     */
+    @Operation(summary = "Emtia durum kontrolu", description = "Emtia hesaplama icin gerekli girdi verilerinin mevcut durumunu gosterir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Durum bilgisi basariyla getirildi"))
     @GetMapping("/status")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> status() {
@@ -88,12 +85,8 @@ public class CommodityAdminController {
         return response;
     }
 
-    /**
-     * Backfills historical ONE_DAY price records for all Turkish gold/silver instruments.
-     * Matches GOLD_USD + USDTRY and SILVER_USD + USDTRY from market_price_history; skips existing rows.
-     *
-     * <p>Example: POST /api/v1/admin/markets/commodities/history/backfill?days=365</p>
-     */
+    @Operation(summary = "Emtia gecmis verisi doldur", description = "Turk altin/gumus enstrumanlari icin tarihsel fiyat kayitlarini geriye donuk doldurur")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Gecmis veri doldurma islemi tamamlandi"))
     @PostMapping("/history/backfill")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> backfillHistory(@RequestParam(defaultValue = "365") int days) {
@@ -126,7 +119,4 @@ public class CommodityAdminController {
         return sb.toString().trim();
     }
 }
-
-
-
 

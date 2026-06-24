@@ -122,8 +122,3 @@ public class News {
     }
 }
 
-
-
-
-
-

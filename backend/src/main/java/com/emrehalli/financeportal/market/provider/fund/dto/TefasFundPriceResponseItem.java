@@ -19,6 +19,3 @@ public class TefasFundPriceResponseItem {
     private BigDecimal fiyat;
 }
 
-
-
-

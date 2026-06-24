@@ -10,6 +10,3 @@ public enum TechnicalSignal {
     RSI_NEUTRAL
 }
 
-
-
-

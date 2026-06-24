@@ -15,6 +15,7 @@ public class MarketProperties {
     private Providers providers = new Providers();
     private Scheduler scheduler = new Scheduler();
     private Cache cache = new Cache();
+    private Mock mock = new Mock();
 
     @Data
     public static class Providers {
@@ -70,8 +71,11 @@ public class MarketProperties {
         private long index = 40;
         private long commodity = 40;
     }
+
+    @Data
+    public static class Mock {
+
+        private boolean derivativesEnabled = false;
+    }
 }
-
-
-
 

@@ -6,6 +6,3 @@ public enum TrendDirection {
     SIDEWAYS
 }
 
-
-
-

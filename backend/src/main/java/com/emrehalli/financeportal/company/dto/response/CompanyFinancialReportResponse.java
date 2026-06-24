@@ -16,16 +16,21 @@ import java.util.List;
 public class CompanyFinancialReportResponse {
 
     private Long reportId;
+
     private Integer periodYear;
+
     private Integer periodQuarter;
+
     private ReportType reportType;
+
     private LocalDate publishedAt;
+
     private ParseStatus parseStatus;
+
     private String sourceUrl;
+
     private OffsetDateTime lastCheckedAt;
+
     private List<FinancialValueItemResponse> values;
 }
-
-
-
 

@@ -18,6 +18,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -31,12 +35,15 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/v1/markets/stocks")
 @AllArgsConstructor
+@Tag(name = "Hisse Senetleri", description = "BIST hisse senedi piyasa verileri")
 public class StockController {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     private final StockService stockService;
 
+    @Operation(summary = "Hisse senetlerini listele")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Hisse senetleri başarıyla listelendi"))
     @GetMapping
     public ApiResponse<StockPageResponse> getAll(@RequestParam(defaultValue = "0") int page,
                                                  @RequestParam(defaultValue = "20") int size,
@@ -57,6 +64,8 @@ public class StockController {
                 .build();
     }
 
+    @Operation(summary = "Hisse detayını getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Hisse detayı başarıyla döndürüldü"))
     @GetMapping("/{symbol}")
     public ApiResponse<StockPriceDto> getBySymbol(@PathVariable String symbol) {
         StockPriceDto data = stockService.getBySymbol(symbol);
@@ -70,6 +79,8 @@ public class StockController {
                 .build();
     }
 
+    @Operation(summary = "Hisse fiyat geçmişini getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Hisse fiyat geçmişi başarıyla döndürüldü"))
     @GetMapping("/{symbol}/history")
     public ApiResponse<List<StockHistoryDto>> getHistory(@PathVariable String symbol,
                                                          @RequestParam String startDate,
@@ -103,9 +114,6 @@ public class StockController {
                 .orElse(null);
     }
 
-    /**
-     * Stock page response payload.
-     */
     @Data
     @Builder
     @NoArgsConstructor
@@ -117,7 +125,4 @@ public class StockController {
         private int size;
     }
 }
-
-
-
 

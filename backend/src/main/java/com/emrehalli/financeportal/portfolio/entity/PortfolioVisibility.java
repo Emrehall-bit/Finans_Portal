@@ -1,7 +1,9 @@
 package com.emrehalli.financeportal.portfolio.entity;
 
 public enum PortfolioVisibility {
+
     PRIVATE,
+
     PUBLIC;
 
     public static PortfolioVisibility fromDbValue(String value) {
@@ -16,10 +18,4 @@ public enum PortfolioVisibility {
         }
     }
 }
-
-
-
-
-
-
 

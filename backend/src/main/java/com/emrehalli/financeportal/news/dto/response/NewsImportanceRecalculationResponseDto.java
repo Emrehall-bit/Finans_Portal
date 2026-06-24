@@ -14,6 +14,3 @@ public class NewsImportanceRecalculationResponseDto {
     private double averageScore;
 }
 
-
-
-

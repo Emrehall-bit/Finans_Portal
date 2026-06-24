@@ -10,6 +10,3 @@ public interface UserModerationRepository extends JpaRepository<UserModeration, 
     Optional<UserModeration> findTopByUserIdOrderByCreatedAtDescIdDesc(Long userId);
 }
 
-
-
-

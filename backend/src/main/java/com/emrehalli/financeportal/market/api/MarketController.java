@@ -5,6 +5,7 @@ import com.emrehalli.financeportal.common.exception.BadRequestException;
 import com.emrehalli.financeportal.config.MarketProperties;
 import com.emrehalli.financeportal.market.api.dto.FxRateResponse;
 import com.emrehalli.financeportal.market.api.dto.MarketAggregateResponse;
+import com.emrehalli.financeportal.market.api.dto.MarketQuoteResponse;
 import com.emrehalli.financeportal.market.api.dto.MarketScreenItemResponse;
 import com.emrehalli.financeportal.market.api.dto.MarketScreenResponse;
 import com.emrehalli.financeportal.market.api.dto.PriceHistoryDto;
@@ -16,12 +17,18 @@ import com.emrehalli.financeportal.market.domain.enums.IntervalType;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.persistence.MarketInstrumentRepository;
 import com.emrehalli.financeportal.market.persistence.MarketPriceHistoryRepository;
+import com.emrehalli.financeportal.market.provider.bond.dto.BondRateDto;
 import com.emrehalli.financeportal.market.provider.fund.dto.FundNavDto;
+import com.emrehalli.financeportal.market.provider.futures.dto.FuturesContractDto;
 import com.emrehalli.financeportal.market.provider.stock.dto.StockHistoryDto;
 import com.emrehalli.financeportal.market.provider.stock.dto.StockPriceDto;
+import com.emrehalli.financeportal.market.service.BondService;
+import com.emrehalli.financeportal.market.service.CommodityService;
 import com.emrehalli.financeportal.market.service.CryptoService;
 import com.emrehalli.financeportal.market.service.FundService;
+import com.emrehalli.financeportal.market.service.FuturesService;
 import com.emrehalli.financeportal.market.service.FxService;
+import com.emrehalli.financeportal.market.service.IndexService;
 import com.emrehalli.financeportal.market.service.MarketScreenCriteria;
 import com.emrehalli.financeportal.market.service.MarketScreeningService;
 import com.emrehalli.financeportal.market.service.MarketQueryService;
@@ -38,6 +45,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.micrometer.context.ContextSnapshot;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -62,6 +72,7 @@ import java.util.function.Supplier;
 @RequestMapping("/api/v1/markets")
 @AllArgsConstructor
 @Slf4j
+@Tag(name = "Piyasa Verileri", description = "Toplu piyasa verileri, enstrüman arama ve fiyat geçmişi")
 public class MarketController {
 
     private static final String INTERNAL_CASH_CODE = "TRY";
@@ -71,6 +82,10 @@ public class MarketController {
     private final CryptoService cryptoService;
     private final FundService fundService;
     private final StockService stockService;
+    private final IndexService indexService;
+    private final CommodityService commodityService;
+    private final FuturesService futuresService;
+    private final BondService bondService;
     private final MarketQueryService marketQueryService;
     private final MarketScreeningService marketScreeningService;
     private final MarketInstrumentRepository instrumentRepository;
@@ -78,6 +93,8 @@ public class MarketController {
     private final CacheService cacheService;
     private final MarketProperties marketProperties;
 
+    @Operation(summary = "Konsolide piyasa özeti", description = "FX, kripto, hisse ve fon verilerini birleştirilmiş olarak döndürür")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Piyasa özeti başarıyla döndürüldü"))
     @GetMapping
     public ApiResponse<MarketAggregateResponse> getAllMarkets(@RequestParam(name = "type", required = false) String type) {
         boolean macroIndicatorRequest = isMacroIndicatorRequest(type);
@@ -94,7 +111,7 @@ public class MarketController {
         List<FxRateResponse> fx;
         List<MarketScreenItemResponse> cryptoRows;
         List<MarketScreenItemResponse> stockRows;
-        List<MarketScreenItemResponse> fundRows;
+        List<FundNavDto> fundRows;
 
         if (macroIndicatorRequest) {
             fx = List.of();
@@ -110,8 +127,8 @@ public class MarketController {
                         .exceptionally(ex -> { log.warn("Crypto screen failed on aggregate", ex); return List.of(); });
                 var stockFuture = CompletableFuture.supplyAsync(withContext(contextSnapshot, () -> screenCategory("STOCK", 500)), executor)
                         .exceptionally(ex -> { log.warn("Stock screen failed on aggregate", ex); return List.of(); });
-                var fundFuture = CompletableFuture.supplyAsync(withContext(contextSnapshot, () -> screenCategory("FUND", 500)), executor)
-                        .exceptionally(ex -> { log.warn("Fund screen failed on aggregate", ex); return List.of(); });
+                var fundFuture = CompletableFuture.supplyAsync(withContext(contextSnapshot, fundService::getAll), executor)
+                        .exceptionally(ex -> { log.warn("Fund load failed on aggregate", ex); return List.of(); });
 
                 CompletableFuture.allOf(fxFuture, cryptoFuture, stockFuture, fundFuture).join();
                 fx = fxFuture.join();
@@ -122,7 +139,9 @@ public class MarketController {
         }
         List<Object> crypto = new ArrayList<>(cryptoRows.stream().map(this::toMarketSnapshot).toList());
         List<Object> stocks = new ArrayList<>(stockRows.stream().map(this::toMarketSnapshot).toList());
-        List<Object> funds = new ArrayList<>(fundRows.stream().map(this::toMarketSnapshot).toList());
+        List<Object> funds = new ArrayList<>(fundRows.stream()
+                .map(fund -> toMarketSnapshot(fund, SourceName.TEFAS.name()))
+                .toList());
         MarketAggregateResponse data = MarketAggregateResponse.builder()
                 .fx(fx)
                 .crypto(crypto)
@@ -153,7 +172,7 @@ public class MarketController {
 
     private void putCachedAggregate(String cacheKey, MarketAggregateResponse data) {
         try {
-            cacheService.put(cacheKey, data, Math.max(1, Math.min(2, marketProperties.getCache().getTtlMinutes().getStock())));
+            cacheService.put(cacheKey, data, marketProperties.getCache().getTtlMinutes().getStock());
         } catch (Exception exception) {
             log.warn("Failed to write market aggregate cache key={}", cacheKey, exception);
         }
@@ -168,6 +187,8 @@ public class MarketController {
                 .build()).getContent();
     }
 
+    @Operation(summary = "Piyasa taraması", description = "Filtreleme, sıralama ve sayfalama ile enstrüman taraması")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Tarama sonuçları başarıyla döndürüldü"))
     @GetMapping("/screen")
     public ApiResponse<MarketScreenResponse> screenMarkets(
             @RequestParam(name = "type", required = false) String type,
@@ -289,6 +310,8 @@ public class MarketController {
                 .build();
     }
 
+    @Operation(summary = "Enstrüman arama", description = "Portföy girişi için enstrüman arama")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Arama sonuçları başarıyla döndürüldü"))
     @GetMapping("/instruments/search")
     public ApiResponse<List<InstrumentSearchResult>> searchInstruments(
             @RequestParam(name = "q", defaultValue = "") String query,
@@ -339,6 +362,8 @@ public class MarketController {
                 .build();
     }
 
+    @Operation(summary = "Belirli tarihteki fiyat", description = "Enstrümanın belirli tarihteki kapanış fiyatını döndürür")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Fiyat bilgisi başarıyla döndürüldü"))
     @GetMapping("/{symbol}/price-on-date")
     public ApiResponse<PriceOnDateResult> getPriceOnDate(
             @PathVariable String symbol,
@@ -360,13 +385,16 @@ public class MarketController {
                 .build();
     }
 
+    @Operation(summary = "Enstrüman anlık verisi", description = "Sembol bazlı anlık piyasa snapshot'ı")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Anlık veri başarıyla döndürüldü"))
     @GetMapping({"/{symbol}", "/symbol/{symbol}"})
     public ApiResponse<MarketQueryService.MarketSnapshot> getMarketBySymbol(
             @PathVariable String symbol,
             @RequestParam(name = "type", required = false) InstrumentType type
     ) {
         String normalizedSymbol = symbol.toUpperCase();
-        MarketQueryService.MarketSnapshot data = marketQueryService.findBySymbol(normalizedSymbol, type)
+        MarketQueryService.MarketSnapshot data = findCurrentSnapshotFromTypeService(normalizedSymbol, type)
+                .or(() -> marketQueryService.findBySymbol(normalizedSymbol, type)
                 .map(snapshot -> resolveMarketSnapshot(normalizedSymbol, snapshot))
                 .or(() -> {
                     if (type != null && type != InstrumentType.STOCK) {
@@ -378,7 +406,7 @@ public class MarketController {
                     } catch (Exception exception) {
                         return java.util.Optional.empty();
                     }
-                })
+                }))
                 .orElse(null);
         return ApiResponse.<MarketQueryService.MarketSnapshot>builder()
                 .success(true)
@@ -388,6 +416,8 @@ public class MarketController {
                 .build();
     }
 
+    @Operation(summary = "Fiyat geçmişi", description = "Günlük OHLCV fiyat geçmişi")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Fiyat geçmişi başarıyla döndürüldü"))
     @GetMapping("/{symbol}/history")
     public ApiResponse<List<PriceHistoryDto>> getMarketHistory(
             @PathVariable String symbol,
@@ -541,6 +571,49 @@ public class MarketController {
         return fallbackSnapshot;
     }
 
+    private java.util.Optional<MarketQueryService.MarketSnapshot> findCurrentSnapshotFromTypeService(String symbol, InstrumentType type) {
+        if (type == null) {
+            return java.util.Optional.empty();
+        }
+
+        try {
+            return switch (type) {
+                case CRYPTO -> java.util.Optional.ofNullable(cryptoService.getBySymbol(symbol));
+                case FUND -> java.util.Optional.ofNullable(fundService.getByCode(symbol))
+                        .map(fund -> toMarketSnapshot(fund, SourceName.TEFAS.name()));
+                case STOCK -> java.util.Optional.ofNullable(stockService.getBySymbol(symbol))
+                        .map(this::toMarketSnapshot);
+                case INDEX -> java.util.Optional.ofNullable(indexService.getBySymbol(symbol))
+                        .map(this::toMarketSnapshot);
+                case COMMODITY -> java.util.Optional.ofNullable(commodityService.getBySymbol(symbol))
+                        .map(this::toMarketSnapshot);
+                case FX -> findCurrentFxSnapshot(symbol);
+                case FUTURES -> java.util.Optional.ofNullable(futuresService.getByContract(symbol))
+                        .map(this::toMarketSnapshot);
+                case BOND -> java.util.Optional.ofNullable(bondService.getByCode(symbol))
+                        .map(this::toMarketSnapshot);
+            };
+        } catch (Exception exception) {
+            log.warn("Typed current snapshot lookup failed for symbol={} type={}", symbol, type, exception);
+            return java.util.Optional.empty();
+        }
+    }
+
+    private java.util.Optional<MarketQueryService.MarketSnapshot> findCurrentFxSnapshot(String symbol) {
+        String code = symbol;
+        SourceName sourceName = null;
+        String[] parts = symbol.split(":");
+        if (parts.length >= 2) {
+            sourceName = parseSourceName(parts[0]);
+            code = parts[1];
+        }
+
+        if (sourceName != null) {
+            return fxService.getBySourceAndCode(sourceName, code).map(this::toMarketSnapshot);
+        }
+        return fxService.getByCode(code).stream().findFirst().map(this::toMarketSnapshot);
+    }
+
     private Instant resolveFrom(String from, String to, String period, Instant resolvedTo) {
         if (from != null && !from.isBlank()) {
             return LocalDate.parse(from).atStartOfDay().toInstant(java.time.ZoneOffset.UTC);
@@ -669,6 +742,60 @@ public class MarketController {
                 item.getDataTimestamp(),
                 null,
                 item.getVolume() != null ? item.getVolume().longValue() : null,
+                null,
+                null,
+                null
+        );
+    }
+
+    private MarketQueryService.MarketSnapshot toMarketSnapshot(MarketQuoteResponse quote) {
+        return new MarketQueryService.MarketSnapshot(
+                quote.symbol(),
+                quote.name(),
+                quote.price(),
+                quote.changeRate(),
+                quote.source(),
+                quote.instrumentType(),
+                quote.currency(),
+                quote.updatedAt(),
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    private MarketQueryService.MarketSnapshot toMarketSnapshot(FuturesContractDto contract) {
+        return new MarketQueryService.MarketSnapshot(
+                contract.getContractCode(),
+                contract.getContractName(),
+                contract.getLastPrice(),
+                contract.getDailyChangePercent(),
+                SourceName.BIST.name(),
+                InstrumentType.FUTURES.name(),
+                "TRY",
+                contract.getDataTimestamp(),
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    private MarketQueryService.MarketSnapshot toMarketSnapshot(BondRateDto bond) {
+        return new MarketQueryService.MarketSnapshot(
+                bond.getBondCode(),
+                bond.getBondName(),
+                bond.getInterestRate(),
+                null,
+                SourceName.TCMB.name(),
+                InstrumentType.BOND.name(),
+                null,
+                bond.getDataTimestamp(),
+                null,
+                null,
                 null,
                 null,
                 null
@@ -996,7 +1123,4 @@ public class MarketController {
     private record PriceOnDateResult(String symbol, LocalDate date, BigDecimal price) {
     }
 }
-
-
-
 

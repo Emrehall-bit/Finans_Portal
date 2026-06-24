@@ -12,21 +12,31 @@ import java.util.List;
 public class ManualFinancialImportResponse {
 
     private boolean dryRun;
+
     private int createdReports;
+
     private int updatedReports;
+
     private int createdValues;
+
     private int updatedValues;
+
     private int deletedStaleValues;
+
     private List<String> recalculatedTickers;
+
     private List<String> preservedRealRatios;
+
     private List<String> createdMockRatios;
+
     private List<String> skippedExisting;
+
     private List<String> updatedShareCounts;
+
     private List<String> skippedShareCounts;
+
     private List<String> missingShareCountWarnings;
+
     private List<ManualFinancialImportError> validationErrors;
 }
-
-
-
 

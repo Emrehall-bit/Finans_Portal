@@ -8,6 +8,7 @@ import lombok.Getter;
 public class BasicProfileSeedError {
 
     private String ticker;
+
     private String message;
 }
 

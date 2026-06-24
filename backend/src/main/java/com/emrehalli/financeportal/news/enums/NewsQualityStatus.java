@@ -7,6 +7,3 @@ public enum NewsQualityStatus {
     KAP_DISCLOSURE
 }
 
-
-
-

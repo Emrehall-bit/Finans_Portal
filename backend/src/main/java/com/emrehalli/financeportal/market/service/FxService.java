@@ -28,6 +28,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Service for FX persistence and retrieval.
@@ -194,14 +196,8 @@ public class FxService {
     }
 
     private List<MarketInstrument> getFxInstruments() {
-        return marketInstrumentRepository.findAll().stream()
-                .filter(this::isBrowsableFxInstrument)
-                .toList();
-    }
-
-    private boolean isBrowsableFxInstrument(MarketInstrument instrument) {
-        return instrument.getInstrumentType() == InstrumentType.FX
-                && instrument.getSourceName() != SourceName.INTERNAL;
+        return marketInstrumentRepository.findAllByInstrumentTypeAndSourceNameNot(
+                InstrumentType.FX, SourceName.INTERNAL);
     }
 
     private List<FxRateResponse> filterBrowsableResponses(List<FxRateResponse> responses) {
@@ -215,6 +211,21 @@ public class FxService {
     private List<FxRateResponse> resolveResponses(List<MarketInstrument> instruments,
                                                   SourceName sourceFilter,
                                                   String codeFilter) {
+        List<Long> instrumentIds = instruments.stream()
+                .map(MarketInstrument::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        Map<Long, MarketPrice> latestPriceById = instrumentIds.isEmpty()
+                ? Map.of()
+                : marketPriceRepository.findLatestPricesForInstruments(instrumentIds)
+                        .stream()
+                        .filter(p -> p.getInstrument() != null && p.getInstrument().getId() != null)
+                        .collect(Collectors.toMap(
+                                p -> p.getInstrument().getId(),
+                                Function.identity(),
+                                (a, b) -> a));
+
         Set<String> pairKeys = new TreeSet<>();
         for (MarketInstrument instrument : instruments) {
             InstrumentKey instrumentKey = parseInstrumentKey(instrument);
@@ -233,7 +244,7 @@ public class FxService {
             SourceName sourceName = SourceName.valueOf(parts[0]);
             String currencyCode = parts[1];
 
-            FxRateResponse dbValue = buildFromDatabase(instruments, sourceName, currencyCode);
+            FxRateResponse dbValue = buildFromDatabase(instruments, latestPriceById, sourceName, currencyCode);
             if (dbValue != null) {
                 putCacheSilently(buildCacheKey(sourceName, currencyCode), dbValue);
                 responses.add(dbValue);
@@ -244,7 +255,10 @@ public class FxService {
         return responses;
     }
 
-    private FxRateResponse buildFromDatabase(List<MarketInstrument> instruments, SourceName sourceName, String currencyCode) {
+    private FxRateResponse buildFromDatabase(List<MarketInstrument> instruments,
+                                             Map<Long, MarketPrice> latestPriceById,
+                                             SourceName sourceName,
+                                             String currencyCode) {
         Map<FxPriceType, MarketPrice> latestPrices = new EnumMap<>(FxPriceType.class);
         Map<FxPriceType, MarketInstrument> instrumentsByType = new EnumMap<>(FxPriceType.class);
 
@@ -255,8 +269,10 @@ public class FxService {
             }
 
             instrumentsByType.put(instrumentKey.priceType(), instrument);
-            marketPriceRepository.findTopByInstrumentOrderByPriceTimestampDesc(instrument)
-                    .ifPresent(price -> latestPrices.put(instrumentKey.priceType(), price));
+            MarketPrice price = latestPriceById.get(instrument.getId());
+            if (price != null) {
+                latestPrices.put(instrumentKey.priceType(), price);
+            }
         }
 
         if (latestPrices.isEmpty()) {
@@ -514,7 +530,4 @@ public class FxService {
         REFERENCE
     }
 }
-
-
-
 

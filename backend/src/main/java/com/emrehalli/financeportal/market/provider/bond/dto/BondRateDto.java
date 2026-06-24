@@ -9,9 +9,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Provider-level bond rate data transfer object.
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -21,10 +18,8 @@ public class BondRateDto {
     private String bondCode;
     private String bondName;
     private BigDecimal interestRate;
+    private BigDecimal changeRate;
     private LocalDate maturityDate;
     private LocalDateTime dataTimestamp;
 }
-
-
-
 

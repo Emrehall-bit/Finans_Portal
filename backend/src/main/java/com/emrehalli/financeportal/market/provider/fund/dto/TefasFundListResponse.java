@@ -18,6 +18,3 @@ public class TefasFundListResponse {
     private List<TefasFundListResponseItem> resultList;
 }
 
-
-
-

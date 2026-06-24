@@ -39,9 +39,3 @@ public class Watchlist {
     private LocalDateTime createdAt;
 }
 
-
-
-
-
-
-

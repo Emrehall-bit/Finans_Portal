@@ -24,9 +24,3 @@ public class CorsConfig {
     }
 }
 
-
-
-
-
-
-

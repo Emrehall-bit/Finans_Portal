@@ -27,6 +27,3 @@ public class TefasFundListResponseItem {
     private String riskDegeri;
 }
 
-
-
-

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -43,8 +44,20 @@ public interface MarketPriceRepository extends JpaRepository<MarketPrice, Long> 
             @Param("sourceName") String sourceName,
             @Param("instrumentType") String instrumentType
     );
+
+    @Query(value = """
+            select distinct on (mp.instrument_id) mp.*
+            from market_prices mp
+            join market_instruments mi on mi.id = mp.instrument_id
+            where mi.instrument_type = :instrumentType
+              and abs(mp.change_rate) >= :threshold
+              and mp.price_timestamp >= :since
+            order by mp.instrument_id, mp.price_timestamp desc, mp.id desc
+            """, nativeQuery = true)
+    List<MarketPrice> findLatestSignificantByInstrumentType(
+            @Param("instrumentType") String instrumentType,
+            @Param("threshold") BigDecimal threshold,
+            @Param("since") LocalDateTime since
+    );
 }
-
-
-
 

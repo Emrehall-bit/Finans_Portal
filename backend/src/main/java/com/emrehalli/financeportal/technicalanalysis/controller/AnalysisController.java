@@ -13,6 +13,9 @@ import com.emrehalli.financeportal.technicalanalysis.dto.FundamentalHistoryPoint
 import com.emrehalli.financeportal.technicalanalysis.dto.FundamentalRatiosResponse;
 import com.emrehalli.financeportal.technicalanalysis.service.FundamentalAccessPolicy;
 import com.emrehalli.financeportal.technicalanalysis.service.FundamentalAnalysisService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Tag(name = "Analiz", description = "Grafik çizimleri ve temel analiz verileri")
 @Validated
 @RestController
 @RequestMapping("/api/v1/analysis")
@@ -51,6 +55,8 @@ public class AnalysisController {
         this.currentUserResolver = currentUserResolver;
     }
 
+    @Operation(summary = "Grafik çizimlerini getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Çizimler başarıyla getirildi"))
     @GetMapping("/drawings/{instrumentCode}")
     public ApiResponse<List<Response>> getDrawings(
             @PathVariable String instrumentCode,
@@ -64,6 +70,8 @@ public class AnalysisController {
                 .build();
     }
 
+    @Operation(summary = "Grafik çizimi kaydet")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Çizim başarıyla kaydedildi"))
     @PostMapping("/drawings/{instrumentCode}")
     public ApiResponse<Response> saveDrawing(
             @PathVariable String instrumentCode,
@@ -79,6 +87,8 @@ public class AnalysisController {
                 .build();
     }
 
+    @Operation(summary = "Grafik çizimini güncelle")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Çizim başarıyla güncellendi"))
     @PatchMapping("/drawings/{id}")
     public ApiResponse<Response> updateDrawing(
             @PathVariable Long id,
@@ -93,6 +103,8 @@ public class AnalysisController {
                 .build();
     }
 
+    @Operation(summary = "Grafik çizimini sil")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Çizim başarıyla silindi"))
     @DeleteMapping("/drawings/{id}")
     public ApiResponse<Void> deleteDrawing(@PathVariable Long id) {
         CurrentUser currentUser = currentUserResolver.resolve();
@@ -104,6 +116,8 @@ public class AnalysisController {
                 .build();
     }
 
+    @Operation(summary = "Çizimi alarma bağla")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Çizim alarma başarıyla bağlandı"))
     @PostMapping("/drawings/{id}/link-alert")
     @RequiresPremium
     public ApiResponse<Response> linkDrawingToAlert(
@@ -123,6 +137,8 @@ public class AnalysisController {
                 .build();
     }
 
+    @Operation(summary = "Temel analiz oranlarını getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Temel analiz oranları başarıyla getirildi"))
     @GetMapping("/fundamental/{instrumentCode}")
     public ApiResponse<FundamentalRatiosResponse> getFundamentalRatios(@PathVariable String instrumentCode) {
         CurrentUser currentUser = currentUserResolver.resolve();
@@ -138,6 +154,8 @@ public class AnalysisController {
                 .build();
     }
 
+    @Operation(summary = "Temel analiz geçmişini getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Temel analiz geçmişi başarıyla getirildi"))
     @GetMapping("/fundamental/{instrumentCode}/history")
     @RequiresPremium
     public ApiResponse<List<FundamentalHistoryPoint>> getFundamentalHistory(@PathVariable String instrumentCode) {
@@ -152,6 +170,8 @@ public class AnalysisController {
                 .build();
     }
 
+    @Operation(summary = "Ham finansal verileri getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Ham finansal veriler başarıyla getirildi"))
     @GetMapping("/fundamental/{instrumentCode}/financials")
     public ApiResponse<List<FinancialDataResponse>> getFinancialData(
             @PathVariable String instrumentCode,
@@ -167,6 +187,8 @@ public class AnalysisController {
                 .build();
     }
 
+    @Operation(summary = "Temel analiz hesapla")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Temel analiz hesaplaması tamamlandı"))
     @PostMapping("/fundamental/{instrumentCode}/calculate")
     public ApiResponse<FundamentalRatiosResponse> triggerCalculation(@PathVariable String instrumentCode) {
         CurrentUser currentUser = currentUserResolver.resolve();

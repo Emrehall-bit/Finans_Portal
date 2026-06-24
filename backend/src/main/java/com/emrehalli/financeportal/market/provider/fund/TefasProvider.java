@@ -14,6 +14,7 @@ import com.emrehalli.financeportal.market.provider.fund.dto.TefasFundPriceReques
 import com.emrehalli.financeportal.market.provider.fund.dto.TefasFundPriceResponse;
 import com.emrehalli.financeportal.market.provider.fund.dto.TefasFundPriceResponseItem;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
@@ -63,6 +64,7 @@ public class TefasProvider implements MarketDataProvider {
         return SourceName.TEFAS.name();
     }
 
+    @CircuitBreaker(name = "tefas", fallbackMethod = "fetchFallback")
     @Override
     public List<FundNavDto> fetch() {
         try {
@@ -78,6 +80,11 @@ public class TefasProvider implements MarketDataProvider {
             log.error("Failed to fetch fund NAV data from TEFAS", exception);
             throw new DataProviderException("Failed to fetch fund NAV data from TEFAS", exception);
         }
+    }
+
+    private List<FundNavDto> fetchFallback(Throwable throwable) {
+        log.warn("TEFAS circuit breaker fallback triggered, returning empty fund list. reason={}", throwable.toString());
+        return Collections.emptyList();
     }
 
     private List<FundNavDto> fetchFromApi() {
@@ -320,7 +327,4 @@ public class TefasProvider implements MarketDataProvider {
         }
     }
 }
-
-
-
 

@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -20,10 +24,13 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/v1/funds")
 @AllArgsConstructor
+@Tag(name = "Fonlar", description = "Yatırım fonu (TEFAS) piyasa verileri")
 public class FundController {
 
     private final FundService fundService;
 
+    @Operation(summary = "Fonları listele")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Fonlar başarıyla listelendi"))
     @GetMapping
     public ApiResponse<?> getFunds(@RequestParam(required = false, name = "type") String type) {
         if (type != null && !type.isBlank()) {
@@ -45,6 +52,8 @@ public class FundController {
                 .build();
     }
 
+    @Operation(summary = "Fon detayını getir")
+    @ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Fon detayı başarıyla döndürüldü"))
     @GetMapping("/{code}")
     public ApiResponse<FundNavDto> getByCode(@PathVariable String code) {
         FundNavDto data = fundService.getByCode(code);
@@ -65,7 +74,4 @@ public class FundController {
                 .orElse(null);
     }
 }
-
-
-
 

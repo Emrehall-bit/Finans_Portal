@@ -15,6 +15,7 @@ public record AiFundamentalAnalysisResponse(
         String disclaimer,
         AiResponseMetadata metadata
 ) {
+
     public enum FinancialHealth {
         STRONG,
         STABLE,
@@ -22,7 +23,4 @@ public record AiFundamentalAnalysisResponse(
         RISKY
     }
 }
-
-
-
 

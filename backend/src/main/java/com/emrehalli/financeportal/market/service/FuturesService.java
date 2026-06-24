@@ -35,6 +35,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class FuturesService {
 
+    private static final String CACHE_KEY_ALL = "futures:all";
     private static final String META_DELIMITER = "||META||";
 
     private final MarketInstrumentRepository marketInstrumentRepository;
@@ -80,10 +81,16 @@ public class FuturesService {
 
             putCacheSilently(buildCacheKey(contractCode), toDto(instrument, contract.getLastPrice(), timestamp));
         }
+        evictCacheSilently(CACHE_KEY_ALL);
     }
 
     @Transactional(readOnly = true)
     public Page<FuturesContractDto> getAll(Pageable pageable) {
+        List<FuturesContractDto> cached = cacheService.getList(CACHE_KEY_ALL, FuturesContractDto.class);
+        if (!cached.isEmpty()) {
+            return pageFromList(cached, pageable);
+        }
+
         try {
             TypedQuery<MarketInstrument> dataQuery = entityManager.createQuery(
                     "select mi from MarketInstrument mi " +
@@ -94,25 +101,14 @@ public class FuturesService {
             );
             dataQuery.setParameter("instrumentType", InstrumentType.FUTURES);
             dataQuery.setParameter("sourceName", SourceName.BIST);
-            dataQuery.setFirstResult((int) pageable.getOffset());
-            dataQuery.setMaxResults(pageable.getPageSize());
 
             List<FuturesContractDto> content = dataQuery.getResultList().stream()
                     .map(this::toDto)
                     .filter(Objects::nonNull)
                     .toList();
 
-            Long total = entityManager.createQuery(
-                            "select count(mi) from MarketInstrument mi " +
-                                    "where mi.instrumentType = :instrumentType " +
-                                    "and mi.sourceName = :sourceName",
-                            Long.class
-                    )
-                    .setParameter("instrumentType", InstrumentType.FUTURES)
-                    .setParameter("sourceName", SourceName.BIST)
-                    .getSingleResult();
-
-            return new PageImpl<>(content, pageable, total);
+            putCacheSilently(CACHE_KEY_ALL, content);
+            return pageFromList(content, pageable);
         } catch (Exception exception) {
             log.error("Failed to load paged futures data from database.", exception);
             return Page.empty(pageable);
@@ -180,6 +176,20 @@ public class FuturesService {
         }
     }
 
+    private void evictCacheSilently(String key) {
+        try {
+            cacheService.evict(key);
+        } catch (Exception exception) {
+            log.warn("Failed to evict futures cache for key={}", key, exception);
+        }
+    }
+
+    private Page<FuturesContractDto> pageFromList(List<FuturesContractDto> items, Pageable pageable) {
+        int fromIndex = (int) Math.min(pageable.getOffset(), items.size());
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), items.size());
+        return new PageImpl<>(items.subList(fromIndex, toIndex), pageable, items.size());
+    }
+
     private String buildCacheKey(String contractCode) {
         return "futures:" + contractCode;
     }
@@ -239,7 +249,4 @@ public class FuturesService {
     private record FuturesMetadata(String contractName, BigDecimal dailyChangePercent, LocalDate expiryDate) {
     }
 }
-
-
-
 

@@ -29,13 +29,6 @@ public final class TechnicalAnalysisInputs {
 
     // --- Input validation ---
 
-    /**
-     * Sembolü doğrular: boş/null değilse, en fazla {@value #MAX_SYMBOL_LENGTH} karakter ise ve
-     * yalnızca harf/rakam/{@code . - _ :} içeriyorsa geçerlidir. Verilen değeri <b>trim etmez</b>;
-     * çağıran taraf trim davranışını kendisi yönetir (örn. candle servisi kendi geçmiş davranışını
-     * koruyabilmek için trim edilmiş sembolü geçirir). Hata mesajları ve HTTP status davranışı,
-     * önceki servis-içi doğrulamalarla birebir aynıdır.
-     */
     static void validateSymbol(String symbol) {
         if (symbol == null || symbol.isBlank()) {
             throw new TechnicalAnalysisException.Validation("symbol cannot be blank");
@@ -52,7 +45,6 @@ public final class TechnicalAnalysisInputs {
 
     // --- Cache-key normalization ---
 
-    /** Trim + upper-case (ROOT) normalizasyonu; cache key parçaları için kullanılır. */
     static String normalizeToken(String value) {
         return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
     }
@@ -67,10 +59,6 @@ public final class TechnicalAnalysisInputs {
                 + normalizeToken(isBlank(interval) ? "1d" : interval);
     }
 
-    /**
-     * Virgülle ayrılmış bir listeyi sırası ve tekrarı bağımsız (canonical) hale getirir;
-     * böylece "SMA20,SMA7" ile "sma7, sma20" aynı cache anahtarına düşer.
-     */
     private static String canonicalCsv(String csv, String fallback) {
         if (isBlank(csv)) {
             return fallback;

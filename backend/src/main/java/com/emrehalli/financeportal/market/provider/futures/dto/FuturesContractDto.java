@@ -9,9 +9,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Provider-level futures contract data transfer object.
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,7 +22,4 @@ public class FuturesContractDto {
     private LocalDate expiryDate;
     private LocalDateTime dataTimestamp;
 }
-
-
-
 

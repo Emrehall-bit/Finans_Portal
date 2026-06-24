@@ -19,6 +19,3 @@ public interface PremiumSubscriptionRepository extends JpaRepository<PremiumSubs
     List<PremiumSubscription> findAllByStatusInOrderByCreatedAtDesc(Collection<PremiumSubscriptionStatus> statuses);
 }
 
-
-
-

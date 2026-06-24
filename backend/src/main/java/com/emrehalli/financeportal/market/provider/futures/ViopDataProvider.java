@@ -13,9 +13,6 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * BIST VIOP market data provider.
- */
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -53,7 +50,4 @@ public class ViopDataProvider implements MarketDataProvider {
         return Collections.emptyList();
     }
 }
-
-
-
 

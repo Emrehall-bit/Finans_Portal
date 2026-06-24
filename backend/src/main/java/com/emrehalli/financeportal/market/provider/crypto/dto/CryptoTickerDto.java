@@ -8,9 +8,6 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Provider-level crypto ticker data transfer object.
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -22,7 +19,4 @@ public class CryptoTickerDto {
     private BigDecimal dailyChangePercent;
     private LocalDateTime dataTimestamp;
 }
-
-
-
 
