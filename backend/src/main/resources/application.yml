@@ -10,8 +10,8 @@ spring:
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
+      maximum-pool-size: 50
+      minimum-idle: 10
       connection-timeout: 30000
       idle-timeout: 600000
 
@@ -40,7 +40,10 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        id:
+          db_structure_naming_strategy: legacy
 
   security:
     oauth2:
@@ -63,10 +66,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,circuitbreakers,circuitbreakerevents
   endpoint:
     health:
       show-details: when_authorized
+  health:
+    circuitbreakers:
+      enabled: true
   metrics:
     tags:
       application: finance-portal-backend
@@ -143,9 +149,8 @@ market:
   providers:
     yahoo:
       base-url: https://query1.finance.yahoo.com
-      cookie: >-
-        ${YAHOO_COOKIE}
-      crumb: ${YAHOO_CRUMB}
+      cookie: ${YAHOO_COOKIE:}
+      crumb: ${YAHOO_CRUMB:}
     bist:
       base-url: https://datastore.borsaistanbul.com
   scheduler:
@@ -159,3 +164,32 @@ market:
     ttl-minutes:
       futures: 1500
       bond: 1500
+  mock:
+    derivatives-enabled: false   # true yaparsan startup'ta otomatik seed çalışır; admin endpoint her zaman aktif
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - com.emrehalli.financeportal.market.exception.DataProviderException
+    instances:
+      yahooFinance:
+        base-config: default
+      binance:
+        base-config: default
+      tcmbEvds:
+        base-config: default
+      tefas:
+        base-config: default
+      akbankFx:
+        base-config: default
+      ziraatFx:
+        base-config: default

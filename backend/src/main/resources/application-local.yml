@@ -2,19 +2,14 @@ market:
   providers:
     tcmb:
       base-url: https://evds3.tcmb.gov.tr/igmevdsms-dis
-      api-key:  Rb7ROmhyOC
+      api-key: ${TCMB_API_KEY:}
       start-date: 01-01-2000
       end-date: 01-01-2999
       current-sync-enabled: true
       current-sync-fixed-rate-ms: 3600000
       startup-backfill-enabled: true
       historical-scheduler-enabled: false
-    akbank:
-      base-url: https://apiportal.akbank.com
-      api-key: PLACEHOLDER_AKBANK_API_KEY
-    ziraat:
-      base-url: https://developers.ziraatbank.com.tr
-      api-key: PLACEHOLDER_ZIRAAT_API_KEY
+
     binance:
       base-url: https://api.binance.com/api/v3
     yahoo:
@@ -44,11 +39,11 @@ ai:
   max-output-tokens: 1024
   groq:
     enabled: true
-    api-key: ${GROQ_API_KEY}
+    api-key: ${GROQ_API_KEY:}
     model: llama-3.3-70b-versatile
   gemini:
     enabled: true
-    api-key: ${GEMINI_API_KEY}
+    api-key: ${GEMINI_API_KEY:}
     model: gemini-2.5-flash-lite
   routing:
     chat:
