@@ -62,6 +62,45 @@
       { "name": "ADMIN",        "description": "Sistem yöneticisi" }
     ]
   },
+  "requiredActions": [
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "CONFIGURE_TOTP",
+      "enabled": true,
+      "defaultAction": true,
+      "priority": 10,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PASSWORD",
+      "name": "Update Password",
+      "providerId": "UPDATE_PASSWORD",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 30,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PROFILE",
+      "name": "Update Profile",
+      "providerId": "UPDATE_PROFILE",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 40,
+      "config": {}
+    },
+    {
+      "alias": "VERIFY_EMAIL",
+      "name": "Verify Email",
+      "providerId": "VERIFY_EMAIL",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 50,
+      "config": {}
+    }
+  ],
+
   "users": [
     {
       "username": "testuser",
@@ -71,7 +110,8 @@
       "firstName": "Test",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "test123", "temporary": false }],
-      "realmRoles": ["USER"]
+      "realmRoles": ["USER"],
+      "requiredActions": ["CONFIGURE_TOTP"]
     },
     {
       "username": "premiumuser",
@@ -81,7 +121,8 @@
       "firstName": "Premium",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "premium123", "temporary": false }],
-      "realmRoles": ["USER_PREMIUM"]
+      "realmRoles": ["USER_PREMIUM"],
+      "requiredActions": ["CONFIGURE_TOTP"]
     },
     {
       "username": "adminuser",
@@ -91,9 +132,9 @@
       "firstName": "Admin",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "admin123", "temporary": false }],
-      "realmRoles": ["ADMIN"]
+      "realmRoles": ["ADMIN"],
+      "requiredActions": []
     }
-
   ],
   "defaultRole": {
     "name": "USER"

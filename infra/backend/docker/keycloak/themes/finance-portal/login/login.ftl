@@ -208,6 +208,8 @@
                     rememberMe: 'Beni Hatırla',
                     forgotPassword: 'Şifremi Unuttum',
                     login: 'Giriş yap',
+                    noAccount: 'Hesabınız yok mu?',
+                    doRegister: 'Kayıt Ol',
                     showPassword: 'Şifreyi Göster',
                     hidePassword: 'Şifreyi Gizle',
                     themeLight: 'Açık',
@@ -253,6 +255,8 @@
                     rememberMe: 'Remember Me',
                     forgotPassword: 'Forgot Password',
                     login: 'Sign In',
+                    noAccount: "Don't have an account?",
+                    doRegister: 'Sign Up',
                     showPassword: 'Show Password',
                     hidePassword: 'Hide Password',
                     themeLight: 'Light',
@@ -363,6 +367,8 @@
                 setText('label[for="password"]', t.password);
                 setText('.fp-check-text', t.rememberMe);
                 setText('.fp-forgot-link', t.forgotPassword);
+                setText('.fp-signup-row-inline .fp-signup-text', t.noAccount);
+                setText('.fp-signup-row-inline .fp-signup-link', t.doRegister);
                 if (username) username.placeholder = t.usernameOrEmail;
                 if (password) password.placeholder = t.password;
                 if (submit) submit.value = t.login;
@@ -526,6 +532,18 @@
                        type="submit"
                        value="${msg("doLogIn")}" />
             </div>
+
+            <#-- Inline registration link -->
+            <#if realm.registrationAllowed && !registrationDisabled??>
+            <div class="fp-signup-row fp-signup-row-inline">
+                <span class="fp-signup-text">${msg("noAccount")}</span>
+                <a tabindex="6"
+                   href="${url.registrationUrl}"
+                   class="fp-signup-link">
+                    ${msg("doRegister")}
+                </a>
+            </div>
+            </#if>
         </form>
         <script>
         (function () {

@@ -221,36 +221,67 @@ body.login-pf::after {
 }
 
 
-body.fp-secondary-login-page .login-pf-page {
-    display: grid !important;
-    place-items: center !important;
-    justify-content: center !important;
-    align-items: center !important;
+body.fp-secondary-login-page,
+body.fp-secondary-login-page.login-pf {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    height: auto !important;
     min-height: 100vh;
-    height: 100vh;
-    padding: 0 16px !important;
+}
+
+html:has(body.fp-secondary-login-page) {
+    overflow-y: auto !important;
+    height: auto !important;
+}
+
+body.fp-secondary-login-page .login-pf-page {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    min-height: 100vh;
+    height: auto !important;
+    padding: 48px 16px 48px !important;
+    box-sizing: border-box !important;
 }
 
 body.fp-secondary-login-page .login-pf-page .container-fluid,
 body.fp-secondary-login-page .login-pf-page .row {
     display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
-    justify-content: center !important;
-    width: 100%;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    max-width: 560px !important;
     margin: 0 !important;
     padding: 0 !important;
+    box-sizing: border-box !important;
 }
 
 body.fp-secondary-login-page .login-pf-page [class*="col-"] {
     width: 100% !important;
-    max-width: 760px;
+    max-width: 560px !important;
     padding: 0 !important;
+    box-sizing: border-box !important;
 }
 
 body.fp-secondary-login-page .card-pf {
-    width: 100%;
-    padding: 48px 78px 54px;
+    width: 100% !important;
+    max-width: 560px !important;
+    padding: 32px 48px 40px !important;
     margin: 0 auto !important;
+    box-sizing: border-box !important;
+}
+
+body.fp-secondary-login-page .card-pf > header,
+body.fp-secondary-login-page .card-pf .login-pf-header {
+    display: none !important;
+}
+
+body.fp-secondary-login-page #kc-page-title {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
 }
 
 body.fp-secondary-login-page #kc-page-title {
@@ -861,44 +892,25 @@ button[type="submit"].btn-primary {
     line-height: 1.4;
 }
 
-/* â”€â”€ 18. Below-card signup row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ 18. Signup row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .fp-signup-row,
 #kc-registration-container {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    margin-top: 26px;
     font-size: 14px;
     text-align: center;
 }
 
+.fp-signup-row-inline {
+    margin-top: 18px;
+}
+
+/* Info wrapper rendered outside card — hidden since we use the inline version */
 #kc-info,
 #kc-info-wrapper {
-    background: transparent !important;
-    border: 0 !important;
-    border-radius: 0 0 30px 30px !important;
-    overflow: hidden;
-    position: relative;
-    z-index: 3;
-}
-
-#kc-info-wrapper {
-    margin: 28px -52px -44px !important;
-    padding: 24px 52px 26px !important;
-    background: rgba(241, 245, 250, 0.82) !important;
-}
-
-#kc-info-wrapper .fp-signup-row,
-#kc-info-wrapper #kc-registration-container {
-    margin-top: 0;
-}
-
-@media (min-width: 1121px) {
-    #kc-info,
-    #kc-info-wrapper {
-        display: none !important;
-    }
+    display: none !important;
 }
 
 .fp-signup-text {
@@ -959,6 +971,20 @@ a:hover {
     .card-pf {
         padding: 36px 24px 32px;
         border-radius: 24px;
+    }
+
+    body.fp-secondary-login-page .card-pf {
+        padding: 28px 20px 32px !important;
+    }
+
+    body.fp-secondary-login-page .login-pf-page [class*="col-"],
+    body.fp-secondary-login-page .login-pf-page .container-fluid,
+    body.fp-secondary-login-page .login-pf-page .row {
+        max-width: 100% !important;
+    }
+
+    body.fp-secondary-login-page .login-pf-page {
+        padding: 24px 12px 32px !important;
     }
 
     #kc-info,
