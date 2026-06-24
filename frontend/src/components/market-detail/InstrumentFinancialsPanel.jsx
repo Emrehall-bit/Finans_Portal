@@ -43,7 +43,8 @@ export default function InstrumentFinancialsPanel({ loading, error, reports }) {
   const { t } = useTranslation();
   const rows = useMemo(() => sortReports(Array.isArray(reports) ? reports : []), [reports]);
   const reportModels = useMemo(() => buildReportModels(rows), [rows]);
-  const summary = useMemo(() => buildSummary(reportModels), [reportModels]);
+  const noDataLabel = t("fundamental.noData");
+  const summary = useMemo(() => buildSummary(reportModels, noDataLabel), [reportModels, noDataLabel]);
 
   if (loading) {
     return <LoadingSpinner label={t("instrumentDetail.financialsLoading", "Finansallar yükleniyor...")} />;
@@ -191,7 +192,7 @@ function buildReportModels(reports) {
   });
 }
 
-function buildSummary(reportModels) {
+function buildSummary(reportModels, noDataLabel = "—") {
   const latest = reportModels.find((model) => model.values.length > 0);
   const latestValues = new Map((latest?.values ?? []).map((item) => [item.itemKey, item]));
 
@@ -202,7 +203,7 @@ function buildSummary(reportModels) {
       const hasValue = value?.total !== null && value?.total !== undefined;
       return {
         ...summaryItem,
-        display: hasValue ? formatCompactFinancialValue(value.total, value?.currency ?? "TRY") : "Veri Yok",
+        display: hasValue ? formatCompactFinancialValue(value.total, value?.currency ?? "TRY") : noDataLabel,
         isNegative: hasValue ? isNegativeValue(value.total) : false,
       };
     }),

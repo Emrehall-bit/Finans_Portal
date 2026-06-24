@@ -2,9 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { getMarketTapeConfig, getMarketTapeQuotes } from "../../api/marketApi";
+import { getMarketQuotesBySymbols } from "../../api/marketApi";
 import { getUserWatchlist } from "../../api/watchlistApi";
-import { getUserAlerts } from "../../api/alertApi";
 import { getUserPortfolios, getPortfolioHoldings } from "../../api/portfolioApi";
 import {
   getNotifications,
@@ -16,6 +15,7 @@ import { extractErrorMessage } from "../../api/responseUtils";
 import AiAssistantWidget from "../ai/AiAssistantWidget";
 import { useTheme } from "../../theme/ThemeContext";
 import { formatDateTime, formatNumber } from "../../utils/formatters";
+import { getFxCodeLabel } from "../../utils/instrumentUtils";
 import {
   LayoutDashboard,
   LineChart,
@@ -29,28 +29,26 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-const PRIORITY_SYMBOLS = [
-  "XU100",
-  "BIST100",
-  "BTCUSDT",
-  "BTCTRY",
-  "BTC",
-  "USDTRY",
-  "EURTRY",
-  "XAUTRY",
-  "GRAMALTIN",
-  "ETHUSDT",
-  "ETHTRY",
-  "ETH",
-];
-
+const DEFAULT_TAPE_SYMBOLS = ["BTC", "USD", "EUR", "THYAO", "AKBNK", "ETH"];
+const MARKET_TAPE_MIN_GROUP_ITEMS = 6;
+const MARKET_TAPE_USER_SYMBOL_LIMIT = 10;
+const TAPE_EXCLUDED_SYMBOLS = new Set(["TRY"]);
+const CRYPTO_TAPE_SYMBOLS = new Set(["BTC", "ETH"]);
 const USER_TAPE_SYMBOLS_STORAGE_PREFIX = "fp:market-tape:user-symbols:";
-const MARKET_TAPE_MIN_GROUP_ITEMS = 18;
 
 function normalizeTapeSymbol(value) {
   return String(value ?? "")
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
+}
+
+function normalizeTapeLookupSymbol(value) {
+  const text = String(value ?? "").trim().toUpperCase();
+  const providerFxMatch = text.match(/^(TCMB|AKBANK):?([A-Z]{3}):?(BUY|SELL)$/);
+  if (providerFxMatch) {
+    return providerFxMatch[2];
+  }
+  return normalizeTapeSymbol(text);
 }
 
 function buildMarketTapeLoopGroup(items) {
@@ -93,59 +91,141 @@ function getNotificationTypeLabel(notification, t) {
   return t(`layout.notificationTypes.${notification?.type ?? "SYSTEM"}`);
 }
 
-function readStoredUserTapeSymbols(userId) {
+function fillTapeSymbols(symbols) {
+  const filled = [];
+  const seen = new Set();
+
+  [...(symbols ?? []), ...DEFAULT_TAPE_SYMBOLS].forEach((symbol) => {
+    const normalized = normalizeTapeLookupSymbol(symbol);
+    if (!normalized || TAPE_EXCLUDED_SYMBOLS.has(normalized) || seen.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    filled.push(normalized);
+  });
+
+  if (filled.length === 0) {
+    return DEFAULT_TAPE_SYMBOLS;
+  }
+
+  while (filled.length < MARKET_TAPE_MIN_GROUP_ITEMS) {
+    filled.push(...filled.slice(0, MARKET_TAPE_MIN_GROUP_ITEMS - filled.length));
+  }
+
+  return filled.slice(0, MARKET_TAPE_USER_SYMBOL_LIMIT);
+}
+
+function formatFxCodeWithLabel(code, locale) {
+  const normalizedCode = String(code || "").trim().toUpperCase();
+  if (!normalizedCode) {
+    return "";
+  }
+
+  const label = getFxCodeLabel(normalizedCode, locale);
+  return label && label !== normalizedCode ? `${normalizedCode} (${label})` : normalizedCode;
+}
+
+function formatNotificationText(value, locale) {
+  return String(value || "")
+    .replace(/\b(?:TCMB|AKBANK):([A-Z]{2,4}):(?:BUY|SELL)\b/gi, (_, currency) =>
+      formatFxCodeWithLabel(currency, locale),
+    )
+    .replace(/\b(?:TCMB|AKBANK)([A-Z]{3})(?:BUY|SELL)\b/gi, (_, currency) =>
+      formatFxCodeWithLabel(currency, locale),
+    );
+}
+
+function getTickerLookupCandidates(symbol) {
+  const normalized = normalizeTapeLookupSymbol(symbol);
+  const candidatesBySymbol = {
+    USD: ["TCMB:USD:SELL", "USD", "USDTRY"],
+    EUR: ["TCMB:EUR:SELL", "EUR", "EURTRY"],
+    BTC: ["BTC", "BTCTRY", "BTCUSDT"],
+    ETH: ["ETH", "ETHTRY", "ETHUSDT"],
+  };
+
+  if (/^[A-Z]{3}$/.test(normalized) && !CRYPTO_TAPE_SYMBOLS.has(normalized)) {
+    return [`TCMB:${normalized}:SELL`, normalized, `${normalized}TRY`];
+  }
+
+  return candidatesBySymbol[normalized] ?? [symbol];
+}
+
+function buildQuoteLookupKey(value) {
+  const text = String(value ?? "").trim().toUpperCase();
+  const providerFxMatch = text.match(/^(TCMB|AKBANK):?([A-Z]{3}):?(BUY|SELL)$/);
+  if (providerFxMatch) {
+    return `${providerFxMatch[1]}:${providerFxMatch[2]}:${providerFxMatch[3]}`;
+  }
+  return normalizeTapeLookupSymbol(value);
+}
+
+function areSymbolListsEqual(left, right) {
+  const normalizedLeft = (left ?? []).map(normalizeTapeLookupSymbol);
+  const normalizedRight = (right ?? []).map(normalizeTapeLookupSymbol);
+  return normalizedLeft.length === normalizedRight.length
+    && normalizedLeft.every((symbol, index) => symbol === normalizedRight[index]);
+}
+
+function readStoredTapeSymbols(userId) {
   if (typeof window === "undefined" || !userId) {
     return [];
   }
 
   try {
     const rawValue = window.sessionStorage.getItem(`${USER_TAPE_SYMBOLS_STORAGE_PREFIX}${userId}`);
-    if (!rawValue) {
-      return [];
-    }
-
-    const parsed = JSON.parse(rawValue);
-    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    const parsed = rawValue ? JSON.parse(rawValue) : [];
+    return Array.isArray(parsed) ? fillTapeSymbols(parsed) : [];
   } catch {
     return [];
   }
 }
 
-function storeUserTapeSymbols(userId, symbols) {
+function storeTapeSymbols(userId, symbols) {
   if (typeof window === "undefined" || !userId || !Array.isArray(symbols) || symbols.length === 0) {
     return;
   }
 
   try {
-    window.sessionStorage.setItem(
-      `${USER_TAPE_SYMBOLS_STORAGE_PREFIX}${userId}`,
-      JSON.stringify(symbols.filter(Boolean)),
-    );
+    window.sessionStorage.setItem(`${USER_TAPE_SYMBOLS_STORAGE_PREFIX}${userId}`, JSON.stringify(fillTapeSymbols(symbols)));
   } catch {
-    // Session storage is an optimization only.
+    // Ticker symbol cache is only a page reload optimization.
   }
 }
 
-function scheduleBackgroundTask(task, delay = 900) {
-  if (typeof window === "undefined") {
-    return { cancel() {} };
+async function loadTapeQuotesForSymbols(symbols) {
+  const uniqueSymbols = [...new Set((symbols ?? []).map(normalizeTapeLookupSymbol).filter(Boolean))].slice(0, MARKET_TAPE_USER_SYMBOL_LIMIT);
+  if (uniqueSymbols.length === 0) {
+    return [];
   }
 
-  if (typeof window.requestIdleCallback === "function") {
-    const idleId = window.requestIdleCallback(task, { timeout: delay + 600 });
-    return {
-      cancel() {
-        window.cancelIdleCallback(idleId);
-      },
-    };
-  }
+  const lookupSymbols = [...new Set(
+    uniqueSymbols
+      .flatMap(getTickerLookupCandidates)
+      .map((symbol) => String(symbol ?? "").trim().toUpperCase())
+      .filter(Boolean),
+  )];
+  const quotes = await getMarketQuotesBySymbols(lookupSymbols);
+  const quoteMap = new Map();
 
-  const timeoutId = window.setTimeout(task, delay);
-  return {
-    cancel() {
-      window.clearTimeout(timeoutId);
-    },
-  };
+  quotes.forEach((quote) => {
+    [quote?.providerSymbol, quote?.symbol, quote?.code, quote?.displayName].forEach((value) => {
+      const key = buildQuoteLookupKey(value);
+      if (key && !quoteMap.has(key)) {
+        quoteMap.set(key, quote);
+      }
+    });
+  });
+
+  return uniqueSymbols
+    .map((symbol) => {
+      const match = getTickerLookupCandidates(symbol)
+        .map(buildQuoteLookupKey)
+        .map((key) => quoteMap.get(key))
+        .find(Boolean);
+      return match ? { ...match, code: symbol } : null;
+    })
+    .filter((item) => item && item.price !== null && item.price !== undefined && Number(item.price) !== 0);
 }
 
 export default function AppLayout() {
@@ -157,7 +237,7 @@ export default function AppLayout() {
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [tickerQuotes, setTickerQuotes] = useState([]);
   const [tickerReady, setTickerReady] = useState(false);
-  const [marketTapeSymbols, setMarketTapeSymbols] = useState(PRIORITY_SYMBOLS);
+  const [marketTapeSymbols, setMarketTapeSymbols] = useState(DEFAULT_TAPE_SYMBOLS);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -169,7 +249,6 @@ export default function AppLayout() {
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
   const userMenuRef = useRef(null);
   const notificationMenuRef = useRef(null);
-  const hydratedUserTapeRef = useRef("");
   const displayName = user?.fullName || user?.email || t("layout.guest");
   const profileLabel = isAuthenticated ? t(`layout.roleLabels.${role || "USER"}`) : t("layout.openAccess");
   const showAdminTopbarLabel = isAdmin && !location.pathname.startsWith("/admin");
@@ -245,90 +324,78 @@ export default function AppLayout() {
 
   useEffect(() => {
     let active = true;
-    let userSymbolsTask = null;
 
-    async function loadUserSpecificTapeSymbols(adminSymbols) {
-      if (!isAuthenticated || !userId || !active) {
-        return;
+    async function resolveUserTapeSymbols() {
+      if (!isAuthenticated || !userId) {
+        return DEFAULT_TAPE_SYMBOLS;
       }
 
-      const [watchlistResult, alertsResult, portfoliosResult] = await Promise.allSettled([
+      const [watchlistResult, portfoliosResult] = await Promise.allSettled([
         getUserWatchlist(userId),
-        getUserAlerts(userId),
         getUserPortfolios(userId),
       ]);
-
-      if (!active) return;
 
       const watchlistCodes = watchlistResult.status === "fulfilled"
         ? (watchlistResult.value ?? []).map((item) => item.instrumentCode).filter(Boolean)
         : [];
 
-      const alertCodes = alertsResult.status === "fulfilled"
-        ? (alertsResult.value ?? []).map((item) => item.instrumentCode).filter(Boolean)
-        : [];
-
       const portfolios = portfoliosResult.status === "fulfilled"
-        ? (portfoliosResult.value ?? []).slice(0, 5)
+        ? (portfoliosResult.value ?? [])
         : [];
 
       const holdingsResults = await Promise.allSettled(
         portfolios.map((portfolio) => getPortfolioHoldings(portfolio.portfolioId)),
       );
 
-      if (!active) return;
-
       const portfolioCodes = holdingsResults
         .filter((result) => result.status === "fulfilled")
         .flatMap((result) => (result.value ?? []).map((holding) => holding.instrumentCode).filter(Boolean));
 
-      const userSymbols = [...new Set([...portfolioCodes, ...watchlistCodes, ...alertCodes])];
-      const resolvedSymbols = userSymbols.length > 0 ? userSymbols : adminSymbols;
-
-      storeUserTapeSymbols(userId, resolvedSymbols);
-      setMarketTapeSymbols(resolvedSymbols);
+      const userSymbols = [...new Set([...portfolioCodes, ...watchlistCodes])].filter(Boolean);
+      return fillTapeSymbols(userSymbols);
     }
 
     async function loadTickerState() {
       try {
-        const [marketResult, tapeResult] = await Promise.allSettled([
-          getMarketTapeQuotes(),
-          getMarketTapeConfig(),
-        ]);
+        const cachedSymbols = isAuthenticated && userId ? readStoredTapeSymbols(userId) : [];
+        const initialSymbols = cachedSymbols.length > 0
+          ? cachedSymbols
+          : isAuthenticated
+            ? []
+            : DEFAULT_TAPE_SYMBOLS;
+
+        if (initialSymbols.length > 0) {
+          const initialQuotes = await loadTapeQuotesForSymbols(initialSymbols);
+          if (!active) return;
+          setMarketTapeSymbols(initialSymbols);
+          setTickerQuotes(initialQuotes);
+          setTickerReady(true);
+        }
+
+        const resolvedSymbols = isAuthenticated && userId
+          ? await resolveUserTapeSymbols()
+          : DEFAULT_TAPE_SYMBOLS;
 
         if (!active) return;
 
-        const quotes = marketResult.status === "fulfilled" ? marketResult.value ?? [] : [];
-        const adminSymbols =
-          tapeResult.status === "fulfilled" &&
-          Array.isArray(tapeResult.value) &&
-          tapeResult.value.length > 0
-            ? tapeResult.value
-            : PRIORITY_SYMBOLS;
-
-        setTickerQuotes(quotes);
-        setTickerReady(true);
-        setMarketTapeSymbols(adminSymbols);
-
         if (isAuthenticated && userId) {
-          const cachedUserSymbols = readStoredUserTapeSymbols(userId);
-          if (cachedUserSymbols.length > 0) {
-            setMarketTapeSymbols(cachedUserSymbols);
-          }
-
-          if (hydratedUserTapeRef.current !== String(userId)) {
-            hydratedUserTapeRef.current = String(userId);
-            userSymbolsTask = scheduleBackgroundTask(() => {
-              loadUserSpecificTapeSymbols(adminSymbols).catch(() => {});
-            });
-          }
-        } else {
-          hydratedUserTapeRef.current = "";
+          storeTapeSymbols(userId, resolvedSymbols);
         }
+
+        if (initialSymbols.length > 0 && areSymbolListsEqual(initialSymbols, resolvedSymbols)) {
+          return;
+        }
+
+        const resolvedQuotes = await loadTapeQuotesForSymbols(resolvedSymbols);
+        if (!active) return;
+
+        setMarketTapeSymbols(resolvedSymbols);
+        setTickerQuotes(resolvedQuotes);
+        setTickerReady(true);
       } catch {
         if (active) {
           setTickerQuotes([]);
-          setMarketTapeSymbols(PRIORITY_SYMBOLS);
+          setMarketTapeSymbols(DEFAULT_TAPE_SYMBOLS);
           setTickerReady(true);
         }
       }
@@ -336,16 +403,8 @@ export default function AppLayout() {
 
     loadTickerState();
 
-    const handleConfigUpdated = () => {
-      loadTickerState();
-    };
-
-    window.addEventListener("market-tape-config-updated", handleConfigUpdated);
-
     return () => {
       active = false;
-      userSymbolsTask?.cancel();
-      window.removeEventListener("market-tape-config-updated", handleConfigUpdated);
     };
   }, [isAuthenticated, userId]);
 
@@ -372,7 +431,7 @@ export default function AppLayout() {
       return [];
     }
 
-    const configuredSymbols = marketTapeSymbols.length > 0 ? marketTapeSymbols : PRIORITY_SYMBOLS;
+    const configuredSymbols = marketTapeSymbols.length > 0 ? marketTapeSymbols : DEFAULT_TAPE_SYMBOLS;
 
     const findBySymbol = (symbol) => {
       const normalizedSymbol = normalizeTapeSymbol(symbol);
@@ -385,11 +444,7 @@ export default function AppLayout() {
       .map(findBySymbol)
       .filter((item) => item && Number(item.price) !== 0);
 
-    const fallbackMatches = PRIORITY_SYMBOLS
-      .map(findBySymbol)
-      .filter((item) => item && Number(item.price) !== 0);
-
-    const merged = configuredMatches.length > 0 ? configuredMatches : fallbackMatches.length > 0 ? fallbackMatches : tickerQuotes.slice(0, 10);
+    const merged = configuredMatches.length > 0 ? configuredMatches : tickerQuotes.slice(0, 10);
     const unique = [];
     const seen = new Set();
 
@@ -750,7 +805,7 @@ export default function AppLayout() {
                             onClick={() => handleNotificationClick(notification)}
                           >
                             <div className="notification-menu-item-top">
-                              <strong>{notification.title}</strong>
+                              <strong>{formatNotificationText(notification.title, i18n.resolvedLanguage)}</strong>
                               <div className="notification-menu-badges">
                                 <span className={`notification-menu-badge${notification.targetType === "BROADCAST" ? " broadcast" : " personal"}`}>
                                   {getNotificationAudienceLabel(notification, t)}
@@ -758,7 +813,7 @@ export default function AppLayout() {
                                 <span className="notification-menu-type">{getNotificationTypeLabel(notification, t)}</span>
                               </div>
                             </div>
-                            <p>{notification.message}</p>
+                            <p>{formatNotificationText(notification.message, i18n.resolvedLanguage)}</p>
                             <div className="notification-menu-item-meta">
                               <span>{formatDateTime(notification.createdAt)}</span>
                               <span>{notification.read ? t("layout.notificationRead") : t("layout.notificationUnread")}</span>
@@ -920,7 +975,7 @@ export default function AppLayout() {
             <div className="notification-detail-head">
               <div>
                 <p className="eyebrow">{t("layout.notifications")}</p>
-                <h3 id="notification-detail-title">{selectedNotification.title}</h3>
+                <h3 id="notification-detail-title">{formatNotificationText(selectedNotification.title, i18n.resolvedLanguage)}</h3>
               </div>
               <button type="button" className="secondary-button" onClick={() => setSelectedNotification(null)}>
                 {t("common.close")}
@@ -937,7 +992,7 @@ export default function AppLayout() {
               </span>
             </div>
 
-            <p className="notification-detail-message">{selectedNotification.message}</p>
+            <p className="notification-detail-message">{formatNotificationText(selectedNotification.message, i18n.resolvedLanguage)}</p>
 
             <div className="notification-detail-meta">
               <span>{t("layout.notificationDetailDate")}</span>

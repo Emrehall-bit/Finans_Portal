@@ -1032,16 +1032,24 @@ html[data-theme="dark"] .dash-watchlist-row:hover {
 }
 
 .dash-portfolio-dist-center strong {
-  font-size: 0.88rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--text-main);
   line-height: 1.2;
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dash-portfolio-dist-center span {
-  font-size: 0.76rem;
+  font-size: 0.67rem;
   color: var(--text-soft);
   letter-spacing: 0.03em;
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dash-portfolio-dist-list {
@@ -1092,6 +1100,12 @@ html[data-theme="dark"] .dash-watchlist-row:hover {
   color: var(--text-soft);
   font-size: 0.72rem;
 }
+
+.dash-portfolio-dist-metrics span.tone-positive { color: #059669; }
+.dash-portfolio-dist-metrics span.tone-negative { color: #dc2626; }
+
+html[data-theme="dark"] .dash-portfolio-dist-metrics span.tone-positive { color: #34d399; }
+html[data-theme="dark"] .dash-portfolio-dist-metrics span.tone-negative { color: #f87171; }
 
 .dash-portfolio-empty {
   padding: 12px 0;

@@ -1,9 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Activity,
+  AlertTriangle,
+  Calculator,
+  CheckCircle2,
+  Database,
+  FilePlus2,
+  FileSpreadsheet,
+  Hash,
+  Info,
+  Loader2,
+  PencilLine,
+  RefreshCw,
+  RotateCw,
+  UploadCloud,
+  XCircle,
+} from "lucide-react";
+import {
   getBinanceHistoryFetchStatus,
-  getMarketTapeCandidates,
-  getMarketTapeConfig,
   getStockFetchStatus,
   getStockHistoryBackfillStatus,
   getTefasFundBackfillStatus,
@@ -11,7 +26,6 @@ import {
   getTcmbHistoryBackfillStatus,
   getTcmbSyncStatus,
   triggerBinanceHistoryFetch,
-  triggerMacroSyncAll,
   triggerStockFetch,
   triggerStockHistoryBackfill,
   triggerTefasFundFetch,
@@ -23,8 +37,8 @@ import {
   triggerInternalCommodityHistoryBackfill,
   triggerCommodityHistoryBackfill,
   triggerIndexHistoryBackfill,
-  updateMarketTapeConfig,
   importCompanyFinancialCsv,
+  seedMockDerivatives,
 } from "../api/adminApi";
 import { repairNewsCategories, syncNews } from "../api/newsApi";
 import { extractErrorMessage } from "../api/responseUtils";
@@ -32,21 +46,6 @@ import { getNewsProviderLabel } from "../components/news/newsCardUtils";
 import EmptyState from "../components/common/EmptyState";
 import ErrorMessage from "../components/common/ErrorMessage";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-
-const DEFAULT_MARKET_TAPE_SYMBOLS = [
-  "XU100",
-  "BIST100",
-  "BTCUSDT",
-  "BTCTRY",
-  "BTC",
-  "USDTRY",
-  "EURTRY",
-  "XAUTRY",
-  "GRAMALTIN",
-  "ETHUSDT",
-  "ETHTRY",
-  "ETH",
-];
 
 function buildPayload(symbol, startDate, endDate) {
   return {
@@ -71,10 +70,6 @@ export default function AdminDataPage() {
   const [tefasFundCode, setTefasFundCode] = useState("");
   const [tefasPeriod, setTefasPeriod] = useState("");
   const [categoryRepairLimit, setCategoryRepairLimit] = useState("500");
-  const [marketTapeSymbols, setMarketTapeSymbols] = useState([]);
-  const [marketTapeCatalog, setMarketTapeCatalog] = useState([]);
-  const [marketTapeSearch, setMarketTapeSearch] = useState("");
-  const [marketTapeLoaded, setMarketTapeLoaded] = useState(false);
   const [jobProgress, setJobProgress] = useState(null);
   const [completedJobKey, setCompletedJobKey] = useState(null);
   const [financialImportFile, setFinancialImportFile] = useState(null);
@@ -84,7 +79,6 @@ export default function AdminDataPage() {
   const [financialImportResult, setFinancialImportResult] = useState(null);
   const pollingRef = useRef(null);
   const actionsLockedRef = useRef(false);
-  const dragStateRef = useRef(null);
 
   const statusLoaders = useMemo(
     () => ({
@@ -121,47 +115,6 @@ export default function AdminDataPage() {
   };
 
   useEffect(() => () => stopJobPolling(), []);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadMarketTape() {
-      const [configResult, quotesResult] = await Promise.allSettled([
-        getMarketTapeConfig(),
-        getMarketTapeCandidates(),
-      ]);
-
-      if (!active) {
-        return;
-      }
-
-      const resolvedSymbols =
-        configResult.status === "fulfilled" && Array.isArray(configResult.value) && configResult.value.length > 0
-          ? configResult.value
-          : DEFAULT_MARKET_TAPE_SYMBOLS;
-
-      const resolvedQuotes =
-        quotesResult.status === "fulfilled" && Array.isArray(quotesResult.value)
-          ? quotesResult.value
-          : [];
-
-      setMarketTapeSymbols(resolvedSymbols);
-      setMarketTapeCatalog(resolvedQuotes);
-      setMarketTapeLoaded(true);
-
-      if (configResult.status === "rejected") {
-        setResult({
-          marketTapeConfigWarning: extractErrorMessage(configResult.reason, t("admin.marketTape.loadError")),
-        });
-      }
-    }
-
-    loadMarketTape();
-
-    return () => {
-      active = false;
-    };
-  }, [t]);
 
   const pollJobStatus = async (key) => {
     const statusLoader = statusLoaders[key];
@@ -520,9 +473,18 @@ export default function AdminDataPage() {
             }),
           ),
       },
+      {
+        key: "mock-derivatives-seed",
+        group: "live",
+        eyebrow: "Mock Data",
+        title: "VİOP & Tahvil Mock Seed",
+        description:
+          "23 vadeli işlem ve 22 tahvil/faiz enstrümanı ile 3 yıllık geçmiş veri üretir. İdempotent — tekrar çalışınca duplicate oluşturmaz.",
+        actionLabel: "Seed Çalıştır",
+        onClick: () => runAction("mock-derivatives-seed", seedMockDerivatives),
+      },
     ],
     [
-      affectedAuditLimit,
       binanceDays,
       categoryRepairLimit,
       commodityHistoryDays,
@@ -532,23 +494,6 @@ export default function AdminDataPage() {
       t,
     ],
   );
-
-  const runMacroSyncAll = async () => {
-    if (!lockActions()) return;
-    setBusyKey("macro-all");
-    setError("");
-    setResult(null);
-    setCompletedJobKey(null);
-    try {
-      const response = await triggerMacroSyncAll();
-      setResult(response ?? null);
-    } catch (err) {
-      setError(extractErrorMessage(err, t("admin.actionError")));
-    } finally {
-      setBusyKey((c) => (c === "macro-all" ? null : c));
-      unlockActions();
-    }
-  };
 
   const handleFinancialImport = async () => {
     if (!financialImportFile || !lockActions()) return;
@@ -583,110 +528,6 @@ export default function AdminDataPage() {
       : completedJobKey
         ? t("admin.metrics.status.completed")
         : "-";
-
-  const availableMarketTapeSymbols = useMemo(() => {
-    const selected = new Set(marketTapeSymbols.map((item) => String(item).toUpperCase()));
-    return [...new Set(
-      marketTapeCatalog
-        .map((item) => item?.symbol)
-        .filter(Boolean)
-        .map((item) => String(item).toUpperCase()),
-    )]
-      .filter((symbol) => !selected.has(symbol))
-      .sort((left, right) => left.localeCompare(right));
-  }, [marketTapeCatalog, marketTapeSymbols]);
-
-  const filteredAvailableMarketTapeSymbols = useMemo(() => {
-    const query = marketTapeSearch.trim().toUpperCase();
-    if (!query) {
-      return availableMarketTapeSymbols;
-    }
-    return availableMarketTapeSymbols.filter((symbol) => symbol.includes(query));
-  }, [availableMarketTapeSymbols, marketTapeSearch]);
-
-  const handleSaveMarketTape = async () => {
-    await runAction("market-tape-save", async () => {
-      const response = await updateMarketTapeConfig(marketTapeSymbols);
-      setMarketTapeSymbols(response?.symbols ?? marketTapeSymbols);
-      window.dispatchEvent(new CustomEvent("market-tape-config-updated"));
-      return response;
-    });
-  };
-
-  const handleAddMarketTapeSymbol = (symbol) => {
-    if (!symbol) return;
-    setMarketTapeSymbols((current) => {
-      const normalized = String(symbol).toUpperCase();
-      if (current.includes(normalized)) return current;
-      return [...current, normalized];
-    });
-  };
-
-  const handleRemoveMarketTapeSymbol = (symbol) => {
-    setMarketTapeSymbols((current) => current.filter((item) => item !== symbol));
-  };
-
-  const handleSelectedDragStart = (symbol, index) => {
-    dragStateRef.current = { source: "selected", symbol, index };
-  };
-
-  const handleAvailableDragStart = (symbol) => {
-    dragStateRef.current = { source: "available", symbol, index: -1 };
-  };
-
-  const moveSelectedSymbol = (fromIndex, toIndex) => {
-    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
-    setMarketTapeSymbols((current) => {
-      if (fromIndex >= current.length || toIndex >= current.length) return current;
-      const next = [...current];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-  };
-
-  const insertAvailableIntoSelected = (symbol, targetIndex = null) => {
-    if (!symbol) return;
-    setMarketTapeSymbols((current) => {
-      const normalized = String(symbol).toUpperCase();
-      if (current.includes(normalized)) return current;
-      const next = [...current];
-      if (targetIndex == null || targetIndex < 0 || targetIndex > next.length) {
-        next.push(normalized);
-      } else {
-        next.splice(targetIndex, 0, normalized);
-      }
-      return next;
-    });
-  };
-
-  const handleSelectedDrop = (targetIndex) => {
-    const dragState = dragStateRef.current;
-    if (!dragState) return;
-    if (dragState.source === "selected") {
-      moveSelectedSymbol(dragState.index, targetIndex);
-    } else {
-      insertAvailableIntoSelected(dragState.symbol, targetIndex);
-    }
-    dragStateRef.current = null;
-  };
-
-  const handleSelectedAppendDrop = () => {
-    const dragState = dragStateRef.current;
-    if (!dragState) return;
-    if (dragState.source === "selected") {
-      setMarketTapeSymbols((current) => {
-        if (dragState.index < 0 || dragState.index >= current.length) return current;
-        const next = [...current];
-        const [moved] = next.splice(dragState.index, 1);
-        next.push(moved);
-        return next;
-      });
-    } else {
-      insertAvailableIntoSelected(dragState.symbol);
-    }
-    dragStateRef.current = null;
-  };
 
   const renderJobProgress = (key) => {
     if (jobProgress?.key === key) {
@@ -856,14 +697,6 @@ export default function AdminDataPage() {
 
         <div className="admin-status-grid">
           <div className="admin-console-metric-card">
-            <span>{t("admin.status.totalSymbols")}</span>
-            <strong>{marketTapeLoaded ? marketTapeCatalog.length || "-" : "-"}</strong>
-          </div>
-          <div className="admin-console-metric-card">
-            <span>{t("admin.status.selectedTapeSymbols")}</span>
-            <strong>{marketTapeLoaded ? marketTapeSymbols.length || "-" : "-"}</strong>
-          </div>
-          <div className="admin-console-metric-card">
             <span>{t("admin.status.lastOperationTime")}</span>
             <strong>-</strong>
           </div>
@@ -872,125 +705,6 @@ export default function AdminDataPage() {
             <strong>{operationStatusLabel}</strong>
           </div>
         </div>
-      </section>
-
-      <section className="admin-section admin-console-form admin-market-tape-section panel-surface">
-        <div className="admin-section-head">
-          <div>
-          <p className="eyebrow">{t("admin.marketTape.eyebrow")}</p>
-          <h3>{t("admin.marketTape.title")}</h3>
-          <p className="admin-console-copy">{t("admin.marketTape.description")}</p>
-          </div>
-        </div>
-
-        {!marketTapeLoaded ? (
-          <LoadingSpinner label={t("admin.marketTape.loading")} />
-        ) : (
-          <>
-            <div className="market-tape-admin-grid">
-              <section className="market-tape-admin-panel">
-                <div className="market-tape-admin-head">
-                  <span className="admin-console-label">{t("admin.marketTape.selectedLabel")}</span>
-                  <strong>{marketTapeSymbols.length}</strong>
-                </div>
-
-                {marketTapeSymbols.length === 0 ? (
-                  <EmptyState
-                    title={t("admin.marketTape.emptySelectedTitle")}
-                    description={t("admin.marketTape.emptySelectedDescription")}
-                  />
-                ) : (
-                  <div
-                    className="market-tape-admin-list"
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={handleSelectedAppendDrop}
-                  >
-                    {marketTapeSymbols.map((symbol, index) => (
-                      <div
-                        key={symbol}
-                        className="market-tape-chip selected"
-                        draggable={!controlsDisabled}
-                        onDragStart={() => handleSelectedDragStart(symbol, index)}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDrop={() => handleSelectedDrop(index)}
-                      >
-                        <span className="market-tape-chip-handle">::</span>
-                        <strong>{symbol}</strong>
-                        <button
-                          type="button"
-                          className="market-tape-chip-remove"
-                          disabled={controlsDisabled}
-                          onClick={() => handleRemoveMarketTapeSymbol(symbol)}
-                        >
-                          {t("common.remove")}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="market-tape-admin-panel">
-                <div className="market-tape-admin-head">
-                  <span className="admin-console-label">{t("admin.marketTape.availableLabel")}</span>
-                  <strong>{availableMarketTapeSymbols.length}</strong>
-                </div>
-                <input
-                  type="text"
-                  className="admin-console-input"
-                  value={marketTapeSearch}
-                  onChange={(event) => setMarketTapeSearch(event.target.value.toUpperCase())}
-                  placeholder={t("admin.marketTape.searchPlaceholder")}
-                  disabled={controlsDisabled}
-                />
-                <div className="market-tape-admin-list compact">
-                  {availableMarketTapeSymbols.length === 0 ? (
-                    <EmptyState
-                      title={t("admin.marketTape.emptyAvailableTitle")}
-                      description={t("admin.marketTape.emptyAvailableDescription")}
-                    />
-                  ) : filteredAvailableMarketTapeSymbols.length === 0 ? (
-                    <EmptyState
-                      title={t("admin.marketTape.emptySearchTitle")}
-                      description={t("admin.marketTape.emptySearchDescription")}
-                    />
-                  ) : (
-                    filteredAvailableMarketTapeSymbols.map((symbol) => (
-                      <div
-                        key={symbol}
-                        className="market-tape-chip available"
-                        draggable={!controlsDisabled}
-                        onDragStart={() => handleAvailableDragStart(symbol)}
-                      >
-                        <strong>{symbol}</strong>
-                        <button
-                          type="button"
-                          className="market-tape-chip-add"
-                          disabled={controlsDisabled}
-                          onClick={() => handleAddMarketTapeSymbol(symbol)}
-                        >
-                          {t("common.add")}
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </section>
-            </div>
-            <p className="admin-console-copy">{t("admin.marketTape.hint")}</p>
-            <div className="admin-console-actions">
-              <button
-                type="button"
-                className="admin-console-button"
-                disabled={controlsDisabled}
-                onClick={handleSaveMarketTape}
-              >
-                <span className="admin-console-button-glow" />
-                <span>{isBusy("market-tape-save") ? t("admin.running") : t("admin.marketTape.save")}</span>
-              </button>
-            </div>
-          </>
-        )}
       </section>
 
       <section className="admin-section">
@@ -1083,35 +797,6 @@ export default function AdminDataPage() {
           </article>
         </div>
       </section>
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <div>
-            <p className="eyebrow">{t("admin.sections.macroEyebrow")}</p>
-            <h3>{t("admin.sections.macroTitle")}</h3>
-          </div>
-        </div>
-        <div className="admin-console-grid admin-grid">
-          <article className="admin-console-card admin-operation-card panel-surface">
-            <div className="admin-console-card-copy">
-              <div className="admin-operation-card-head">
-                <p className="eyebrow">{t("admin.cards.macroSyncAll.eyebrow")}</p>
-              </div>
-              <h3>{t("admin.cards.macroSyncAll.title")}</h3>
-              <p>{t("admin.cards.macroSyncAll.description")}</p>
-            </div>
-            <button
-              type="button"
-              className="admin-console-button"
-              disabled={controlsDisabled}
-              onClick={runMacroSyncAll}
-            >
-              <span className="admin-console-button-glow" />
-              <span>{isBusy("macro-all") ? t("admin.running") : t("admin.cards.macroSyncAll.action")}</span>
-            </button>
-          </article>
-        </div>
-      </section>
-
       <section className="admin-section panel-surface">
         <div className="admin-section-head">
           <div>
@@ -1124,8 +809,167 @@ export default function AdminDataPage() {
           </div>
         </div>
 
-        <div className="admin-console-grid admin-grid">
-          <article className="admin-console-card admin-operation-card panel-surface">
+        <div className="admin-financial-import-grid">
+          <article className="admin-financial-card admin-financial-upload-card">
+            <div className="admin-financial-card-head">
+              <div>
+                <p className="eyebrow">Dosya Yükleme</p>
+                <h4>KAP XLSX veya Manual CSV</h4>
+              </div>
+              <span className="admin-financial-icon"><FileSpreadsheet size={18} /></span>
+            </div>
+            <label className={`admin-upload-dropzone${controlsDisabled ? " disabled" : ""}`} htmlFor="financial-import-file">
+              <input
+                id="financial-import-file"
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={(e) => setFinancialImportFile(e.target.files?.[0] ?? null)}
+                disabled={controlsDisabled}
+              />
+              <span className="admin-upload-icon"><UploadCloud size={28} /></span>
+              <span className="admin-upload-title">
+                {financialImportFile ? financialImportFile.name : "Dosya seçin veya buraya sürükleyin"}
+              </span>
+              <span className="admin-upload-meta">Desteklenen formatlar: XLSX, CSV</span>
+            </label>
+          </article>
+
+          <article className="admin-financial-card">
+            <div className="admin-financial-card-head">
+              <div>
+                <p className="eyebrow">Import Ayarları</p>
+                <h4>Çalıştırma modu</h4>
+              </div>
+              <span className="admin-financial-icon"><Database size={18} /></span>
+            </div>
+            <div className="admin-import-options">
+              <ImportOptionCard
+                icon={RotateCw}
+                title="Dry-run"
+                description="Kaydetmeden önizleme ve sayım yapar."
+                checked={financialImportDryRun}
+                disabled={controlsDisabled}
+                onChange={setFinancialImportDryRun}
+              />
+              <ImportOptionCard
+                icon={RefreshCw}
+                title="Overwrite"
+                description="Mevcut finansal değerleri günceller."
+                checked={financialImportReplace}
+                disabled={controlsDisabled}
+                onChange={setFinancialImportReplace}
+              />
+              <ImportOptionCard
+                icon={Calculator}
+                title="Oran hesaplama"
+                description="Import sonrası temel analiz oranlarını yeniler."
+                checked={financialImportRecalc}
+                disabled={controlsDisabled}
+                onChange={setFinancialImportRecalc}
+              />
+            </div>
+            <button
+              type="button"
+              className="admin-console-button admin-financial-import-button"
+              disabled={controlsDisabled || !financialImportFile}
+              onClick={handleFinancialImport}
+            >
+              <span className="admin-console-button-glow" />
+              <span className="admin-import-button-content">
+                {isBusy("financial-import") ? <Loader2 className="admin-button-spinner" size={18} /> : <UploadCloud size={18} />}
+                {isBusy("financial-import")
+                  ? t("admin.running")
+                  : financialImportDryRun
+                  ? "Dry-run Başlat"
+                  : "Import Et"}
+              </span>
+            </button>
+          </article>
+
+          <article className="admin-financial-card admin-financial-summary-card">
+            <div className="admin-financial-card-head">
+              <div>
+                <p className="eyebrow">İşlem Özeti</p>
+                <h4>DRY-RUN metrikleri</h4>
+              </div>
+              {financialImportResult?.dryRun ? <span className="summary-chip">DRY-RUN</span> : null}
+            </div>
+            {financialImportResult ? (
+              <div className="admin-financial-metrics">
+                <FinancialMetric icon={FilePlus2} label="Yeni Rapor" value={financialImportResult.createdReports ?? 0} />
+                <FinancialMetric icon={PencilLine} label="Güncellenen Rapor" value={financialImportResult.updatedReports ?? 0} />
+                <FinancialMetric icon={Hash} label="Yeni Değer" value={financialImportResult.createdValues ?? 0} />
+                <FinancialMetric icon={Activity} label="Güncellenen Değer" value={financialImportResult.updatedValues ?? 0} />
+                <FinancialMetric icon={Calculator} label="Oran Hesaplanan" value={financialImportResult.recalculatedTickers?.length ?? 0} />
+                <FinancialMetric icon={XCircle} label="Hata" value={financialImportResult.validationErrors?.length ?? 0} tone="danger" />
+              </div>
+            ) : (
+              <StatusPanel
+                tone="info"
+                icon={Info}
+                title="Henüz işlem sonucu yok"
+                description="Dosya seçip dry-run veya import başlattığınızda metrikler burada görünür."
+              />
+            )}
+          </article>
+
+          <article className="admin-financial-card admin-financial-response-card">
+            <div className="admin-financial-card-head">
+              <div>
+                <p className="eyebrow">Backend Cevabı</p>
+                <h4>Sonuç durumu</h4>
+              </div>
+            </div>
+            {financialImportResult ? (
+              <StatusPanel
+                tone={(financialImportResult.validationErrors?.length ?? 0) > 0 ? "error" : "success"}
+                icon={(financialImportResult.validationErrors?.length ?? 0) > 0 ? AlertTriangle : CheckCircle2}
+                title={(financialImportResult.validationErrors?.length ?? 0) > 0 ? "Kontrol gereken satırlar var" : "Import cevabı başarılı"}
+                description={financialImportResult.dryRun ? "DRY-RUN modunda veri kaydedilmedi." : "Backend işlemi tamamladı."}
+              />
+            ) : (
+              <StatusPanel
+                tone="info"
+                icon={Info}
+                title="Cevap bekleniyor"
+                description="Import sonucunda backend mesajları, uyarılar ve validasyon hataları burada listelenir."
+              />
+            )}
+            {financialImportResult && (
+              <div className="admin-financial-response-details">
+                {Array.isArray(financialImportResult.recalculatedTickers) && financialImportResult.recalculatedTickers.length > 0 && (
+                  <p className="admin-console-copy">
+                    Oran hesaplanan: {financialImportResult.recalculatedTickers.join(", ")}
+                  </p>
+                )}
+                {Array.isArray(financialImportResult.missingShareCountWarnings) && financialImportResult.missingShareCountWarnings.length > 0 && (
+                  <div className="admin-financial-warning">
+                    <AlertTriangle size={16} />
+                    <p>
+                      Hisse sayısı eksik (oranlar eksik kalabilir):{" "}
+                      {financialImportResult.missingShareCountWarnings.join(", ")}
+                    </p>
+                  </div>
+                )}
+                {Array.isArray(financialImportResult.validationErrors) && financialImportResult.validationErrors.length > 0 && (
+                  <ul className="admin-audit-reasons admin-financial-error-list">
+                    {financialImportResult.validationErrors.slice(0, 10).map((err, i) => (
+                      <li key={i}>
+                        {err.lineNumber ? `Satır ${err.lineNumber}: ` : ""}
+                        {err.tickerCode ? `[${err.tickerCode}] ` : ""}
+                        {err.message}
+                      </li>
+                    ))}
+                    {financialImportResult.validationErrors.length > 10 && (
+                      <li>... ve {financialImportResult.validationErrors.length - 10} hata daha</li>
+                    )}
+                  </ul>
+                )}
+              </div>
+            )}
+          </article>
+
+          <article className="admin-financial-legacy-hidden" aria-hidden="true">
             <div className="admin-console-card-copy">
               <div className="admin-operation-card-head">
                 <p className="eyebrow">XLSX / CSV</p>
@@ -1283,4 +1127,53 @@ function isJobCompleted(key, status) {
   }
 
   return Number(status.total) > 0 || Boolean(status.lastError);
+}
+
+function ImportOptionCard({ icon, title, description, checked, disabled, onChange }) {
+  const optionIcon = createElement(icon, { size: 18 });
+
+  return (
+    <label className={`admin-import-option-card${checked ? " active" : ""}${disabled ? " disabled" : ""}`}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        disabled={disabled}
+      />
+      <span className="admin-import-option-icon">{optionIcon}</span>
+      <span className="admin-import-option-copy">
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </span>
+      <span className="admin-import-option-toggle" aria-hidden="true">
+        <span />
+      </span>
+    </label>
+  );
+}
+
+function FinancialMetric({ icon, label, value, tone = "default" }) {
+  const metricIcon = createElement(icon, { size: 17 });
+
+  return (
+    <div className={`admin-financial-metric-card ${tone}`}>
+      <span className="admin-financial-metric-icon">{metricIcon}</span>
+      <span className="admin-financial-metric-label">{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function StatusPanel({ icon, title, description, tone }) {
+  const statusIcon = createElement(icon, { size: 20 });
+
+  return (
+    <div className={`admin-financial-status-panel ${tone}`}>
+      <span className="admin-financial-status-icon">{statusIcon}</span>
+      <div>
+        <strong>{title}</strong>
+        <p>{description}</p>
+      </div>
+    </div>
+  );
 }

@@ -166,7 +166,7 @@ export default function ProfilePage() {
     };
   }, [hasAuthenticatedSession, keycloak, t]);
 
-  const displayAuthProvider = formatAuthProviderLabel(user?.authProvider ?? userProfile?.authProvider, t);
+  const displayAuthProvider = formatAuthProviderLabel(user?.authProvider ?? userProfile?.authProvider);
 
   return (
     <div className="profile-page-stack profile-settings-page">
@@ -481,7 +481,7 @@ function getInitials(value) {
     .join("");
 }
 
-function formatAuthProviderLabel(value, t) {
+function formatAuthProviderLabel(value) {
   const normalized = String(value || "KEYCLOAK").toUpperCase();
   const currentLanguage =
     typeof window === "undefined"

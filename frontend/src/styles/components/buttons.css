@@ -118,3 +118,16 @@ button:focus-visible {
 .icon-button:focus-visible {
   transform: translateY(-1px);
 }
+
+html[data-theme="dark"] .topbar-user-button {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(51, 65, 85, 0.68);
+  color: #e2e8f0;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .topbar-user-button:hover {
+  border-color: rgba(96, 165, 250, 0.32);
+  background: rgba(20, 30, 55, 0.96);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.28);
+}

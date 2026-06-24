@@ -19,7 +19,21 @@ function resolveThumbnail(item) {
   return item?.thumbnailUrl || item?.imageUrl || item?.image || null;
 }
 
-function Placeholder({ item, providerLabel, logoUrl, logoFailed, onLogoError }) {
+function Placeholder({ item, providerLabel, logoUrl, logoFailed, onLogoError, logoOnly = false }) {
+  if (logoOnly && logoUrl && !logoFailed) {
+    return (
+      <div className="news-card-placeholder" aria-hidden="true">
+        <img
+          className="news-card-placeholder-logo news-card-placeholder-logo--large"
+          src={logoUrl}
+          alt={providerLabel}
+          loading="lazy"
+          onError={onLogoError}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="news-card-placeholder" aria-hidden="true">
       <div className="news-card-placeholder-inner">
@@ -75,7 +89,8 @@ function NewsCardContent({ item, onClick, assetKey, isFavorite, favoriteBusy, on
 
   const thumbnail = resolveThumbnail(item);
   const kapDisclosure = isKapDisclosure(item);
-  const hasImage = Boolean(thumbnail) && !imageFailed && !kapDisclosure;
+  const isSystemGenerated = item?.provider?.toUpperCase() === "SYSTEM_GENERATED";
+  const hasImage = Boolean(thumbnail) && !imageFailed && !kapDisclosure && !isSystemGenerated;
   const providerLabel = getNewsProviderLabel(item?.provider);
   const sourceName = getNewsSourceName(item);
   const logoUrl = getNewsFallbackLogoUrl(item);
@@ -169,6 +184,7 @@ function NewsCardContent({ item, onClick, assetKey, isFavorite, favoriteBusy, on
               logoUrl={logoUrl}
               logoFailed={logoFailed}
               onLogoError={() => setLogoFailed(true)}
+              logoOnly={isSystemGenerated}
             />
           )}
         </div>
@@ -176,6 +192,9 @@ function NewsCardContent({ item, onClick, assetKey, isFavorite, favoriteBusy, on
         <div className="news-card-body">
           <div className="news-card-meta">
             <span className="news-card-provider">{sourceName}</span>
+            {isSystemGenerated ? (
+              <span className="news-system-badge">Fake</span>
+            ) : null}
             <span className="news-card-dot" />
             <time dateTime={item?.publishedAt || item?.createdAt || item?.updatedAt || ""}>{publishedAtLabel}</time>
           </div>

@@ -715,3 +715,151 @@
   display: grid;
   gap: 8px;
 }
+
+/* ── Dark mode overrides ─────────────────────────────────────── */
+
+html[data-theme="dark"] .portfolio-page-v4 {
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.06), transparent 26%),
+    linear-gradient(180deg, rgba(7, 14, 28, 0.98), rgba(9, 16, 30, 0.98));
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-page-top {
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(9, 16, 30, 0.92), rgba(15, 23, 42, 0.96));
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-detail-title {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-header-select {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(51, 65, 85, 0.72);
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-hero-value {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-hero-trend-pill {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(51, 65, 85, 0.62);
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-hero-trend-pill.is-positive {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-hero-trend-pill.is-negative {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-summary-strip--hero {
+  background:
+    linear-gradient(180deg, rgba(9, 16, 30, 0.88), rgba(15, 23, 42, 0.94)),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.04), transparent 44%);
+  border-color: rgba(51, 65, 85, 0.52);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-benchmark-strip {
+  background:
+    linear-gradient(180deg, rgba(9, 16, 30, 0.82), rgba(15, 23, 42, 0.86)),
+    linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(37, 99, 235, 0));
+  border-color: rgba(51, 65, 85, 0.62);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-benchmark-copy strong {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-benchmark-chip {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(51, 65, 85, 0.62);
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-benchmark-chip:hover,
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-benchmark-chip.active {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.38);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-benchmark-metric {
+  background: rgba(9, 16, 30, 0.72);
+  border-color: rgba(51, 65, 85, 0.62);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-benchmark-metric strong {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-benchmark-status.above {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.14);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-benchmark-status.below {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-performance-stat strong {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-performance-chart-shell {
+  background:
+    linear-gradient(180deg, rgba(9, 16, 30, 0.78), rgba(15, 23, 42, 0.84)),
+    linear-gradient(180deg, rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0));
+  border-color: rgba(51, 65, 85, 0.62);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-performance-range-tabs {
+  background: linear-gradient(180deg, rgba(9, 16, 30, 0.82), rgba(15, 23, 42, 0.88));
+  border-color: rgba(51, 65, 85, 0.62);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-watchlist-pill {
+  background: linear-gradient(180deg, rgba(9, 16, 30, 0.88), rgba(15, 23, 42, 0.92));
+  border-color: rgba(51, 65, 85, 0.58);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-watchlist-pill:hover,
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-watchlist-pill:focus-visible {
+  border-color: rgba(96, 165, 250, 0.42);
+  box-shadow: 0 10px 20px rgba(2, 6, 23, 0.32);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-watchlist-pill-dot {
+  box-shadow: 0 0 0 4px rgba(9, 16, 30, 0.62);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-watchlist-pill-symbol-wrap strong {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-watchlist-pill-price {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-watchlist-pill-change.is-positive {
+  color: #34d399;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-watchlist-pill-change.is-negative {
+  color: #f87171;
+}

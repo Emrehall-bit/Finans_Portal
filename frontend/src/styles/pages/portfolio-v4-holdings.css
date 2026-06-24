@@ -512,6 +512,140 @@
   min-height: 0;
 }
 
+/* ── Dark mode overrides ─────────────────────────────────────── */
+
+html[data-theme="dark"] .portfolio-ai-section-card,
+html[data-theme="dark"] .portfolio-ai-state-card {
+  background: rgba(9, 16, 30, 0.88);
+  border-color: rgba(51, 65, 85, 0.62);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-ai-section-card.is-primary {
+  background: linear-gradient(180deg, rgba(9, 16, 30, 0.88), rgba(15, 26, 55, 0.92));
+}
+
+html[data-theme="dark"] .portfolio-ai-section-card.is-risk {
+  background: linear-gradient(180deg, rgba(9, 16, 30, 0.88), rgba(20, 16, 30, 0.92));
+}
+
+html[data-theme="dark"] .portfolio-ai-section-card.is-success {
+  background: linear-gradient(180deg, rgba(9, 16, 30, 0.88), rgba(9, 20, 18, 0.92));
+}
+
+html[data-theme="dark"] .portfolio-ai-section-card.is-warning {
+  background: linear-gradient(180deg, rgba(9, 16, 30, 0.88), rgba(20, 16, 9, 0.92));
+}
+
+html[data-theme="dark"] .portfolio-ai-state-card--loading {
+  background: linear-gradient(180deg, rgba(15, 23, 55, 0.92), rgba(9, 16, 30, 0.94));
+}
+
+html[data-theme="dark"] .portfolio-ai-state-card--error {
+  background: linear-gradient(180deg, rgba(30, 12, 12, 0.92), rgba(9, 16, 30, 0.94));
+}
+
+html[data-theme="dark"] .portfolio-ai-skeleton-line {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.7), rgba(51, 65, 85, 0.95), rgba(30, 41, 59, 0.7));
+  background-size: 200% 100%;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-metric-row {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(9, 16, 30, 0.78));
+  border-color: rgba(51, 65, 85, 0.62);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-metric-head span {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-metric-value strong {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-score-badge {
+  background: rgba(15, 23, 42, 0.82);
+  border-color: rgba(51, 65, 85, 0.62);
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-score-badge.is-warning {
+  color: #fbbf24;
+  background: rgba(30, 18, 0, 0.72);
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-score-badge.is-danger {
+  color: #f87171;
+  background: rgba(30, 8, 8, 0.72);
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-score-badge.is-success {
+  color: #34d399;
+  background: rgba(6, 22, 16, 0.72);
+  border-color: rgba(16, 185, 129, 0.24);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-progress {
+  background: rgba(30, 41, 59, 0.82);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-metric-card {
+  background: linear-gradient(180deg, rgba(9, 16, 30, 0.82), rgba(15, 23, 42, 0.88));
+  border-color: rgba(51, 65, 85, 0.56);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-metric-value {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-asset-label-row strong {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-holdings-table--v3 thead tr {
+  background: rgba(9, 16, 30, 0.82);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-holdings-table--v3 tbody tr {
+  border-bottom-color: rgba(51, 65, 85, 0.52);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-holdings-table--v3 tbody tr:hover {
+  background: rgba(30, 41, 59, 0.52);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-pl-cell.is-up,
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-tonal-text.is-up {
+  color: #34d399;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-pl-cell.is-down,
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-tonal-text.is-down {
+  color: #f87171;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-pl-cell.is-flat,
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-tonal-text.is-flat {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-insight-tabs {
+  background: rgba(9, 16, 30, 0.72);
+  border-color: rgba(51, 65, 85, 0.62);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-insight-tab.active {
+  background: rgba(96, 165, 250, 0.16);
+  border-color: rgba(96, 165, 250, 0.24);
+  color: #93c5fd;
+}
+
 @media (max-width: 1180px) {
   .portfolio-page-v4 .portfolio-grid-row--performance,
   .portfolio-page-v4 .portfolio-grid-row--analytics {

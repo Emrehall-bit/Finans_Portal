@@ -64,6 +64,7 @@ const PROVIDER_LABEL_KEYS = {
   CNBC_RSS: "news.filterProviders.cnbc",
   GUARDIAN: "news.filterProviders.guardian",
   KAP: "news.filterProviders.kap",
+  SYSTEM_GENERATED: "news.filterProviders.systemGenerated",
 };
 
 export function getNewsCategoryFilterOptions(t) {

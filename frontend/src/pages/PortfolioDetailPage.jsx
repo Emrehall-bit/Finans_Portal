@@ -20,7 +20,7 @@ import useToast from "../hooks/useToast";
 import { usePortfolioDetails } from "../hooks/usePortfolioQueries";
 import { useTheme } from "../theme/ThemeContext";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
-import { formatCurrency, formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
+import { formatDateTime, formatNumber, formatPercent } from "../utils/formatters";
 import { formatInstrumentLabel } from "../utils/instrumentUtils";
 
 const CHART_COLORS = ["#2563eb", "#059669", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#4f46e5"];
@@ -634,5 +634,4 @@ function getAssetCategoryLabel(key) {
     OTHER: "Diğer",
   }[key] ?? "Diğer";
 }
-
 

@@ -100,6 +100,10 @@
 }
 
 html[data-theme="dark"] {
+  --accent: #60a5fa;
+  --accent-soft: rgba(96, 165, 250, 0.14);
+  --button-primary-bg: linear-gradient(135deg, #2563eb, #3b82f6);
+  --button-primary-text: #ffffff;
   color: #e2e8f0;
   background:
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 24%),
@@ -157,4 +161,7 @@ html[data-theme="dark"] {
   --surface-elevated: rgba(15, 23, 42, 0.96);
   --text-primary: #e2e8f0;
   --text-secondary: #94a3b8;
+  --radius-xl: 28px;
+  --radius-lg: 22px;
+  --radius-md: 16px;
 }

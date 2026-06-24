@@ -256,6 +256,14 @@ export function buildStats(quote, annualHistory = []) {
     quote?.openingPrice,
     latestHistoryPoint?.openPrice,
   );
+  const previousClose = firstNumeric(
+    quote?.previousClose,
+    quote?.previousClosingPrice,
+    quote?.lastClose,
+  );
+  const dayHigh = firstNumeric(quote?.dayHigh, quote?.highPrice, latestHistoryPoint?.highPrice);
+  const dayLow = firstNumeric(quote?.dayLow, quote?.lowPrice, latestHistoryPoint?.lowPrice);
+  const dayRange = dayLow === null || dayHigh === null ? "-" : `${formatAxisNumber(dayLow)} - ${formatAxisNumber(dayHigh)}`;
   const volume = firstNumeric(
     quote?.volume,
     quote?.totalVolume,
@@ -266,6 +274,8 @@ export function buildStats(quote, annualHistory = []) {
     { label: i18n.t("stats.lastPrice"), value: formatNumber(quote?.price), tone: "neutral" },
     { label: i18n.t("stats.dailyChange"), value: formatMarketChange(quote?.changeRate), tone: changeTone(quote?.changeRate) },
     { label: i18n.t("stats.open"), value: openPrice === null ? "-" : formatNumber(openPrice), tone: openPrice === null ? "muted" : "neutral" },
+    { label: i18n.t("stats.previousClose"), value: previousClose === null ? "-" : formatNumber(previousClose), tone: previousClose === null ? "muted" : "neutral" },
+    { label: i18n.t("stats.dayRange"), value: dayRange, tone: dayRange === "-" ? "muted" : "neutral" },
     { label: i18n.t("stats.volume"), value: volume === null ? "-" : formatNumber(volume, 0), tone: volume === null ? "muted" : "neutral" },
     { label: i18n.t("stats.yearRange"), value: annualRange, tone: "neutral" },
     { label: i18n.t("stats.lastUpdate"), value: formatDateTime(priceTime), tone: "neutral" },

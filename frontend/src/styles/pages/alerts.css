@@ -982,3 +982,48 @@ html[data-theme="dark"] .alerts-note-expand-btn:hover {
 html[data-theme="dark"] .alerts-note-popup-edit-label {
   color: #93c5fd;
 }
+
+html[data-theme="dark"] .alerts-active-panel th {
+  color: #94a3b8;
+  background: rgba(9, 16, 30, 0.72);
+}
+
+html[data-theme="dark"] .alerts-active-panel tbody tr:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+html[data-theme="dark"] .alerts-notes-textarea {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(51, 65, 85, 0.82);
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .alerts-notes-textarea::placeholder {
+  color: #475569;
+}
+
+html[data-theme="dark"] .alerts-notes-textarea:focus {
+  border-color: rgba(96, 165, 250, 0.45);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+html[data-theme="dark"] .alerts-note-popup-btn--pinned {
+  color: #fbbf24;
+  border-color: rgba(234, 179, 8, 0.4);
+  background: rgba(120, 85, 0, 0.2);
+}
+
+html[data-theme="dark"] .alerts-note-popup-dates span {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .alerts-primary-action--secondary {
+  border-color: rgba(71, 85, 105, 0.52);
+  color: #94a3b8;
+  background: rgba(51, 65, 85, 0.16);
+}
+
+html[data-theme="dark"] .alerts-primary-action--secondary:hover {
+  background: rgba(51, 65, 85, 0.28);
+  border-color: rgba(71, 85, 105, 0.72);
+}

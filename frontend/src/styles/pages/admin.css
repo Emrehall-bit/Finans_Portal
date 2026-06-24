@@ -233,6 +233,363 @@
   font-weight: 600;
 }
 
+.admin-financial-import-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.05fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.admin-financial-card {
+  display: grid;
+  gap: 16px;
+  min-height: 0;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--panel-border) 92%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 28%, transparent), transparent 58%),
+    color-mix(in srgb, var(--panel-strong) 88%, transparent);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+}
+
+.admin-financial-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-financial-card-head h4,
+.admin-financial-card-head p {
+  margin: 0;
+}
+
+.admin-financial-card-head h4 {
+  color: var(--text-main);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.admin-financial-icon,
+.admin-upload-icon,
+.admin-import-option-icon,
+.admin-financial-metric-icon,
+.admin-financial-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.admin-financial-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.admin-upload-dropzone {
+  min-height: 174px;
+  display: grid;
+  place-items: center;
+  gap: 9px;
+  padding: 22px;
+  border-radius: 18px;
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 42%, var(--panel-border));
+  background: color-mix(in srgb, var(--accent-soft) 36%, var(--panel));
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.admin-upload-dropzone:hover,
+.admin-upload-dropzone:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 76%, var(--panel-border));
+  background: color-mix(in srgb, var(--accent-soft) 54%, var(--panel));
+  transform: translateY(-1px);
+}
+
+.admin-upload-dropzone.disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+}
+
+.admin-upload-dropzone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.admin-upload-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--panel) 86%, white 14%);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.admin-upload-title {
+  max-width: 100%;
+  color: var(--text-main);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.admin-upload-meta {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.admin-import-options {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-import-option-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--panel-border) 90%, transparent);
+  background: color-mix(in srgb, var(--panel) 84%, transparent);
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.admin-import-option-card:hover,
+.admin-import-option-card:focus-within,
+.admin-import-option-card.active {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--panel-border));
+  background: color-mix(in srgb, var(--accent-soft) 48%, var(--panel));
+}
+
+.admin-import-option-card:hover {
+  transform: translateY(-1px);
+}
+
+.admin-import-option-card.disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.admin-import-option-card input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.admin-import-option-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 80%, transparent);
+}
+
+.admin-import-option-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-import-option-copy strong {
+  color: var(--text-main);
+  font-size: 0.92rem;
+}
+
+.admin-import-option-copy span {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.admin-import-option-toggle {
+  width: 42px;
+  height: 24px;
+  padding: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-border) 72%, transparent);
+  transition: background 180ms ease;
+}
+
+.admin-import-option-toggle span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  transition: transform 180ms ease;
+}
+
+.admin-import-option-card.active .admin-import-option-toggle {
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
+}
+
+.admin-import-option-card.active .admin-import-option-toggle span {
+  transform: translateX(18px);
+}
+
+.admin-financial-import-button {
+  width: 100%;
+  justify-self: stretch;
+  margin-top: auto;
+}
+
+.admin-button-spinner {
+  animation: admin-spin 900ms linear infinite;
+}
+
+@keyframes admin-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.admin-financial-summary-card,
+.admin-financial-response-card {
+  grid-column: span 1;
+}
+
+.admin-financial-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-financial-metric-card {
+  display: grid;
+  gap: 7px;
+  min-height: 118px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--panel-border) 90%, transparent);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.admin-financial-metric-card.danger {
+  border-color: rgba(239, 68, 68, 0.22);
+  background: color-mix(in srgb, rgba(239, 68, 68, 0.1) 68%, var(--panel));
+}
+
+.admin-financial-metric-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 78%, transparent);
+}
+
+.admin-financial-metric-card.danger .admin-financial-metric-icon {
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.admin-financial-metric-label {
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.admin-financial-metric-card strong {
+  color: var(--text-main);
+  font-size: clamp(1.35rem, 2vw, 1.85rem);
+  line-height: 1;
+}
+
+.admin-financial-status-panel {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--panel-border));
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--panel));
+}
+
+.admin-financial-status-panel.success {
+  border-color: rgba(16, 185, 129, 0.24);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.admin-financial-status-panel.error {
+  border-color: rgba(239, 68, 68, 0.26);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.admin-financial-status-panel.info {
+  border-color: color-mix(in srgb, var(--accent) 18%, var(--panel-border));
+}
+
+.admin-financial-status-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+}
+
+.admin-financial-status-panel.success .admin-financial-status-icon {
+  color: #059669;
+}
+
+.admin-financial-status-panel.error .admin-financial-status-icon {
+  color: #dc2626;
+}
+
+.admin-financial-status-panel strong {
+  display: block;
+  color: var(--text-main);
+  margin-bottom: 3px;
+}
+
+.admin-financial-status-panel p,
+.admin-financial-warning p {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.45;
+}
+
+.admin-financial-response-details {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-financial-warning {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 14px;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.11);
+  border: 1px solid rgba(245, 158, 11, 0.24);
+}
+
+.admin-financial-error-list {
+  margin: 0;
+  padding: 12px 12px 12px 30px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+}
+
+.admin-financial-legacy-hidden {
+  display: none;
+}
+
 .admin-console-button {
   position: relative;
   isolation: isolate;
@@ -353,37 +710,6 @@
   overflow-wrap: anywhere;
 }
 
-.admin-market-tape-section {
-  padding: 20px;
-}
-
-.admin-panel-page .market-tape-admin-grid {
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.86fr);
-  gap: 14px;
-}
-
-.admin-panel-page .market-tape-admin-panel {
-  padding: 14px;
-  border-radius: 16px;
-}
-
-.admin-panel-page .market-tape-admin-list {
-  min-height: 0;
-  max-height: 310px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.admin-panel-page .market-tape-admin-list.compact {
-  max-height: 310px;
-}
-
-.admin-panel-page .market-tape-chip {
-  min-height: 42px;
-  padding: 8px 10px;
-  border-radius: 12px;
-}
-
 .admin-panel-page .admin-console-input {
   min-height: 42px;
 }
@@ -446,16 +772,22 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .admin-panel-page .market-tape-admin-grid {
+  .admin-financial-import-grid {
     grid-template-columns: 1fr;
   }
+
 }
 
 @media (max-width: 720px) {
   .admin-status-grid,
   .admin-grid,
-  .admin-console-form-grid {
+  .admin-console-form-grid,
+  .admin-financial-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .admin-financial-card {
+    padding: 14px;
   }
 
   .admin-section-head,

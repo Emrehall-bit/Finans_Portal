@@ -530,3 +530,53 @@ html[data-theme] .market-tape-shell .market-down {
     animation-duration: 122s;
   }
 }
+
+/* ── Dark mode overrides ─────────────────────────────────────── */
+
+html[data-theme="dark"] .market-toolbar-stat {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(51, 65, 85, 0.72);
+}
+
+html[data-theme="dark"] .market-board-row,
+html[data-theme="dark"] .market-list-item {
+  background: rgba(15, 23, 42, 0.68);
+  border-color: rgba(51, 65, 85, 0.68);
+}
+
+html[data-theme="dark"] .instrument-picker {
+  background: rgba(9, 16, 30, 0.88);
+  border-color: rgba(51, 65, 85, 0.72);
+}
+
+html[data-theme="dark"] .instrument-option {
+  background: rgba(15, 23, 42, 0.82);
+  color: #e2e8f0;
+  border-color: rgba(51, 65, 85, 0.52);
+}
+
+html[data-theme="dark"] .instrument-option.highlighted {
+  background: rgba(37, 99, 235, 0.16);
+  border-color: rgba(96, 165, 250, 0.32);
+}
+
+html[data-theme="dark"] .instrument-option.active {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: rgba(96, 165, 250, 0.38);
+}
+
+html[data-theme="dark"] .market-detail-hero {
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 24%),
+    linear-gradient(135deg, rgba(9, 16, 30, 0.96), rgba(15, 23, 42, 0.94));
+}
+
+html[data-theme="dark"] .market-detail-tab {
+  background: rgba(30, 41, 59, 0.62);
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .market-detail-tab.active {
+  background: rgba(37, 99, 235, 0.18);
+  color: #93c5fd;
+}

@@ -40,7 +40,6 @@ export default function AiNewsImpactCard({ newsId, autoLoad = false }) {
     }
     load();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLoad, isPremium, newsId]);
 
   async function handleToggle() {

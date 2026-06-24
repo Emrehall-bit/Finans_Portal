@@ -17,6 +17,7 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, displaySy
     portfolioId: "",
     quantity: "",
     buyPrice: currentPrice ?? "",
+    purchaseDate: "",
   });
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, displaySy
 
   useEffect(() => {
     if (!isOpen) {
-      setForm({ portfolioId: "", quantity: "", buyPrice: currentPrice ?? "" });
+      setForm({ portfolioId: "", quantity: "", buyPrice: currentPrice ?? "", purchaseDate: "" });
       setError("");
       setSubmitting(false);
     }
@@ -80,6 +81,7 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, displaySy
         instrumentCode: symbol,
         quantity: Number(form.quantity),
         buyPrice: Number(form.buyPrice),
+        purchaseDate: form.purchaseDate || null,
       });
       onSuccess?.();
       onClose();
@@ -160,6 +162,15 @@ export default function AddToPortfolioModal({ isOpen, onClose, symbol, displaySy
                 />
               </label>
             </div>
+            <label className="portfolio-field">
+              <span>{t("marketDetail.addToPortfolio.purchaseDate")}</span>
+              <input
+                type="date"
+                value={form.purchaseDate}
+                max={new Date().toISOString().split("T")[0]}
+                onChange={(event) => setForm((current) => ({ ...current, purchaseDate: event.target.value }))}
+              />
+            </label>
 
             <div className="instrument-action-footer">
               <button type="submit" disabled={submitting}>

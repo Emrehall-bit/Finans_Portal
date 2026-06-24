@@ -50,13 +50,13 @@ export function normalizeCandles(candles) {
 }
 
 export function normalizeLinePoints(points) {
-  return points
+  const deduped = new Map();
+  points
     .filter((point) => point?.date && point?.close != null)
-    .map((point, index, source) => {
+    .forEach((point) => {
       const time = toEpochSeconds(point.date);
-      const previous = index > 0 ? source[index - 1] : null;
-      const previousClose = previous?.close != null ? Number(previous.close) : null;
-      return {
+      if (!Number.isFinite(time) || time <= 0) return;
+      deduped.set(time, {
         time,
         dateLabel: point.date,
         open: null,
@@ -68,40 +68,51 @@ export function normalizeLinePoints(points) {
         sma20: toPositiveOverlayNumber(point.sma20),
         sma50: toPositiveOverlayNumber(point.sma50),
         rsi14: toFiniteNumber(point.rsi14),
-        changePct: previousClose ? ((Number(point.close) - previousClose) / previousClose) * 100 : null,
-      };
+        changePct: null,
+      });
     });
+  const sorted = Array.from(deduped.values()).sort((a, b) => a.time - b.time);
+  return sorted.map((row, index) => ({
+    ...row,
+    changePct: index > 0
+      ? ((row.close - sorted[index - 1].close) / sorted[index - 1].close) * 100
+      : null,
+  }));
 }
 
 export function normalizeHistoryPoints(history) {
-  return (Array.isArray(history) ? history : [])
-    .map((point, index, source) => {
-      const rawDate = point?.priceTimestamp ? String(point.priceTimestamp) : null;
-      const close = toFiniteNumber(point?.closePrice);
-      if (!rawDate || close == null) {
-        return null;
-      }
+  const deduped = new Map();
+  (Array.isArray(history) ? history : []).forEach((point) => {
+    const rawDate = point?.priceTimestamp ? String(point.priceTimestamp) : null;
+    const close = toFiniteNumber(point?.closePrice);
+    if (!rawDate || close == null) return;
 
-      const formattedDate = rawDate.slice(0, 10);
-      const time = toEpochSeconds(formattedDate);
-      const previousClose = index > 0 ? toFiniteNumber(source[index - 1]?.closePrice) : null;
+    const formattedDate = rawDate.slice(0, 10);
+    const time = toEpochSeconds(formattedDate);
+    if (!Number.isFinite(time) || time <= 0) return;
 
-      return {
-        time,
-        dateLabel: formattedDate,
-        open: null,
-        high: null,
-        low: null,
-        close,
-        volume: null,
-        sma7: null,
-        sma20: null,
-        sma50: null,
-        rsi14: null,
-        changePct: previousClose ? ((close - previousClose) / previousClose) * 100 : null,
-      };
-    })
-    .filter(Boolean);
+    deduped.set(time, {
+      time,
+      dateLabel: formattedDate,
+      open: null,
+      high: null,
+      low: null,
+      close,
+      volume: null,
+      sma7: null,
+      sma20: null,
+      sma50: null,
+      rsi14: null,
+      changePct: null,
+    });
+  });
+  const sorted = Array.from(deduped.values()).sort((a, b) => a.time - b.time);
+  return sorted.map((row, index) => ({
+    ...row,
+    changePct: index > 0
+      ? ((row.close - sorted[index - 1].close) / sorted[index - 1].close) * 100
+      : null,
+  }));
 }
 
 // Indicator calculations

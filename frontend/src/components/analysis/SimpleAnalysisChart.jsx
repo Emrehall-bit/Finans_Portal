@@ -203,12 +203,16 @@ export default function SimpleAnalysisChart({
                 </defs>
                 <CartesianGrid vertical={false} strokeDasharray="2 8" stroke={chartTheme.grid} />
                 <XAxis
-                  dataKey="date"
+                  dataKey="dateKey"
                   stroke={chartTheme.axis}
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontSize: 12 }}
                   tickMargin={10}
+                  tickFormatter={(v) => {
+                    const d = new Date(`${v}T00:00:00`);
+                    return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                  }}
                 />
                 <YAxis
                   stroke={chartTheme.axis}

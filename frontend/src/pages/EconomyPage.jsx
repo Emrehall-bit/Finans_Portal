@@ -57,7 +57,6 @@ export default function EconomyPage() {
   const [tableRows, setTableRows] = useState([]);
   const [tableLoading, setTableLoading] = useState(true);
   const [tableError, setTableError] = useState("");
-  const [heroMetrics, setHeroMetrics] = useState({});
   // table displays limited rows by default (no 'show more' control)
 
   useEffect(() => {
@@ -87,39 +86,6 @@ export default function EconomyPage() {
       active = false;
     };
   }, [selectedGroupKey, t]);
-
-  // Load hero metrics (compact KPI strip) independently so UI feels richer
-  useEffect(() => {
-    let active = true;
-    async function loadHero() {
-      try {
-        const codes = [
-          { key: 'CPI', code: 'CPI_TR', type: 'YEARLY_CHANGE' },
-          { key: 'POLICY', code: 'POLICY_RATE_TR', type: 'POLICY_RATE' },
-          { key: 'UNEMP', code: 'UNEMPLOYMENT_TR', type: 'UNEMPLOYMENT_RATE' },
-          { key: 'CA', code: 'CURRENT_ACCOUNT_TR', type: 'CURRENT_ACCOUNT_BALANCE' },
-        ];
-        const results = await Promise.allSettled(codes.map(c => getMacroObservations(c.code, c.type)));
-        if (!active) return;
-        const map = {};
-        results.forEach((r, idx) => {
-          const key = codes[idx].key;
-          if (r.status === 'fulfilled' && Array.isArray(r.value) && r.value.length > 0) {
-            map[key] = r.value[0].value;
-            map[`${key}_period`] = r.value[0].period || r.value[0].periodLabel || '';
-          } else {
-            map[key] = null;
-            map[`${key}_period`] = '';
-          }
-        });
-        setHeroMetrics(map);
-      } catch {
-        if (active) setHeroMetrics({});
-      }
-    }
-    loadHero();
-    return () => { active = false; };
-  }, []);
 
   const selectedGroup = useMemo(
     () => INDICATOR_GROUPS.find((g) => g.key === selectedGroupKey) ?? INDICATOR_GROUPS[0],
@@ -231,7 +197,7 @@ export default function EconomyPage() {
         </div>
 
         {tableLoading && tableRows.length === 0 ? (
-          <div style={{ marginTop: "1rem" }}><LoadingSpinner /></div>
+          <div style={{ marginTop: "1rem" }}><LoadingSpinner label="Yükleniyor" /></div>
         ) : tableError ? (
           <div style={{ marginTop: "1rem" }}><ErrorMessage message={tableError} /></div>
         ) : tableRows.length === 0 ? (

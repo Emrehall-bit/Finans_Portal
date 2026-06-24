@@ -16,7 +16,7 @@
   },
   "common": {
     "language": "Language",
-    "turkish": "TÃ¼rkÃ§e",
+    "turkish": "Türkçe",
     "english": "English",
     "save": "Save",
     "cancel": "Cancel",
@@ -30,7 +30,10 @@
     "live": "Live",
     "records": "{{count}} records",
     "rows": "{{count}} rows",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "total": "Total",
+    "remove": "Remove",
+    "noData": "No data"
   },
   "pagination": {
     "page": "Page",
@@ -171,7 +174,10 @@
       "crypto": "Crypto",
       "fund": "Funds",
       "index": "Indexes",
-      "fxCommodities": "FX/Commodities"
+      "fxCommodities": "FX/Commodities",
+      "bond": "Bond",
+      "futures": "Futures",
+      "commodity": "Commodity"
     },
     "watchlistWidgetTitle": "Watchlist",
     "watchlistWidgetSeeAll": "See All",
@@ -250,7 +256,62 @@
       "error": "Analysis could not be loaded",
       "loginRequired": "Sign in to use this feature.",
       "premiumRequired": "Market analysis is available to premium members.",
-      "newsContext": "News Context"
+      "newsContext": "News Context",
+      "pillAnalysis": "AI ANALYSIS",
+      "pillCurrent": "LIVE",
+      "pillPremium": "PREMIUM"
+    },
+    "movers": {
+      "topGainers": "Top 3 Gainers",
+      "topLosers": "Top 3 Losers",
+      "noGainers": "No gainers found",
+      "noLosers": "No losers found",
+      "risingLabel": "rising",
+      "fallingLabel": "falling"
+    },
+    "marketTabLabels": {
+      "ALL": "All",
+      "STOCK": "Stocks (BIST)",
+      "CRYPTO": "Crypto",
+      "FUND": "Funds",
+      "INDEX": "Index",
+      "BOND": "Bond",
+      "FUTURES": "Futures",
+      "COMMODITY": "Commodity"
+    },
+    "tabCommentary": {
+      "ALL": "Mixed performance across markets. Gainers are broadly leading, though selling pressure persists in some sectors.",
+      "STOCK": "Gainers dominate BIST. Banking and defense stocks are outperforming, while energy sees some profit-taking.",
+      "CRYPTO": "High volatility in crypto markets. Mixed signals in Bitcoin and large caps; selective recovery in altcoins.",
+      "FUND": "Equity-weighted funds outperforming; short-term bond funds trading sideways.",
+      "INDEX": "BIST 100 and global indices showing mixed performance.",
+      "BOND": "Interest rate expectations remain the key driver in bond and treasury markets.",
+      "FUTURES": "Limited trading volume in futures; energy and agricultural contracts showing some activity.",
+      "COMMODITY": "Energy commodities holding firm. Gold seeing demand amid geopolitical uncertainty."
+    },
+    "aiMini": {
+      "subtitle": "Explore today's market overview",
+      "openDetail": "Open Details"
+    },
+    "portfolioEmpty": {
+      "noPortfolioTitle": "No portfolio to track yet.",
+      "noPortfolioDesc": "Create your first portfolio to track your stock, crypto, and FX investments in separate folders.",
+      "emptyHoldingsTitle": "No assets in this portfolio yet.",
+      "emptyHoldingsDesc": "Add stocks, crypto, or cash to your portfolio to track its real-time value."
+    },
+    "breadthStatus": {
+      "strong": "Strong",
+      "moderate": "Moderate",
+      "balanced": "Balanced",
+      "weak": "Weak",
+      "veryWeak": "Very Weak",
+      "overview": {
+        "mostlyUp": "Gainers are leading across most categories.",
+        "generallyBullish": "Overall bullish sentiment in the market.",
+        "balanced": "Market breadth is balanced.",
+        "slightSelloff": "Slight selling pressure observed.",
+        "selloff": "Selling pressure is prominent across markets."
+      }
     }
   },
   "news": {
@@ -259,13 +320,6 @@
     "description": "Track the financial agenda by source, category, and importance.",
     "refresh": "Refresh",
     "sync": "Sync news",
-    "syncProvider": "Sync {{provider}}",
-    "syncingProvider": "Syncing {{provider}}...",
-    "adminSyncEyebrow": "Admin Sync",
-    "adminSyncTitle": "Provider-based news sync",
-    "adminSyncDescription": "Run sync for a specific provider from the UI. Uses the current session token.",
-    "syncCompletedGeneric": "Sync completed.",
-    "syncCompletedSummary": "{{provider}} completed. Fetched: {{fetched}}, saved: {{saved}}, existing: {{existing}}, invalid: {{invalid}}.",
     "loadError": "Failed to load news.",
     "syncError": "News synchronization failed.",
     "searchPlaceholder": "Search news by keyword...",
@@ -309,10 +363,11 @@
       "globalMarkets": "Global Markets"
     },
     "filterProviders": {
-      "aa": "Anadolu AjansÄ±",
+      "aa": "Anadolu Ajansı",
       "cnbc": "CNBC",
       "guardian": "The Guardian",
       "kap": "KAP",
+      "systemGenerated": "Market Signals (Fake)",
       "unknown": "Unknown source"
     },
     "openNews": "Open news",
@@ -459,6 +514,7 @@
       "category": "Category",
       "last": "Last",
       "lastPrice": "Last price",
+      "yieldRate": "Yield (%)",
       "buy": "Bid",
       "sell": "Ask",
       "change": "Change",
@@ -629,7 +685,48 @@
       "status": "Status",
       "updatedAt": "Updated",
       "action": "Action"
-    }
+    },
+    "aiAnalysisError": "AI analysis could not be generated.",
+    "holdingPositionUpdated": "{{name}} position updated",
+    "perf": {
+      "portfolioPerformance": "Portfolio Performance",
+      "vsInflation": "vs. Inflation",
+      "allPortfolio": "All Portfolio",
+      "selectAsset": "Select Asset",
+      "addAsset": "+ Add Asset",
+      "maxAssets": "Max {{count}} assets",
+      "loadError": "Failed to load performance data.",
+      "selectAssetHint": "Select assets from your portfolio to compare.",
+      "noHistoryForCode": "No price data found for {{code}} in the selected period.",
+      "noHoldingsInPeriod": "No holdings in your portfolio during the selected period.",
+      "noDataForPeriod": "Not enough data for this period.",
+      "lastValue": "Last value",
+      "periodChange": "Period change",
+      "periodReturn": "Period return (TWR)",
+      "best": "Best",
+      "nominal": "Nominal",
+      "real": "Real",
+      "nominalView": "Nominal View",
+      "realView": "Real View",
+      "realModeNote": "Real mode is available when a single asset is selected.",
+      "assetStart": "Asset start:",
+      "portfolioStart": "Portfolio start:",
+      "realReturnFromDate": "Real return is calculated from the first asset date.",
+      "returnFromDate": "Return is calculated from the first asset date.",
+      "tufeNote": "The CPI series is compounded from monthly changes within the selected period.",
+      "performanceNote": "The series is approximated based on current positions and recorded purchase dates.",
+      "gapNote": "No holdings in your portfolio during this date range.",
+      "twrReturn": "TWR Return",
+      "range": {
+        "1M": "1 Mo",
+        "3M": "3 Mo",
+        "6M": "6 Mo",
+        "1Y": "1 Yr",
+        "5Y": "5 Yr",
+        "MAX": "All"
+      }
+    },
+    "aiAnalysisEmptyNote": "AI output for this portfolio is currently empty. The risk summary card continues to work."
   },
   "analysis": {
     "eyebrow": "Analysis & Comparison",
@@ -664,7 +761,7 @@
     "benchmark": {
       "loading": "Loading benchmark...",
       "selectInstrument": "Select a benchmark and set the date range.",
-      "referenceType": "Reference type",
+      "referenceType": "Compare with what?",
       "reference": "Reference",
       "searchPlaceholder": "Search instrument...",
       "noReferenceResults": "No suitable reference found.",
@@ -676,6 +773,7 @@
         "INSTRUMENT": "Instrument",
         "SECTOR": "Sector"
       },
+      "indexOnly": "Index comparison is only available for stocks.",
       "sectorOnly": "Sector comparison is only available for stocks.",
       "sectorEmpty": "Sector comparison could not be generated for this stock.",
       "sectorLabel": "Sector Average",
@@ -692,11 +790,62 @@
         "BELOW_BENCHMARK": "Below benchmark"
       },
       "presets": {
-        "tufe": "CPI",
+        "tufe": "Consumer Price Index (CPI)",
         "bist100": "BIST100",
         "bist30": "BIST30",
         "gold": "Gold"
-      }
+      },
+      "referenceSelect": "Select reference",
+      "indexSearch": "Search index...",
+      "sameInstrumentWarning": "Cannot compare an instrument with itself.",
+      "addReference": "Add Comparison",
+      "limitReached": "Maximum 5 series can be compared.",
+      "priceScaleWarning": "Mixed scales — normalized performance recommended.",
+      "benchmarkSingleOnly": "Relative/Real mode requires a single reference.",
+      "realChartDescription": "The chart shows inflation-adjusted real performance on a 100-based scale.",
+      "macroNormalizedDescription": "The chart shows the selected asset and CPI as 100-based cumulative performance.",
+      "realPerformanceLine": "Real performance",
+      "macroDataUntil": "CPI data is available until {{date}}.",
+      "primaryLabel": "Primary",
+      "noRefsSelected": "Select references to compare.",
+      "typeHints": {
+        "INSTRUMENT": "Compare with another asset",
+        "MACRO": "Measure real performance against inflation",
+        "INDEX": "See performance versus the market",
+        "SECTOR": "Compare with the sector average"
+      },
+      "modeHelp": {
+        "normalized": {
+          "title": "100-based performance comparison",
+          "description": "Series start at 100 on the first date. The chart shows the performance gap."
+        },
+        "price": {
+          "title": "Compare price levels",
+          "description": "The chart shows actual price levels for both series in the same area."
+        },
+        "benchmark": {
+          "title": "Relative / real performance",
+          "description": "The chart shows the base asset's normalized performance gap versus the reference.",
+          "macroDescription": "The chart shows inflation-adjusted real performance on a 100-based scale."
+        }
+      },
+      "popularEyebrow": "Start here",
+      "popularTitle": "Popular Comparisons",
+      "popularDescription": "Compare the main asset with a reference to quickly see the performance gap.",
+      "popularClickHint": "Open this comparison",
+      "popularVisualOnly": "This suggestion is a visual example for the current dataset.",
+      "popularLabels": {
+        "thyao": "THYAO",
+        "bist100": "BIST100",
+        "asels": "ASELS",
+        "defenseSector": "Defense Sector",
+        "usdTry": "USD/TRY",
+        "tufe": "CPI",
+        "gramGold": "Gram Gold",
+        "btc": "BTC",
+        "nasdaq": "Nasdaq"
+      },
+      "multiSummarySubtitle": "{{count}} comparisons selected."
     },
     "insight": {
       "eyebrow": "Indicators",
@@ -1166,9 +1315,7 @@
       "liveEyebrow": "Live Data Operations",
       "liveTitle": "Live data operations",
       "historyEyebrow": "Historical Data / Backfill",
-      "historyTitle": "Backfill operations",
-      "macroEyebrow": "Macro Data Sync",
-      "macroTitle": "TCMB macro indicator sync"
+      "historyTitle": "Backfill operations"
     },
     "fundFetch": {
       "running": "Fetching TEFAS fund data...",
@@ -1291,12 +1438,6 @@
         "description": "Fetch daily OHLCV bars from Yahoo Finance for XU100.IS, XU030.IS, XU050.IS, XBANK.IS, XUSIN.IS, XUTEK.IS and XHOLD.IS and persist ONE_DAY YAHOO_FINANCE history records.",
         "action": "Fetch Index History",
         "daysPlaceholder": "Days (e.g. 3650)"
-      },
-      "macroSyncAll": {
-        "eyebrow": "Macroeconomics",
-        "title": "Sync All Macro Data",
-        "description": "Simultaneously sync all macroeconomic indicators from TCMB EVDS: CPI, PPI, Policy Rate, Labour Market, Consumer Confidence, Current Account.",
-        "action": "Sync All"
       }
     },
     "stockHistory": {
@@ -1728,6 +1869,7 @@
       "portfolio": "Portfolio",
       "quantity": "Quantity",
       "buyPrice": "Buy price",
+      "purchaseDate": "Purchase date (optional)",
       "submitting": "Adding...",
       "submit": "Add to portfolio"
     },
@@ -1992,6 +2134,8 @@
     "lastPrice": "Last price",
     "dailyChange": "Daily change",
     "open": "Open",
+    "previousClose": "Previous close",
+    "dayRange": "Intraday range",
     "volume": "Volume",
     "yearRange": "52-week range",
     "dataSource": "Data source",
@@ -2007,7 +2151,7 @@
     "period": "Period",
     "source": "Source: TCMB EVDS",
     "indicators": {
-      "CPI_TR": "CPI",
+      "CPI_TR": "Consumer Price Index (CPI)",
       "PPI_TR": "PPI",
       "POLICY_RATE_TR": "Policy Rate",
       "UNEMPLOYMENT_TR": "Unemployment Rate",

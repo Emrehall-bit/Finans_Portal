@@ -757,6 +757,16 @@
   background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(245, 158, 11, 0.18), transparent 70%);
 }
 
+/* ── Dark mode overrides ─────────────────────────────────────── */
+
+html[data-theme="dark"] .ai-card {
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(9, 16, 30, 0.92)),
+    rgba(9, 16, 30, 0.88);
+  border-color: rgba(96, 165, 250, 0.18);
+  box-shadow: 0 16px 42px rgba(2, 6, 23, 0.28);
+}
+
 .ai-news-impact-icon  { color: var(--news-accent); }
 
 .ai-news-impact-trigger.is-cta {

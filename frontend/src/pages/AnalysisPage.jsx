@@ -1,15 +1,16 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { Check, ChevronDown, X } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { extractErrorMessage } from "../api/responseUtils";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { addWatchlistItem, removeWatchlistItem } from "../api/watchlistApi";
-import { watchlistKeys } from "../api/queryKeys";
+import { marketKeys, watchlistKeys } from "../api/queryKeys";
 import { useUserWatchlist } from "../hooks/useWatchlistQueries";
-import { useBenchmarkComparison, useComparisonAnalysis, useMarketHistory, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
+import { useMarketHistory, useMarketQuotes, useTechnicalAnalysis } from "../hooks/useMarketQueries";
+import { getBenchmarkComparison } from "../api/analysisApi";
 import useToast from "../hooks/useToast";
 import AnalysisComparisonPanel from "../components/analysis/AnalysisComparisonPanel";
 import AnalysisSymbolPicker from "../components/analysis/AnalysisSymbolPicker";
@@ -37,9 +38,8 @@ export default function AnalysisPage() {
   const [primarySymbol, setPrimarySymbol] = useState(() => searchParams.get("symbol") || "");
   const [activeRange, setActiveRange] = useState("3M");
   const [dateRange, setDateRange] = useState(() => buildPresetRange(90));
-  const [comparisonMode, setComparisonMode] = useState("benchmark");
-  const [benchmarkCode, setBenchmarkCode] = useState("CPI_TR");
-  const [benchmarkType, setBenchmarkType] = useState("MACRO");
+  const [comparisonMode, setComparisonMode] = useState("normalized");
+  const [references, setReferences] = useState([]);
   const [chartMode, setChartMode] = useState(() => (searchParams.get("tool") ? "advanced" : "simple"));
   const [fundamentalsOpen, setFundamentalsOpen] = useState(false);
   const [noteAdding, setNoteAdding] = useState(false);
@@ -67,6 +67,7 @@ export default function AnalysisPage() {
     [primarySymbol, primaryQuote, i18n.resolvedLanguage],
   );
   const primaryIsPointBased = isPointBasedInstrument(primaryQuote);
+  const primaryIsStock = String(primaryQuote?.instrumentType || "").toUpperCase() === "STOCK";
   const quotesError = quotesQueryError ? extractErrorMessage(quotesQueryError, t("analysis.quotesError")) : "";
 
   const favoriteCandidates = useMemo(() => {
@@ -89,6 +90,24 @@ export default function AnalysisPage() {
       setPrimarySymbol(quotes[0]?.symbol || "");
     }
   }, [quotes, primarySymbol]);
+
+  // Smart default: set first reference automatically when entering comparison mode.
+  // Resets when primary instrument changes so each new primary gets its own default.
+  const comparisonDefaultSet = useRef(false);
+  useEffect(() => {
+    if (!isComparisonMode) {
+      comparisonDefaultSet.current = false;
+      return;
+    }
+    if (comparisonDefaultSet.current) return;
+    comparisonDefaultSet.current = true;
+    if (primaryIsStock) {
+      setReferences([{ code: "XU100", type: "INDEX" }]);
+    } else {
+      setReferences([{ code: "CPI_TR", type: "MACRO" }]);
+    }
+    setComparisonMode("normalized");
+  }, [isComparisonMode, primaryIsStock]);
 
   const analysisParams = useMemo(
     () => ({
@@ -122,43 +141,57 @@ export default function AnalysisPage() {
     { enabled: isSimpleChartMode && !!(primaryApiSymbol && dateRange.from && dateRange.to) },
   );
 
-  // For price-mode instrument comparison in comparison workspace
-  const comparisonParams = useMemo(() => {
-    if (!isComparisonMode || comparisonMode !== "price" || benchmarkType !== "INSTRUMENT") return null;
-    if (!primaryApiSymbol || !benchmarkCode || !dateRange.from || !dateRange.to) return null;
-    const benchmarkQuote = quotes.find((q) => q.symbol === benchmarkCode || q.code === benchmarkCode);
-    const resolvedBenchmarkCode = resolveApiSymbol(benchmarkCode, benchmarkQuote, "");
+  // Parallel benchmark queries — one per valid reference (excludes SECTOR + gated INDEX)
+  const validRefs = useMemo(() => {
+    if (!isComparisonMode || !primaryApiSymbol || !dateRange.from || !dateRange.to) return [];
+    return references.filter((ref) => {
+      if (!ref.code) return false;
+      if (ref.type === "SECTOR") return false;
+      if (ref.type === "INDEX" && !primaryIsStock) return false;
+      return true;
+    });
+  }, [isComparisonMode, references, primaryApiSymbol, dateRange, primaryIsStock]);
+
+  const rawBenchmarkQueries = useQueries({
+    queries: validRefs.map((ref) => ({
+      queryKey: [...marketKeys.all, "benchmark", {
+        baseCode: primaryApiSymbol,
+        benchmarkCode: ref.code,
+        benchmarkType: ref.type,
+        from: dateRange.from,
+        to: dateRange.to,
+      }],
+      queryFn: () => getBenchmarkComparison({
+        baseCode: primaryApiSymbol,
+        benchmarkCode: ref.code,
+        benchmarkType: ref.type,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+      staleTime: 5 * 60_000,
+      enabled: true,
+    })),
+  });
+
+  const validRefResultMap = useMemo(() => {
+    const map = new Map();
+    validRefs.forEach((ref, i) => {
+      map.set(normalizeWatchlistCode(ref.code), rawBenchmarkQueries[i]);
+    });
+    return map;
+  }, [validRefs, rawBenchmarkQueries]);
+
+  const refResults = useMemo(() => references.map((ref) => {
+    const isGated = ref.type === "SECTOR" || (ref.type === "INDEX" && !primaryIsStock);
+    const q = validRefResultMap.get(normalizeWatchlistCode(ref.code));
     return {
-      symbols: [primaryApiSymbol, resolvedBenchmarkCode || benchmarkCode].join(","),
-      from: dateRange.from,
-      to: dateRange.to,
+      ref,
+      data: q?.data ?? null,
+      isLoading: (q?.isLoading || q?.isFetching) ?? false,
+      error: q?.error ? extractErrorMessage(q.error, "") : "",
+      isGated,
     };
-  }, [isComparisonMode, comparisonMode, benchmarkType, primaryApiSymbol, benchmarkCode, dateRange, quotes]);
-
-  const { data: comparison = null, isLoading: comparisonLoading, error: comparisonQueryError } = useComparisonAnalysis(
-    comparisonParams,
-    { enabled: !!comparisonParams },
-  );
-  const comparisonError = comparisonQueryError ? resolveComparisonErrorMessage(comparisonQueryError, t) : "";
-
-  const benchmarkParams = useMemo(
-    () =>
-      isComparisonMode
-      && benchmarkType !== "SECTOR"
-      && primaryApiSymbol
-      && benchmarkCode
-      && benchmarkType
-      && dateRange.from
-      && dateRange.to
-        ? { baseCode: primaryApiSymbol, benchmarkCode, benchmarkType, from: dateRange.from, to: dateRange.to }
-        : null,
-    [isComparisonMode, benchmarkType, primaryApiSymbol, benchmarkCode, dateRange],
-  );
-  const { data: benchmarkData = null, isLoading: benchmarkLoading, error: benchmarkQueryError } = useBenchmarkComparison(
-    benchmarkParams,
-    { enabled: !!benchmarkParams },
-  );
-  const benchmarkError = benchmarkQueryError ? extractErrorMessage(benchmarkQueryError, t("analysis.benchmarkError")) : "";
+  }), [references, validRefResultMap, primaryIsStock]);
 
   const analysisPoints = useMemo(
     () => (Array.isArray(analysis?.points) ? analysis.points : []),
@@ -192,17 +225,37 @@ export default function AnalysisPage() {
   }, [quoteAlignedChartData, currency, convertAmount, primaryIsPointBased]);
 
   function handlePrimaryChange(symbol) {
+    const newQuote = quotes.find((q) => q.symbol === symbol || q.code === symbol);
+    const newIsStock = String(newQuote?.instrumentType || "").toUpperCase() === "STOCK";
     setPrimarySymbol(symbol);
+    comparisonDefaultSet.current = false;
+    if (isComparisonMode) {
+      setReferences((prev) => {
+        const filtered = newIsStock
+          ? prev
+          : prev.filter((r) => r.type !== "INDEX" && r.type !== "SECTOR");
+        const normNew = normalizeWatchlistCode(symbol);
+        return filtered.filter((r) => normalizeWatchlistCode(r.code) !== normNew);
+      });
+    }
   }
 
-  function handleBenchmarkChange(code, type) {
-    setBenchmarkCode(code);
-    setBenchmarkType(type);
-    if (type === "MACRO") {
-      setComparisonMode("benchmark");
-    } else if (type !== "INSTRUMENT" && comparisonMode === "price") {
-      setComparisonMode("normalized");
-    }
+  function handleAddReference(code, type) {
+    if (!code || !type) return;
+    const apiCode = resolveReferenceApiSymbol(code, type, quotes);
+    setReferences((prev) => {
+      if (prev.length >= 4) return prev;
+      const normCode = normalizeWatchlistCode(apiCode);
+      if (normCode === normalizeWatchlistCode(primaryApiSymbol || primarySymbol)) return prev;
+      if (prev.some((r) => normalizeWatchlistCode(r.code) === normCode)) return prev;
+      return [...prev, { code: apiCode, type }];
+    });
+  }
+
+  function handleRemoveReference(code) {
+    setReferences((prev) => prev.filter(
+      (r) => normalizeWatchlistCode(r.code) !== normalizeWatchlistCode(code),
+    ));
   }
 
   async function handleFavoriteToggle() {
@@ -401,20 +454,19 @@ export default function AnalysisPage() {
                     ) : null}
                     {isComparisonMode ? (
                       <AnalysisComparisonPanel
-                        comparison={comparison}
-                        loading={comparisonLoading}
-                        error={comparisonError}
+                        references={references}
+                        onAddReference={handleAddReference}
+                        onRemoveReference={handleRemoveReference}
+                        refResults={refResults}
                         mode={comparisonMode}
                         onModeChange={setComparisonMode}
                         primarySymbol={primarySymbol}
                         primaryQuote={primaryQuote}
                         quotes={quotes}
-                        benchmarkData={benchmarkData}
-                        benchmarkLoading={benchmarkLoading}
-                        benchmarkError={benchmarkError}
-                        benchmarkCode={benchmarkCode}
-                        benchmarkType={benchmarkType}
-                        onBenchmarkChange={handleBenchmarkChange}
+                        onPrimaryChange={handlePrimaryChange}
+                        activeRange={activeRange}
+                        rangePresets={ANALYSIS_RANGE_PRESETS}
+                        onRangeChange={handleRangeChange}
                       />
                     ) : null}
                   </div>
@@ -530,18 +582,28 @@ function alignLatestChartCloseWithQuote(chartData, quote) {
   ];
 }
 
-function resolveComparisonErrorMessage(error, t) {
-  const status = Number(error?.response?.status);
-  if ([400, 404, 422, 500].includes(status)) {
-    return t("analysis.rangeUnavailable");
-  }
-  return extractErrorMessage(error, t("analysis.comparisonError"));
-}
-
 function resolveApiSymbol(symbol, quote, fallbackInstrumentType = "") {
   const rawSymbol = String(symbol || "").trim();
   if (!rawSymbol) {
     return "";
+  }
+
+  const normalizedType = String(quote?.instrumentType || fallbackInstrumentType).trim().toUpperCase();
+  if (normalizedType === "FX") {
+    const providerSymbol = String(quote?.providerSymbol || "").trim();
+    if (providerSymbol) {
+      return providerSymbol;
+    }
+
+    const fullSymbol = String(quote?.symbol || "").trim();
+    const fxSymbol = fullSymbol || rawSymbol;
+    const upperFxSymbol = fxSymbol.toUpperCase();
+    if (upperFxSymbol.startsWith("TCMB:")) {
+      return fxSymbol;
+    }
+    if (/^[A-Z]{3}$/.test(upperFxSymbol)) {
+      return `TCMB:${upperFxSymbol}:SELL`;
+    }
   }
 
   const fullSymbol = String(quote?.symbol || "").trim();
@@ -549,16 +611,20 @@ function resolveApiSymbol(symbol, quote, fallbackInstrumentType = "") {
     return fullSymbol;
   }
 
-  const normalizedType = String(quote?.instrumentType || fallbackInstrumentType).trim().toUpperCase();
-  const upperSymbol = rawSymbol.toUpperCase();
-  if (normalizedType === "FX" && !upperSymbol.startsWith("TCMB:") && /^[A-Z]{3}$/.test(upperSymbol)) {
-    return `TCMB:${upperSymbol}:SELL`;
-  }
-
   return rawSymbol;
 }
 
 // Backend WatchlistService.normalizeSymbol ile birebir aynı olmalı
+function resolveReferenceApiSymbol(code, type, quotes) {
+  const rawCode = String(code || "").trim();
+  if (!rawCode || type === "MACRO" || type === "SECTOR") {
+    return rawCode;
+  }
+
+  const quote = quotes.find((q) => q.symbol === rawCode || q.code === rawCode);
+  return resolveApiSymbol(rawCode, quote, quote?.instrumentType || type);
+}
+
 function normalizeWatchlistCode(value) {
   if (value == null) return "";
   return String(value).replace(/[^A-Za-z0-9]/g, "").toUpperCase();

@@ -26,7 +26,7 @@ import { useNewsFavorites, useNewsList } from "../hooks/useNewsQueries";
 import { NEWS_PAGE_SIZE, buildNewsQueryParams } from "./newsPageQueryUtils";
 
 const DEFAULT_PAGE_SIZE = NEWS_PAGE_SIZE;
-const REGULAR_PROVIDERS = ["AA_RSS", "CNBC_RSS", "GUARDIAN"];
+const REGULAR_PROVIDERS = ["AA_RSS", "CNBC_RSS", "GUARDIAN", "SYSTEM_GENERATED"];
 const MULTI_FILTER_SEPARATOR = ",";
 const INITIAL_NEWS_PAGE = {
   content: [],

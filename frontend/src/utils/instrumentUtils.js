@@ -77,7 +77,3 @@ export function formatInstrumentLabel(code, locale = "tr") {
   return String(code);
 }
 
-export function resolveSellPrice(quote) {
-  if (!quote) return null;
-  return quote.sellRate ?? quote.price ?? null;
-}

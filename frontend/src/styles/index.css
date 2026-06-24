@@ -44,11 +44,9 @@
 /* Portfolio */
 @import "./pages/portfolio.css";
 @import "./pages/portfolio-detail.css";
-@import "./pages/portfolio-heatmap.css";
 @import "./pages/portfolio-v4-layout.css";
 @import "./pages/portfolio-v4-analytics.css";
 @import "./pages/portfolio-v4-holdings.css";
-@import "./pages/portfolio-v2-widgets.css";
 @import "./pages/portfolio-kpi.css";
 @import "./pages/portfolio-analytics.css";
 

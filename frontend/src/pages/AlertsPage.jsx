@@ -9,11 +9,12 @@ import LoadingSpinner from "../components/common/LoadingSpinner";
 import { useMarketQuotes } from "../hooks/useMarketQueries";
 import useToast from "../hooks/useToast";
 import { formatCurrency, formatDateTime, formatNumber } from "../utils/formatters";
+import { getFxCodeLabel } from "../utils/instrumentUtils";
 
 const POPULAR_SYMBOLS = ["BTC", "THYAO", "EUR", "USD", "GBP", "TUPRS", "AKBNK"];
 
 export default function AlertsPage() {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { userId, user, updateUserProfile } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -84,7 +85,7 @@ export default function AlertsPage() {
     if (!query) {
       return POPULAR_SYMBOLS
         .map((kw) => quotes.find((q) => {
-          const primary = formatAlertInstrument(q.symbol, q.source).primary;
+          const primary = formatAlertInstrument(q.symbol, q.source, i18n.resolvedLanguage).primary;
           return primary === kw || primary.startsWith(kw);
         }))
         .filter(Boolean);
@@ -112,7 +113,7 @@ export default function AlertsPage() {
   }
 
   function selectInstrument(item) {
-    const displaySymbol = formatAlertInstrument(item.symbol, item.source).primary;
+    const displaySymbol = formatAlertInstrument(item.symbol, item.source, i18n.resolvedLanguage).primary;
     setForm((current) => ({
       ...current,
       instrumentCode: item.symbol || "",
@@ -147,7 +148,7 @@ export default function AlertsPage() {
       conditionType: alert.conditionType,
       targetPrice: String(alert.targetPrice),
     });
-    setEditSymbolSearch(formatAlertInstrument(alert.instrumentCode).primary);
+    setEditSymbolSearch(formatAlertInstrument(alert.instrumentCode, null, i18n.resolvedLanguage).primary);
   }
 
   function closeEditModal() {
@@ -223,12 +224,6 @@ export default function AlertsPage() {
     setAddingNote(false);
     setNewNoteText("");
     await saveNotes(updated);
-  }
-
-  function startEdit(note) {
-    setEditingId(note.id);
-    setEditingText(note.content);
-    setAddingNote(false);
   }
 
   function cancelEdit() {
@@ -351,7 +346,10 @@ export default function AlertsPage() {
                         <tr key={item.id}>
                           <td>
                             <div className="alerts-instrument-cell">
-                              <strong>{formatAlertInstrument(item.instrumentCode).primary}</strong>
+                              <strong>{formatAlertInstrument(item.instrumentCode, null, i18n.resolvedLanguage).primary}</strong>
+                              {formatAlertInstrument(item.instrumentCode, null, i18n.resolvedLanguage).secondary ? (
+                                <span>{formatAlertInstrument(item.instrumentCode, null, i18n.resolvedLanguage).secondary}</span>
+                              ) : null}
                             </div>
                           </td>
                           <td>{formatCondition(item.conditionType, t)}</td>
@@ -402,7 +400,7 @@ export default function AlertsPage() {
                 <div className="alerts-triggered-list">
                   {triggeredAlerts.map((item) => (
                     <article key={item.id} className="finance-notification-card">
-                      <strong>{t("alerts.triggeredLabel", { symbol: formatAlertInstrument(item.instrumentCode).primary })}</strong>
+                      <strong>{t("alerts.triggeredLabel", { symbol: formatAlertInstrument(item.instrumentCode, null, i18n.resolvedLanguage).primary })}</strong>
                       <p>{formatCondition(item.conditionType, t)} {formatCurrency(item.targetPrice)}</p>
                       <span>{formatDateTime(item.triggeredAt || item.lastUpdated)}</span>
                     </article>
@@ -567,7 +565,6 @@ export default function AlertsPage() {
                     value={popupEditText}
                     onChange={(e) => setPopupEditText(e.target.value)}
                     maxLength={1000}
-                    // eslint-disable-next-line jsx-a11y/no-autofocus
                     autoFocus
                   />
                   <div className="alerts-notes-form-footer">
@@ -624,7 +621,7 @@ export default function AlertsPage() {
                           className={`alert-create-chip${normalizeCode(form.instrumentCode) === normalizeCode(item.symbol) ? " active" : ""}`}
                           onClick={() => selectInstrument(item)}
                         >
-                          {formatAlertInstrument(item.symbol, item.source).primary}
+                          {formatAlertInstrument(item.symbol, item.source, i18n.resolvedLanguage).primary}
                         </button>
                       ))}
                     </div>
@@ -734,7 +731,7 @@ export default function AlertsPage() {
                       type="button"
                       className={`analysis-picker-card${normalizeCode(editForm.instrumentCode) === normalizeCode(item.symbol) ? " active" : ""}`}
                       onClick={() => {
-                        const displaySymbol = formatAlertInstrument(item.symbol, item.source).primary;
+                        const displaySymbol = formatAlertInstrument(item.symbol, item.source, i18n.resolvedLanguage).primary;
                         setEditForm((current) => ({
                           ...current,
                           instrumentCode: item.symbol || "",
@@ -743,8 +740,8 @@ export default function AlertsPage() {
                         setEditSymbolSearch(displaySymbol === "-" ? item.symbol || "" : displaySymbol);
                       }}
                     >
-                      <strong>{formatAlertInstrument(item.symbol, item.source).primary}</strong>
-                      <span>{formatAlertInstrument(item.symbol, item.source).secondary || item.displayName || "-"}</span>
+                      <strong>{formatAlertInstrument(item.symbol, item.source, i18n.resolvedLanguage).primary}</strong>
+                      <span>{formatAlertInstrument(item.symbol, item.source, i18n.resolvedLanguage).secondary || item.displayName || "-"}</span>
                     </button>
                   ))}
                 </div>
@@ -775,7 +772,7 @@ export default function AlertsPage() {
 
                 <div className="alerts-selected-quote">
                   <span>{t("alerts.selectedSymbol")}</span>
-                  <strong>{formatAlertInstrument(editForm.instrumentCode, editSelectedQuote?.source).primary}</strong>
+                  <strong>{formatAlertInstrument(editForm.instrumentCode, editSelectedQuote?.source, i18n.resolvedLanguage).primary}</strong>
                   <p>{t("alerts.lastPrice")} {editSelectedQuote ? formatCurrency(editSelectedQuote.price, editSelectedQuote.currency || "TRY") : t("alerts.noData")}</p>
                 </div>
 
@@ -846,7 +843,7 @@ function formatTechnicalAnalysisNoteLabel(t) {
   });
 }
 
-function formatAlertInstrument(instrumentCode, source) {
+function formatAlertInstrument(instrumentCode, source, locale = "tr") {
   const raw = String(instrumentCode || "").trim();
   if (!raw) {
     return { primary: "-", secondary: source || "-" };
@@ -854,12 +851,10 @@ function formatAlertInstrument(instrumentCode, source) {
 
   const parts = raw.split(":").filter(Boolean);
   if (parts.length >= 2) {
-    const provider = parts[0];
     const currency = parts[1];
-    const side = parts[2];
     return {
       primary: currency.toUpperCase(),
-      secondary: [provider, side].filter(Boolean).join(" · "),
+      secondary: formatFxSecondaryLabel(currency, locale),
     };
   }
 
@@ -867,7 +862,7 @@ function formatAlertInstrument(instrumentCode, source) {
   if (compactFxMatch) {
     return {
       primary: compactFxMatch[2],
-      secondary: [compactFxMatch[1], compactFxMatch[3]].join(" · "),
+      secondary: formatFxSecondaryLabel(compactFxMatch[2], locale),
     };
   }
 
@@ -877,6 +872,11 @@ function formatAlertInstrument(instrumentCode, source) {
   };
 }
 
+function formatFxSecondaryLabel(currencyCode, locale) {
+  const code = String(currencyCode || "").trim().toUpperCase();
+  const label = getFxCodeLabel(code, locale);
+  return label && label !== code ? label : "";
+}
 function normalizeCode(value) {
   if (value == null) return "";
   const rawValue = String(value).trim();

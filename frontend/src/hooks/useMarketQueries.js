@@ -1,10 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import {
   compareTechnicalAnalysis,
   getMarketBySymbol,
   getMarketHistory,
-  getMarketQuotes,
-  getMarketTapeConfig,
   getMarketsByType,
   screenMarkets,
   getTechnicalAnalysis,
@@ -14,13 +13,41 @@ import { getBenchmarkComparison } from "../api/analysisApi";
 import { getMacroObservations } from "../api/macroApi";
 import { marketKeys } from "../api/queryKeys";
 
+const MARKET_QUOTE_TYPES = ["FX", "INDEX", "COMMODITY", "CRYPTO", "STOCK", "FUND", "BOND", "FUTURES"];
+
 export function useMarketQuotes(options = {}) {
-  return useQuery({
-    queryKey: marketKeys.quotes(),
-    queryFn: getMarketQuotes,
-    staleTime: 60_000,
-    ...options,
+  const { enabled = true } = options;
+
+  const results = useQueries({
+    queries: MARKET_QUOTE_TYPES.map((type) => ({
+      queryKey: marketKeys.byType(type),
+      queryFn: () => getMarketsByType(type),
+      staleTime: 60_000,
+      enabled,
+    })),
   });
+
+  const data = useMemo(() => {
+    const seen = new Set();
+    const merged = [];
+    for (const result of results) {
+      for (const item of Array.isArray(result.data) ? result.data : []) {
+        if (!item || typeof item !== "object") continue;
+        const sym = String(item.symbol ?? item.code ?? "").trim().toUpperCase();
+        if (!sym) continue;
+        const key = `${String(item.instrumentType ?? "").toUpperCase()}::${sym}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(item);
+      }
+    }
+    return merged;
+  }, [results]);
+
+  const isLoading = results.some((r) => r.isLoading);
+  const error = results.find((r) => r.error)?.error ?? null;
+
+  return { data, isLoading, error };
 }
 
 export function useMarketsByType(type, options = {}) {
@@ -68,15 +95,6 @@ export function useTechnicalAnalysis(symbol, params, options = {}) {
     queryFn: () => getTechnicalAnalysis(symbol, params),
     staleTime: 5 * 60_000,
     enabled: !!symbol,
-    ...options,
-  });
-}
-
-export function useMarketTapeConfig(options = {}) {
-  return useQuery({
-    queryKey: marketKeys.tapeConfig(),
-    queryFn: getMarketTapeConfig,
-    staleTime: 10 * 60_000,
     ...options,
   });
 }

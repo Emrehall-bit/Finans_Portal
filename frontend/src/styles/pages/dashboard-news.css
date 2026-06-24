@@ -730,13 +730,15 @@ html[data-theme="dark"] .dashboard-ai-summary-metric {
 
 .finance-dashboard-shell .summary-chip.market-up,
 .finance-dashboard-shell .summary-card-subtitle.market-up,
-.finance-dashboard-shell .summary-card h3.market-up {
+.finance-dashboard-shell .summary-card h3.market-up,
+.finance-dashboard-shell .dashboard-watchlist-popover-metrics span.market-up {
   color: #16a567;
 }
 
 .finance-dashboard-shell .summary-chip.market-down,
 .finance-dashboard-shell .summary-card-subtitle.market-down,
-.finance-dashboard-shell .summary-card h3.market-down {
+.finance-dashboard-shell .summary-card h3.market-down,
+.finance-dashboard-shell .dashboard-watchlist-popover-metrics span.market-down {
   color: #d65252;
 }
 

@@ -112,6 +112,26 @@ export async function screenMarkets(params = {}) {
   return normalizeObjectPayload(data);
 }
 
+export async function getMarketQuotesBySymbols(symbols = []) {
+  const normalizedSymbols = [...new Set(
+    (symbols ?? [])
+      .map((symbol) => String(symbol ?? "").trim().toUpperCase())
+      .filter(Boolean),
+  )];
+
+  if (normalizedSymbols.length === 0) {
+    return [];
+  }
+
+  const response = await screenMarkets({
+    symbols: normalizedSymbols.join(","),
+    size: Math.min(Math.max(normalizedSymbols.length, 1), 100),
+    sort: "symbol",
+  });
+
+  return (response?.content ?? []).map(mapScreenQuote);
+}
+
 export async function getMarketQuotes() {
   const [fxResult, indexResult, commodityResult, cryptoResult, stockResult, fundResult] = await Promise.allSettled([
     getMarketsByType("FX"),
@@ -130,16 +150,6 @@ export async function getMarketQuotes() {
   const fundQuotes = fundResult.status === "fulfilled" ? fundResult.value : [];
 
   return mergeUniqueMarketQuotes(fxQuotes, indexQuotes, commodityQuotes, cryptoQuotes, stockQuotes, fundQuotes);
-}
-
-export async function getMarketTapeQuotes() {
-  const { data } = await axiosClient.get("/api/v1/markets/tape/quotes");
-  return normalizeArrayPayload(data).map(mapMarketTapeQuote);
-}
-
-export async function getMarketTapeConfig() {
-  const { data } = await axiosClient.get("/api/v1/markets/tape/config");
-  return normalizeObjectPayload(data)?.symbols ?? [];
 }
 
 export async function getMarketBySymbol(symbol, options = {}) {
@@ -169,8 +179,7 @@ export async function getMarketsByType(type) {
   }
 
   if (type === "FUND") {
-    const { data } = await axiosClient.get("/api/v1/funds");
-    return normalizeArrayPayload(data).map(mapFundQuote);
+    return getAllScreenMarketsByType("FUND");
   }
 
   if (type === "FUTURES") {
@@ -211,6 +220,26 @@ export async function getMarketsByType(type) {
   return normalizeArrayPayload(data);
 }
 
+async function getAllScreenMarketsByType(type, pageSize = 500) {
+  const firstPage = await screenMarkets({ type, page: 0, size: pageSize, sort: "symbol" });
+  const firstContent = Array.isArray(firstPage?.content) ? firstPage.content : [];
+  const totalElements = Number(firstPage?.totalElements);
+
+  if (!Number.isFinite(totalElements) || totalElements <= firstContent.length) {
+    return firstContent.map(mapScreenQuote);
+  }
+
+  const pageCount = Math.ceil(totalElements / pageSize);
+  const remainingPages = await Promise.all(
+    Array.from({ length: pageCount - 1 }, (_, index) =>
+      screenMarkets({ type, page: index + 1, size: pageSize, sort: "symbol" })
+        .then((page) => Array.isArray(page?.content) ? page.content : []),
+    ),
+  );
+
+  return [firstContent, ...remainingPages].flat().map(mapScreenQuote);
+}
+
 export async function getMarketHistory(symbol, paramsOrRange) {
   const params = {
     ...(typeof paramsOrRange === "object" && paramsOrRange?.type ? { type: paramsOrRange.type } : {}),
@@ -236,14 +265,6 @@ export function buildMarketDetailPath(symbol, instrumentType) {
   const normalizedType = normalizeInstrumentType(instrumentType);
   const query = normalizedType ? `?type=${encodeURIComponent(normalizedType)}` : "";
   return `/markets/${encodeURIComponent(symbol)}${query}`;
-}
-
-export async function getMacroHistory(symbol, params = {}) {
-  const { data } = await axiosClient.get(
-    `${API_CONFIG.ENDPOINTS.markets}/${encodeURIComponent(symbol)}/history`,
-    { params },
-  );
-  return normalizeArrayPayload(data);
 }
 
 export async function getTechnicalAnalysis(symbol, from, to, indicators = DEFAULT_INDICATORS) {
@@ -296,11 +317,11 @@ function mapFxQuote(item) {
   const normalizedSource = source ? String(source).toUpperCase() : "TCMB";
   const rawCode = code ? String(code).trim().toUpperCase() : "";
   const isProviderSymbol = /^[A-Z_]+:[A-Z]{2,4}:(BUY|SELL)$/.test(rawCode);
-  const instrumentSymbol = isProviderSymbol ? rawCode : (normalizedSource && rawCode ? `${normalizedSource}:${rawCode}:SELL` : rawCode);
   const displayCode = isProviderSymbol ? rawCode.split(":")[1] : rawCode;
+  const providerSymbol = normalizedSource && displayCode ? `${normalizedSource}:${displayCode}:SELL` : null;
 
   return {
-    symbol: instrumentSymbol,
+    symbol: displayCode,
     displayName: item.name ?? displayCode,
     price: item.last ?? item.sellRate ?? item.sellingRate ?? item.sell ?? item.ask ?? item.buyRate ?? item.buyingRate ?? item.buy ?? item.bid,
     changeRate: item.changePercent ?? item.dailyChangePercent ?? item.changeRate ?? null,
@@ -310,6 +331,7 @@ function mapFxQuote(item) {
     buyRate: item.buyRate ?? item.buyingRate ?? item.buy ?? item.alis ?? item.bid ?? null,
     sellRate: item.sellRate ?? item.sellingRate ?? item.sell ?? item.satis ?? item.ask ?? null,
     code: displayCode,
+    providerSymbol,
     displayUnit: item.displayUnit ?? "CURRENCY",
     currency: item.currency ?? "TRY",
   };
@@ -350,53 +372,13 @@ function mapStockQuote(item) {
     sellRate: null,
     code: item.symbol,
     openPrice: item.openPrice ?? null,
+    volume: item.volume ?? null,
+    previousClose: item.previousClose ?? null,
+    dayHigh: item.dayHigh ?? null,
+    dayLow: item.dayLow ?? null,
     displayUnit: item.displayUnit ?? "CURRENCY",
     currency: item.currency ?? "TRY",
   };
-}
-
-function mapFundQuote(item) {
-  const currentNav = toNumericValue(item.navValue);
-  const previousNav = toNumericValue(item.previousNavValue);
-  const changeRate =
-    currentNav !== null && previousNav !== null && previousNav !== 0
-      ? ((currentNav - previousNav) / previousNav) * 100
-      : null;
-
-  return {
-    symbol: item.fundCode,
-    displayName: item.fundName ?? item.fundCode,
-    price: item.navValue,
-    changeRate,
-    source: item.source ?? "TEFAS",
-    instrumentType: "FUND",
-    dataTimestamp: item.navDate,
-    buyRate: null,
-    sellRate: null,
-    code: item.fundCode,
-    previousNavValue: item.previousNavValue ?? null,
-    fundType: item.fundType ?? null,
-    fonTurAciklama: item.fonTurAciklama ?? item.fundType ?? null,
-    riskDegeri: item.riskDegeri ?? null,
-    getiri1a: item.getiri1a ?? null,
-    getiri3a: item.getiri3a ?? null,
-    getiri6a: item.getiri6a ?? null,
-    getiriYb: item.getiriYb ?? null,
-    getiri1y: item.getiri1y ?? null,
-    getiri3y: item.getiri3y ?? null,
-    getiri5y: item.getiri5y ?? null,
-    displayUnit: item.displayUnit ?? "CURRENCY",
-    currency: item.currency ?? "TRY",
-  };
-}
-
-function toNumericValue(value) {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
 }
 
 function normalizeInstrumentType(value) {
@@ -516,41 +498,43 @@ function mapCommodityQuote(item) {
   };
 }
 
-function mapMarketTapeQuote(item) {
-  const symbol = item.symbol ?? item.code;
-  const displayCode = buildTapeDisplayCode(item, symbol);
+function mapScreenQuote(item) {
+  const normalizedType = normalizeInstrumentType(item.type || item.instrumentType);
+  const isFxItem = normalizedType === "FX";
+  const rawCode = String(item.symbol ?? item.code ?? "").trim().toUpperCase();
+  const source = item.source ? String(item.source).toUpperCase() : "";
+  const symbol = isFxItem && rawCode.includes(":") ? rawCode.split(":")[1] : rawCode;
+  const providerSymbol = isFxItem && symbol ? `${source || "TCMB"}:${symbol}:SELL` : null;
 
   return {
     symbol,
-    displayName: item.displayName ?? item.name ?? symbol,
-    price: item.price,
-    changeRate: item.changeRate ?? item.changePercent ?? null,
-    source: item.source,
-    instrumentType: item.instrumentType,
-    dataTimestamp: item.fetchedAt ?? item.dataTimestamp ?? item.updatedAt,
-    buyRate: null,
-    sellRate: null,
-    code: displayCode,
-    displayUnit: item.displayUnit ?? (normalizeInstrumentType(item.instrumentType) === "INDEX" ? "POINT" : "CURRENCY"),
-    currency: item.currency ?? (normalizeInstrumentType(item.instrumentType) === "INDEX" ? null : "TRY"),
+    displayName: item.name ?? rawCode,
+    price: item.lastPrice ?? item.price ?? item.sellPrice ?? item.buyPrice ?? null,
+    changeRate: item.sellChangePercent ?? item.changePercent ?? item.changeRate ?? null,
+    source,
+    instrumentType: normalizedType || item.type,
+    dataTimestamp: item.dataTimestamp ?? item.priceTimestamp ?? null,
+    buyRate: item.buyPrice ?? null,
+    sellRate: item.sellPrice ?? null,
+    code: symbol,
+    providerSymbol,
+    openPrice: item.openPrice ?? null,
+    volume: item.volume ?? null,
+    previousClose: item.previousClose ?? null,
+    dayHigh: item.dayHigh ?? null,
+    dayLow: item.dayLow ?? null,
+    fundType: item.fundType ?? null,
+    fonTurAciklama: item.fonTurAciklama ?? item.fundType ?? null,
+    riskDegeri: item.riskDegeri ?? null,
+    getiri1a: item.getiri1a ?? null,
+    getiri3a: item.getiri3a ?? null,
+    getiri6a: item.getiri6a ?? null,
+    getiriYb: item.getiriYb ?? null,
+    getiri1y: item.getiri1y ?? null,
+    getiri3y: item.getiri3y ?? null,
+    getiri5y: item.getiri5y ?? null,
+    displayUnit: item.displayUnit ?? (normalizedType === "INDEX" ? "POINT" : "CURRENCY"),
+    currency: item.currency ?? (normalizedType === "INDEX" ? null : "TRY"),
   };
 }
-
-function buildTapeDisplayCode(item, symbol) {
-  const type = normalizeInstrumentType(item.instrumentType);
-  const value = String(symbol ?? "").toUpperCase();
-
-  if (type === "FX" && value.includes(":")) {
-    const parts = value.split(":");
-    return parts.length >= 2 ? `${parts[1]}TRY` : value;
-  }
-
-  if (type === "COMMODITY" && value === "GRAM_ALTIN") {
-    return "XAUTRY";
-  }
-
-  return value;
-}
-
-
 

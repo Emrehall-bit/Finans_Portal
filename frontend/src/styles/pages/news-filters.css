@@ -273,8 +273,8 @@
 .news-skeleton-card {
   overflow: hidden;
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(214, 222, 241, 0.78);
-  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
   box-shadow: var(--shadow-md);
   display: grid;
   grid-template-rows: 220px 1fr;
@@ -291,7 +291,7 @@
 .news-skeleton-chip {
   position: relative;
   overflow: hidden;
-  background: rgba(217, 226, 244, 0.8);
+  background: var(--border-soft, rgba(217, 226, 244, 0.8));
 }
 
 .news-skeleton-media::after,
@@ -301,7 +301,7 @@
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface-elevated, #fff) 55%, transparent), transparent);
   animation: newsSkeletonShimmer 1.6s infinite;
 }
 

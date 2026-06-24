@@ -14,7 +14,6 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import useToast from "../hooks/useToast";
 import { useMarketQuotes, useMarketScreen } from "../hooks/useMarketQueries";
 import { useUserWatchlist } from "../hooks/useWatchlistQueries";
-import { CurrencyToggle, useCurrency } from "../currency/CurrencyContext";
 import { formatInstrumentValue, formatNumber } from "../utils/formatters";
 import { formatInstrumentCode, getFxCodeLabel } from "../utils/instrumentUtils";
 import { getCountryCodeForInstrument } from "../utils/currencyToCountryMap";
@@ -54,15 +53,11 @@ const STOCK_RANK_SORT_OPTIONS = [
   { value: "change_asc", labelKey: "markets.filters.sortOptions.topLosers" },
   { value: "pe_asc", labelKey: "markets.filters.sortOptions.lowestPe" },
   { value: "pb_asc", labelKey: "markets.filters.sortOptions.lowestPb" },
-  { value: "roe_desc", labelKey: "markets.filters.sortOptions.highestRoe" },
-  { value: "roa_desc", labelKey: "markets.filters.sortOptions.highestRoa" },
-  { value: "revenue_growth_desc", labelKey: "markets.filters.sortOptions.fastestGrowing" },
-  { value: "debt_to_equity", labelKey: "markets.filters.sortOptions.lowestDebt" },
-  { value: "market_cap_desc", labelKey: "markets.filters.sortOptions.largestMarketCap" },
   { value: "name", labelKey: "markets.filters.sortOptions.name" },
   { value: "price_desc", labelKey: "markets.filters.sortOptions.priceDesc" },
   { value: "price_asc", labelKey: "markets.filters.sortOptions.priceAsc" },
 ];
+const REMOVED_STOCK_SORTS = new Set(["roe_desc", "roa_desc", "revenue_growth_desc", "debt_to_equity", "market_cap_desc"]);
 const STOCK_BASIC_SORT_OPTIONS = [
   { value: "name", labelKey: "markets.filters.sortOptions.name" },
   { value: "change_desc", labelKey: "markets.filters.sortOptions.topGainers" },
@@ -87,7 +82,6 @@ export default function MarketsPage() {
   const location = useLocation();
   const { userId, login } = useAuth();
   const { toast, showToast } = useToast();
-  const { formatAmount } = useCurrency();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
@@ -122,6 +116,7 @@ export default function MarketsPage() {
   const isStockTab = categoryFilter === "STOCK";
   const isFxTab = categoryFilter === "FX";
   const isFundTab = categoryFilter === "FUND";
+  const isBondTab = categoryFilter === "BOND";
 
 
   useEffect(() => {
@@ -131,6 +126,12 @@ export default function MarketsPage() {
     }
     setFilterMode("basic");
   }, [categoryFilter, isStockTab]);
+
+  useEffect(() => {
+    if (isStockTab && REMOVED_STOCK_SORTS.has(sortBy)) {
+      setSortBy("name");
+    }
+  }, [isStockTab, sortBy]);
 
   const { data: allQuotes = [], isLoading: loadingAll } = useMarketQuotes({ enabled: isFavoritesTab });
 
@@ -213,10 +214,14 @@ export default function MarketsPage() {
       });
     }
     if (CURRENCY_CONVERTIBLE_CATEGORIES.has(categoryFilter)) {
-      return formatAmount(Number(value));
+      return formatInstrumentValue(value, {
+        instrumentType: item?.instrumentType || categoryFilter,
+        currency: "TRY",
+        locale: i18n.resolvedLanguage,
+      });
     }
     return formatRate(value);
-  }, [categoryFilter, formatAmount, i18n.resolvedLanguage]);
+  }, [categoryFilter, i18n.resolvedLanguage]);
 
   const visibleQuotes = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
@@ -346,13 +351,6 @@ export default function MarketsPage() {
   ]);
 
   const hasAdvancedFilters = activeAdvancedFilterChips.length > 0;
-  const hasTopBarFilters = Boolean(
-    search.trim()
-    || (isFxTab && fxSourceMode !== "TCMB")
-    || sortBy !== "name"
-    || (isStockTab && (bistTierFilter || stockSectorFilter))
-  );
-  const hasAnyFilters = hasTopBarFilters || hasAdvancedFilters;
   function clearAllAdvancedFilters() {
     setMinPrice("");
     setMaxPrice("");
@@ -451,7 +449,6 @@ export default function MarketsPage() {
               <p>Gerçek zamanlı piyasa verileri ve fiyatlamalar</p>
             </div>
             <div className="market-dashboard-actions">
-              {CURRENCY_CONVERTIBLE_CATEGORIES.has(categoryFilter) ? <CurrencyToggle className="analysis-currency-toggle" /> : null}
               <div className="markets-view-toggle" role="tablist" aria-label={t("markets.listTitle")}>
                 <button type="button" role="tab" aria-selected={viewMode === "table"} className={"market-segmented-tab " + (viewMode === "table" ? "active" : "")} onClick={() => setViewMode("table")}>{t("markets.tableView")}</button>
                 <button type="button" role="tab" aria-selected={viewMode === "cards"} className={"market-segmented-tab " + (viewMode === "cards" ? "active" : "")} onClick={() => setViewMode("cards")}>{t("markets.cardView")}</button>
@@ -550,7 +547,7 @@ export default function MarketsPage() {
             {error ? <ErrorMessage message={error} /> : null}
             {!loading && !error && displayedCount === 0 ? <div className="market-contained-empty"><EmptyState title={isFavoritesTab ? (userId ? t("markets.favoritesEmptyTitle") : t("markets.favoritesLoginHint")) : t("markets.emptyTitle")} description={isFavoritesTab && userId ? t("markets.favoritesEmptyDescription") : t("markets.emptyDescription")} /></div> : null}
             {!loading && !error && isFxTab && fxSourceMode === "COMPARE" && fxComparisonRows.length > 0 ? <MarketFxComparisonTable rows={fxComparisonRows} navigate={navigate} formatRateConverted={formatRateConverted} t={t} /> : null}
-            {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteTable quotes={visibleQuotes} isFxTab={isFxTab} isFavoritesTab={isFavoritesTab} isStockTab={isStockTab} isFundTab={isFundTab} sortBy={sortBy} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} locale={i18n.resolvedLanguage} /> : null}
+            {!loading && !error && visibleQuotes.length > 0 && viewMode === "table" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteTable quotes={visibleQuotes} isFxTab={isFxTab} isFavoritesTab={isFavoritesTab} isStockTab={isStockTab} isFundTab={isFundTab} isBondTab={isBondTab} sortBy={sortBy} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} locale={i18n.resolvedLanguage} /> : null}
             {!loading && !error && visibleQuotes.length > 0 && viewMode === "cards" && !(isFxTab && fxSourceMode === "COMPARE") ? <MarketQuoteCards quotes={visibleQuotes} isFxTab={isFxTab} isStockTab={isStockTab} isFundTab={isFundTab} watchlistItems={watchlistItems} favoriteBusyKey={favoriteBusyKey} onFavoriteToggle={handleFavoriteToggle} navigate={navigate} formatRateConverted={formatRateConverted} t={t} locale={i18n.resolvedLanguage} /> : null}
           </div>
           </div>
@@ -652,7 +649,7 @@ function MarketFxComparisonTable({ rows, navigate, formatRateConverted, t }) {
   );
 }
 
-function MarketQuoteTable({ quotes, isFxTab, isFavoritesTab, isStockTab, isFundTab, sortBy, watchlistItems, favoriteBusyKey, onFavoriteToggle, navigate, formatRateConverted, t, locale }) {
+function MarketQuoteTable({ quotes, isFxTab, isFavoritesTab, isStockTab, isFundTab, isBondTab, sortBy, watchlistItems, favoriteBusyKey, onFavoriteToggle, navigate, formatRateConverted, t, locale }) {
   const metricCol = resolveStockMetricCol(isStockTab, sortBy, t);
   const tableClass = isFxTab ? "market-data-table--fx" : isFundTab ? "market-data-table--fund" : isFavoritesTab ? "market-data-table--favorites" : metricCol ? "market-data-table--compact market-data-table--with-metric" : "market-data-table--compact";
   return (
@@ -663,7 +660,7 @@ function MarketQuoteTable({ quotes, isFxTab, isFavoritesTab, isStockTab, isFundT
             <th className="col-favorite" scope="col"><span className="sr-only">{t("markets.columns.favorite")}</span></th>
             <th>{t("markets.columns.instrument")}</th>
             {isFavoritesTab ? <th>{t("markets.columns.type")}</th> : null}
-            <th>{t("markets.columns.lastPrice")}</th>
+            <th>{isBondTab ? t("markets.columns.yieldRate") : t("markets.columns.lastPrice")}</th>
             <th>{t("markets.columns.change")}</th>
             {isFundTab ? <th>{t("markets.fundColumns.fundType")}</th> : null}
             {isFundTab ? <th className="market-number-cell">{t("markets.fundColumns.risk")}</th> : null}
@@ -906,7 +903,6 @@ function sortQuotes(left, right, sortBy) {
   if (sortBy === "pe_desc") return comparePositivePe(left.peRatio, right.peRatio, false);
   if (sortBy === "pb_asc") return toSortableNumber(left.pbRatio) - toSortableNumber(right.pbRatio);
   if (sortBy === "pb_desc") return toSortableNumber(right.pbRatio) - toSortableNumber(left.pbRatio);
-  if (sortBy === "roe_desc") return toSortableNumber(right.roe) - toSortableNumber(left.roe);
 
   const leftLabel = `${left.displayName || ""} ${left.symbol || ""}`.trim();
   const rightLabel = `${right.displayName || ""} ${right.symbol || ""}`.trim();
@@ -989,25 +985,11 @@ function formatFundReturn(value) {
   return `%${numeric.toFixed(2)}`;
 }
 
-function formatCompactValue(value) {
-  if (value === null || value === undefined) return "-";
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "-";
-  if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(1)} Mlr`;
-  if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(1)} Mln`;
-  return n.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
-}
-
-function resolveStockMetricCol(isStockTab, sortBy, t) {
+function resolveStockMetricCol(isStockTab, sortBy) {
   if (!isStockTab) return null;
   switch (sortBy) {
     case "pe_asc":              return { label: "F/K",        getValue: (item) => formatRatioValue(item.peRatio) };
     case "pb_asc":              return { label: "PD/DD",      getValue: (item) => formatRatioValue(item.pbRatio) };
-    case "roe_desc":            return { label: "ROE",        getValue: (item) => formatPercentValue(item.roe) };
-    case "roa_desc":            return { label: "ROA",        getValue: (item) => formatPercentValue(item.roa) };
-    case "debt_to_equity":      return { label: t("markets.filters.metrics.debtEquity"), getValue: (item) => formatRatioValue(item.debtToEquity) };
-    case "revenue_growth_desc": return { label: t("markets.filters.metrics.revenueGrowth"), getValue: (item) => formatPercentValue(item.revenueGrowth) };
-    case "market_cap_desc":     return { label: t("markets.filters.metrics.marketCap"), getValue: (item) => formatCompactValue(item.marketCap) };
     default: return null;
   }
 }
@@ -1086,11 +1068,12 @@ function mapScreenItem(item) {
   const isFxItem = normalizedType === "FX";
   const fxCode = isFxItem ? extractFxCode(item.symbol) : "";
   const source = item.source ? String(item.source).toUpperCase() : "";
-  const symbol = isFxItem ? buildFxSymbol(source || "TCMB", fxCode) : item.symbol;
+  const symbol = isFxItem ? fxCode : item.symbol;
 
   return {
     symbol,
     code: isFxItem ? fxCode : item.symbol,
+    providerSymbol: isFxItem && fxCode ? buildFxSymbol(source || "TCMB", fxCode) : null,
     displayName: item.name ?? (isFxItem && fxCode ? fxCode : item.symbol),
     buyRate: item.buyPrice ?? null,
     sellRate: item.sellPrice ?? null,

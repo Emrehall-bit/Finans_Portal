@@ -5,6 +5,7 @@ const PROVIDER_LABELS = {
   CNBC_RSS: "CNBC",
   GUARDIAN: "The Guardian",
   KAP: "KAP",
+  SYSTEM_GENERATED: "Piyasa Sinyalleri (Fake)",
 };
 
 const PROVIDER_INITIALS = {
@@ -12,6 +13,7 @@ const PROVIDER_INITIALS = {
   CNBC_RSS: "CNBC",
   GUARDIAN: "TG",
   KAP: "KP",
+  SYSTEM_GENERATED: "FP",
 };
 
 const PROVIDER_BADGE_COLORS = {
@@ -19,6 +21,7 @@ const PROVIDER_BADGE_COLORS = {
   CNBC_RSS: "#c62828",
   GUARDIAN: "#005689",
   KAP: "#1a237e",
+  SYSTEM_GENERATED: "#0f766e",
   REUTERS: "#ff6200",
   BBC: "#bb1919",
   BBC_RSS: "#bb1919",
@@ -200,6 +203,11 @@ export function buildNewsPlaceholderLabel(item) {
 
 export function getNewsFallbackLogoUrl(item) {
   const provider = item?.provider?.toUpperCase?.() || "";
+
+  if (provider === "SYSTEM_GENERATED") {
+    return "/finans-portali-logo.png";
+  }
+
   const providerDomain = PROVIDER_DOMAINS[provider];
   const articleUrl = item?.sourceUrl || item?.url || "";
 

@@ -11,7 +11,6 @@ export const marketKeys = {
   bySymbol: (symbol) => [...marketKeys.all, "symbol", symbol],
   history: (symbol, params) => [...marketKeys.all, "history", symbol, stable(params)],
   technicalAnalysis: (symbol, params) => [...marketKeys.all, "technical", symbol, stable(params)],
-  tapeConfig: () => [...marketKeys.all, "tape-config"],
   search: (query) => [...marketKeys.all, "search", query],
 };
 

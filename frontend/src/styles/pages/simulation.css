@@ -882,3 +882,266 @@
   color: #4b6284;
   line-height: 1.55;
 }
+
+/* ── Dark mode overrides ─────────────────────────────────────── */
+
+html[data-theme="dark"] .simulation-lab-hero {
+  background: linear-gradient(180deg, rgba(9, 16, 30, 0.92), rgba(15, 23, 42, 0.96));
+  border-color: rgba(51, 65, 85, 0.62);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .simulation-lab-hero h1,
+html[data-theme="dark"] .simulation-lab-history-head h2 {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .simulation-lab-hero p,
+html[data-theme="dark"] .simulation-lab-card-head p,
+html[data-theme="dark"] .simulation-lab-result-hero p,
+html[data-theme="dark"] .simulation-lab-history-tile p,
+html[data-theme="dark"] .simulation-lab-history-empty-inline,
+html[data-theme="dark"] .simulation-lab-empty-result p,
+html[data-theme="dark"] .simulation-lab-compare-count {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .simulation-lab-badge {
+  background: rgba(37, 99, 235, 0.16);
+  border-color: rgba(96, 165, 250, 0.22);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .simulation-lab-card {
+  background: rgba(9, 16, 30, 0.88);
+  border-color: rgba(51, 65, 85, 0.62);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .simulation-lab-card-head h2 {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .simulation-lab-card-head-icon {
+  background: rgba(37, 99, 235, 0.18);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .simulation-lab-field > span,
+html[data-theme="dark"] .simulation-lab-result-value span {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .simulation-lab-input-wrap {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(51, 65, 85, 0.82);
+}
+
+html[data-theme="dark"] .simulation-lab-input-wrap svg {
+  color: #64748b;
+}
+
+html[data-theme="dark"] .simulation-lab-input-wrap:focus-within {
+  border-color: rgba(96, 165, 250, 0.42);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+html[data-theme="dark"] .simulation-lab-input-wrap input,
+html[data-theme="dark"] .simulation-lab-input-wrap select {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .simulation-lab-input-wrap input::placeholder {
+  color: #475569;
+}
+
+html[data-theme="dark"] .simulation-lab-selected-chip,
+html[data-theme="dark"] .simulation-lab-compare-chip {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.32);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .simulation-lab-selected-chip strong,
+html[data-theme="dark"] .simulation-lab-compare-chip {
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .simulation-lab-selected-chip-remove,
+html[data-theme="dark"] .simulation-lab-compare-chip-remove {
+  background: rgba(96, 165, 250, 0.12);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .simulation-lab-mode-switch {
+  background: rgba(9, 16, 30, 0.82);
+  border-color: rgba(51, 65, 85, 0.62);
+}
+
+html[data-theme="dark"] .simulation-lab-mode-chip {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .simulation-lab-mode-chip.active {
+  background: rgba(15, 23, 42, 0.92);
+  border-color: rgba(96, 165, 250, 0.32);
+  color: #93c5fd;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .simulation-lab-preset-chip {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(51, 65, 85, 0.68);
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .simulation-lab-preset-chip:hover,
+html[data-theme="dark"] .simulation-lab-preset-chip:focus-visible {
+  border-color: rgba(96, 165, 250, 0.32);
+  background: rgba(37, 99, 235, 0.12);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .simulation-lab-preset-chip.active {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.38);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .simulation-lab-search-option {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .simulation-lab-search-option:hover,
+html[data-theme="dark"] .simulation-lab-search-option:focus-visible {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(96, 165, 250, 0.22);
+}
+
+html[data-theme="dark"] .simulation-lab-search-option.active {
+  background: rgba(37, 99, 235, 0.22);
+  border-color: rgba(96, 165, 250, 0.32);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .simulation-lab-search-empty {
+  color: #64748b;
+}
+
+html[data-theme="dark"] .simulation-lab-result-section-inner {
+  background: linear-gradient(180deg, rgba(9, 16, 30, 0.94), rgba(15, 23, 42, 0.96));
+  border-color: rgba(51, 65, 85, 0.62);
+}
+
+html[data-theme="dark"] .simulation-lab-result-hero strong,
+html[data-theme="dark"] .simulation-lab-empty-result strong {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .simulation-lab-result-type-badge {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.28);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .simulation-lab-result-badge.is-positive {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+}
+
+html[data-theme="dark"] .simulation-lab-result-badge.is-negative {
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+}
+
+html[data-theme="dark"] .simulation-lab-result-foot {
+  border-top-color: rgba(51, 65, 85, 0.52);
+}
+
+html[data-theme="dark"] .simulation-lab-result-foot span,
+html[data-theme="dark"] .simulation-lab-result-return-label {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .simulation-lab-result-foot small {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .simulation-lab-result-value h3 {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .simulation-lab-history-card {
+  background: rgba(9, 16, 30, 0.88);
+  border-color: rgba(51, 65, 85, 0.62);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .simulation-lab-history-head h2 {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .simulation-lab-history-tile {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(9, 16, 30, 0.92));
+  border-color: rgba(51, 65, 85, 0.56);
+}
+
+html[data-theme="dark"] .simulation-lab-history-tile-title {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .simulation-lab-history-tile-tag {
+  background: rgba(37, 99, 235, 0.16);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .simulation-lab-history-tile-foot span {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .simulation-lab-history-tile .is-positive {
+  color: #34d399;
+}
+
+html[data-theme="dark"] .simulation-lab-history-tile .is-negative {
+  color: #f87171;
+}
+
+html[data-theme="dark"] .simulation-lab-compare-table th {
+  color: #94a3b8;
+  border-bottom-color: rgba(51, 65, 85, 0.62);
+}
+
+html[data-theme="dark"] .simulation-lab-compare-table td {
+  border-bottom-color: rgba(51, 65, 85, 0.32);
+}
+
+html[data-theme="dark"] .simulation-lab-compare-row--best td {
+  background: rgba(16, 185, 129, 0.06);
+}
+
+html[data-theme="dark"] .simulation-lab-compare-table .tone-positive {
+  color: #34d399;
+}
+
+html[data-theme="dark"] .simulation-lab-compare-table .tone-negative {
+  color: #f87171;
+}
+
+html[data-theme="dark"] .simulation-lab-compare-summary {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(96, 165, 250, 0.14);
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .simulation-lab-result-return-value.is-positive {
+  color: #34d399;
+}
+
+html[data-theme="dark"] .simulation-lab-result-return-value.is-negative {
+  color: #f87171;
+}
+
+html[data-theme="dark"] .future-scenario-percent-label {
+  color: #94a3b8;
+}

@@ -33,7 +33,7 @@ export function buildComparisonData(series = [], mode = "normalized") {
 
   series.forEach((item) => {
     item?.points?.forEach((point) => {
-      const key = formatChartDate(point.date);
+      const key = String(point.date);
       if (!grouped.has(key)) {
         grouped.set(key, { date: key });
       }

@@ -430,6 +430,96 @@
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.06);
 }
 
+/* ── Dark mode overrides ─────────────────────────────────────── */
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-distribution-center strong {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-distribution-list-item {
+  border-bottom-color: rgba(51, 65, 85, 0.52);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-distribution-list-label > span:last-child {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-distribution-list-metrics strong {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-distribution-count-chip {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(51, 65, 85, 0.62);
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-alert {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(20, 15, 8, 0.88)),
+    linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0));
+  border-color: rgba(245, 158, 11, 0.2);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-alert.is-positive {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(8, 20, 16, 0.88)),
+    linear-gradient(135deg, rgba(34, 176, 125, 0.06), rgba(34, 176, 125, 0));
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-alert.is-neutral {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(15, 20, 28, 0.88)),
+    linear-gradient(135deg, rgba(148, 163, 184, 0.04), rgba(148, 163, 184, 0));
+  border-color: rgba(51, 65, 85, 0.52);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-alert-title {
+  color: #fbbf24;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-risk-alert.is-positive .portfolio-risk-alert-title {
+  color: #34d399;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-view-toggle--text {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(51, 65, 85, 0.52);
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-ai-drawer-trigger {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(20, 30, 55, 0.94));
+  border-color: rgba(96, 165, 250, 0.32);
+  color: #93c5fd;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .portfolio-page-v4 .portfolio-ai-drawer-trigger:hover {
+  border-color: rgba(96, 165, 250, 0.52);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+}
+
+html[data-theme="dark"] .portfolio-watchlist-drawer-sheet {
+  background:
+    linear-gradient(180deg, rgba(9, 16, 30, 0.96), rgba(15, 23, 42, 0.98)),
+    linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0));
+  border-color: rgba(51, 65, 85, 0.56);
+  box-shadow: 0 28px 72px rgba(2, 6, 23, 0.52);
+}
+
+html[data-theme="dark"] .portfolio-watchlist-drawer-head-copy h3 {
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"] .portfolio-watchlist-drawer-close {
+  background: rgba(15, 23, 42, 0.82);
+  border-color: rgba(51, 65, 85, 0.62);
+  color: #94a3b8;
+  box-shadow: none;
+}
+
 .portfolio-watchlist-drawer-body {
   min-height: 0;
   overflow-y: auto;

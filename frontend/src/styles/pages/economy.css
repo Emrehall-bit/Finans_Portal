@@ -207,7 +207,7 @@ button.economy-tab-btn {
   padding: 0.42rem 1rem;
   border-radius: 999px;
   border: 1px solid var(--panel-border);
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--panel, rgba(255, 255, 255, 0.84));
   box-shadow: 0 6px 18px rgba(31, 57, 120, 0.06);
   font-size: 0.85rem;
   font-weight: 600;
@@ -236,7 +236,7 @@ button.economy-tab-btn:focus-visible {
 button.economy-tab-btn.active {
   background: rgba(47, 99, 216, 0.08);
   border-color: rgba(47, 99, 216, 0.18);
-  color: #123e7a;
+  color: var(--accent, #2f63d8);
   font-weight: 600;
   box-shadow: 0 12px 26px rgba(76, 127, 255, 0.10);
 }
@@ -248,9 +248,9 @@ button.economy-tab-btn.active {
   transform: translate(-50%, -6px);
   padding: 0.42rem 0.7rem;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(214, 222, 241, 0.96);
-  box-shadow: 0 16px 30px rgba(31, 57, 120, 0.12);
+  background: var(--panel-strong, rgba(255, 255, 255, 0.98));
+  border: 1px solid var(--panel-border, rgba(214, 222, 241, 0.96));
+  box-shadow: var(--shadow-md, 0 16px 30px rgba(31, 57, 120, 0.12));
   color: var(--text-main);
   font-size: 0.74rem;
   font-weight: 600;
@@ -270,9 +270,9 @@ button.economy-tab-btn.active {
   left: 50%;
   width: 10px;
   height: 10px;
-  background: rgba(255, 255, 255, 0.98);
-  border-top: 1px solid rgba(214, 222, 241, 0.96);
-  border-left: 1px solid rgba(214, 222, 241, 0.96);
+  background: var(--panel-strong, rgba(255, 255, 255, 0.98));
+  border-top: 1px solid var(--panel-border, rgba(214, 222, 241, 0.96));
+  border-left: 1px solid var(--panel-border, rgba(214, 222, 241, 0.96));
   transform: translateX(-50%) rotate(45deg);
 }
 
@@ -573,3 +573,31 @@ button.economy-tab-btn.active {
 .ec-tooltip-item  { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
 .ec-tooltip-name  { color: rgba(255, 255, 255, 0.7); font-size: 0.78rem; }
 .ec-tooltip-value { font-size: 1rem; }
+
+/* ── Dark mode overrides ─────────────────────────────────────── */
+
+html[data-theme="dark"] button.economy-tab-btn {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(51, 65, 85, 0.62);
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] button.economy-tab-btn:hover,
+html[data-theme="dark"] button.economy-tab-btn:focus-visible {
+  background: rgba(30, 41, 59, 0.88);
+  border-color: rgba(96, 165, 250, 0.28);
+  color: #cbd5e1;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] button.economy-tab-btn.active {
+  background: rgba(37, 99, 235, 0.16);
+  border-color: rgba(96, 165, 250, 0.32);
+  color: #93c5fd;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .economy-data-table td {
+  border-bottom-color: rgba(51, 65, 85, 0.42);
+}

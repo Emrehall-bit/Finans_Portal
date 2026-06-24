@@ -51,8 +51,9 @@ export default function NewsDetailPage() {
   };
 
   const kapDisclosure = isKapDisclosure(item);
+  const isSystemGenerated = item?.provider?.toUpperCase() === "SYSTEM_GENERATED";
   const sourceName = getNewsSourceName(item);
-  const sourceUrl = getNewsSourceUrl(item);
+  const sourceUrl = isSystemGenerated ? null : getNewsSourceUrl(item);
   const previewText = getNewsPreviewText(item, t("newsDetail.summaryMissing"));
   const qualityLabel = getNewsQualityStatusLabel(item?.qualityStatus);
   const disclosureTypeLabel = getNewsDisclosureTypeLabel(item?.disclosureType);
@@ -94,6 +95,9 @@ export default function NewsDetailPage() {
                     <span className="news-detail-cat-badge">
                       {getNewsCategoryLabelI18n(item?.category, t) || (kapDisclosure ? t("newsDetail.kapEyebrow") : t("newsDetail.defaultCategory"))}
                     </span>
+                    {isSystemGenerated ? (
+                      <span className="news-system-badge">Fake</span>
+                    ) : null}
                     <span className="news-detail-eyebrow-sep" aria-hidden="true">•</span>
                     <span className="news-detail-eyebrow-provider">{providerLabel}</span>
                     {sourceName && sourceName !== providerLabel ? (
@@ -115,7 +119,17 @@ export default function NewsDetailPage() {
 
               {!kapDisclosure ? (
                 <div className="news-detail-media-shell">
-                  {item.imageUrl && !imageFailed ? (
+                  {isSystemGenerated && !logoFailed ? (
+                    <div className="news-detail-media news-detail-media-fallback news-detail-media-logo-only">
+                      <img
+                        className="news-card-placeholder-logo news-detail-logo-only"
+                        src={getNewsFallbackLogoUrl(item)}
+                        alt={providerLabel}
+                        loading="lazy"
+                        onError={() => setLogoFailed(true)}
+                      />
+                    </div>
+                  ) : item.imageUrl && !imageFailed && !isSystemGenerated ? (
                     <div className="news-detail-media">
                       <img
                         className="news-detail-image"
@@ -125,7 +139,7 @@ export default function NewsDetailPage() {
                         onError={() => setImageFailed(true)}
                       />
                     </div>
-                  ) : getNewsFallbackLogoUrl(item) && !logoFailed ? (
+                  ) : !isSystemGenerated && getNewsFallbackLogoUrl(item) && !logoFailed ? (
                     <div className="news-detail-media news-detail-media-fallback">
                       <div className="news-card-placeholder-inner">
                         <img
@@ -139,7 +153,7 @@ export default function NewsDetailPage() {
                         <small className="news-card-placeholder-note">{t("newsDetail.sourceLogo")}</small>
                       </div>
                     </div>
-                  ) : (
+                  ) : !isSystemGenerated ? (
                     <div className="news-detail-media news-detail-media-fallback">
                       <div className="news-card-placeholder-inner">
                         <span className="news-card-placeholder-mark">{buildNewsPlaceholderLabel(item)}</span>
@@ -147,7 +161,7 @@ export default function NewsDetailPage() {
                         <small className="news-card-placeholder-note">{sourceName}</small>
                       </div>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               ) : null}
 

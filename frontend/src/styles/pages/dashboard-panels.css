@@ -251,7 +251,7 @@ html[data-theme="dark"] .dash-portfolio-lock-badge {
 
 /* ── Dashboard grid: sol (piyasa+portföy) dar, sağ (haberler) geniş ── */
 .finance-dashboard-grid {
-  grid-template-columns: minmax(0, 11fr) minmax(320px, 9fr);
+  grid-template-columns: minmax(0, 3fr) minmax(200px, 2fr);
   gap: 20px;
   align-items: start;
 }
@@ -267,7 +267,7 @@ html[data-theme="dark"] .dash-portfolio-lock-badge {
 
 @media (max-width: 1200px) {
   .finance-dashboard-grid {
-    grid-template-columns: minmax(0, 9fr) minmax(280px, 11fr);
+    grid-template-columns: minmax(0, 3fr) minmax(200px, 2fr);
     gap: 16px;
   }
 }

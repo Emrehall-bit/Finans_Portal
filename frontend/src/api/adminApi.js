@@ -1,5 +1,4 @@
 ﻿import axiosClient from "./axiosClient";
-import { getMarketsByType } from "./marketApi";
 import { normalizeApiResponse } from "./responseUtils";
 
 export async function triggerStockFetch() {
@@ -75,27 +74,6 @@ export async function getTefasFundBackfillStatus() {
 export async function testTefasFundConnection() {
   const response = await axiosClient.get("/api/v1/admin/funds/test-connection");
   return normalizeApiResponse(response).data ?? null;
-}
-
-export async function getMarketTapeConfig() {
-  const response = await axiosClient.get("/api/v1/markets/tape/config");
-  return normalizeApiResponse(response).data?.symbols ?? [];
-}
-
-export async function updateMarketTapeConfig(symbols) {
-  const response = await axiosClient.put("/api/v1/admin/markets/tape/config", { symbols });
-  return normalizeApiResponse(response).data ?? null;
-}
-
-export async function getMarketTapeCandidates() {
-  const [fx, crypto, stocks, funds] = await Promise.all([
-    getMarketsByType("FX").catch(() => []),
-    getMarketsByType("CRYPTO").catch(() => []),
-    getMarketsByType("STOCK").catch(() => []),
-    getMarketsByType("FUND").catch(() => []),
-  ]);
-
-  return [...fx, ...crypto, ...stocks, ...funds];
 }
 
 export async function calculateCompanyRatios(ticker) {
@@ -198,13 +176,13 @@ export async function triggerIndexHistoryBackfill(days = 365) {
   return normalizeApiResponse(response);
 }
 
-export async function triggerMacroSyncAll() {
-  const response = await axiosClient.post("/api/v1/admin/markets/macro/tcmb/sync-all");
+export async function seedMockRatios() {
+  const response = await axiosClient.post("/api/v1/admin/companies/seed-mock-ratios");
   return normalizeApiResponse(response);
 }
 
-export async function seedMockRatios() {
-  const response = await axiosClient.post("/api/v1/admin/companies/seed-mock-ratios");
+export async function seedMockDerivatives() {
+  const response = await axiosClient.post("/api/v1/admin/markets/mock-derivatives/seed");
   return normalizeApiResponse(response);
 }
 

@@ -30,7 +30,10 @@
     "live": "Canlı",
     "records": "{{count}} kayıt",
     "rows": "{{count}} satır",
-    "loading": "Yükleniyor..."
+    "loading": "Yükleniyor...",
+    "total": "Toplam",
+    "remove": "Kaldır",
+    "noData": "Veri yok"
   },
   "pagination": {
     "page": "Sayfa",
@@ -170,10 +173,13 @@
       "crypto": "Kripto",
       "fund": "Fon",
       "index": "Endeks",
-      "fxCommodities": "Döviz/Emtia"
+      "fxCommodities": "Döviz/Emtia",
+      "bond": "Tahvil/Bono",
+      "futures": "Vadeli",
+      "commodity": "Emtia"
     },
     "watchlistWidgetTitle": "İzleme Listesi",
-    "watchlistWidg,etSeeAll": "Tümünü Gör",
+    "watchlistWidgetSeeAll": "Tümünü Gör",
     "watchlistWidgetEmptyTitle": "İzleme listeniz boş",
     "watchlistWidgetEmptyDesc": "Piyasalara gidip takip etmek istediğiniz enstrümanları favorilere ekleyin.",
     "marketEmptyTitle": "Piyasa verisi bulunamadı",
@@ -231,7 +237,7 @@
       "title": "Portföy Özeti",
       "empty": "Bu portföyde henüz varlık bulunmuyor.",
       "units": "adet",
-      "goPortfolio": "Portföy Yönetimi'ne Git →"
+      "goPortfolio": "Portföy Yönetimi’ne Git →"
     },
     "aiDrawer": {
       "title": "Piyasa Analizi",
@@ -250,7 +256,62 @@
       "error": "Analiz getirilemedi",
       "loginRequired": "Bu özelliği kullanmak için giriş yapın.",
       "premiumRequired": "Piyasa analizi premium üyelere özeldir.",
-      "newsContext": "Haber Bağlamı"
+      "newsContext": "Haber Bağlamı",
+      "pillAnalysis": "AI ANALİZİ",
+      "pillCurrent": "GÜNCEL",
+      "pillPremium": "PREMİUM"
+    },
+    "movers": {
+      "topGainers": "Top 3 Yükselenler",
+      "topLosers": "Top 3 Düşenler",
+      "noGainers": "Yükselen bulunamadı",
+      "noLosers": "Düşen bulunamadı",
+      "risingLabel": "yükselen",
+      "fallingLabel": "düşen"
+    },
+    "marketTabLabels": {
+      "ALL": "Hepsi",
+      "STOCK": "Hisse (BIST)",
+      "CRYPTO": "Kripto",
+      "FUND": "Fon",
+      "INDEX": "Endeks",
+      "BOND": "Tahvil/Bono",
+      "FUTURES": "Vadeli",
+      "COMMODITY": "Emtia"
+    },
+    "tabCommentary": {
+      "ALL": "Piyasalarda karma seyir devam ediyor. Yükselenler genel olarak öndeyken bazı sektörlerde satış baskısı hissediliyor.",
+      "STOCK": "BIST'te yükselenler çoğunlukta. Bankacılık ve savunma sanayi hisseleri öne çıkarken enerji sektöründe kâr satışı görülüyor.",
+      "CRYPTO": "Kripto piyasalarında volatilite yüksek. Bitcoin ve büyük coin'lerde karma seyir; altcoin'lerde seçici toparlanma var.",
+      "FUND": "Hisse ağırlıklı fonlar pozitif ayrışırken kısa vadeli tahvil fonları yatay seyrediyor.",
+      "INDEX": "Endeks piyasasında BIST 100 ve küresel endeksler karma bir seyir izliyor.",
+      "BOND": "Tahvil ve bono piyasasında faiz beklentileri belirleyici olmaya devam ediyor.",
+      "FUTURES": "Vadeli piyasalarda işlem hacmi sınırlı; enerji ve tarım kontratlarında hareketlilik var.",
+      "COMMODITY": "Enerji emtiaları güçlü seyrini koruyor. Altın ise jeopolitik belirsizlik nedeniyle talep görüyor."
+    },
+    "aiMini": {
+      "subtitle": "Günün piyasa görünümünü incele",
+      "openDetail": "Detayı Aç"
+    },
+    "portfolioEmpty": {
+      "noPortfolioTitle": "Takip edecek bir portföyünüz bulunmuyor.",
+      "noPortfolioDesc": "Borsa, kripto ve döviz yatırımlarınızı ayrı klasörlerde takip edebilmek için ilk portföyünüzü oluşturun.",
+      "emptyHoldingsTitle": "Bu portföyde henüz bir varlık bulunmuyor.",
+      "emptyHoldingsDesc": "Portföyünüze hisse senedi, kripto para veya nakit ekleyerek anlık değerini izleyin."
+    },
+    "breadthStatus": {
+      "strong": "Güçlü",
+      "moderate": "Orta",
+      "balanced": "Dengeli",
+      "weak": "Zayıf",
+      "veryWeak": "Çok Zayıf",
+      "overview": {
+        "mostlyUp": "Kategorilerin büyük bölümünde yükselenler önde.",
+        "generallyBullish": "Piyasada genel olarak alıcılı görünüm hakim.",
+        "balanced": "Piyasa görünümü dengeli seyrediyor.",
+        "slightSelloff": "Piyasada hafif satış baskısı gözlemleniyor.",
+        "selloff": "Piyasalarda satış baskısı belirgin."
+      }
     }
   },
   "news": {
@@ -306,6 +367,7 @@
       "cnbc": "CNBC",
       "guardian": "The Guardian",
       "kap": "KAP",
+      "systemGenerated": "Piyasa Sinyalleri (Fake)",
       "unknown": "Bilinmeyen kaynak"
     },
     "openNews": "Haberi aç",
@@ -452,6 +514,7 @@
       "category": "Kategori",
       "last": "Son",
       "lastPrice": "Son fiyat",
+      "yieldRate": "Getiri (%)",
       "buy": "Alış",
       "sell": "Satış",
       "change": "Değişim",
@@ -622,7 +685,48 @@
       "status": "Durum",
       "updatedAt": "Güncelleme",
       "action": "Aksiyon"
-    }
+    },
+    "aiAnalysisError": "AI analizi üretilemedi.",
+    "holdingPositionUpdated": "{{name}} pozisyonu güncellendi",
+    "perf": {
+      "portfolioPerformance": "Portföy Performansı",
+      "vsInflation": "Enflasyona Göre",
+      "allPortfolio": "Tüm Portföy",
+      "selectAsset": "Varlık Seç",
+      "addAsset": "+ Varlık Ekle",
+      "maxAssets": "Maks. {{count}} varlık",
+      "loadError": "Performans verisi yüklenemedi.",
+      "selectAssetHint": "Karşılaştırmak için portföyünüzden varlık seçin.",
+      "noHistoryForCode": "{{code}} için seçili dönemde fiyat verisi bulunamadı.",
+      "noHoldingsInPeriod": "Seçili dönemde portföyünüzde varlık bulunmuyor.",
+      "noDataForPeriod": "Bu periyot için yeterli veri bulunamadı.",
+      "lastValue": "Son değer",
+      "periodChange": "Dönem değişimi",
+      "periodReturn": "Dönem getirisi (TWR)",
+      "best": "En iyi",
+      "nominal": "Nominal",
+      "real": "Reel",
+      "nominalView": "Nominal Görünüm",
+      "realView": "Reel Görünüm",
+      "realModeNote": "Reel mod tek seri seçiliyken kullanılabilir.",
+      "assetStart": "Varlık başlangıcı:",
+      "portfolioStart": "Portföy başlangıcı:",
+      "realReturnFromDate": "Reel getiri, ilk varlık tarihinden itibaren hesaplanmıştır.",
+      "returnFromDate": "Getiri, ilk varlık tarihinden itibaren hesaplanmıştır.",
+      "tufeNote": "TÜFE serisi, seçili periyot içindeki aylık değişimler bileşiklenerek hesaplanmıştır.",
+      "performanceNote": "Seri, mevcut pozisyonlar ve kayıtlı alım tarihleri üzerinden yaklaşık hesaplanmıştır.",
+      "gapNote": "Bu tarih aralığında portföyünüzde varlık bulunmuyordu.",
+      "twrReturn": "TWR Getirisi",
+      "range": {
+        "1M": "1 Ay",
+        "3M": "3 Ay",
+        "6M": "6 Ay",
+        "1Y": "1 Yıl",
+        "5Y": "5 Yıl",
+        "MAX": "Tümü"
+      }
+    },
+    "aiAnalysisEmptyNote": "Bu portföy için AI çıktısı şu anda boş döndü. Risk özeti kartı çalışmaya devam ediyor."
   },
   "analysis": {
     "eyebrow": "Analiz & Karşılaştırma",
@@ -657,7 +761,7 @@
     "benchmark": {
       "loading": "Benchmark yükleniyor...",
       "selectInstrument": "Benchmark seçin ve tarih aralığını belirleyin.",
-      "referenceType": "Referans tipi",
+      "referenceType": "Neyle karşılaştır?",
       "reference": "Referans",
       "searchPlaceholder": "Enstrüman ara...",
       "noReferenceResults": "Uygun referans bulunamadı.",
@@ -669,6 +773,7 @@
         "INSTRUMENT": "Enstrüman",
         "SECTOR": "Sektör"
       },
+      "indexOnly": "Endeks karşılaştırması yalnızca hisse senetleri için kullanılabilir.",
       "sectorOnly": "Sektör karşılaştırması yalnızca hisse senetleri için kullanılabilir.",
       "sectorEmpty": "Bu hisse için sektör karşılaştırması oluşturulamadı.",
       "sectorLabel": "Sektör Ortalaması",
@@ -685,11 +790,62 @@
         "BELOW_BENCHMARK": "Referansın altında"
       },
       "presets": {
-        "tufe": "TÜFE",
+        "tufe": "Tüketici Fiyat Endeksi (TÜFE)",
         "bist100": "BIST100",
         "bist30": "BIST30",
         "gold": "Altın"
-      }
+      },
+      "referenceSelect": "Referans seç",
+      "indexSearch": "Endeks ara...",
+      "sameInstrumentWarning": "Aynı enstrümanla karşılaştırma yapılamaz.",
+      "addReference": "Karşılaştırma Ekle",
+      "limitReached": "En fazla 5 seri karşılaştırılabilir.",
+      "priceScaleWarning": "Farklı ölçekler nedeniyle normalize performans önerilir.",
+      "benchmarkSingleOnly": "Fark/Reel modu tek referansla kullanılabilir.",
+      "realChartDescription": "Grafik, enflasyondan arındırılmış reel performansı 100 bazlı gösterir.",
+      "macroNormalizedDescription": "Grafik, ana varlık ve TÜFE'nin seçili dönemdeki 100 bazlı birikimli performansını gösterir.",
+      "realPerformanceLine": "Reel performans",
+      "macroDataUntil": "TÜFE verisi {{date}} tarihine kadar mevcut.",
+      "primaryLabel": "Birincil",
+      "noRefsSelected": "Karşılaştırma için referans seçin.",
+      "typeHints": {
+        "INSTRUMENT": "Başka bir varlıkla karşılaştır",
+        "MACRO": "Enflasyona göre reel performansı ölç",
+        "INDEX": "Piyasaya göre performansı gör",
+        "SECTOR": "Sektör ortalamasıyla karşılaştır"
+      },
+      "modeHelp": {
+        "normalized": {
+          "title": "100 bazlı performans karşılaştırması",
+          "description": "Seriler başlangıç tarihinde 100 kabul edilir. Grafik performans farkını gösterir."
+        },
+        "price": {
+          "title": "Fiyat seviyelerini karşılaştır",
+          "description": "Grafik, iki serinin gerçek fiyat seviyelerini aynı alanda gösterir."
+        },
+        "benchmark": {
+          "title": "Fark / reel performans",
+          "description": "Grafik, ana varlığın referansa göre normalize performans farkını gösterir.",
+          "macroDescription": "Grafik, enflasyondan arındırılmış reel performansı 100 bazlı gösterir."
+        }
+      },
+      "popularEyebrow": "Başlamak için",
+      "popularTitle": "Popüler Karşılaştırmalar",
+      "popularDescription": "Ana varlığı bir referansla kıyaslayarak performans farkını hızlıca gör.",
+      "popularClickHint": "Bu karşılaştırmayı aç",
+      "popularVisualOnly": "Bu öneri mevcut veri setinde görsel örnektir.",
+      "popularLabels": {
+        "thyao": "THYAO",
+        "bist100": "BIST100",
+        "asels": "ASELS",
+        "defenseSector": "Savunma Sektörü",
+        "usdTry": "USD/TRY",
+        "tufe": "TÜFE",
+        "gramGold": "Gram Altın",
+        "btc": "BTC",
+        "nasdaq": "Nasdaq"
+      },
+      "multiSummarySubtitle": "{{count}} karşılaştırma seçili."
     },
     "insight": {
       "eyebrow": "İndikatörler",
@@ -1159,9 +1315,7 @@
       "liveEyebrow": "Canlı Veri İşlemleri",
       "liveTitle": "Canlı veri operasyonları",
       "historyEyebrow": "Geçmiş Veri / Backfill",
-      "historyTitle": "Backfill operasyonları",
-      "macroEyebrow": "Makro Veri Senkronu",
-      "macroTitle": "TCMB makro gösterge senkronu"
+      "historyTitle": "Backfill operasyonları"
     },
     "fundFetch": {
       "running": "TEFAS fon verisi çekiliyor...",
@@ -1284,12 +1438,6 @@
         "description": "Yahoo Finance'dan XU100.IS, XU030.IS, XU050.IS, XBANK.IS, XUSIN.IS, XUTEK.IS ve XHOLD.IS için günlük OHLCV verisini çek; YAHOO_FINANCE kaynaklı ONE_DAY history kayıtları oluştur.",
         "action": "Endeks History Çek",
         "daysPlaceholder": "Gün (örn: 3650)"
-      },
-      "macroSyncAll": {
-        "eyebrow": "Makro Ekonomi",
-        "title": "Tüm Makro Verileri Güncelle",
-        "description": "TCMB EVDS'den tüm makroekonomik göstergeleri eş zamanlı senkronize et: TÜFE, ÜFE, Politika Faizi, İşgücü Piyasası, Tüketici Güveni, Cari Denge.",
-        "action": "Tümünü Güncelle"
       }
     },
     "stockHistory": {
@@ -1721,6 +1869,7 @@
       "portfolio": "Portföy",
       "quantity": "Miktar",
       "buyPrice": "Alış fiyatı",
+      "purchaseDate": "Alış tarihi (opsiyonel)",
       "submitting": "Ekleniyor...",
       "submit": "Portföye ekle"
     },
@@ -1985,6 +2134,8 @@
     "lastPrice": "SON FİYAT",
     "dailyChange": "Günlük değişim",
     "open": "Açılış",
+    "previousClose": "Önceki kapanış",
+    "dayRange": "Gün içi aralık",
     "volume": "Hacim",
     "yearRange": "52 hafta aralığı",
     "dataSource": "Veri kaynağı",
@@ -2000,7 +2151,7 @@
     "period": "Dönem",
     "source": "Kaynak: TCMB EVDS",
     "indicators": {
-      "CPI_TR": "TÜFE",
+      "CPI_TR": "Tüketici Fiyat Endeksi (TÜFE)",
       "PPI_TR": "Yİ-ÜFE",
       "POLICY_RATE_TR": "Politika Faizi",
       "UNEMPLOYMENT_TR": "İşsizlik Oranı",

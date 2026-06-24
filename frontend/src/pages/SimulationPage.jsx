@@ -765,6 +765,7 @@ const FutureSimulationPanel = memo(function FutureSimulationPanel({ onResult, re
 });
 
 const InlineSimulationResult = memo(function InlineSimulationResult({ result, emptyTitle, emptyCopy }) {
+  const { t } = useTranslation();
   const { formatAmount } = useCurrency();
   const positive = Number(result?.profitLoss) >= 0;
 
@@ -784,7 +785,7 @@ const InlineSimulationResult = memo(function InlineSimulationResult({ result, em
                   <strong>{result.selectedLabel}</strong>
                   {result.instrumentType ? (
                     <span className="simulation-lab-result-type-badge">
-                      {formatInstrumentTypeLabel(result.instrumentType)}
+                      {t(`markets.categories.${result.instrumentType}`, formatInstrumentTypeLabel(result.instrumentType))}
                     </span>
                   ) : null}
                 </div>
