@@ -9,14 +9,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -27,17 +22,15 @@ import java.util.List;
 
 /**
  * Fetches ONE_DAY OHLCV history from Yahoo Finance's v8/finance/chart endpoint.
- * Reuses the same cookie/crumb as {@link YahooFinanceQuoteClient}.
+ * Cookie and crumb are managed automatically by {@link YahooFinanceSessionService}.
  */
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class YahooHistoricalClient {
 
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
-
     private final MarketProperties props;
-    private final RestTemplate restTemplate;
+    private final YahooFinanceSessionService yahooSessionService;
     private final ObjectMapper objectMapper;
 
     @CircuitBreaker(name = "yahooFinance", fallbackMethod = "fetchDailyHistoryFallback")
@@ -59,27 +52,15 @@ public class YahooHistoricalClient {
     }
 
     private List<StockHistoryDto> fetchDailyHistory(String yahooSymbol, long period1, long period2) {
-        String cookie = props.getProviders().getYahoo().getCookie();
-        String crumb  = props.getProviders().getYahoo().getCrumb();
-        if (!hasText(cookie) || !hasText(crumb)) {
-            throw new DataProviderException("Yahoo Finance cookie/crumb is not configured");
-        }
-
-        // Build URL via string concat to avoid UriComponentsBuilder misinterpreting '=' in ticker path
         String baseUrl = props.getProviders().getYahoo().getBaseUrl();
         String url = baseUrl + "/v8/finance/chart/" + yahooSymbol
-                + "?interval=1d&period1=" + period1 + "&period2=" + period2 + "&crumb=" + crumb;
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(HttpHeaders.USER_AGENT, USER_AGENT);
-        headers.set(HttpHeaders.COOKIE, cookie);
+                + "?interval=1d&period1=" + period1 + "&period2=" + period2;
 
         try {
             log.debug("Yahoo historical request. symbol={} maskedUrl={}",
                     yahooSymbol, SensitiveDataMasker.maskUri(url));
 
-            ResponseEntity<String> response = restTemplate.exchange(
-                    url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+            ResponseEntity<String> response = yahooSessionService.exchangeWithSession(url);
 
             String body = response.getBody();
             if (body == null || body.isBlank()) {
@@ -90,8 +71,6 @@ public class YahooHistoricalClient {
             log.info("Yahoo historical fetch completed. symbol={} bars={}", yahooSymbol, bars.size());
             return bars;
 
-        } catch (HttpClientErrorException.Unauthorized e) {
-            throw new DataProviderException("Yahoo Finance cookie expired", e);
         } catch (HttpStatusCodeException e) {
             throw new DataProviderException("Yahoo historical HTTP " + e.getStatusCode().value()
                     + " for symbol=" + yahooSymbol, e);
@@ -114,8 +93,6 @@ public class YahooHistoricalClient {
         return List.of();
     }
 
-    // â”€â”€ Parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
     private List<StockHistoryDto> parse(String body, String yahooSymbol) throws Exception {
         JsonNode result = objectMapper.readTree(body)
                 .path("chart")
@@ -126,7 +103,7 @@ public class YahooHistoricalClient {
             return List.of();
         }
 
-        JsonNode item       = result.get(0);
+        JsonNode item = result.get(0);
         JsonNode timestamps = item.path("timestamp");
         JsonNode quoteArray = item.path("indicators").path("quote");
 
@@ -135,11 +112,11 @@ public class YahooHistoricalClient {
             return List.of();
         }
 
-        JsonNode q       = quoteArray.get(0);
-        JsonNode opens   = q.path("open");
-        JsonNode highs   = q.path("high");
-        JsonNode lows    = q.path("low");
-        JsonNode closes  = q.path("close");
+        JsonNode q = quoteArray.get(0);
+        JsonNode opens = q.path("open");
+        JsonNode highs = q.path("high");
+        JsonNode lows = q.path("low");
+        JsonNode closes = q.path("close");
         JsonNode volumes = q.path("volume");
 
         List<StockHistoryDto> bars = new ArrayList<>();
@@ -149,7 +126,6 @@ public class YahooHistoricalClient {
                 continue;
             }
 
-            // Normalise to midnight UTC so duplicate check aligns with CommodityHistoryDerivationService
             Instant ts = Instant.ofEpochSecond(timestamps.get(i).longValue())
                     .atZone(ZoneOffset.UTC)
                     .toLocalDate()
@@ -170,16 +146,13 @@ public class YahooHistoricalClient {
     }
 
     private BigDecimal decimal(JsonNode array, int i) {
-        if (!array.isArray() || i >= array.size() || array.get(i).isNull()) return null;
+        if (!array.isArray() || i >= array.size() || array.get(i).isNull()) {
+            return null;
+        }
         try {
             return new BigDecimal(array.get(i).asText());
         } catch (NumberFormatException e) {
             return null;
         }
     }
-
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
 }
-

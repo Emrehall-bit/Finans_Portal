@@ -32,8 +32,6 @@ public class MarketProperties {
     public static class Provider {
         private String baseUrl;
         private String apiKey;
-        private String cookie;
-        private String crumb;
     }
 
     @Data

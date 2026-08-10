@@ -149,8 +149,6 @@ market:
   providers:
     yahoo:
       base-url: https://query1.finance.yahoo.com
-      cookie: ${YAHOO_COOKIE:}
-      crumb: ${YAHOO_CRUMB:}
     bist:
       base-url: https://datastore.borsaistanbul.com
   scheduler:

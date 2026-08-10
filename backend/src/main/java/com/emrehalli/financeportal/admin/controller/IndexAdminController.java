@@ -86,7 +86,7 @@ public class IndexAdminController {
         if (totalSaved == 0) {
             response.put("hint", totalSkipped > 0
                     ? "All rows already exist â€” " + totalSkipped + " duplicates skipped."
-                    : "No data saved. Check Yahoo Finance cookie/crumb configuration.");
+                    : "No data saved. Check Yahoo Finance session and rate-limit logs.");
         }
 
         return response;

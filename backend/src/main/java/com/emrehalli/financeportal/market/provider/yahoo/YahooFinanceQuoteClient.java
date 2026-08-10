@@ -8,14 +8,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
@@ -32,10 +27,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class YahooFinanceQuoteClient {
 
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
-
     private final MarketProperties props;
-    private final RestTemplate restTemplate;
+    private final YahooFinanceSessionService yahooSessionService;
     private final ObjectMapper objectMapper;
 
     @CircuitBreaker(name = "yahooFinance", fallbackMethod = "fetchQuotesFallback")
@@ -44,31 +37,18 @@ public class YahooFinanceQuoteClient {
             return List.of();
         }
 
-        String cookie = props.getProviders().getYahoo().getCookie();
-        String crumb  = props.getProviders().getYahoo().getCrumb();
-        if (!hasText(cookie) || !hasText(crumb)) {
-            log.warn("Yahoo Finance cookie/crumb yapÄ±landÄ±rÄ±lmamÄ±ÅŸ, sorgu atlanÄ±yor");
-            throw new DataProviderException("Yahoo Finance cookie/crumb is not configured");
-        }
-
         String url = UriComponentsBuilder
                 .fromHttpUrl(props.getProviders().getYahoo().getBaseUrl() + "/v7/finance/quote")
                 .queryParam("symbols", yahooSymbols.stream().collect(Collectors.joining(",")))
                 .queryParam("fields",
-                        "regularMarketPrice,regularMarketChangePercent,regularMarketPreviousClose," +
-                        "regularMarketDayHigh,regularMarketDayLow,regularMarketVolume")
-                .queryParam("crumb", crumb)
+                        "regularMarketPrice,regularMarketChangePercent,regularMarketPreviousClose,"
+                                + "regularMarketDayHigh,regularMarketDayLow,regularMarketVolume")
                 .build()
                 .toUriString();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(HttpHeaders.USER_AGENT, USER_AGENT);
-        headers.set(HttpHeaders.COOKIE, cookie);
-
         try {
             log.debug("Yahoo Finance quote request. maskedUrl={}", SensitiveDataMasker.maskUri(url));
-            ResponseEntity<String> response = restTemplate.exchange(
-                    url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+            ResponseEntity<String> response = yahooSessionService.exchangeWithSession(url);
 
             String body = response.getBody();
             if (body == null || body.isBlank()) {
@@ -101,9 +81,6 @@ public class YahooFinanceQuoteClient {
             }
             return items;
 
-        } catch (HttpClientErrorException.Unauthorized e) {
-            log.warn("Yahoo Finance cookie sÃ¼resi dolmuÅŸ, manuel gÃ¼ncelleme gerekiyor");
-            throw new DataProviderException("Yahoo Finance cookie expired", e);
         } catch (HttpStatusCodeException e) {
             throw new DataProviderException("Yahoo Finance HTTP error: " + e.getStatusCode().value(), e);
         } catch (DataProviderException e) {
@@ -121,7 +98,9 @@ public class YahooFinanceQuoteClient {
 
     private BigDecimal decimal(JsonNode node, String field) {
         JsonNode n = node.path(field);
-        if (n.isMissingNode() || n.isNull()) return null;
+        if (n.isMissingNode() || n.isNull()) {
+            return null;
+        }
         try {
             return n.isNumber() ? n.decimalValue() : new BigDecimal(n.asText());
         } catch (NumberFormatException ex) {
@@ -134,10 +113,6 @@ public class YahooFinanceQuoteClient {
         return (!n.isMissingNode() && !n.isNull() && n.isNumber()) ? n.longValue() : null;
     }
 
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
-
     public record YahooQuoteItem(
             String yahooSymbol,
             BigDecimal price,
@@ -146,6 +121,6 @@ public class YahooFinanceQuoteClient {
             BigDecimal dayHigh,
             BigDecimal dayLow,
             Long volume
-    ) {}
+    ) {
+    }
 }
-

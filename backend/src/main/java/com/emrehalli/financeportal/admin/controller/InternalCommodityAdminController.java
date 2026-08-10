@@ -61,7 +61,7 @@ public class InternalCommodityAdminController {
         if (totalSaved == 0) {
             response.put("hint", totalSkipped > 0
                     ? "All rows already exist â€” " + totalSkipped + " duplicates skipped."
-                    : "No data saved. Check Yahoo Finance cookie/crumb configuration.");
+                    : "No data saved. Check Yahoo Finance session and rate-limit logs.");
         } else {
             response.put("nextStep",
                     "POST /api/v1/admin/markets/commodities/history/backfill?days=" + days);

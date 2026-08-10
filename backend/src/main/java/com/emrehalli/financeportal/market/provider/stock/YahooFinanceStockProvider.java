@@ -1,25 +1,21 @@
 package com.emrehalli.financeportal.market.provider.stock;
 
-import com.emrehalli.financeportal.config.MarketProperties;
 import com.emrehalli.financeportal.common.logging.SensitiveDataMasker;
+import com.emrehalli.financeportal.config.MarketProperties;
 import com.emrehalli.financeportal.market.domain.enums.SourceName;
 import com.emrehalli.financeportal.market.exception.DataProviderException;
 import com.emrehalli.financeportal.market.provider.MarketDataProvider;
 import com.emrehalli.financeportal.market.provider.stock.dto.StockPriceDto;
+import com.emrehalli.financeportal.market.provider.yahoo.YahooFinanceSessionService;
 import com.emrehalli.financeportal.market.support.BistSymbolRegistry;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
@@ -36,10 +32,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class YahooFinanceStockProvider implements MarketDataProvider {
 
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
-
     private final MarketProperties props;
-    private final RestTemplate restTemplate;
+    private final YahooFinanceSessionService yahooSessionService;
     private final BistSymbolRegistry bistSymbolRegistry;
     private final ObjectMapper objectMapper;
 
@@ -51,9 +45,6 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
     @CircuitBreaker(name = "yahooFinance", fallbackMethod = "fetchFallback")
     @Override
     public List<StockPriceDto> fetch() {
-        log.debug("Yahoo Finance fetch called. cookieConfigured={}, crumbConfigured={}",
-                props.getProviders().getYahoo().getCookie() != null ? "SET" : "NULL",
-                props.getProviders().getYahoo().getCrumb() != null ? "SET" : "NULL");
         try {
             List<StockPriceDto> quotes = fetchFromApi();
             if (quotes.isEmpty()) {
@@ -70,13 +61,6 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
     }
 
     private List<StockPriceDto> fetchFromApi() {
-        String cookie = props.getProviders().getYahoo().getCookie();
-        String crumb = props.getProviders().getYahoo().getCrumb();
-        if (!hasText(cookie) || !hasText(crumb)) {
-            log.warn("Yahoo Finance cookie/crumb yapÄ±landÄ±rÄ±lmamÄ±ÅŸ, hisse verisi atlanÄ±yor");
-            throw new DataProviderException("Yahoo Finance cookie/crumb is not configured");
-        }
-
         List<String> yahooSymbols = bistSymbolRegistry.getAllYahooSymbols();
         if (yahooSymbols.isEmpty()) {
             return List.of();
@@ -86,32 +70,17 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
                 .queryParam("symbols", yahooSymbols.stream().collect(Collectors.joining(",")))
                 .queryParam(
                         "fields",
-                        "regularMarketPrice,regularMarketChangePercent,regularMarketPreviousClose,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,regularMarketOpen,sharesOutstanding,marketCap"
+                        "regularMarketPrice,regularMarketChangePercent,regularMarketPreviousClose,"
+                                + "regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,"
+                                + "regularMarketOpen,sharesOutstanding,marketCap"
                 )
-                .queryParam("crumb", crumb)
                 .build()
                 .toUriString();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(HttpHeaders.USER_AGENT, USER_AGENT);
-        headers.set(HttpHeaders.COOKIE, cookie);
-
         try {
             log.debug("Yahoo Finance request URL: {}", SensitiveDataMasker.maskUri(url));
-            ResponseEntity<String> response;
-            try {
-                log.debug("Yahoo Finance request exchange starting");
-                response = restTemplate.exchange(
-                        url,
-                        HttpMethod.GET,
-                        new HttpEntity<>(headers),
-                        String.class
-                );
-                log.debug("Yahoo Finance request exchange completed. status={}", response.getStatusCode());
-            } catch (Throwable t) {
-                log.debug("Yahoo Finance exchange exception. type={}, message={}", t.getClass().getName(), t.getMessage());
-                throw new DataProviderException("exchange failed", t);
-            }
+            ResponseEntity<String> response = yahooSessionService.exchangeWithSession(url);
+
             log.debug("Yahoo Finance response status: {}", response.getStatusCode());
             if (log.isDebugEnabled()) {
                 log.debug("Yahoo Finance response body preview: {}",
@@ -147,7 +116,6 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
                     continue;
                 }
 
-                // sharesOutstanding: doğrudan al, yoksa marketCap/fiyat'tan türet
                 BigDecimal sharesOutstanding = decimalValue(item, "sharesOutstanding");
                 if (sharesOutstanding == null || sharesOutstanding.compareTo(BigDecimal.ZERO) <= 0) {
                     BigDecimal marketCap = decimalValue(item, "marketCap");
@@ -175,11 +143,9 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
             }
 
             return prices;
-        } catch (HttpClientErrorException.Unauthorized exception) {
-            log.warn("Yahoo Finance cookie sÃ¼resi dolmuÅŸ, manuel gÃ¼ncelleme gerekiyor");
-            throw new DataProviderException("Yahoo Finance cookie expired, manual refresh required", exception);
         } catch (HttpStatusCodeException exception) {
-            throw new DataProviderException("Failed to fetch stock quote data from Yahoo Finance: HTTP " + exception.getStatusCode().value(), exception);
+            throw new DataProviderException("Failed to fetch stock quote data from Yahoo Finance: HTTP "
+                    + exception.getStatusCode().value(), exception);
         } catch (DataProviderException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -220,9 +186,4 @@ public class YahooFinanceStockProvider implements MarketDataProvider {
         }
         return node.isNumber() ? node.longValue() : null;
     }
-
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
 }
-
